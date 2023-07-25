@@ -1,0 +1,6 @@
+# Example user-specific git configuration
+
+[user]
+  signingkey = AB0C1D23E456FG7H
+  name = Your Name
+  email = you@host.local

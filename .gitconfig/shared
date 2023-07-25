@@ -1,0 +1,23 @@
+# Shared git configuration
+#
+# Include the shared config file:
+#
+#     git config include.path ../.gitconfig/shared
+#
+# Create a user-specific config file:
+#
+#     cp .gitconfig/user.example .gitconfig/user
+#
+# Decrypt a user config file:
+#
+#     gpg --output .gitconfig/user --decrypt .gitconfig/users/[USER].gpg
+#
+# To encrypt a user config file:
+#
+#     gpg --output .gitconfig/users/[USER].gpg --encrypt --recipient [USER] .gitconfig/user
+#
+
+[commit]
+	gpgsign = true
+[include]
+  path = user
