@@ -8,13 +8,16 @@ let package = Package(
             name: "Bitcoin",
             targets: ["Bitcoin"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0")
+    ],
     targets: [
         .target(
             name: "Bitcoin",
-            path: "src"),
+            path: "src/bitcoin"),
         .testTarget(
             name: "BitcoinTests",
             dependencies: ["Bitcoin"],
-            path: "test")
+            path: "test/bitcoin")
     ]
 )

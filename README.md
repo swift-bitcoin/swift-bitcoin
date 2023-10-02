@@ -1,5 +1,8 @@
 # Swift Bitcoin
 
+[Documentation](https://swift-bitcoin.github.io/docc/documentation/bitcoin/)
+[Blog](https://swift-bitcoin.github.io)
+
 _Swift Bitcoin_ is a [bitcoin](https://bitcoin.org/bitcoin.pdf) library written entirely in **Swift**. Its only dependency is the official [libsecp256k1](https://github.com/bitcoin-core/secp256k1) for ECDSA and [Schnorr](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) cryptography.
 
 The library provides full support for bitcoin [transactions](https://en.bitcoin.it/wiki/Transaction), [SCRIPT](https://en.bitcoin.it/wiki/Script), [segregated witness](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki), [taproot](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki), [tapscript](https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki) and more.
