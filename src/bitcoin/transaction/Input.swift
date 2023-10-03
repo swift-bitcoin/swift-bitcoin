@@ -4,7 +4,7 @@ import Foundation
 public struct Input: Equatable {
 
     //- MARK: Initializers
-    
+
     /// Constructs a transaction input.
     /// - Parameters:
     ///   - outpoint: the output that this input is spending.
@@ -31,7 +31,20 @@ public struct Input: Equatable {
 
     /// The segregated witness data introduced by BIP-141.
     public var witness: Witness?
-    
+
+    var data: Data {
+        var ret = Data()
+        ret += outpoint.data
+        ret += script // .prefixedData
+        ret += sequence.data
+        return ret
+    }
+
+    var size: Int {
+        Outpoint.size + UInt64(script.count).varIntSize + script.count + Sequence.size
+        // TODO: Eventually replace `UInt64(script.count).varIntSize + script.count` with `script.prefixedSize`
+    }
+
     //- MARK: Instance Methods
     //- MARK: Type Properties
     //- MARK: Type Methods
