@@ -13,4 +13,19 @@ public struct Output: Equatable {
 
     /// The script that locks this output.
     public var script: Data
+
+    var data: Data {
+        var ret = Data()
+        ret += valueData
+        ret += script // TODO: Eventually replace with `script.prefixedData`
+        return ret
+    }
+
+    var size: Int {
+        MemoryLayout.size(ofValue: value) + UInt64(script.count).varIntSize + script.count // TODO: Eventually replace with `script.prefixedSize`
+    }
+
+    private var valueData: Data {
+        withUnsafeBytes(of: value) { Data($0) }
+    }
 }

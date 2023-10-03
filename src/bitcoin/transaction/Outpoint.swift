@@ -13,4 +13,15 @@ public struct Outpoint: Equatable {
 
     /// The index of an output in the referenced transaction.
     public var output: Int
+
+    var data: Data {
+        var ret = Data()
+        ret += Data(hex: transaction).reversed()
+        ret += withUnsafeBytes(of: UInt32(output)) { Data($0) }
+        return ret
+    }
+
+    static var size: Int {
+        Transaction.idSize + MemoryLayout<UInt32>.size
+    }
 }

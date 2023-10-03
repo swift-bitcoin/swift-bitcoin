@@ -9,4 +9,12 @@ public struct Locktime: Equatable {
 
     /// The numeric lock time value.
     public let locktimeValue: Int
+
+    var data: Data {
+        withUnsafeBytes(of: rawValue) { Data($0) }
+    }
+
+    private var rawValue: UInt32 { UInt32(locktimeValue) }
+
+    static let size = MemoryLayout<UInt32>.size
 }
