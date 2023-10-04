@@ -7,6 +7,18 @@ public struct Locktime: Equatable {
         self.locktimeValue = locktimeValue
     }
 
+    init?(_ data: Data) {
+        guard data.count >= Self.size else {
+            return nil
+        }
+        let value32 = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
+        self.init(value32)
+    }
+
+    private init(_ rawValue: UInt32) {
+        self.init(Int(rawValue))
+    }
+
     /// The numeric lock time value.
     public let locktimeValue: Int
 
@@ -14,7 +26,7 @@ public struct Locktime: Equatable {
         withUnsafeBytes(of: rawValue) { Data($0) }
     }
 
-    private var rawValue: UInt32 { UInt32(locktimeValue) }
+    var rawValue: UInt32 { UInt32(locktimeValue) }
 
     static let size = MemoryLayout<UInt32>.size
 }

@@ -5,15 +5,23 @@ import Foundation
 extension Data {
 
     /// Create instance from string containing hex digits.
-    init(hex: String) {
+    init?(hex: String) {
         guard let regex = try? NSRegularExpression(pattern: "([0-9a-fA-F]{2})", options: []) else {
-            fatalError()
+            return nil
         }
         let range = NSRange(location: 0, length: hex.count)
         let bytes = regex.matches(in: hex, options: [], range: range)
             .compactMap { Range($0.range(at: 1), in: hex) }
             .compactMap { UInt8(hex[$0], radix: 16) }
         self.init(bytes)
+    }
+}
+
+extension DataProtocol {
+
+    /// Hexadecimal (Base-16) string representation of data.
+    var hex: String {
+        map { String(format: "%02x", $0) }.joined()
     }
 }
 
@@ -36,9 +44,9 @@ extension Data {
     }
 
     /// Parses bytes interpreted as variable length – i.e. compact integer – data into a 64-bit integer.
-    var varInt: UInt64 {
+    var varInt: UInt64? {
         guard let firstByte = first else {
-            fatalError("Data is empty.")
+            return .none
         }
         let tail = dropFirst()
         if firstByte < 0xfd {
@@ -76,7 +84,7 @@ extension UInt64 {
         case UInt64(UInt32.max) + 1 ... UInt64.max:
             return 1 + MemoryLayout<UInt64>.size
         default:
-            fatalError()
+            preconditionFailure()
         }
     }
 }
@@ -84,6 +92,15 @@ extension UInt64 {
 // - MARK: Variable length array
 
 extension Data {
+
+    init?(varLenData: Data) {
+        var data = varLenData
+        guard let contentLen = data.varInt else {
+            return nil
+        }
+        data = data.dropFirst(contentLen.varIntSize)
+        self = data[..<(data.startIndex + Int(contentLen))]
+    }
 
     var varLenData: Data {
         let contentLenData = Data(varInt: UInt64(count))
