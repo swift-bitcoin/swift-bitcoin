@@ -11,6 +11,69 @@ public struct Transaction: Equatable {
         self.outputs = outputs
     }
 
+    public init?(_ data: Data) {
+        var data = data
+        guard let version = Version(data) else {
+            return nil
+        }
+        data = data.dropFirst(Version.size)
+
+        // Check for marker and segwit flag
+        let maybeSegwitMarker = data[data.startIndex]
+        let maybeSegwitFlag = data[data.startIndex + 1]
+        let isSegwit: Bool
+        if maybeSegwitMarker == Transaction.segwitMarker && maybeSegwitFlag == Transaction.segwitFlag {
+            isSegwit = true
+            data = data.dropFirst(2)
+        } else {
+            isSegwit = false
+        }
+
+        guard let inputsCount = data.varInt else {
+            return nil
+        }
+        data = data.dropFirst(inputsCount.varIntSize)
+
+        var inputs = [Input]()
+        for _ in 0 ..< inputsCount {
+            guard let input = Input(data) else {
+                return nil
+            }
+            inputs.append(input)
+            data = data.dropFirst(input.size)
+        }
+
+        guard let outputsCount = data.varInt else {
+            return nil
+        }
+        data = data.dropFirst(outputsCount.varIntSize)
+
+        var outputs = [Output]()
+        for _ in 0 ..< outputsCount {
+            guard let out = Output(data) else {
+                return nil
+            }
+            outputs.append(out)
+            data = data.dropFirst(out.size)
+        }
+
+        if isSegwit {
+            for i in inputs.indices {
+                guard let witness = Witness(data) else {
+                    return nil
+                }
+                inputs[i].witness = witness
+                data = data.dropFirst(witness.size)
+            }
+        }
+
+        guard let locktime = Locktime(data) else {
+            return nil
+        }
+        data = data.dropFirst(Locktime.size)
+        self.init(version: version, locktime: locktime, inputs: inputs, outputs: outputs)
+    }
+
     /// The transaction's version.
     public let version: Version
 
@@ -23,7 +86,7 @@ public struct Transaction: Equatable {
     /// The outputs created by this transaction.
     public var outputs: [Output]
 
-    /// Standard serialization of this transaction.
+    /// Raw format byte serialization of this transaction. Supports updated serialization format specified in BIP144.
     public var data: Data {
         var ret = Data()
         ret += version.data
@@ -55,6 +118,7 @@ public struct Transaction: Equatable {
         Version.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + Locktime.size
     }
 
+    /// Part of BIP-144 implementation.
     private var witnessSize: Int {
         hasWitness ? (MemoryLayout.size(ofValue: Transaction.segwitMarker) + MemoryLayout.size(ofValue: Transaction.segwitFlag)) + inputs.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
     }
@@ -63,6 +127,9 @@ public struct Transaction: Equatable {
 
     static let idSize = 32
 
+    /// BIP-144
     private static let segwitMarker = UInt8(0x00)
+
+    /// BIP-144
     private static let segwitFlag = UInt8(0x01)
 }

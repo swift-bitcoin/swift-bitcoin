@@ -3,26 +3,39 @@ import Foundation
 /// The output of a ``Transaction``.
 public struct Output: Equatable {
 
-    public init(value: Amount, script: Data) {
+    public init(value: Amount, script: SerializedScript) {
         self.value = value
         self.script = script
+    }
+
+    init?(_ data: Data) {
+        guard data.count > MemoryLayout<Amount>.size else {
+            return nil
+        }
+        var data = data
+        let value = data.withUnsafeBytes { $0.loadUnaligned(as: Amount.self) }
+        data = data.dropFirst(MemoryLayout.size(ofValue: value))
+        guard let script = SerializedScript(prefixedData: data) else {
+            return nil
+        }
+        self.init(value: value, script: script)
     }
 
     /// The amount in satoshis encumbered by this output.
     public var value: Amount
 
     /// The script that locks this output.
-    public var script: Data
+    public var script: SerializedScript
 
     var data: Data {
         var ret = Data()
         ret += valueData
-        ret += script // TODO: Eventually replace with `script.prefixedData`
+        ret += script.prefixedData
         return ret
     }
 
     var size: Int {
-        MemoryLayout.size(ofValue: value) + UInt64(script.count).varIntSize + script.count // TODO: Eventually replace with `script.prefixedSize`
+        MemoryLayout.size(ofValue: value) + script.prefixedSize
     }
 
     private var valueData: Data {

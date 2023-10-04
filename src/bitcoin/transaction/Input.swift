@@ -11,11 +11,31 @@ public struct Input: Equatable {
     ///   - sequence: this input's sequence number.
     ///   - script: optional script to unlock the output.
     ///   - witness: optional witness data for this input.
-    public init(outpoint: Outpoint, sequence: Sequence, script: Data = .init(), witness: Witness? = .none) {
+    public init(outpoint: Outpoint, sequence: Sequence, script: SerializedScript = .empty, witness: Witness? = .none) {
         self.outpoint = outpoint
         self.sequence = sequence
         self.script = script
         self.witness = witness
+    }
+
+    init?(_ data: Data) {
+        var offset = data.startIndex
+        guard let outpoint = Outpoint(data) else {
+            return nil
+        }
+        offset += Outpoint.size
+
+        guard let script = SerializedScript(prefixedData: data[offset...]) else {
+            return nil
+        }
+        offset += script.prefixedSize
+
+        guard let sequence = Sequence(data[offset...]) else {
+            return nil
+        }
+        offset += Sequence.size
+
+        self.init(outpoint: outpoint, sequence: sequence, script: script)
     }
 
     //- MARK: Instance Properties
@@ -27,22 +47,23 @@ public struct Input: Equatable {
     public var sequence: Sequence
 
     /// The script that unlocks the output associated with this input.
-    public var script: Data
+    public var script: SerializedScript
 
     /// The segregated witness data introduced by BIP-141.
     public var witness: Witness?
 
+    /// Used by ``Transaction/data``.
     var data: Data {
         var ret = Data()
         ret += outpoint.data
-        ret += script // .prefixedData
+        ret += script.prefixedData
         ret += sequence.data
         return ret
     }
 
+    /// Used by ``Transaction/size``.
     var size: Int {
-        Outpoint.size + UInt64(script.count).varIntSize + script.count + Sequence.size
-        // TODO: Eventually replace `UInt64(script.count).varIntSize + script.count` with `script.prefixedSize`
+        Outpoint.size + script.prefixedSize + Sequence.size
     }
 
     //- MARK: Instance Methods

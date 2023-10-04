@@ -18,6 +18,9 @@ let package = Package(
         .testTarget(
             name: "BitcoinTests",
             dependencies: ["Bitcoin"],
-            path: "test/bitcoin")
+            path: "test/bitcoin",
+            resources: [
+                .copy("data")
+            ])
     ]
 )
