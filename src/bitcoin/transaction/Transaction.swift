@@ -109,7 +109,24 @@ public struct Transaction: Equatable {
         return ret
     }
 
-    var size: Int { nonWitnessSize + witnessSize }
+    var idData: Data {
+        var ret = Data()
+        ret += version.data
+        ret += Data(varInt: inputsUInt64)
+        ret += inputs.reduce(Data()) { $0 + $1.data }
+        ret += Data(varInt: outputsUInt64)
+        ret += outputs.reduce(Data()) { $0 + $1.data }
+        ret += locktime.data
+        return ret
+    }
+
+    /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
+    public var id: Data { Data(hash256(idData).reversed()) }
+
+    /// The transaction's witness identifier as defined in BIP-141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
+    public var witnessID: Data { Data(hash256(data).reversed()) }
+
+    public var size: Int { nonWitnessSize + witnessSize }
 
     private var inputsUInt64: UInt64 { .init(inputs.count) }
     private var outputsUInt64: UInt64 { .init(outputs.count) }
@@ -124,6 +141,14 @@ public struct Transaction: Equatable {
     }
 
     private var hasWitness: Bool { inputs.contains { $0.witness != .none } }
+
+    /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.
+    public func outpoint(for output: Int) -> Outpoint? {
+        guard output < outputs.count else {
+            return .none
+        }
+        return .init(transaction: Data(), output: output)
+    }
 
     static let idSize = 32
 

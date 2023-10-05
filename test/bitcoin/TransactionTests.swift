@@ -10,15 +10,17 @@ final class TransactionTests: XCTestCase {
         }
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
-        decoder.allowsJSON5 = true
+
+        // Linux Foundation does not support JSON5
+        // decoder.allowsJSON5 = true
+
         let TxInfoItems = try decoder.decode([TxInfo].self, from: data)
         for txInfo in TxInfoItems {
             guard
                 let expectedTransactionData = Data(hex: txInfo.hex),
                 let tx = Transaction(expectedTransactionData)
             else {
-                XCTFail()
-                return
+                XCTFail(); return
             }
 
             XCTAssertEqual(tx.data, expectedTransactionData)
@@ -28,6 +30,15 @@ final class TransactionTests: XCTestCase {
 
             let expectedLocktime = txInfo.locktime
             XCTAssertEqual(tx.locktime.rawValue, expectedLocktime)
+
+            guard let expectedID = Data(hex: txInfo.txid), let expectedWitnessID = Data(hex: txInfo.hash) else {
+                XCTFail(); return
+            }
+            XCTAssertEqual(tx.id, expectedID)
+            XCTAssertEqual(tx.witnessID, expectedWitnessID)
+
+            let expectedSize = txInfo.size
+            XCTAssertEqual(tx.size, expectedSize)
 
             let expectedInputCount = txInfo.vin.count
             let expectedOutputCount = txInfo.vout.count

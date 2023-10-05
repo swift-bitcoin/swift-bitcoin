@@ -1,6 +1,6 @@
 [
-// Block 2 coinbase
 {
+  "_comment": "Block 2 coinbase",
   "txid": "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098",
   "hash": "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098",
   "version": 1,
@@ -32,9 +32,8 @@
   "time": 1231469665,
   "blocktime": 1231469665
 },
-
-// Hal Finney transaction (first bitcoin transaction)
 {
+  "_comment": "Block 2 coinbase",
   "txid": "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
   "hash": "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
   "version": 1,
@@ -93,9 +92,8 @@
   "time": 1231731025,
   "blocktime": 1231731025
 },
-
-// First segwit transaction
 {
+  "_comment": "First segwit transaction",
   "txid": "dfcec48bb8491856c353306ab5febeb7e99e4d783eedf3de98f3ee0812b92bad",
   "hash": "48a387570eeffb07e8e84642efe36bc4088285fc04db91743a9850bfd1611af2",
   "version": 1,
@@ -150,9 +148,8 @@
   "time": 1503539857,
   "blocktime": 1503539857
 },
-
-// First taproot transaction
 {
+  "_comment": "First taproot transaction",
   "txid": "b10c007c60e14f9d087e0291d4d0c7869697c6681d979c6639dbd960792b4d41",
   "hash": "b10c007c60e14f9d087e0291d4d0c7869697c6681d979c6639dbd960792b4d41",
   "version": 1,
@@ -276,9 +273,8 @@
   "time": 1627028660,
   "blocktime": 1627028660
 },
-
-// Random recent transaction (October 2023)
 {
+  "_comment": "Random recent transaction (October 2023)",
   "txid": "a9bb4ec1e626d568be25717eba7ae8d1d9a0530616e9e0087e88685d2fd562f0",
   "hash": "8bd59d3ba5a9ab5f1a278995af8b6707c7cce7f41748355bdc3730cda5c018d1",
   "version": 1,
