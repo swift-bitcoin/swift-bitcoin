@@ -2,34 +2,49 @@ import Foundation
 
 /// A script operation.
 enum ScriptOperation: Equatable {
-    case zero
+    case zero, constant(UInt8)
+
+    private func operationPreconditions() {
+        switch(self) {
+        case .constant(let k):
+            precondition(k > 0 && k < 17)
+        default: break
+        }
+    }
 
     var size: Int {
-        MemoryLayout<UInt8>.size
+        operationPreconditions()
+        return MemoryLayout<UInt8>.size
     }
 
     var opCode: UInt8 {
-        switch(self) {
+        operationPreconditions()
+        return switch(self) {
         case .zero: 0x00
+        case .constant(let k): 0x50 + k
         }
     }
 
     var keyword: String {
-        switch(self) {
+        operationPreconditions()
+        return switch(self) {
         case .zero: "OP_0"
+        case .constant(let k): "OP_\(k)"
         }
     }
 
     func execute(stack: inout [Data], context: inout ScriptContext) throws {
+        operationPreconditions()
         switch(self) {
         case .zero: opConstant(0, stack: &stack)
+        case .constant(let k): opConstant(k, stack: &stack)
         }
     }
 
     var asm: String {
-        switch(self) {
-        case .zero:
-            return "0"
+        return switch(self) {
+        case .zero: "0"
+        default: keyword
         }
     }
 
@@ -48,7 +63,12 @@ enum ScriptOperation: Equatable {
         switch(opCode) {
         // OP_ZERO
         case Self.zero.opCode: self = .zero
-        default: fatalError()
+
+        // Constants
+        case Self.constant(1).opCode ... Self.constant(16).opCode:
+            self = .constant(opCode - 0x50)
+
+        default: preconditionFailure()
         }
     }
 }

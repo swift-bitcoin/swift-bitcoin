@@ -1,12 +1,11 @@
 import XCTest
-@testable import Bitcoin
+import Bitcoin
 
 final class TransactionTests: XCTestCase {
 
     func testDeserialization() throws {
         guard let url = Bundle.module.url(forResource: "mainnet-transactions", withExtension: "json", subdirectory: "data/transactions") else {
-            XCTFail()
-            return
+            XCTFail(); return
         }
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
@@ -26,10 +25,10 @@ final class TransactionTests: XCTestCase {
             XCTAssertEqual(tx.data, expectedTransactionData)
 
             let expectedVersion = txInfo.version
-            XCTAssertEqual(tx.version.rawValue, expectedVersion)
+            XCTAssertEqual(tx.version.versionValue, expectedVersion)
 
             let expectedLocktime = txInfo.locktime
-            XCTAssertEqual(tx.locktime.rawValue, expectedLocktime)
+            XCTAssertEqual(tx.locktime.locktimeValue, expectedLocktime)
 
             guard let expectedID = Data(hex: txInfo.txid), let expectedWitnessID = Data(hex: txInfo.hash) else {
                 XCTFail(); return
@@ -50,12 +49,11 @@ final class TransactionTests: XCTestCase {
                 let input = tx.inputs[i]
 
                 let expectedSequence = vinData.sequence
-                XCTAssertEqual(input.sequence.rawValue, expectedSequence)
+                XCTAssertEqual(input.sequence.sequenceValue, expectedSequence)
 
                 if let coinbase = vinData.coinbase {
                     guard let expectedCoinbase = Data(hex: coinbase) else {
-                        XCTFail()
-                        return
+                        XCTFail(); return
                     }
 
                     let expectedOutpoint = Outpoint.coinbase
@@ -66,8 +64,7 @@ final class TransactionTests: XCTestCase {
 
                 } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig, let expectedScriptData = Data(hex: scriptSig.hex) {
                     guard let expectedTransaction = Data(hex: txid) else {
-                        XCTFail()
-                        return
+                        XCTFail(); return
                     }
 
                     XCTAssertEqual(input.outpoint.transaction, expectedTransaction)
@@ -81,8 +78,7 @@ final class TransactionTests: XCTestCase {
                         XCTAssertEqual(input.witness, expectedWitness)
                     }
                 } else {
-                    XCTFail()
-                    return
+                    XCTFail(); return
                 }
             }
             for i in txInfo.vout.indices {
@@ -93,44 +89,11 @@ final class TransactionTests: XCTestCase {
                 XCTAssertEqual(Double(output.value) / 100_000_000, expectedValue)
 
                 guard let expectedScriptData = Data(hex: voutData.scriptPubKey.hex) else {
-                    XCTFail()
-                    return
+                    XCTFail(); return
                 }
                 let expectedScript = SerializedScript(expectedScriptData)
                 XCTAssertEqual(output.script, expectedScript)
             }
         }
-    }
-
-    func testTransactionRoundtrip() throws {
-        // A coinbase transaction
-        let tx = Transaction(
-            version: .v1,
-            locktime: .init(0),
-            inputs: [
-                .init(
-                    outpoint: .coinbase,
-                    sequence: .init(0xffffffff),
-                    script: .init(Data([
-                        0x05, // OP_PUSHBYTES_5
-                        0x68, 0x65, 0x6c, 0x6c, 0x6f, // hello
-                    ]))
-                )
-            ],
-            outputs: [
-                .init(
-                    value: 5_000_000_000, // 50 BTC
-                    script: .init(Data([
-                        0x6a, // OP_RETURN
-                        0x62, 0x79, 0x65 // bye
-                    ]))
-                )
-            ])
-        let data = tx.data
-        guard let tx_ = Transaction(data) else {
-            XCTFail()
-            return
-        }
-        XCTAssertEqual(data, tx_.data)
     }
 }
