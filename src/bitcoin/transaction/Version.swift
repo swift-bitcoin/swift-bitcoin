@@ -19,7 +19,7 @@ public struct Version: Equatable {
         self.init(Int(rawValue))
     }
 
-    private let versionValue: Int
+    public let versionValue: Int
 
     var data: Data {
         withUnsafeBytes(of: rawValue) { Data($0) }

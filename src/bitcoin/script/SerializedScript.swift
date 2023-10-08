@@ -7,7 +7,7 @@ public struct SerializedScript: Script {
     private(set) public var data: Data
     public let version: ScriptVersion
 
-    init(_ data: Data, version: ScriptVersion = .legacy) {
+    public init(_ data: Data, version: ScriptVersion = .legacy) {
         self.data = data
         self.version = version
     }

@@ -142,12 +142,26 @@ public struct Transaction: Equatable {
 
     private var hasWitness: Bool { inputs.contains { $0.witness != .none } }
 
+    /// Initial simplified version of transaction verification that allows for script execution.
+    public func verify(previousOutputs: [Output]) -> Bool{
+        precondition(previousOutputs.count == inputs.count)
+        for index in inputs.indices {
+            var stack = [Data]()
+            do {
+                try inputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs)
+                try previousOutputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs)
+            } catch {
+                return false
+            }
+        }
+        return true
+    }
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.
     public func outpoint(for output: Int) -> Outpoint? {
         guard output < outputs.count else {
             return .none
         }
-        return .init(transaction: Data(), output: output)
+        return .init(transaction: id, output: output)
     }
 
     static let idSize = 32

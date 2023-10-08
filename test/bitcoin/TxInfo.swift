@@ -1,7 +1,7 @@
 import Foundation
 
 struct TxInfo: Equatable, Decodable {
-    init(txid: String, hash: String, version: UInt32, size: Int, vsize: Int, weight: Int, locktime: UInt32, vin: [TxInfo.Input], vout: [TxInfo.Output], hex: String, blockhash: String?, confirmations: Int?, time: Date?, blocktime: Int?) {
+    init(txid: String, hash: String, version: Int, size: Int, vsize: Int, weight: Int, locktime: Int, vin: [TxInfo.Input], vout: [TxInfo.Output], hex: String, blockhash: String?, confirmations: Int?, time: Date?, blocktime: Int?) {
         self.txid = txid
         self.hash = hash
         self.version = version
@@ -20,11 +20,11 @@ struct TxInfo: Equatable, Decodable {
 
     let txid: String
     let hash: String
-    let version: UInt32
+    let version: Int
     let size: Int
     let vsize: Int
     let weight: Int
-    let locktime: UInt32
+    let locktime: Int
     let vin: [Input]
     let vout: [Output]
     let hex: String
@@ -36,7 +36,7 @@ struct TxInfo: Equatable, Decodable {
 
 extension TxInfo {
     struct Input: Equatable, Decodable {
-         init(coinbase: String? = nil, scriptSig: TxInfo.Input.UnlockScript? = nil, txid: String? = nil, vout: Int? = nil, txinwitness: [String]? = nil, sequence: UInt32) {
+         init(coinbase: String? = nil, scriptSig: TxInfo.Input.UnlockScript? = nil, txid: String? = nil, vout: Int? = nil, txinwitness: [String]? = nil, sequence: Int) {
             self.coinbase = coinbase
             self.scriptSig = scriptSig
             self.txid = txid
@@ -64,7 +64,7 @@ extension TxInfo {
         let vout: Int?
 
         let txinwitness: [String]?
-        let sequence: UInt32
+        let sequence: Int
     }
 
     struct Output: Equatable, Decodable {
