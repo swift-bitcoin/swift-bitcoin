@@ -40,9 +40,7 @@ fileprivate let coinbaseTx2 = Transaction(
     outputs: [
         .init(
             value: 5_000_000_000, // 50 BTC
-            script: .init(Data([
-                0x51 // OP_1
-            ]))
+            script: .init([.constant(1)])
         )
     ])
 final class APITests: XCTestCase {
@@ -67,9 +65,7 @@ final class APITests: XCTestCase {
                 .init(
                     outpoint: outpoint,
                     sequence: .init(0),
-                    script: .init(Data([
-                        0x51 // OP_1
-                    ]))
+                    script: .init([.constant(1)])
                 )
             ],
             outputs: [

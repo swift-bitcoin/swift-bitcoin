@@ -8,6 +8,10 @@ public struct Output: Equatable {
         self.script = script
     }
 
+    public init(value: Amount, script: ParsedScript) {
+        self.init(value: value, script: script.serialized)
+    }
+
     init?(_ data: Data) {
         guard data.count > MemoryLayout<Amount>.size else {
             return nil

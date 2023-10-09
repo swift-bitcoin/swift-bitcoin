@@ -18,6 +18,10 @@ public struct Input: Equatable {
         self.witness = witness
     }
 
+    public init(outpoint: Outpoint, sequence: Sequence, script: ParsedScript, witness: Witness? = .none) {
+        self.init(outpoint: outpoint, sequence: sequence, script: script.serialized, witness: witness)
+    }
+
     init?(_ data: Data) {
         var offset = data.startIndex
         guard let outpoint = Outpoint(data) else {
