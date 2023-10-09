@@ -9,6 +9,7 @@ struct ScriptContext {
     var decodedOperations = [ScriptOperation]()
     var operationIndex: Int = 0
     var programCounter: Int = 0
+    var altStack: [Data] = []
 
     var previousOutput: Output {
         previousOutputs[inputIndex]
