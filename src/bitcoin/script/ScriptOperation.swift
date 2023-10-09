@@ -1,7 +1,7 @@
 import Foundation
 
 /// A script operation.
-enum ScriptOperation: Equatable {
+public enum ScriptOperation: Equatable {
     case zero, constant(UInt8)
 
     private func operationPreconditions() {
