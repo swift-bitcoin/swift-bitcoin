@@ -10,11 +10,36 @@ struct ScriptNumber: Equatable {
 
     private(set) var value: Int
 
+    init(_ value: Int) throws {
+        guard value.magnitude <= Self.maxValue else {
+            throw ScriptError.numberOverflow
+        }
+        self.value = value
+    }
+
     init(_ value: UInt8) {
         self.init(unsafeValue: Int(value))
     }
     private init(unsafeValue value: Int) {
         self.value = value
+    }
+
+    init(_ data: Data, extendedLength: Bool = false) throws {
+        // TODO: optionally check for minimal data (no leading zero bytes unless next previous byte is max)
+        if data.isEmpty {
+            value = 0
+            return
+        }
+        let countLimit = extendedLength ? 5 : 4
+        if data.count > countLimit {
+            throw ScriptError.numberOverflow
+        }
+        let negative = if let last = data.last { last & 0b10000000 != 0 } else { false }
+        var data = data
+        data[data.endIndex - 1] &= 0b01111111 // We make it positive
+        let padded = data + Data(repeating: 0, count: MemoryLayout<Int>.size - data.count)
+        let magnitude = padded.withUnsafeBytes { $0.load(as: Int.self) }
+        value = (negative ? -1 : 1) * magnitude
     }
 
     var data: Data {
@@ -56,5 +81,13 @@ struct ScriptNumber: Equatable {
 
     private var isNegative: Bool {
         value.signum() == -1
+    }
+
+    mutating func add(_ b: ScriptNumber) throws {
+        let newValue = value + b.value
+        if newValue.magnitude > Self.maxValue {
+            throw ScriptError.numberOverflow
+        }
+        value = newValue
     }
 }
