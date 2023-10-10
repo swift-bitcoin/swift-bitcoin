@@ -2,7 +2,7 @@ import Foundation
 
 /// A script operation.
 public enum ScriptOperation: Equatable {
-    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), constant(UInt8), noOp, ver, verIf, verNotIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, codeSeparator, noOp1, noOp2, noOp3, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
+    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), constant(UInt8), noOp, ver, verIf, verNotIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, sha1, sha256, hash256, codeSeparator, noOp1, noOp2, noOp3, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
 
     private func operationPreconditions() {
         switch(self) {
@@ -114,6 +114,9 @@ public enum ScriptOperation: Equatable {
         case .min: 0xa3
         case .max: 0xa4
         case .within: 0xa5
+        case .sha1: 0xa7
+        case .sha256: 0xa8
+        case .hash256: 0xaa
         case .codeSeparator: 0xab
         case .noOp1: 0xb0
         case .noOp2: 0xb1
@@ -206,6 +209,9 @@ public enum ScriptOperation: Equatable {
         case .min: "OP_MIN"
         case .max: "OP_MAX"
         case .within: "OP_WITHIN"
+        case .sha1: "OP_SHA1"
+        case .sha256: "OP_SHA256"
+        case .hash256: "OP_HASH256"
         case .codeSeparator: "OP_CODESEPARATOR"
         case .noOp1: "OP_NOP1"
         case .noOp2: "OP_NOP2"
@@ -294,6 +300,9 @@ public enum ScriptOperation: Equatable {
         case .min: try opMin(&stack)
         case .max: try opMax(&stack)
         case .within: try opWithin(&stack)
+        case .sha1: try opSHA1(&stack)
+        case .sha256: try opSHA256(&stack)
+        case .hash256: try opHash256(&stack)
         case .codeSeparator: break
         case .noOp1, .noOp2, .noOp3, .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
         case .unknown(_): throw ScriptError.invalidScript
@@ -465,6 +474,9 @@ public enum ScriptOperation: Equatable {
         case Self.min.opCode: self = .min
         case Self.max.opCode: self = .max
         case Self.within.opCode: self = .within
+        case Self.sha1.opCode: self = .sha1
+        case Self.sha256.opCode: self = .sha256
+        case Self.hash256.opCode: self = .hash256
         case Self.codeSeparator.opCode: self = .codeSeparator
         case Self.noOp1.opCode: self = .noOp1
         case Self.noOp2.opCode: self = .noOp2
