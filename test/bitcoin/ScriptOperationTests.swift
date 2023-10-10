@@ -39,6 +39,28 @@ final class ScriptOperationTests: XCTestCase {
         }
     }
 
+    func testCryptographyOps() {
+        let helloData = "hello".data(using: .ascii)!
+        let expectedSHA1 = Data(hex: "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")!
+        let expectedSHA256 = Data(hex: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")!
+        let expectedHash256 = Data(hex: "9595c9df90075148eb06860365df33584b75bff782a510c6cd4883a419833d50")!
+
+        let vectors = [
+            // sha1
+            ([helloData], [ScriptOperation.sha1], [expectedSHA1]),
+            // sha256
+            ([helloData], [ScriptOperation.sha256], [expectedSHA256]),
+            // hash256
+            ([helloData], [ScriptOperation.hash256], [expectedHash256]),
+        ]
+
+        for v in vectors {
+            var stack = v.0
+            XCTAssertNoThrow(try ParsedScript(v.1).run(&stack))
+            XCTAssertEqual(stack, v.2)
+        }
+    }
+
     func testStackOps() {
         let vectors = [
             // toAltStack / fromAltStack
