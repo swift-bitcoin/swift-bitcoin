@@ -41,17 +41,23 @@ final class ScriptOperationTests: XCTestCase {
 
     func testCryptographyOps() {
         let helloData = "hello".data(using: .ascii)!
+        let expectedRIPEMD160 = Data(hex: "108f07b8382412612c048d07d13f814118445acd")!
         let expectedSHA1 = Data(hex: "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")!
         let expectedSHA256 = Data(hex: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")!
+        let expectedHash160 = Data(hex: "b6a9c8c230722b7c748331a8b450f05566dc7d0f")!
         let expectedHash256 = Data(hex: "9595c9df90075148eb06860365df33584b75bff782a510c6cd4883a419833d50")!
 
         let vectors = [
+            // ripemd160
+            ([helloData], [ScriptOperation.ripemd160], [expectedRIPEMD160]),
             // sha1
-            ([helloData], [ScriptOperation.sha1], [expectedSHA1]),
+            ([helloData], [.sha1], [expectedSHA1]),
             // sha256
-            ([helloData], [ScriptOperation.sha256], [expectedSHA256]),
+            ([helloData], [.sha256], [expectedSHA256]),
+            // hash160
+            ([helloData], [.hash160], [expectedHash160]),
             // hash256
-            ([helloData], [ScriptOperation.hash256], [expectedHash256]),
+            ([helloData], [.hash256], [expectedHash256]),
         ]
 
         for v in vectors {
