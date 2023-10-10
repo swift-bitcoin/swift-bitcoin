@@ -4,5 +4,6 @@ import Foundation
 enum ScriptError: Error {
     case invalidScript,
          invalidInstruction,
+         disabledOperation,
          numberOverflow
 }
