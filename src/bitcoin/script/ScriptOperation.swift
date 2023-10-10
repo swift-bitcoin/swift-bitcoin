@@ -2,7 +2,7 @@ import Foundation
 
 /// A script operation.
 public enum ScriptOperation: Equatable {
-    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), reserved(UInt8), constant(UInt8), noOp, ver, verIf, verNotIf, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, invert, and, or, xor, twoMul, twoDiv, mul, div, mod, lShift, rShift, codeSeparator, noOp1, noOp2, noOp3, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
+    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), constant(UInt8), noOp, ver, verIf, verNotIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, codeSeparator, noOp1, noOp2, noOp3, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
 
     private func operationPreconditions() {
         switch(self) {
@@ -46,12 +46,14 @@ public enum ScriptOperation: Equatable {
         case .pushData1(_): 0x4c
         case .pushData2(_): 0x4d
         case .pushData4(_): 0x4e
+        case .oneNegate: 0x4f
         case .reserved(let k): k
         case .constant(let k): 0x50 + k
         case .noOp: 0x61
         case .ver: 0x62
         case .verIf: 0x65
         case .verNotIf: 0x66
+        case .verify: 0x69
         case .return: 0x6a
         case .toAltStack: 0x6b
         case .fromAltStack: 0x6c
@@ -76,19 +78,42 @@ public enum ScriptOperation: Equatable {
         case .subStr: 0x7f
         case .left: 0x80
         case .right: 0x81
+        case .size: 0x82
         case .invert: 0x83
         case .and: 0x84
         case .or: 0x85
         case .xor: 0x86
+        case .equal: 0x87
+        case .equalVerify: 0x88
         // case .reserved1: 0x89
         // case .reserved2: 0x8a
+        case .oneAdd: 0x8b
+        case .oneSub: 0x8c
         case .twoMul: 0x8d
         case .twoDiv: 0x8e
+        case .negate: 0x8f
+        case .abs: 0x90
+        case .not: 0x91
+        case .zeroNotEqual: 0x92
+        case .add: 0x93
+        case .sub: 0x94
         case .mul: 0x95
         case .div: 0x96
         case .mod: 0x97
         case .lShift: 0x98
         case .rShift: 0x99
+        case .boolAnd: 0x9a
+        case .boolOr: 0x9b
+        case .numEqual: 0x9c
+        case .numEqualVerify: 0x9d
+        case .numNotEqual: 0x9e
+        case .lessThan: 0x9f
+        case .greaterThan: 0xa0
+        case .lessThanOrEqual: 0xa1
+        case .greaterThanOrEqual: 0xa2
+        case .min: 0xa3
+        case .max: 0xa4
+        case .within: 0xa5
         case .codeSeparator: 0xab
         case .noOp1: 0xb0
         case .noOp2: 0xb1
@@ -115,12 +140,14 @@ public enum ScriptOperation: Equatable {
         case .pushData1(_): "OP_PUSHDATA1"
         case .pushData2(_): "OP_PUSHDATA2"
         case .pushData4(_): "OP_PUSHDATA4"
+        case .oneNegate: "OP_1NEGATE"
         case .reserved(let k): "OP_RESERVED\(k == 80 ? "" : k == 137 ? "1" : "2")"
         case .constant(let k): "OP_\(k)"
         case .noOp: "OP_NOP"
         case .ver: "OP_VER"
         case .verIf: "OP_VERIF"
         case .verNotIf: "OP_VERNOTIF"
+        case .verify: "OP_VERIFY"
         case .return: "OP_RETURN"
         case .toAltStack: "OP_TOALTSTACK"
         case .fromAltStack: "OP_FROMALTSTACK"
@@ -145,17 +172,40 @@ public enum ScriptOperation: Equatable {
         case .subStr: "OP_SUBSTR"
         case .left: "OP_LEFT"
         case .right: "OP_RIGHT"
+        case .size: "OP_SIZE"
         case .invert: "OP_INVERT"
         case .and: "OP_AND"
         case .or: "OP_OR"
         case .xor: "OP_XOR"
+        case .equal: "OP_EQUAL"
+        case .equalVerify: "OP_EQUALVERIFY"
+        case .oneAdd: "OP_1ADD"
+        case .oneSub: "OP_1SUB"
         case .twoMul: "OP_2MUL"
         case .twoDiv: "OP_2DIV"
+        case .negate: "OP_NEGATE"
+        case .abs: "OP_ABS"
+        case .not: "OP_NOT"
+        case .zeroNotEqual: "OP_ZERONOTEQUAL"
+        case .add: "OP_ADD"
+        case .sub: "OP_SUB"
         case .mul: "OP_MUL"
         case .div: "OP_DIV"
         case .mod: "OP_MOD"
         case .lShift: "OP_LSHIFT"
         case .rShift: "OP_RSHIFT"
+        case .boolAnd: "OP_BOOLAND"
+        case .boolOr: "OP_BOOLOR"
+        case .numEqual: "OP_NUMEQUAL"
+        case .numEqualVerify: "OP_NUMEQUALVERIFY"
+        case .numNotEqual: "OP_NUMNOTEQUAL"
+        case .lessThan: "OP_LESSTHAN"
+        case .greaterThan: "OP_GREATERTHAN"
+        case .lessThanOrEqual: "OP_LESSTHANOREQUAL"
+        case .greaterThanOrEqual: "OP_GREATERTHANOREQUAL"
+        case .min: "OP_MIN"
+        case .max: "OP_MAX"
+        case .within: "OP_WITHIN"
         case .codeSeparator: "OP_CODESEPARATOR"
         case .noOp1: "OP_NOP1"
         case .noOp2: "OP_NOP2"
@@ -179,11 +229,13 @@ public enum ScriptOperation: Equatable {
         switch(self) {
         case .zero: opConstant(0, stack: &stack)
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): opPushData(data: d, stack: &stack)
+        case .oneNegate: op1Negate(&stack)
         case .reserved(_): throw ScriptError.invalidScript
         case .constant(let k): opConstant(k, stack: &stack)
         case .noOp: break
         case .ver: throw ScriptError.invalidScript
         case .verIf, .verNotIf: throw ScriptError.invalidScript
+        case .verify: try opVerify(&stack)
         case .return: throw ScriptError.invalidScript
         case .toAltStack: try opToAltStack(&stack, context: &context)
         case .fromAltStack: try opFromAltStack(&stack, context: &context)
@@ -208,17 +260,40 @@ public enum ScriptOperation: Equatable {
         case .subStr: throw ScriptError.disabledOperation
         case .left: throw ScriptError.disabledOperation
         case .right: throw ScriptError.disabledOperation
+        case .size: try opSize(&stack)
         case .invert: throw ScriptError.disabledOperation
         case .and: throw ScriptError.disabledOperation
         case .or: throw ScriptError.disabledOperation
         case .xor: throw ScriptError.disabledOperation
+        case .equal: try opEqual(&stack)
+        case .equalVerify: try opEqualVerify(&stack)
+        case .oneAdd:  try op1Add(&stack)
+        case .oneSub:  try op1Sub(&stack)
         case .twoMul: throw ScriptError.disabledOperation
         case .twoDiv: throw ScriptError.disabledOperation
+        case .negate: try opNegate(&stack)
+        case .abs: try opAbs(&stack)
+        case .not: try opNot(&stack)
+        case .zeroNotEqual: try op0NotEqual(&stack)
+        case .add: try opAdd(&stack)
+        case .sub: try opSub(&stack)
         case .mul: throw ScriptError.disabledOperation
         case .div: throw ScriptError.disabledOperation
         case .mod: throw ScriptError.disabledOperation
         case .lShift: throw ScriptError.disabledOperation
         case .rShift: throw ScriptError.disabledOperation
+        case .boolAnd: try opBoolAnd(&stack)
+        case .boolOr: try opBoolOr(&stack)
+        case .numEqual: try opNumEqual(&stack)
+        case .numEqualVerify: try opNumEqualVerify(&stack)
+        case .numNotEqual: try opNumNotEqual(&stack)
+        case .lessThan: try opLessThan(&stack)
+        case .greaterThan: try opGreaterThan(&stack)
+        case .lessThanOrEqual: try opLessThanOrEqual(&stack)
+        case .greaterThanOrEqual: try opGreaterThanOrEqual(&stack)
+        case .min: try opMin(&stack)
+        case .max: try opMax(&stack)
+        case .within: try opWithin(&stack)
         case .codeSeparator: break
         case .noOp1, .noOp2, .noOp3, .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
         case .unknown(_): throw ScriptError.invalidScript
@@ -321,14 +396,18 @@ public enum ScriptOperation: Equatable {
              Self.reserved(137).opCode ... Self.reserved(138).opCode:
             self = .reserved(opCode)
 
+        case Self.oneNegate.opCode: self = .oneNegate
+
         // Constants
         case Self.constant(1).opCode ... Self.constant(16).opCode:
             self = .constant(opCode - 0x50)
 
         case Self.noOp.opCode: self = .noOp
-
-        // OP_VER / OP_SUCCESS
         case Self.ver.opCode: self = .ver
+        case Self.verIf.opCode: self = .verIf
+        case Self.verNotIf.opCode: self = .verNotIf
+        case Self.verify.opCode: self = .verify
+        case Self.return.opCode: self = .return
         case Self.toAltStack.opCode: self = .toAltStack
         case Self.fromAltStack.opCode: self = .fromAltStack
         case Self.twoDrop.opCode: self = .twoDrop
@@ -348,6 +427,45 @@ public enum ScriptOperation: Equatable {
         case Self.rot.opCode: self = .rot
         case Self.swap.opCode: self = .swap
         case Self.tuck.opCode: self = .tuck
+        case Self.cat.opCode: self = .cat
+        case Self.subStr.opCode: self = .subStr
+        case Self.left.opCode: self = .left
+        case Self.right.opCode: self = .right
+        case Self.size.opCode: self = .size
+        case Self.invert.opCode: self = .invert
+        case Self.and.opCode: self = .and
+        case Self.or.opCode: self = .or
+        case Self.xor.opCode: self = .xor
+        case Self.equal.opCode: self = .equal
+        case Self.equalVerify.opCode: self = .equalVerify
+        case Self.oneAdd.opCode: self = .oneAdd
+        case Self.oneSub.opCode: self = .oneSub
+        case Self.twoMul.opCode: self = .twoMul
+        case Self.twoDiv.opCode: self = .twoDiv
+        case Self.negate.opCode: self = .negate
+        case Self.abs.opCode: self = .abs
+        case Self.not.opCode: self = .not
+        case Self.zeroNotEqual.opCode: self = .zeroNotEqual
+        case Self.add.opCode: self = .add
+        case Self.sub.opCode: self = .sub
+        case Self.mul.opCode: self = .mul
+        case Self.div.opCode: self = .div
+        case Self.mod.opCode: self = .mod
+        case Self.lShift.opCode: self = .lShift
+        case Self.rShift.opCode: self = .rShift
+        case Self.boolAnd.opCode: self = .boolAnd
+        case Self.boolOr.opCode: self = .boolOr
+        case Self.numEqual.opCode: self = .numEqual
+        case Self.numEqualVerify.opCode: self = .numEqualVerify
+        case Self.numNotEqual.opCode: self = .numNotEqual
+        case Self.lessThan.opCode: self = .lessThan
+        case Self.greaterThan.opCode: self = .greaterThan
+        case Self.lessThanOrEqual.opCode: self = .lessThanOrEqual
+        case Self.greaterThanOrEqual.opCode: self = .greaterThanOrEqual
+        case Self.min.opCode: self = .min
+        case Self.max.opCode: self = .max
+        case Self.within.opCode: self = .within
+        case Self.codeSeparator.opCode: self = .codeSeparator
         case Self.noOp1.opCode: self = .noOp1
         case Self.noOp2.opCode: self = .noOp2
         case Self.noOp3.opCode: self = .noOp3
