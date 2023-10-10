@@ -4,6 +4,8 @@ import Foundation
 struct ScriptNumber: Equatable {
 
     static let zero = Self(unsafeValue: 0)
+    static let one = Self(unsafeValue: 1)
+    static let negativeOne = Self(unsafeValue: -1)
 
     private static let maxValue: Int = 0x0000007fffffffff
     private static let minValue: Int = -0x0000007fffffffff
@@ -89,5 +91,9 @@ struct ScriptNumber: Equatable {
             throw ScriptError.numberOverflow
         }
         value = newValue
+    }
+
+    mutating func negate() {
+        value = -value
     }
 }
