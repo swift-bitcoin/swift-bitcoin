@@ -3,6 +3,35 @@ import XCTest
 
 final class ScriptOperationTests: XCTestCase {
 
+    func testDataOps() {
+        let vectors = [
+            // zero, constant
+            ([Int](), [ScriptOperation.zero, .constant(1), .constant(2), .constant(3), .constant(4), .constant(5), .constant(6), .constant(7), .constant(8), .constant(9), .constant(10), .constant(11), .constant(12), .constant(13), .constant(14), .constant(15), .constant(16)], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+            ([], [.pushBytes(try! ScriptNumber(17).data)], [17]),
+        ]
+
+        for v in vectors {
+            var stack = [Data].withConstants(v.0)
+            XCTAssertNoThrow(try ParsedScript(v.1).run(&stack))
+            XCTAssertEqual(stack, .withConstants(v.2))
+        }
+
+        // Data vectors
+
+        let lengthyData = Data(repeating: 0xff, count: 75)
+
+        let vectors2 = [
+            // pushBytes
+            ([Data](), [ScriptOperation.pushBytes(lengthyData)], [lengthyData]),
+        ]
+
+        for v in vectors2 {
+            var stack = v.0
+            XCTAssertNoThrow(try ParsedScript(v.1).run(&stack))
+            XCTAssertEqual(stack, v.2)
+        }
+    }
+
     func testStackOps() {
 
         let vectors = [
