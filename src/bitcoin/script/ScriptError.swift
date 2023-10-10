@@ -5,5 +5,6 @@ enum ScriptError: Error {
     case invalidScript,
          invalidInstruction,
          disabledOperation,
-         numberOverflow
+         numberOverflow,
+         nonMinimalBoolean
 }

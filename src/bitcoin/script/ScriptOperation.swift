@@ -2,7 +2,7 @@ import Foundation
 
 /// A script operation.
 public enum ScriptOperation: Equatable {
-    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), constant(UInt8), noOp, ver, verIf, verNotIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, noOp1, noOp2, noOp3, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
+    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), constant(UInt8), noOp, ver, `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, noOp1, noOp2, noOp3, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
 
     private func operationPreconditions() {
         switch(self) {
@@ -14,8 +14,12 @@ public enum ScriptOperation: Equatable {
             precondition(d.count > UInt8.max && d.count <= UInt16.max)
         case .pushData4(let d):
             precondition(d.count > UInt16.max && d.count <= UInt32.max)
+        case .reserved(let k):
+            precondition(k == 80 || (k >= 137 && k <= 138))
         case .constant(let k):
             precondition(k > 0 && k < 17)
+        case .unknown(let k):
+            precondition(k >= 0xbb && k <= 0xfc)
         default: break
         }
     }
@@ -51,8 +55,12 @@ public enum ScriptOperation: Equatable {
         case .constant(let k): 0x50 + k
         case .noOp: 0x61
         case .ver: 0x62
+        case .if: 0x63
+        case .notIf: 0x64
         case .verIf: 0x65
         case .verNotIf: 0x66
+        case .else: 0x67
+        case .endIf: 0x68
         case .verify: 0x69
         case .return: 0x6a
         case .toAltStack: 0x6b
@@ -150,8 +158,12 @@ public enum ScriptOperation: Equatable {
         case .constant(let k): "OP_\(k)"
         case .noOp: "OP_NOP"
         case .ver: "OP_VER"
+        case .if: "OP_IF"
+        case .notIf: "OP_NOTIF"
         case .verIf: "OP_VERIF"
         case .verNotIf: "OP_VERNOTIF"
+        case .else: "OP_ELSE"
+        case .endIf: "OP_ENDIF"
         case .verify: "OP_VERIFY"
         case .return: "OP_RETURN"
         case .toAltStack: "OP_TOALTSTACK"
@@ -236,6 +248,16 @@ public enum ScriptOperation: Equatable {
 
     func execute(stack: inout [Data], context: inout ScriptContext) throws {
         operationPreconditions()
+
+        // If branch consideration
+        if !context.evaluateBranch {
+            switch(self) {
+            case .if, .notIf, .else, .endIf, .verIf, .verNotIf:
+                break
+            default: return
+            }
+        }
+
         switch(self) {
         case .zero: opConstant(0, stack: &stack)
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): opPushData(data: d, stack: &stack)
@@ -244,7 +266,11 @@ public enum ScriptOperation: Equatable {
         case .constant(let k): opConstant(k, stack: &stack)
         case .noOp: break
         case .ver: throw ScriptError.invalidScript
+        case .if: try opIf(&stack, context: &context)
+        case .notIf: try opIf(&stack, isNotIf: true, context: &context)
         case .verIf, .verNotIf: throw ScriptError.invalidScript
+        case .else: try opElse(context: &context)
+        case .endIf: try opEndIf(context: &context)
         case .verify: try opVerify(&stack)
         case .return: throw ScriptError.invalidScript
         case .toAltStack: try opToAltStack(&stack, context: &context)
@@ -419,8 +445,12 @@ public enum ScriptOperation: Equatable {
 
         case Self.noOp.opCode: self = .noOp
         case Self.ver.opCode: self = .ver
+        case Self.if.opCode: self = .if
+        case Self.notIf.opCode: self = .notIf
         case Self.verIf.opCode: self = .verIf
         case Self.verNotIf.opCode: self = .verNotIf
+        case Self.else.opCode: self = .else
+        case Self.endIf.opCode: self = .endIf
         case Self.verify.opCode: self = .verify
         case Self.return.opCode: self = .return
         case Self.toAltStack.opCode: self = .toAltStack

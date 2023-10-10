@@ -22,6 +22,17 @@ struct ScriptBoolean: Equatable {
         }
     }
 
+    // Enforce `MINIMALIF` rule.
+    init(minimalData: Data) throws {
+        if minimalData == Data() {
+            value = false
+        } else if minimalData == Data([1]) {
+            value = true
+        } else {
+            throw ScriptError.nonMinimalBoolean
+        }
+    }
+
     var data: Data {
         value ? Data([1]) : Data()
     }
