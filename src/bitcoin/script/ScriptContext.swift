@@ -11,7 +11,18 @@ struct ScriptContext {
     var programCounter: Int = 0
     var altStack: [Data] = []
 
+    // Flow control ops (`OP_IF` et al) support
+    var pendingIfOperations = [Bool?]()
+    var pendingElseOperations = 0
+
     var previousOutput: Output {
         previousOutputs[inputIndex]
+    }
+
+    var evaluateBranch: Bool {
+        guard let lastEvaluatedIfResult = pendingIfOperations.last(where: { $0 != .none }), let lastEvaluatedIfResult else {
+            return true
+        }
+        return lastEvaluatedIfResult
     }
 }
