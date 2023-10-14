@@ -1,6 +1,15 @@
 {
   "pins" : [
     {
+      "identity" : "secp256k1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swift-bitcoin/secp256k1",
+      "state" : {
+        "revision" : "14a763774c240ce0eb84754ac240560830c24ead",
+        "version" : "0.4.0"
+      }
+    },
+    {
       "identity" : "swift-crypto",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
