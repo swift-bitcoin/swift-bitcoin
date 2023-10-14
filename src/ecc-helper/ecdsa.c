@@ -73,10 +73,13 @@ const int verifyECDSA(const u_char *sigBytes, const size_t sigLen, const u_char*
     secp256k1_ecdsa_signature sig;
     int ret = secp256k1_ecdsa_signature_parse_der(secp256k1_context_static, &sig, sigBytes, sigLen);
     assert(ret);
+    secp256k1_ecdsa_signature sigNorm;
+    int wasNormalized = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, &sigNorm, &sig);
+    //assert(ret);
     secp256k1_pubkey pk;
     ret = secp256k1_ec_pubkey_parse(secp256k1_context_verify, &pk, pubKey, pubKeyLen);
     assert(ret);
-    ret = secp256k1_ecdsa_verify(secp256k1_context_verify, &sig, msg32, &pk);
+    ret = secp256k1_ecdsa_verify(secp256k1_context_verify, &sigNorm, msg32, &pk);
     return ret;
 }
 

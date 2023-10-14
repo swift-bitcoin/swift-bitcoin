@@ -57,6 +57,12 @@ public struct ParsedScript: Script {
         var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, script: self)
         
         for operation in operations {
+
+            /// Support for `OP_CODESEPARATOR` – and indirectly `OP_CHECKSIG` / `OP_CHECKSIGVERIFY`.
+            if operation == .codeSeparator {
+                context.lastCodeSeparatorOffset = context.programCounter
+            }
+
             context.decodedOperations.append(operation)
             context.programCounter += operation.size
             try operation.execute(stack: &stack, context: &context)

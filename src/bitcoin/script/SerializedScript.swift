@@ -48,6 +48,11 @@ public struct SerializedScript: Script {
                 throw ScriptError.invalidInstruction
             }
 
+            /// Support for `OP_CODESEPARATOR` – and indirectly `OP_CHECKSIG` / `OP_CHECKSIGVERIFY`.
+            if operation == .codeSeparator {
+                context.lastCodeSeparatorOffset = context.programCounter
+            }
+
             context.decodedOperations.append(operation)
             context.programCounter += operation.size
 
