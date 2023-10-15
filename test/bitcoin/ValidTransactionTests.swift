@@ -17,6 +17,29 @@ fileprivate struct TestVector {
 
 fileprivate let testVectors: [TestVector] = [
 
+    // The following is 23b397edccd3740a74adb603c9756370fafcde9bcc4483eb271ecad09a94dd63
+    // It is of particular interest because it contains an invalidly-encoded signature which OpenSSL accepts
+    // See http://r6.ca/blog/20111119T211504Z.html
+    // It is also the first OP_CHECKMULTISIG transaction in standard form
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "60a20bd93aa49ab4b28d514ec10b06e1829ce6818ec06cd3aabd013ebcdc4bb1",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1),
+                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
+                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .constant(2),
+                    .checkMultiSig
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001b14bdcbc3e01bdaad36cc08e81e69c82e1060bc14e518db2b49aa43ad90ba26000000000490047304402203f16c6f40162ab686621ef3000b04e75418a0c0cb2d8aebeac894ae360ac1e780220ddc15ecdfc3507ac48e1681a33eb60996631bf6bf5bc0a0682c4db743ce7ca2b01ffffffff0140420f00000000001976a914660d4ef3a743e3e696ad990364e555c271ad504b88ac00000000",
+        excludedVerifyFlags: "DERSIG,LOW_S,STRICTENC"
+    ),
+
     // A nearly-standard transaction with CHECKSIGVERIFY 1 instead of CHECKSIG
     .init(
         previousOutputs: [
@@ -142,6 +165,24 @@ fileprivate let testVectors: [TestVector] = [
         excludedVerifyFlags: "LOW_S"
     ),
 
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "444e00ed7840d41f20ecd9c11d3f91982326c731a02f3c05748414a4fa9e59be",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1),
+                    .zero,
+                    .pushBytes(.init(hex: "02136b04758b0b6e363e7a6fbe83aaf527a153db2b060d36cc29f7f8309ba6e458")!),
+                    .constant(2),
+                    .checkMultiSig
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001be599efaa4148474053c2fa031c7262398913f1dc1d9ec201fd44078ed004e44000000004900473044022022b29706cb2ed9ef0cb3c97b72677ca2dfd7b4160f7b4beb3ba806aa856c401502202d1e52582412eba2ed474f1f437a427640306fd3838725fab173ade7fe4eae4a01ffffffff010100000000000000232103ac4bba7e7ca3e873eea49e08132ad30c7f03640b6539e9b59903cf14fd016bbbac00000000",
+        excludedVerifyFlags: "NONE"
+    ),
 
     // Test that SignatureHash() removes OP_CODESEPARATOR with FindAndDelete()
     .init(
