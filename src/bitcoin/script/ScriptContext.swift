@@ -48,7 +48,7 @@ struct ScriptContext {
 
             if
                 operation != .codeSeparator &&
-                operation != .pushBytes(signature) // Equivalent to FindAndDelete
+                (signature.isEmpty || operation != .pushBytes(signature)) // Equivalent to FindAndDelete
             {
                 scriptCode.append(operation.data)
             }

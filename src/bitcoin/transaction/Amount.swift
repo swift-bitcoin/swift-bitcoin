@@ -1,2 +1,2 @@
 /// A value expressed in satoshis which is typically associated with a transaction ``Output``.
-public typealias Amount = UInt
+public typealias Amount = Int
