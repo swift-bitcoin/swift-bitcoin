@@ -41,8 +41,8 @@ final class TransactionTests: XCTestCase {
             guard let expectedID = Data(hex: txInfo.txid), let expectedWitnessID = Data(hex: txInfo.hash) else {
                 XCTFail(); return
             }
-            XCTAssertEqual(tx.id, expectedID)
-            XCTAssertEqual(tx.witnessID, expectedWitnessID)
+            XCTAssertEqual(tx.identifier, expectedID)
+            XCTAssertEqual(tx.witnessIdentifier, expectedWitnessID)
 
             let expectedSize = txInfo.size
             XCTAssertEqual(tx.size, expectedSize)
@@ -75,8 +75,8 @@ final class TransactionTests: XCTestCase {
                         XCTFail(); return
                     }
 
-                    XCTAssertEqual(input.outpoint.transaction, expectedTransaction)
-                    XCTAssertEqual(input.outpoint.output, expectedOutput)
+                    XCTAssertEqual(input.outpoint.transactionIdentifier, expectedTransaction)
+                    XCTAssertEqual(input.outpoint.outputIndex, expectedOutput)
                     let expectedScript = SerializedScript(expectedScriptData)
                     XCTAssertEqual(input.script, expectedScript)
 

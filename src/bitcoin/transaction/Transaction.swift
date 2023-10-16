@@ -109,7 +109,7 @@ public struct Transaction: Equatable {
         return ret
     }
 
-    var idData: Data {
+    var identifierData: Data {
         var ret = Data()
         ret += version.data
         ret += Data(varInt: inputsUInt64)
@@ -121,12 +121,16 @@ public struct Transaction: Equatable {
     }
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var id: Data { Data(hash256(idData).reversed()) }
+    public var identifier: Data { Data(hash256(identifierData).reversed()) }
 
     /// The transaction's witness identifier as defined in BIP-141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
-    public var witnessID: Data { Data(hash256(data).reversed()) }
+    public var witnessIdentifier: Data { Data(hash256(data).reversed()) }
 
     public var size: Int { nonWitnessSize + witnessSize }
+
+    public var isCoinbase: Bool {
+        inputs.count == 1 && inputs[0].outpoint == Outpoint.coinbase
+    }
 
     private var inputsUInt64: UInt64 { .init(inputs.count) }
     private var outputsUInt64: UInt64 { .init(outputs.count) }
@@ -153,6 +157,9 @@ public struct Transaction: Equatable {
             } catch {
                 return false
             }
+            if let last = stack.last, !ScriptBoolean(last).value {
+                return false
+            }
         }
         return true
     }
@@ -161,18 +168,68 @@ public struct Transaction: Equatable {
         guard output < outputs.count else {
             return .none
         }
-        return .init(transaction: id, output: output)
+        return .init(transaction: identifier, output: output)
     }
 
-    static let idSize = 32
+    func check() throws {
+        // Basic checks that don't depend on any context
+        guard !inputs.isEmpty else {
+            throw TransactionError.noInputs
+        }
+        guard !outputs.isEmpty else {
+            throw TransactionError.noOutputs
+        }
 
-    /// BIP-144
-    private static let segwitMarker = UInt8(0x00)
+        // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
+        // TODO: Replace with weight after BIP-141
+        guard size <= Self.maxBlockWeight else {
+            throw TransactionError.oversized
+        }
 
-    /// BIP-144
-    private static let segwitFlag = UInt8(0x01)
+        // Check for negative or overflow output values (see CVE-2010-5139)
+        var valueOut: Amount = 0
+        for output in outputs {
+            guard output.value >= 0 else {
+                throw TransactionError.negativeOutput
+            }
+            guard output.value <= Self.maxMoney else {
+                throw TransactionError.outputTooLarge
+            }
+            valueOut += output.value
+            guard valueOut >= 0 && valueOut <= Self.maxMoney else {
+                throw TransactionError.totalOutputsTooLarge
+            }
+        }
+
+        // Check for duplicate inputs (see CVE-2018-17144)
+        // While Consensus::CheckTxInputs does check if all inputs of a tx are available, and UpdateCoins marks all inputs
+        // of a tx as spent, it does not check if the tx has duplicate inputs.
+        // Failure to run this check will result in either a crash or an inflation bug, depending on the implementation of
+        // the underlying coins database.
+        var outpoints = Set<Outpoint>()
+        for input in inputs {
+            outpoints.insert(input.outpoint)
+        }
+        guard inputs.count == outpoints.count else {
+            throw TransactionError.duplicateInput
+        }
+
+        if isCoinbase && (inputs[0].script.size < 2 || inputs[0].script.size > 100) {
+            throw TransactionError.coinbaseLengthOutOfRange
+        }
+        if !isCoinbase {
+            for input in inputs {
+                if input.outpoint == Outpoint.coinbase {
+                    throw TransactionError.missingOutpoint
+                }
+            }
+        }
+    }
 
     func checkSignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Bool {
+        if extendedSignature.isEmpty {
+            return false
+        }
         precondition(extendedSignature.count > 69, "Signature too short or missing hash type suffix.")
         precondition(extendedSignature.count <= 73, "Signature too long.")
         var sigTmp = extendedSignature
@@ -257,4 +314,15 @@ public struct Transaction: Equatable {
         )
         return txCopy.data + sighashType.data32
     }
+
+    /// The total amount of bitcoin supply is actually less than this number. But `maxMoney` as a limit for any amount is a  consensus-critical constant.
+    static let maxMoney = 2_100_000_000_000_000
+    static let maxBlockWeight = 4_000_000
+    static let identifierSize = 32
+
+    /// BIP-144
+    private static let segwitMarker = UInt8(0x00)
+
+    /// BIP-144
+    private static let segwitFlag = UInt8(0x01)
 }

@@ -1,12 +1,40 @@
 import XCTest
-import Bitcoin
+@testable import Bitcoin
+
+final class ValidTransactionTests: XCTestCase {
+
+    override class func setUp() {
+        eccStart()
+    }
+
+    override class func tearDown() {
+        eccStop()
+    }
+
+    func testValidTransactions() throws {
+        for vector in testVectors {
+            guard
+                let expectedTransactionData = Data(hex: vector.serializedTransaction),
+                let tx = Transaction(expectedTransactionData)
+            else {
+                XCTFail(); return
+            }
+            let previousOutputs = vector.previousOutputs.map { previousOutput in
+                Output(value: previousOutput.amount, script: ParsedScript(previousOutput.scriptOperations))
+            }
+            XCTAssertNoThrow(try tx.check())
+            let result = tx.verify(previousOutputs: previousOutputs)
+            XCTAssert(result)
+        }
+    }
+}
 
 fileprivate struct TestVector {
 
     struct PreviousOutput {
         let transactionIdentifier: String
         let outputIndex: Int
-        let amount: UInt
+        let amount: Int
         let scriptOperations: [ScriptOperation]
     }
 
@@ -113,6 +141,78 @@ fileprivate let testVectors: [TestVector] = [
         excludedVerifyFlags: "CLEANSTACK"
     ),
 
+
+    // Tests for CheckTransaction()
+    // MAX_MONEY output
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .hash160,
+                    .pushBytes(Data(hex: "32afac281462b822adbec5094b8d4d337dd5bd6a")!),
+                    .equal
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006e493046022100e1eadba00d9296c743cb6ecc703fd9ddc9b3cd12906176a226ae4c18d6b00796022100a71aef7d2874deff681ba6080f1b278bac7bb99c61b08a85f4311970ffe7f63f012321030c0588dc44d92bdcbf8e72093466766fdc265ead8db64517b0c542275b70fffbacffffffff010040075af0750700015100000000",
+        excludedVerifyFlags: "LOW_S"
+    ),
+
+    // MAX_MONEY output + 0 output
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .hash160,
+                    .pushBytes(Data(hex: "b558cbf4930954aa6a344363a15668d7477ae716")!),
+                    .equal
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006d483045022027deccc14aa6668e78a8c9da3484fbcd4f9dcc9bb7d1b85146314b21b9ae4d86022100d0b43dece8cfb07348de0ca8bc5b86276fa88f7f2138381128b7c36ab2e42264012321029bb13463ddd5d2cc05da6e84e37536cb9525703cfd8f43afdb414988987a92f6acffffffff020040075af075070001510000000000000000015100000000",
+        excludedVerifyFlags: "LOW_S"
+    ),
+
+    // Coinbase of size 2
+    // Note the input is just required to make the tester happy
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000000",
+                outputIndex: -1,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff025151ffffffff010000000000000000015100000000",
+        excludedVerifyFlags: "CLEANSTACK"
+    ),
+
+    // Coinbase of size 100
+    // Note the input is just required to make the tester happy
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000000",
+                outputIndex: -1,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff6451515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151515151ffffffff010000000000000000015100000000",
+        excludedVerifyFlags: "CLEANSTACK"
+    ),
+
     // Simple transaction with first input is signed with SIGHASH_ALL, second with SIGHASH_ANYONECANPAY
     .init(
         previousOutputs: [
@@ -184,6 +284,65 @@ fileprivate let testVectors: [TestVector] = [
         excludedVerifyFlags: "NONE"
     ),
 
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "e16abbe80bf30c080f63830c8dbf669deaef08957446e95940227d8c5e6db612",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1),
+                    .pushBytes(.init(hex: "03905380c7013e36e6e19d305311c1b81fce6581f5ee1c86ef0627c68c9362fc9f")!),
+                    .zero,
+                    .constant(2),
+                    .checkMultiSig
+                ]
+            )
+        ],
+        serializedTransaction: "010000000112b66d5e8c7d224059e946749508efea9d66bf8d0c83630f080cf30be8bb6ae100000000490047304402206ffe3f14caf38ad5c1544428e99da76ffa5455675ec8d9780fac215ca17953520220779502985e194d84baa36b9bd40a0dbd981163fa191eb884ae83fc5bd1c86b1101ffffffff010100000000000000232103905380c7013e36e6e19d305311c1b81fce6581f5ee1c86ef0627c68c9362fc9fac00000000",
+        excludedVerifyFlags: "STRICTENC"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "ebbcf4bfce13292bd791d6a65a2a858d59adbf737e387e40370d4e64cc70efb0",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(2),
+                    .pushBytes(.init(hex: "033bcaa0a602f0d44cc9d5637c6e515b0471db514c020883830b7cefd73af04194")!),
+                    .pushBytes(.init(hex: "03a88b326f8767f4f192ce252afe33c94d25ab1d24f27f159b3cb3aa691ffe1423")!),
+                    .constant(2),
+                    .checkMultiSig,
+                    .not
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001b0ef70cc644e0d37407e387e73bfad598d852a5aa6d691d72b2913cebff4bceb000000004a00473044022068cd4851fc7f9a892ab910df7a24e616f293bcb5c5fbdfbc304a194b26b60fba022078e6da13d8cb881a22939b952c24f88b97afd06b4c47a47d7f804c9a352a6d6d0100ffffffff0101000000000000002321033bcaa0a602f0d44cc9d5637c6e515b0471db514c020883830b7cefd73af04194ac00000000",
+        excludedVerifyFlags: "NULLFAIL"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "ba4cd7ae2ad4d4d13ebfc8ab1d93a63e4a6563f25089a18bf0fc68f282aa88c1",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(2),
+                    .pushBytes(.init(hex: "037c615d761e71d38903609bf4f46847266edc2fb37532047d747ba47eaae5ffe1")!),
+                    .pushBytes(.init(hex: "02edc823cd634f2c4033d94f5755207cb6b60c4b1f1f056ad7471c47de5f2e4d50")!),
+                    .constant(2),
+                    .checkMultiSig,
+                    .not
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001c188aa82f268fcf08ba18950f263654a3ea6931dabc8bf3ed1d4d42aaed74cba000000004b0000483045022100940378576e069aca261a6b26fb38344e4497ca6751bb10905c76bb689f4222b002204833806b014c26fd801727b792b1260003c55710f87c5adbd7a9cb57446dbc9801ffffffff0101000000000000002321037c615d761e71d38903609bf4f46847266edc2fb37532047d747ba47eaae5ffe1ac00000000",
+        excludedVerifyFlags: "NULLFAIL"
+    ),
+
     // Test that SignatureHash() removes OP_CODESEPARATOR with FindAndDelete()
     .init(
         previousOutputs: [
@@ -239,30 +398,3 @@ fileprivate let testVectors: [TestVector] = [
     ),
 
 ]
-
-final class ValidTransactionTests: XCTestCase {
-
-    override class func setUp() {
-        eccStart()
-    }
-
-    override class func tearDown() {
-        eccStop()
-    }
-
-    func testValidTransactions() throws {
-        for vector in testVectors {
-            guard
-                let expectedTransactionData = Data(hex: vector.serializedTransaction),
-                let tx = Transaction(expectedTransactionData)
-            else {
-                XCTFail(); return
-            }
-            let previousOutputs = vector.previousOutputs.map { previousOutput in
-                Output(value: previousOutput.amount, script: ParsedScript(previousOutput.scriptOperations))
-            }
-            let result = tx.verify(previousOutputs: previousOutputs)
-            XCTAssert(result)
-        }
-    }
-}

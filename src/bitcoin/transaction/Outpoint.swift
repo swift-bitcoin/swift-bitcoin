@@ -1,12 +1,12 @@
 import Foundation
 
 /// A reference to a particular ``Output`` of a particular ``Transaction``.
-public struct Outpoint: Equatable {
+public struct Outpoint: Equatable, Hashable {
 
     init(transaction: Data, output: Int) {
-        precondition(transaction.count == Transaction.idSize)
-        self.transaction = transaction
-        self.output = output
+        precondition(transaction.count == Transaction.identifierSize)
+        self.transactionIdentifier = transaction
+        self.outputIndex = output
     }
 
     init?(_ data: Data) {
@@ -14,8 +14,8 @@ public struct Outpoint: Equatable {
             return nil
         }
         var offset = data.startIndex
-        let transaction = Data(data[offset ..< offset + Transaction.idSize].reversed())
-        offset += Transaction.idSize
+        let transaction = Data(data[offset ..< offset + Transaction.identifierSize].reversed())
+        offset += Transaction.identifierSize
         let outputData = data[offset ..< offset + MemoryLayout<UInt32>.size]
         let output = Int(outputData.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
@@ -24,22 +24,22 @@ public struct Outpoint: Equatable {
     }
 
     // The identifier for the transaction containing the referenced output.
-    public var transaction: Data
+    public var transactionIdentifier: Data
 
     /// The index of an output in the referenced transaction.
-    public var output: Int
+    public var outputIndex: Int
 
     var data: Data {
         var ret = Data()
-        ret += transaction.reversed()
-        ret += withUnsafeBytes(of: UInt32(output)) { Data($0) }
+        ret += transactionIdentifier.reversed()
+        ret += withUnsafeBytes(of: UInt32(outputIndex)) { Data($0) }
         return ret
     }
 
     public static let coinbase = Self(
-        transaction: .init(count: Transaction.idSize),
+        transaction: .init(count: Transaction.identifierSize),
         output: 0xffffffff
     )
 
-    static let size = Transaction.idSize + MemoryLayout<UInt32>.size
+    static let size = Transaction.identifierSize + MemoryLayout<UInt32>.size
 }
