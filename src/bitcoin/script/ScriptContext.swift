@@ -5,6 +5,7 @@ struct ScriptContext {
     let transaction: Transaction
     let inputIndex: Int
     let previousOutputs: [Output]
+    let configuration: ScriptConfigurarion
     let script: any Script
     var decodedOperations = [ScriptOperation]()
     var operationIndex: Int = 0

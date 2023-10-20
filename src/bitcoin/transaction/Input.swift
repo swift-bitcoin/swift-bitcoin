@@ -69,8 +69,4 @@ public struct Input: Equatable {
     var size: Int {
         Outpoint.size + script.prefixedSize + Sequence.size
     }
-
-    //- MARK: Instance Methods
-    //- MARK: Type Properties
-    //- MARK: Type Methods
 }

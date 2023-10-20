@@ -5,8 +5,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <secp256k1.h>
-
 extern secp256k1_context* secp256k1_context_sign;
 
 #ifndef htobe32

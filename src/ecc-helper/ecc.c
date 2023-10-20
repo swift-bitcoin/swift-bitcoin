@@ -9,8 +9,6 @@
 secp256k1_context* secp256k1_context_sign = NULL;
 
 void cECCStart(void (*getRandBytes)(u_char*, const size_t)) {
-    secp256k1_context_static = secp256k1_context_static;
-
     assert(secp256k1_context_sign == NULL);
 
     secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_NONE);

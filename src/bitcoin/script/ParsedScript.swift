@@ -53,9 +53,9 @@ public struct ParsedScript: Script {
         SerializedScript(data, version: version)
     }
 
-    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output]) throws {
-        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, script: self)
-        
+    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration, script: self)
+
         for operation in operations {
 
             /// Support for `OP_CODESEPARATOR` – and indirectly `OP_CHECKSIG` / `OP_CHECKSIGVERIFY`.

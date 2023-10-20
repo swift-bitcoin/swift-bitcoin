@@ -1,8 +1,9 @@
-/// Transactions summary
 import Foundation
 
 /// A bitcoin transaction.
 public struct Transaction: Equatable {
+
+    //- MARK: Initializers
 
     public init(version: Version, locktime: Locktime, inputs: [Input], outputs: [Output]) {
         self.version = version
@@ -73,6 +74,8 @@ public struct Transaction: Equatable {
         data = data.dropFirst(Locktime.size)
         self.init(version: version, locktime: locktime, inputs: inputs, outputs: outputs)
     }
+
+    //- MARK: Instance Properties
 
     /// The transaction's version.
     public let version: Version
@@ -146,14 +149,16 @@ public struct Transaction: Equatable {
 
     private var hasWitness: Bool { inputs.contains { $0.witness != .none } }
 
+    //- MARK: Instance Methods
+
     /// Initial simplified version of transaction verification that allows for script execution.
-    public func verify(previousOutputs: [Output]) -> Bool{
+    public func verify(previousOutputs: [Output], configuration: ScriptConfigurarion = .standard) -> Bool{
         precondition(previousOutputs.count == inputs.count)
         for index in inputs.indices {
             var stack = [Data]()
             do {
-                try inputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs)
-                try previousOutputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs)
+                try inputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
+                try previousOutputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
             } catch {
                 return false
             }
@@ -163,6 +168,7 @@ public struct Transaction: Equatable {
         }
         return true
     }
+
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.
     public func outpoint(for output: Int) -> Outpoint? {
         guard output < outputs.count else {
@@ -226,7 +232,7 @@ public struct Transaction: Equatable {
         }
     }
 
-    func checkSignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Bool {
+    func checkSignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptConfiguration: ScriptConfigurarion) throws -> Bool {
         if extendedSignature.isEmpty {
             return false
         }
@@ -237,6 +243,9 @@ public struct Transaction: Equatable {
             preconditionFailure()
         }
         let sig = sigTmp
+        if scriptConfiguration.verifyLowSSignature && !isLowSSignature(sig) {
+            throw ScriptError.nonLowSSignature
+        }
         let sighash = signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
         let result = verifyECDSA(sig: sig, msg: sighash, publicKey: publicKey)
         return result
@@ -315,8 +324,11 @@ public struct Transaction: Equatable {
         return txCopy.data + sighashType.data32
     }
 
+    //- MARK: Type Properties
+
     /// The total amount of bitcoin supply is actually less than this number. But `maxMoney` as a limit for any amount is a  consensus-critical constant.
     static let maxMoney = 2_100_000_000_000_000
+
     static let maxBlockWeight = 4_000_000
     static let identifierSize = 32
 
@@ -325,4 +337,8 @@ public struct Transaction: Equatable {
 
     /// BIP-144
     private static let segwitFlag = UInt8(0x01)
+
+    //- MARK: Type Methods
+
+    // No type methods yet.
 }
