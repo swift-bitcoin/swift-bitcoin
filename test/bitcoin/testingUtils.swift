@@ -7,7 +7,7 @@ extension Transaction {
 
 extension ParsedScript {
     func run(_ stack: inout [Data]) throws {
-        try run(&stack, transaction: .empty, inputIndex: -1, previousOutputs: [])
+        try run(&stack, transaction: .empty, inputIndex: -1, previousOutputs: [], configuration: .standard)
     }
 }
 

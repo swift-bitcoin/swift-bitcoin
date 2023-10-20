@@ -6,5 +6,6 @@ enum ScriptError: Error {
          invalidInstruction,
          disabledOperation,
          numberOverflow,
-         nonMinimalBoolean
+         nonMinimalBoolean,
+         nonLowSSignature
 }
