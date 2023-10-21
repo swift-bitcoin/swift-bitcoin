@@ -232,7 +232,7 @@ public struct Transaction: Equatable {
         }
     }
 
-    func checkSignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptConfiguration: ScriptConfigurarion) throws -> Bool {
+    func verifySignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptConfiguration: ScriptConfigurarion) -> Bool {
         if extendedSignature.isEmpty {
             return false
         }
@@ -243,14 +243,10 @@ public struct Transaction: Equatable {
             preconditionFailure()
         }
         let sig = sigTmp
-        if scriptConfiguration.verifyLowSSignature && !isLowSSignature(sig) {
-            throw ScriptError.nonLowSSignature
-        }
         let sighash = signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
         let result = verifyECDSA(sig: sig, msg: sighash, publicKey: publicKey)
         return result
     }
-
 
     /// Signature hash for legacy inputs.
     /// - Parameters:

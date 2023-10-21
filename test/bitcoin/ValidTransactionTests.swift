@@ -26,10 +26,13 @@ final class ValidTransactionTests: XCTestCase {
             let excludeFlags = Set(vector.verifyFlags.split(separator: ","))
             var config = ScriptConfigurarion.standard
             if excludeFlags.contains("NULLDUMMY") {
-                config.verifyNullDummy = false
+                config.checkNullDummy = false
             }
             if excludeFlags.contains("LOW_S") {
-                config.verifyLowSSignature = false
+                config.checkLowS = false
+            }
+            if excludeFlags.contains("DERSIG") {
+                config.checkStrictDER = false
             }
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)
@@ -118,6 +121,71 @@ fileprivate let testVectors: [TestVector] = [
         serializedTransaction: "0100000001b14bdcbc3e01bdaad36cc08e81e69c82e1060bc14e518db2b49aa43ad90ba260000000004a01ff47304402203f16c6f40162ab686621ef3000b04e75418a0c0cb2d8aebeac894ae360ac1e780220ddc15ecdfc3507ac48e1681a33eb60996631bf6bf5bc0a0682c4db743ce7ca2b01ffffffff0140420f00000000001976a914660d4ef3a743e3e696ad990364e555c271ad504b88ac00000000",
         verifyFlags: "DERSIG,LOW_S,STRICTENC,NULLDUMMY"
     ),
+
+    // As above, but using an OP_1
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "60a20bd93aa49ab4b28d514ec10b06e1829ce6818ec06cd3aabd013ebcdc4bb1",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1),
+                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
+                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .constant(2),
+                    .checkMultiSig
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001b14bdcbc3e01bdaad36cc08e81e69c82e1060bc14e518db2b49aa43ad90ba26000000000495147304402203f16c6f40162ab686621ef3000b04e75418a0c0cb2d8aebeac894ae360ac1e780220ddc15ecdfc3507ac48e1681a33eb60996631bf6bf5bc0a0682c4db743ce7ca2b01ffffffff0140420f00000000001976a914660d4ef3a743e3e696ad990364e555c271ad504b88ac00000000",
+        verifyFlags: "DERSIG,LOW_S,STRICTENC,NULLDUMMY"
+    ),
+
+    // As above, but using an OP_1NEGATE
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "60a20bd93aa49ab4b28d514ec10b06e1829ce6818ec06cd3aabd013ebcdc4bb1",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1),
+                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
+                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .constant(2),
+                    .checkMultiSig
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001b14bdcbc3e01bdaad36cc08e81e69c82e1060bc14e518db2b49aa43ad90ba26000000000494f47304402203f16c6f40162ab686621ef3000b04e75418a0c0cb2d8aebeac894ae360ac1e780220ddc15ecdfc3507ac48e1681a33eb60996631bf6bf5bc0a0682c4db743ce7ca2b01ffffffff0140420f00000000001976a914660d4ef3a743e3e696ad990364e555c271ad504b88ac00000000",
+        verifyFlags: "DERSIG,LOW_S,STRICTENC,NULLDUMMY"
+    ),
+
+    // The following is c99c49da4c38af669dea436d3e73780dfdb6c1ecf9958baa52960e8baee30e73
+    // It is of interest because it contains a 0-sequence as well as a signature of SIGHASH type 0 (which is not a real type)
+    // Currently a bug in the implementation prevents this test vector to pass (see #48 – https://github.com/swift-bitcoin/swift-bitcoin/issues/48).
+    /*
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "406b2b06bcd34d3c8733e6b79f7a394c8a431fbf4ff5ac705c93f4076bb77602",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "dc44b1164188067c3a32d4780f5996fa14a4f2d9")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010276b76b07f4935c70acf54fbf1f438a4c397a9fb7e633873c4dd3bc062b6b40000000008c493046022100d23459d03ed7e9511a47d13292d3430a04627de6235b6e51a40f9cd386f2abe3022100e7d25b080f0bb8d8d5f878bba7d54ad2fda650ea8d158a33ee3cbd11768191fd004104b0e2c879e4daf7b9ab68350228c159766676a14f5815084ba166432aab46198d4cca98fa3e9981d0a90b2effc514b76279476550ba3663fdcaff94c38420e9d5000000000100093d00000000001976a9149a7b0f3b80c6baaeedce0a0842553800f832ba1f88ac00000000",
+        verifyFlags: "LOW_S,STRICTENC"
+    ),
+    */
+
     // A nearly-standard transaction with CHECKSIGVERIFY 1 instead of CHECKSIG
     .init(
         previousOutputs: [
