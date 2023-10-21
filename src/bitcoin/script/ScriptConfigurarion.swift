@@ -1,12 +1,14 @@
 import Foundation
 
 public struct ScriptConfigurarion {
-    public var verifyNullDummy = true
-    public var verifyLowSSignature = true
+    public var checkNullDummy = true
+    public var checkLowS = true
+    public var checkStrictDER = true
 
     public static let standard = ScriptConfigurarion()
     public static let mandatory = ScriptConfigurarion(
-        verifyNullDummy: false,
-        verifyLowSSignature: false
+        checkNullDummy: false,
+        checkLowS: false,
+        checkStrictDER: false
     )
 }

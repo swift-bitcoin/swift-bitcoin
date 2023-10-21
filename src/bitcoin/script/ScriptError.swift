@@ -7,5 +7,6 @@ enum ScriptError: Error {
          disabledOperation,
          numberOverflow,
          nonMinimalBoolean,
-         nonLowSSignature
+         nonLowSSignature,
+         invalidSignatureEncoding
 }

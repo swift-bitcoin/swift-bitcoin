@@ -30,8 +30,9 @@ final class InvalidTransactionTests: XCTestCase {
                 XCTAssertNoThrow(try tx.check())
             }
             var config = ScriptConfigurarion.standard
-            config.verifyNullDummy = includeFlags.contains("NULLDUMMY")
-            config.verifyNullDummy = includeFlags.contains("LOW_S")
+            config.checkNullDummy = includeFlags.contains("NULLDUMMY")
+            config.checkLowS = includeFlags.contains("LOW_S")
+            config.checkStrictDER = includeFlags.contains("DERSIG")
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssertFalse(result)
         }

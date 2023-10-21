@@ -56,8 +56,20 @@ func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigur
     let sigs = Array(stack[(stack.endIndex - m)...].reversed())
     stack.removeLast(m)
     let dummyValue = stack.removeLast()
-    if configuration.verifyNullDummy, dummyValue.count > 0 {
+    if configuration.checkNullDummy, dummyValue.count > 0 {
         throw ScriptError.invalidScript
     }
     return (n, publicKeys, m, sigs)
+}
+
+func checkSignatureEncoding(_ extendedSignature: Data, scriptConfiguration: ScriptConfigurarion) throws {
+    // Empty signature. Not strictly DER encoded, but allowed to provide a
+    // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
+    if extendedSignature.isEmpty { return }
+    if scriptConfiguration.checkStrictDER || scriptConfiguration.checkLowS {
+        try checkSignatureEncoding(extendedSignature)
+    }
+    if scriptConfiguration.checkLowS  {
+        try checkSignatureLowS(extendedSignature)
+    }
 }
