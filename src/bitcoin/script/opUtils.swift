@@ -62,7 +62,7 @@ func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigur
     return (n, publicKeys, m, sigs)
 }
 
-func checkSignatureEncoding(_ extendedSignature: Data, scriptConfiguration: ScriptConfigurarion) throws {
+func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfigurarion) throws {
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
     if extendedSignature.isEmpty { return }

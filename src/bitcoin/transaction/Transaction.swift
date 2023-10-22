@@ -232,19 +232,17 @@ public struct Transaction: Equatable {
         }
     }
 
-    func verifySignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptConfiguration: ScriptConfigurarion) -> Bool {
+    func verifySignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Bool {
         if extendedSignature.isEmpty {
             return false
         }
-        precondition(extendedSignature.count > 69, "Signature too short or missing hash type suffix.")
-        precondition(extendedSignature.count <= 73, "Signature too long.")
-        var sigTmp = extendedSignature
-        guard let rawValue = sigTmp.popLast(), let sighashType = SighashType(rawValue: rawValue) else {
+        let signature = extendedSignature.dropLast()
+        let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
+        guard let sighashType = SighashType(sighashTypeData) else {
             preconditionFailure()
         }
-        let sig = sigTmp
         let sighash = signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
-        let result = verifyECDSA(sig: sig, msg: sighash, publicKey: publicKey)
+        let result = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
         return result
     }
 
@@ -280,7 +278,7 @@ public struct Transaction: Equatable {
                 newIns.append(.init(
                     outpoint: input.outpoint,
                     // SIGHASH_NONE | SIGHASH_SINGLE - All other txCopy inputs aside from the current input are set to have an nSequence index of zero.
-                    sequence: i == inputIndex || sighashType.isAll ? input.sequence : .initial,
+                    sequence: i == inputIndex || (!sighashType.isNone || !sighashType.isSingle) ? input.sequence : .initial,
                     // The scripts for all transaction inputs in txCopy are set to empty scripts (exactly 1 byte 0x00)
                     // The script for the current transaction input in txCopy is set to subScript (lead in by its length as a var-integer encoded!)
                     script: i == inputIndex ? .init(scriptCode) : .empty
