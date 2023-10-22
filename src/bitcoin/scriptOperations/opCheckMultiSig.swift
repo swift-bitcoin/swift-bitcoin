@@ -18,7 +18,8 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
                 guard let scriptCode = context.getScriptCode(signature: leftSigs[i]) else {
                     throw ScriptError.invalidScript
                 }
-                result = try context.transaction.verifySignature(extendedSignature: leftSigs[i], publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptConfiguration: context.configuration)
+                try checkSignature(leftSigs[i], scriptConfiguration: context.configuration)
+                result = context.transaction.verifySignature(extendedSignature: leftSigs[i], publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
                 default: preconditionFailure()
             }
             if result {

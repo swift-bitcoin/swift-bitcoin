@@ -23,7 +23,8 @@ final class ValidTransactionTests: XCTestCase {
                 Output(value: previousOutput.amount, script: ParsedScript(previousOutput.scriptOperations))
             }
             XCTAssertNoThrow(try tx.check())
-            let excludeFlags = Set(vector.verifyFlags.split(separator: ","))
+            var excludeFlags = Set(vector.verifyFlags.split(separator: ","))
+            excludeFlags.remove("NONE")
             var config = ScriptConfigurarion.standard
             if excludeFlags.contains("NULLDUMMY") {
                 config.checkNullDummy = false
@@ -36,6 +37,10 @@ final class ValidTransactionTests: XCTestCase {
             }
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)
+            if !excludeFlags.isEmpty && !excludeFlags.contains("CLEANSTACK") && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("STRICTENC") && !excludeFlags.contains("NULLFAIL") {
+                let failure = tx.verify(previousOutputs: previousOutputs, configuration: .standard)
+                XCTAssertFalse(failure)
+            }
         }
     }
 }
@@ -164,8 +169,6 @@ fileprivate let testVectors: [TestVector] = [
 
     // The following is c99c49da4c38af669dea436d3e73780dfdb6c1ecf9958baa52960e8baee30e73
     // It is of interest because it contains a 0-sequence as well as a signature of SIGHASH type 0 (which is not a real type)
-    // Currently a bug in the implementation prevents this test vector to pass (see #48 – https://github.com/swift-bitcoin/swift-bitcoin/issues/48).
-    /*
     .init(
         previousOutputs: [
             .init(
@@ -184,7 +187,6 @@ fileprivate let testVectors: [TestVector] = [
         serializedTransaction: "01000000010276b76b07f4935c70acf54fbf1f438a4c397a9fb7e633873c4dd3bc062b6b40000000008c493046022100d23459d03ed7e9511a47d13292d3430a04627de6235b6e51a40f9cd386f2abe3022100e7d25b080f0bb8d8d5f878bba7d54ad2fda650ea8d158a33ee3cbd11768191fd004104b0e2c879e4daf7b9ab68350228c159766676a14f5815084ba166432aab46198d4cca98fa3e9981d0a90b2effc514b76279476550ba3663fdcaff94c38420e9d5000000000100093d00000000001976a9149a7b0f3b80c6baaeedce0a0842553800f832ba1f88ac00000000",
         verifyFlags: "LOW_S,STRICTENC"
     ),
-    */
 
     // A nearly-standard transaction with CHECKSIGVERIFY 1 instead of CHECKSIG
     .init(
@@ -227,6 +229,39 @@ fileprivate let testVectors: [TestVector] = [
         ],
         serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006a473044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a012103ba8c8b86dea131c22ab967e6dd99bdae8eff7a1f75a2c35f1f944109e3fe5e22ffffffff010000000000000000015100000000",
         verifyFlags: "CLEANSTACK,CONST_SCRIPTCODE"
+    ),
+
+    // The following is f7fdd091fa6d8f5e7a8c2458f5c38faffff2d3f1406b6e4fe2c99dcc0d2d1cbb
+    // It caught a bug in the workaround for 23b397edccd3740a74adb603c9756370fafcde9bcc4483eb271ecad09a94dd63 in an overly simple implementation. In a signature, it contains an ASN1 integer which isn't strict-DER conformant due to being negative, which doesn't make sense in a signature. Before BIP66 activated, it was a valid signature. After it activated, it's not valid any more.
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "b464e85df2a238416f8bdae11d120add610380ea07f4ef19c5f9dfd472f96c3d",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "bef80ecf3a44500fda1bc92176e442891662aed2")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+            .init(
+                transactionIdentifier: "b7978cc96e59a8b13e0865d3f95657561a7f725be952438637475920bac9eb21",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "bef80ecf3a44500fda1bc92176e442891662aed2")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            )
+        ],
+        serializedTransaction: "01000000023d6cf972d4dff9c519eff407ea800361dd0a121de1da8b6f4138a2f25de864b4000000008a4730440220ffda47bfc776bcd269da4832626ac332adfca6dd835e8ecd83cd1ebe7d709b0e022049cffa1cdc102a0b56e0e04913606c70af702a1149dc3b305ab9439288fee090014104266abb36d66eb4218a6dd31f09bb92cf3cfa803c7ea72c1fc80a50f919273e613f895b855fb7465ccbc8919ad1bd4a306c783f22cd3227327694c4fa4c1c439affffffff21ebc9ba20594737864352e95b727f1a565756f9d365083eb1a8596ec98c97b7010000008a4730440220503ff10e9f1e0de731407a4a245531c9ff17676eda461f8ceeb8c06049fa2c810220c008ac34694510298fa60b3f000df01caa244f165b727d4896eb84f81e46bcc4014104266abb36d66eb4218a6dd31f09bb92cf3cfa803c7ea72c1fc80a50f919273e613f895b855fb7465ccbc8919ad1bd4a306c783f22cd3227327694c4fa4c1c439affffffff01f0da5200000000001976a914857ccd42dded6df32949d4646dfa10a92458cfaa88ac00000000",
+        verifyFlags: "DERSIG,LOW_S,STRICTENC"
     ),
 
     // The following tests for the presence of a bug in the handling of `SIGHASH_SINGLE`
@@ -276,7 +311,7 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006e493046022100e1eadba00d9296c743cb6ecc703fd9ddc9b3cd12906176a226ae4c18d6b00796022100a71aef7d2874deff681ba6080f1b278bac7bb99c61b08a85f4311970ffe7f63f012321030c0588dc44d92bdcbf8e72093466766fdc265ead8db64517b0c542275b70fffbacffffffff010040075af0750700015100000000",
-        verifyFlags: "LOW_S"
+        verifyFlags: "NONE" // LOW_S
     ),
 
     // MAX_MONEY output + 0 output
@@ -294,7 +329,7 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006d483045022027deccc14aa6668e78a8c9da3484fbcd4f9dcc9bb7d1b85146314b21b9ae4d86022100d0b43dece8cfb07348de0ca8bc5b86276fa88f7f2138381128b7c36ab2e42264012321029bb13463ddd5d2cc05da6e84e37536cb9525703cfd8f43afdb414988987a92f6acffffffff020040075af075070001510000000000000000015100000000",
-        verifyFlags: "LOW_S"
+        verifyFlags: "NONE" // LOW_S
     ),
 
     // Coinbase of size 2

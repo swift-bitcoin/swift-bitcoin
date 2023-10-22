@@ -11,7 +11,8 @@ func opCheckSig(_ stack: inout [Data], context: ScriptContext) throws {
         guard let scriptCode = context.getScriptCode(signature: sig) else {
             throw ScriptError.invalidScript
         }
-        result = try context.transaction.verifySignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptConfiguration: context.configuration)
+        try checkSignature(sig, scriptConfiguration: context.configuration)
+        result = context.transaction.verifySignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
         default:
             preconditionFailure()
     }
