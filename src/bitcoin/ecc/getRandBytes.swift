@@ -1,10 +1,10 @@
 import Foundation
-import ECCHelper
 
 func getRandBytes(_ byteCount: Int) -> Data {
     var bytes = [UInt8](repeating: 0, count: byteCount)
-    let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
-    precondition(status == errSecSuccess)
+    for i in bytes.indices {
+        bytes[i] = .random(in: UInt8.min...UInt8.max)
+    }
     return Data(bytes)
 }
 
