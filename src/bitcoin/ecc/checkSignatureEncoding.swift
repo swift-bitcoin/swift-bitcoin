@@ -1,4 +1,6 @@
 import Foundation
+import ECCHelper
+import LibSECP256k1
 
 /**
  * A canonical signature exists of: <30> <total len> <02> <len R> <R> <02> <len S> <S> <hashtype>
@@ -44,7 +46,7 @@ func checkSignatureEncoding(_ sig: Data) throws {
 
     // Verify that the length of the signature matches the sum of the length
     // of the elements.
-    if lenR + lenS + 7 != sig.count { throw ScriptError.invalidSignatureEncoding }
+    if lenR + lenS + 7 != sig.count{ throw ScriptError.invalidSignatureEncoding }
 
     // Check whether the R element is an integer.
     if sig[2] != 0x02{ throw ScriptError.invalidSignatureEncoding }

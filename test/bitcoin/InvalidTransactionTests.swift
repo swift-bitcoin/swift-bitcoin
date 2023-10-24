@@ -22,7 +22,7 @@ final class InvalidTransactionTests: XCTestCase {
             let previousOutputs = vector.previousOutputs.map { previousOutput in
                 Output(value: previousOutput.amount, script: ParsedScript(previousOutput.scriptOperations))
             }
-            var includeFlags = Set(vector.verifyFlags.split(separator: ","))
+            let includeFlags = Set(vector.verifyFlags.split(separator: ","))
             if includeFlags.contains("BADTX") {
                 XCTAssertThrowsError(try tx.check())
                 continue
@@ -33,7 +33,6 @@ final class InvalidTransactionTests: XCTestCase {
             config.checkNullDummy = includeFlags.contains("NULLDUMMY")
             config.checkLowS = includeFlags.contains("LOW_S")
             config.checkStrictDER = includeFlags.contains("DERSIG")
-            config.checkStrictEncoding = includeFlags.contains("STRICTENC")
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssertFalse(result)
         }

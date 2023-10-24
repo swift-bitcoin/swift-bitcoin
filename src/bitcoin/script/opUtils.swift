@@ -66,22 +66,10 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
     if extendedSignature.isEmpty { return }
-    if scriptConfiguration.checkStrictDER || scriptConfiguration.checkLowS || scriptConfiguration.checkStrictEncoding {
+    if scriptConfiguration.checkStrictDER || scriptConfiguration.checkLowS {
         try checkSignatureEncoding(extendedSignature)
     }
     if scriptConfiguration.checkLowS  {
         try checkSignatureLowS(extendedSignature)
-    }
-    if scriptConfiguration.checkStrictEncoding  {
-        let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
-        guard let sighashType = SighashType(sighashTypeData), sighashType.isDefined else {
-            throw ScriptError.undefinedSighashType
-        }
-    }
-}
-
-func checkPublicKey(_ publicKey: Data, scriptConfiguration: ScriptConfigurarion) throws {
-    if scriptConfiguration.checkStrictEncoding  {
-        try checkPublicKeyEncoding(publicKey)
     }
 }

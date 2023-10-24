@@ -160,7 +160,6 @@ public struct Transaction: Equatable {
                 try inputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
                 try previousOutputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
             } catch {
-                print("\(error) \(error.localizedDescription)")
                 return false
             }
             if let last = stack.last, !ScriptBoolean(last).value {
@@ -279,7 +278,7 @@ public struct Transaction: Equatable {
                 newIns.append(.init(
                     outpoint: input.outpoint,
                     // SIGHASH_NONE | SIGHASH_SINGLE - All other txCopy inputs aside from the current input are set to have an nSequence index of zero.
-                    sequence: i == inputIndex || (!sighashType.isNone && !sighashType.isSingle) ? input.sequence : .initial,
+                    sequence: i == inputIndex || (!sighashType.isNone || !sighashType.isSingle) ? input.sequence : .initial,
                     // The scripts for all transaction inputs in txCopy are set to empty scripts (exactly 1 byte 0x00)
                     // The script for the current transaction input in txCopy is set to subScript (lead in by its length as a var-integer encoded!)
                     script: i == inputIndex ? .init(scriptCode) : .empty
@@ -302,7 +301,7 @@ public struct Transaction: Equatable {
                     newOuts.append(out)
                 } else if i < inputIndex {
                     // Value is "long -1" which means UInt64(bitPattern: -1) aka UInt64.max
-                    newOuts.append(.init(value: -1, script: SerializedScript.empty))
+                    newOuts.append(.init(value: Amount.max, script: SerializedScript.empty))
                 }
             }
         } else if sighashType.isNone {

@@ -10,12 +10,6 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
     var leftSigs = sigs
     while leftPubKeys.count > 0 && leftSigs.count > 0 {
         let publicKey = leftPubKeys.removeFirst()
-
-        switch context.script.version {
-            case .legacy: try checkPublicKey(publicKey, scriptConfiguration: context.configuration)
-            default: preconditionFailure() // TODO: SegWit will require compressed public keys
-        }
-
         var result = false
         var i = 0
         while i < leftSigs.count {
