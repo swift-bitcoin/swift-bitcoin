@@ -57,7 +57,7 @@ func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigur
     stack.removeLast(m)
     let dummyValue = stack.removeLast()
     if configuration.checkNullDummy, dummyValue.count > 0 {
-        throw ScriptError.invalidScript
+        throw ScriptError.dummyValueNotNull
     }
     return (n, publicKeys, m, sigs)
 }

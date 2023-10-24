@@ -11,5 +11,6 @@ enum ScriptError: Error {
          nonLowSSignature,
          invalidPublicKeyEncoding,
          invalidSignatureEncoding,
-         undefinedSighashType
+         undefinedSighashType,
+         dummyValueNotNull
 }
