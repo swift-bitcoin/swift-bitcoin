@@ -53,7 +53,7 @@ public struct Input: Equatable {
     /// The script that unlocks the output associated with this input.
     public var script: SerializedScript
 
-    /// The segregated witness data introduced by BIP-141.
+    /// The segregated witness data introduced by BIP141.
     public var witness: Witness?
 
     /// Used by ``Transaction/data``.

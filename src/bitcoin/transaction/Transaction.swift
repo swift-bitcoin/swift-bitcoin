@@ -126,7 +126,7 @@ public struct Transaction: Equatable {
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
     public var identifier: Data { Data(hash256(identifierData).reversed()) }
 
-    /// The transaction's witness identifier as defined in BIP-141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
+    /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
     public var witnessIdentifier: Data { Data(hash256(data).reversed()) }
 
     public var size: Int { nonWitnessSize + witnessSize }
@@ -142,7 +142,7 @@ public struct Transaction: Equatable {
         Version.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + Locktime.size
     }
 
-    /// Part of BIP-144 implementation.
+    /// Part of BIP144 implementation.
     private var witnessSize: Int {
         hasWitness ? (MemoryLayout.size(ofValue: Transaction.segwitMarker) + MemoryLayout.size(ofValue: Transaction.segwitFlag)) + inputs.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
     }
@@ -188,7 +188,7 @@ public struct Transaction: Equatable {
         }
 
         // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
-        // TODO: Replace with weight after BIP-141
+        // TODO: Replace with weight after BIP141
         guard size <= Self.maxBlockWeight else {
             throw TransactionError.oversized
         }
@@ -327,10 +327,10 @@ public struct Transaction: Equatable {
     static let maxBlockWeight = 4_000_000
     static let identifierSize = 32
 
-    /// BIP-144
+    /// BIP144
     private static let segwitMarker = UInt8(0x00)
 
-    /// BIP-144
+    /// BIP144
     private static let segwitFlag = UInt8(0x01)
 
     //- MARK: Type Methods
