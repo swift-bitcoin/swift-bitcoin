@@ -35,9 +35,12 @@ final class ValidTransactionTests: XCTestCase {
             if excludeFlags.contains("DERSIG") {
                 config.checkStrictDER = false
             }
+            if excludeFlags.contains("STRICTENC") {
+                config.checkStrictEncoding = false
+            }
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)
-            if !excludeFlags.isEmpty && !excludeFlags.contains("CLEANSTACK") && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("STRICTENC") && !excludeFlags.contains("NULLFAIL") {
+            if !excludeFlags.isEmpty && !excludeFlags.contains("CLEANSTACK") && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("NULLFAIL") {
                 let failure = tx.verify(previousOutputs: previousOutputs, configuration: .standard)
                 XCTAssertFalse(failure)
             }
@@ -294,6 +297,49 @@ fileprivate let testVectors: [TestVector] = [
         verifyFlags: "CLEANSTACK"
     ),
 
+    // The following tests SIGHASH_SINGLE|SIGHASHANYONECANPAY inputs
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "437a1002eb125dec0f93f635763e0ae45f28ff8e81d82945753d0107611cd390",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "383fb81cb0a3fc724b5e08cf8bbd404336d711f6")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+            .init(
+                transactionIdentifier: "2d48d32ccad087bcda0ac5b31555bd58d1d2568184cbc8e752dd2be2684af03f",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "275ec2a233e5b23d43fa19e7bf9beb0cb3996117")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+            .init(
+                transactionIdentifier: "c76168ef1a272a4f176e55e73157ecfce040cfad16a5272f6296eb7089dca846",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "34fea2c5a75414fd945273ae2d029ce1f28dafcf")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            )
+        ],
+        serializedTransaction: "010000000390d31c6107013d754529d8818eff285fe40a3e7635f6930fec5d12eb02107a43010000006b483045022100f40815ae3c81a0dd851cc8d376d6fd226c88416671346a9033468cca2cdcc6c202204f764623903e6c4bed1b734b75d82c40f1725e4471a55ad4f51218f86130ac038321033d710ab45bb54ac99618ad23b3c1da661631aa25f23bfe9d22b41876f1d46e4effffffff3ff04a68e22bdd52e7c8cb848156d2d158bd5515b3c50adabc87d0ca2cd3482d010000006a4730440220598d263c107004008e9e26baa1e770be30fd31ee55ded1898f7c00da05a75977022045536bead322ca246779698b9c3df3003377090f41afeca7fb2ce9e328ec4af2832102b738b531def73020bd637f32935924cc88549c8206976226d968edd3a42fc2d7ffffffff46a8dc8970eb96622f27a516adcf40e0fcec5731e7556e174f2a271aef6861c7010000006b483045022100c5b90a777a9fdc90c208dbef7290d1fc1be651f47151ee4ccff646872a454cf90220640cfbc4550446968fbbe9d12528f3adf7d87b31541569c59e790db8a220482583210391332546e22bbe8fe3af54addfad6f8b83d05fa4f5e047593d4c07ae938795beffffffff028036be26000000001976a914ddfb29efad43a667465ac59ff14dc6442a1adfca88ac3d5cba01000000001976a914b64dde7a505a13ca986c40e86e984a8dc81368b688ac00000000",
+        verifyFlags: "NONE"
+    ),
 
     // Tests for CheckTransaction()
     // MAX_MONEY output
@@ -416,6 +462,146 @@ fileprivate let testVectors: [TestVector] = [
         ],
         serializedTransaction: "01000000020001000000000000000000000000000000000000000000000000000000000000000000004948304502203a0f5f0e1f2bdbcd04db3061d18f3af70e07f4f467cbc1b8116f267025f5360b022100c792b6e215afc5afc721a351ec413e714305cb749aae3d7fee76621313418df101010000000002000000000000000000000000000000000000000000000000000000000000000000004847304402205f7530653eea9b38699e476320ab135b74771e1c48b81a5d041e2ca84b9be7a802200ac8d1f40fb026674fe5a5edd3dea715c27baa9baca51ed45ea750ac9dc0a55e81ffffffff010100000000000000015100000000",
         verifyFlags: "LOW_S"
+    ),
+
+    // afd9c17f8913577ec3509520bd6e5d63e9c0fd2a5f70c787993b097ba6ca9fae which has several SIGHASH_SINGLE signatures
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "63cfa5a09dc540bf63e53713b82d9ea3692ca97cd608c384f2aa88e51a0aac70",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "dcf72c4fd02f5a987cf9b02f2fabfcac3341a87d")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+            .init(
+                transactionIdentifier: "04e8d0fcf3846c6734477b98f0f3d4badfb78f020ee097a0be5fe347645b817d",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "dcf72c4fd02f5a987cf9b02f2fabfcac3341a87d")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+            .init(
+                transactionIdentifier: "ee1377aff5d0579909e11782e1d2f5f7b84d26537be7f5516dd4e43373091f3f",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "dcf72c4fd02f5a987cf9b02f2fabfcac3341a87d")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            )
+        ],
+        serializedTransaction: "010000000370ac0a1ae588aaf284c308d67ca92c69a39e2db81337e563bf40c59da0a5cf63000000006a4730440220360d20baff382059040ba9be98947fd678fb08aab2bb0c172efa996fd8ece9b702201b4fb0de67f015c90e7ac8a193aeab486a1f587e0f54d0fb9552ef7f5ce6caec032103579ca2e6d107522f012cd00b52b9a65fb46f0c57b9b8b6e377c48f526a44741affffffff7d815b6447e35fbea097e00e028fb7dfbad4f3f0987b4734676c84f3fcd0e804010000006b483045022100c714310be1e3a9ff1c5f7cacc65c2d8e781fc3a88ceb063c6153bf950650802102200b2d0979c76e12bb480da635f192cc8dc6f905380dd4ac1ff35a4f68f462fffd032103579ca2e6d107522f012cd00b52b9a65fb46f0c57b9b8b6e377c48f526a44741affffffff3f1f097333e4d46d51f5e77b53264db8f7f5d2e18217e1099957d0f5af7713ee010000006c493046022100b663499ef73273a3788dea342717c2640ac43c5a1cf862c9e09b206fcb3f6bb8022100b09972e75972d9148f2bdd462e5cb69b57c1214b88fc55ca638676c07cfc10d8032103579ca2e6d107522f012cd00b52b9a65fb46f0c57b9b8b6e377c48f526a44741affffffff0380841e00000000001976a914bfb282c70c4191f45b5a6665cad1682f2c9cfdfb88ac80841e00000000001976a9149857cc07bed33a5cf12b9c5e0500b675d500c81188ace0fd1c00000000001976a91443c52850606c872403c0601e69fa34b26f62db4a88ac00000000",
+        verifyFlags: "LOW_S"
+    ),
+
+    // ddc454a1c0c35c188c98976b17670f69e586d9c0f3593ea879928332f0a069e7, which spends an input that pushes using a PUSHDATA1 that is negative when read as signed
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "c5510a5dd97a25f43175af1fe649b707b1df8e1a41489bac33a23087027a2f48",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushData1(.init(hex: "606563686f2022553246736447566b58312b5a536e587574356542793066794778625456415675534a6c376a6a334878416945325364667657734f53474f36633338584d7439435c6e543249584967306a486956304f376e775236644546673d3d22203e20743b206f70656e73736c20656e63202d7061737320706173733a5b314a564d7751432d707269766b65792d6865785d202d64202d6165732d3235362d636263202d61202d696e207460")!),
+                    .drop,
+                    .dup,
+                    .hash160,
+                    .pushBytes(.init(hex: "bfd7436b6265aa9de506f8a994f881ff08cc2872")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001482f7a028730a233ac9b48411a8edfb107b749e61faf7531f4257ad95d0a51c5000000008b483045022100bf0bbae9bde51ad2b222e87fbf67530fbafc25c903519a1e5dcc52a32ff5844e022028c4d9ad49b006dd59974372a54291d5764be541574bb0c4dc208ec51f80b7190141049dd4aad62741dc27d5f267f7b70682eee22e7e9c1923b9c0957bdae0b96374569b460eb8d5b40d972e8c7c0ad441de3d94c4a29864b212d56050acb980b72b2bffffffff0180969800000000001976a914e336d0017a9d28de99d16472f6ca6d5a3a8ebc9988ac00000000",
+        verifyFlags: "NONE"
+    ),
+
+    // Correct signature order
+    // Note the input is just required to make the tester happy
+    // TODO: Enable once BIP16 is implemented.
+    /*
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "b3da01dd4aae683c7aee4d5d8b52a540a508e1115f77cd7fa9a291243f501223",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .hash160,
+                    .pushBytes(.init(hex: "b1ce99298d5f07364b57b1e5c9cc00be0b04a954")!),
+                    .equal
+                ]
+            )
+        ],
+        serializedTransaction: "01000000012312503f2491a2a97fcd775f11e108a540a5528b5d4dee7a3c68ae4add01dab300000000fdfe0000483045022100f6649b0eddfdfd4ad55426663385090d51ee86c3481bdc6b0c18ea6c0ece2c0b0220561c315b07cffa6f7dd9df96dbae9200c2dee09bf93cc35ca05e6cdf613340aa0148304502207aacee820e08b0b174e248abd8d7a34ed63b5da3abedb99934df9fddd65c05c4022100dfe87896ab5ee3df476c2655f9fbe5bd089dccbef3e4ea05b5d121169fe7f5f4014c695221031d11db38972b712a9fe1fc023577c7ae3ddb4a3004187d41c45121eecfdbb5b7210207ec36911b6ad2382860d32989c7b8728e9489d7bbc94a6b5509ef0029be128821024ea9fac06f666a4adc3fc1357b7bec1fd0bdece2b9d08579226a8ebde53058e453aeffffffff0180380100000000001976a914c9b99cddf847d10685a4fabaa0baf505f7c3dfab88ac00000000",
+        verifyFlags: "LOW_S"
+    ),
+    */
+
+    // cc60b1f899ec0a69b7c3f25ddf32c4524096a9c5b01cbd84c6d0312a0c478984, which is a fairly strange transaction which relies on OP_CHECKSIG returning 0 when checking a completely invalid sig of length 0
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "cbebc4da731e8995fe97f6fadcd731b36ad40e5ecb31e38e904f6e5982fa09f7",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: ParsedScript(.init(hex: "2102085c6600657566acc2d6382a47bc3f324008d2aa10940dd7705a48aa2a5a5e33ac7c2103f5d0fb955f95dd6be6115ce85661db412ec6a08abcbfce7da0ba8297c6cc0ec4ac7c5379a820d68df9e32a147cffa36193c6f7c43a1c8c69cda530e1c6db354bfabdcfefaf3c875379a820f531f3041d3136701ea09067c53e7159c8f9b2746a56c3d82966c54bbc553226879a5479827701200122a59a5379827701200122a59a6353798277537982778779679a68")!)!.operations
+                // scriptPubKey: "02085c6600657566acc2d6382a47bc3f324008d2aa10940dd7705a48aa2a5a5e33 OP_CHECKSIG OP_SWAP 03f5d0fb955f95dd6be6115ce85661db412ec6a08abcbfce7da0ba8297c6cc0ec4 OP_CHECKSIG OP_SWAP 3 OP_PICK OP_SHA256 d68df9e32a147cffa36193c6f7c43a1c8c69cda530e1c6db354bfabdcfefaf3c OP_EQUAL 3 OP_PICK OP_SHA256 f531f3041d3136701ea09067c53e7159c8f9b2746a56c3d82966c54bbc553226 OP_EQUAL OP_BOOLAND 4 OP_PICK OP_SIZE OP_NIP 32 34 OP_WITHIN OP_BOOLAND 3 OP_PICK OP_SIZE OP_NIP 32 34 OP_WITHIN OP_BOOLAND OP_IF 3 OP_PICK OP_SIZE OP_NIP 3 OP_PICK OP_SIZE OP_NIP OP_EQUAL OP_PICK OP_ELSE OP_BOOLAND OP_ENDIF"
+                // scriptSig: "ca42095840735e89283fec298e62ac2ddea9b5f34a8cbb7097ad965b87568100 1b1b01dc829177da4a14551d2fc96a9db00c6501edfa12f22cd9cefd335c227f 3045022100a9df60536df5733dd0de6bc921fab0b3eee6426501b43a228afa2c90072eb5ca02201c78b74266fac7d1db5deff080d8a403743203f109fbcabf6d5a760bf87386d2[ALL] 0"
+            )
+        ],
+        serializedTransaction: "0100000001f709fa82596e4f908ee331cb5e0ed46ab331d7dcfaf697fe95891e73dac4ebcb000000008c20ca42095840735e89283fec298e62ac2ddea9b5f34a8cbb7097ad965b87568100201b1b01dc829177da4a14551d2fc96a9db00c6501edfa12f22cd9cefd335c227f483045022100a9df60536df5733dd0de6bc921fab0b3eee6426501b43a228afa2c90072eb5ca02201c78b74266fac7d1db5deff080d8a403743203f109fbcabf6d5a760bf87386d20100ffffffff01c075790000000000232103611f9a45c18f28f06f19076ad571c344c82ce8fcfe34464cf8085217a2d294a6ac00000000",
+        verifyFlags: "CLEANSTACK"
+    ),
+
+    // Empty pubkey
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "229257c295e7f555421c1bfec8538dd30a4b5c37c1c8810bbe83cafa7811652c",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .zero,
+                    .checkSig,
+                    .not
+                ]
+            )
+        ],
+        serializedTransaction: "01000000012c651178faca83be0b81c8c1375c4b0ad38d53c8fe1b1c4255f5e795c25792220000000049483045022100d6044562284ac76c985018fc4a90127847708c9edb280996c507b28babdc4b2a02203d74eca3f1a4d1eea7ff77b528fde6d5dc324ec2dbfdb964ba885f643b9704cd01ffffffff010100000000000000232102c2410f8891ae918cab4ffc4bb4a3b0881be67c7a1e7faa8b5acf9ab8932ec30cac00000000",
+        verifyFlags: "STRICTENC,NULLFAIL"
+    ),
+
+    // Empty signature
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "9ca93cfd8e3806b9d9e2ba1cf64e3cc6946ee0119670b1796a09928d14ea25f7",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(.init(hex: "028a1d66975dbdf97897e3a4aef450ebeb5b5293e4a0b4a6d3a2daaa0b2b110e02")!),
+                    .checkSig,
+                    .not
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001f725ea148d92096a79b1709611e06e94c63c4ef61cbae2d9b906388efd3ca99c000000000100ffffffff0101000000000000002321028a1d66975dbdf97897e3a4aef450ebeb5b5293e4a0b4a6d3a2daaa0b2b110e02ac00000000",
+        verifyFlags: "NONE"
     ),
 
     .init(

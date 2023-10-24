@@ -22,23 +22,31 @@ public struct SighashType {
     }
 
     var isAll: Bool {
-        value8 & 0x1f == Self.sighashAll
+        value8 & Self.maskAnyCanPay == Self.sighashAll
     }
 
     var isNone: Bool {
-        value8 & 0x1f == Self.sighashNone
+        value8 & Self.maskAnyCanPay == Self.sighashNone
     }
 
     var isSingle: Bool {
-        value8 & 0x1f == Self.sighashSingle
+        value8 & Self.maskAnyCanPay == Self.sighashSingle
     }
 
     var isAnyCanPay: Bool {
-        value8 & 0x80 == Self.sighashAnyCanPay
+        value8 & Self.sighashAnyCanPay == Self.sighashAnyCanPay
+    }
+
+    var isDefined: Bool {
+        switch value8 & ~Self.sighashAnyCanPay {
+            case Self.sighashAll, Self.sighashNone, Self.sighashSingle: true
+            default: false
+        }
     }
 
     static let sighashAll = UInt8(0x01)
     static let sighashNone = UInt8(0x02)
     static let sighashSingle = UInt8(0x03)
     static let sighashAnyCanPay = UInt8(0x80)
+    static let maskAnyCanPay = UInt8(0x1f)
 }

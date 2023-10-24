@@ -418,13 +418,14 @@ public enum ScriptOperation: Equatable {
             }
             guard data.count >= byteCount else { return nil }
             let d = Data(data[..<(data.startIndex + byteCount)])
-            if opCode == 0x4c {
-                self = .pushData1(d)
+            self = if opCode == 0x4c {
+                .pushData1(d)
             } else if opCode == 0x4d {
-                self = .pushData2(d)
+                .pushData2(d)
+            } else {
+                // opCode == 0x4e
+                .pushData4(d)
             }
-            // opCode == 0x4e
-            self = .pushData4(d)
         default:
             preconditionFailure()
         }
