@@ -149,6 +149,10 @@ public struct Transaction: Equatable {
 
     private var hasWitness: Bool { inputs.contains { $0.witness != .none } }
 
+    private var valueOut: Amount {
+        outputs.reduce(0) { $0 + $1.value }
+    }
+
     //- MARK: Instance Methods
 
     /// Initial simplified version of transaction verification that allows for script execution.
@@ -178,6 +182,7 @@ public struct Transaction: Equatable {
         return .init(transaction: identifier, output: output)
     }
 
+    /// This function is called when validating a transaction and it's consensus critical.
     func check() throws {
         // Basic checks that don't depend on any context
         guard !inputs.isEmpty else {
@@ -230,6 +235,47 @@ public struct Transaction: Equatable {
                     throw TransactionError.missingOutpoint
                 }
             }
+        }
+    }
+
+    /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``Transaction.check()``.
+    func checkInputs(coins: [Outpoint : Coin], spendHeight: Int) throws {
+        // are the actual inputs available?
+        if !isCoinbase {
+            for outpoint in inputs.map(\.outpoint) {
+                guard coins[outpoint] != .none else {
+                    throw TransactionError.inputMissingOrSpent
+                }
+            }
+        }
+
+        var valueIn = Amount(0)
+        for input in inputs {
+            let outpoint = input.outpoint
+            guard let coin = coins[outpoint] else {
+                preconditionFailure()
+            }
+            if coin.isCoinbase && spendHeight - coin.height < Self.coinbaseMaturity {
+                throw TransactionError.prematureCoinbaseSpend
+            }
+            valueIn += coin.output.value
+            guard coin.output.value >= 0 && coin.output.value <= Self.maxMoney,
+                  valueIn >= 0 && valueIn <= Self.maxMoney
+            else {
+                throw TransactionError.inputValuesOutOfRange
+            }
+        }
+
+        // This is guaranteed by calling Transaction.check() before this function.
+        precondition(valueOut >= 0 && valueOut <= Self.maxMoney)
+
+        guard valueIn >= valueOut else {
+            throw TransactionError.inputsValueBelowOutput
+        }
+
+        let fee = valueIn - valueOut
+        guard fee >= 0 && fee <= Self.maxMoney else {
+            throw TransactionError.feeOutOfRange
         }
     }
 
@@ -323,6 +369,9 @@ public struct Transaction: Equatable {
 
     /// The total amount of bitcoin supply is actually less than this number. But `maxMoney` as a limit for any amount is a  consensus-critical constant.
     static let maxMoney = 2_100_000_000_000_000
+
+    /// Coinbase transaction outputs can only be spent after this number of new blocks (network rule).
+    static let coinbaseMaturity = 100
 
     static let maxBlockWeight = 4_000_000
     static let identifierSize = 32
