@@ -10,5 +10,10 @@ enum TransactionError: Error {
          totalOutputsTooLarge,
          duplicateInput,
          coinbaseLengthOutOfRange,
-         missingOutpoint
+         missingOutpoint,
+         inputMissingOrSpent,
+         prematureCoinbaseSpend,
+         inputValuesOutOfRange,
+         inputsValueBelowOutput,
+         feeOutOfRange
 }
