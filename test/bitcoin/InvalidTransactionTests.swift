@@ -22,7 +22,7 @@ final class InvalidTransactionTests: XCTestCase {
             let previousOutputs = vector.previousOutputs.map { previousOutput in
                 Output(value: previousOutput.amount, script: ParsedScript(previousOutput.scriptOperations))
             }
-            var includeFlags = Set(vector.verifyFlags.split(separator: ","))
+            let includeFlags = Set(vector.verifyFlags.split(separator: ","))
             if includeFlags.contains("BADTX") {
                 XCTAssertThrowsError(try tx.check())
                 continue
