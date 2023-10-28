@@ -343,7 +343,7 @@ public enum ScriptOperation: Equatable {
         case .sha256: try opSHA256(&stack)
         case .hash160: try opHash160(&stack)
         case .hash256: try opHash256(&stack)
-        case .codeSeparator: break
+        case .codeSeparator: opCodeSeparator(context: &context)
         case .checkSig: try opCheckSig(&stack, context: context)
         case .checkSigVerify: try opCheckSigVerify(&stack, context: context)
         case .checkMultiSig: try opCheckMultiSig(&stack, context: context)

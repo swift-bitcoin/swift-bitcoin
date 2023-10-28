@@ -40,7 +40,7 @@ final class ValidTransactionTests: XCTestCase {
             }
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)
-            if !excludeFlags.isEmpty && !excludeFlags.contains("CLEANSTACK") && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("NULLFAIL") {
+            if !excludeFlags.isEmpty && !excludeFlags.contains("CLEANSTACK") && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("NULLFAIL") && !excludeFlags.contains("SIGPUSHONLY") {
                 let failure = tx.verify(previousOutputs: previousOutputs, configuration: .standard)
                 XCTAssertFalse(failure)
             }
@@ -341,6 +341,24 @@ fileprivate let testVectors: [TestVector] = [
         verifyFlags: "NONE"
     ),
 
+    // A valid P2SH Transaction using the standard transaction type put forth in BIP 16
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .hash160,
+                    .pushBytes(Data(hex: "8febbed40483661de6958d957412f82deed8e2f7")!),
+                    .equal
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006e493046022100c66c9cdf4c43609586d15424c54707156e316d88b0a1534c9e6b0d4f311406310221009c0fe51dbc9c4ab7cc25d3fdbeccf6679fe6827f08edf2b4a9f16ee3eb0e438a0123210338e8034509af564c62644c07691942e0c056752008a173c89f60ab2a88ac2ebfacffffffff010000000000000000015100000000",
+        verifyFlags: "NONE" // // TODO: Change to LOW_S once BIP16 is implemented.
+    ),
+
     // Tests for CheckTransaction()
     // MAX_MONEY output
     .init(
@@ -357,7 +375,7 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006e493046022100e1eadba00d9296c743cb6ecc703fd9ddc9b3cd12906176a226ae4c18d6b00796022100a71aef7d2874deff681ba6080f1b278bac7bb99c61b08a85f4311970ffe7f63f012321030c0588dc44d92bdcbf8e72093466766fdc265ead8db64517b0c542275b70fffbacffffffff010040075af0750700015100000000",
-        verifyFlags: "NONE" // LOW_S
+        verifyFlags: "NONE" // TODO: Change to LOW_S once BIP16 is implemented.
     ),
 
     // MAX_MONEY output + 0 output
@@ -375,7 +393,7 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006d483045022027deccc14aa6668e78a8c9da3484fbcd4f9dcc9bb7d1b85146314b21b9ae4d86022100d0b43dece8cfb07348de0ca8bc5b86276fa88f7f2138381128b7c36ab2e42264012321029bb13463ddd5d2cc05da6e84e37536cb9525703cfd8f43afdb414988987a92f6acffffffff020040075af075070001510000000000000000015100000000",
-        verifyFlags: "NONE" // LOW_S
+        verifyFlags: "NONE" // TODO: Change to LOW_S once BIP16 is implemented.
     ),
 
     // Coinbase of size 2
@@ -532,8 +550,6 @@ fileprivate let testVectors: [TestVector] = [
 
     // Correct signature order
     // Note the input is just required to make the tester happy
-    // TODO: Enable once BIP16 is implemented.
-    /*
     .init(
         previousOutputs: [
             .init(
@@ -548,9 +564,8 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000012312503f2491a2a97fcd775f11e108a540a5528b5d4dee7a3c68ae4add01dab300000000fdfe0000483045022100f6649b0eddfdfd4ad55426663385090d51ee86c3481bdc6b0c18ea6c0ece2c0b0220561c315b07cffa6f7dd9df96dbae9200c2dee09bf93cc35ca05e6cdf613340aa0148304502207aacee820e08b0b174e248abd8d7a34ed63b5da3abedb99934df9fddd65c05c4022100dfe87896ab5ee3df476c2655f9fbe5bd089dccbef3e4ea05b5d121169fe7f5f4014c695221031d11db38972b712a9fe1fc023577c7ae3ddb4a3004187d41c45121eecfdbb5b7210207ec36911b6ad2382860d32989c7b8728e9489d7bbc94a6b5509ef0029be128821024ea9fac06f666a4adc3fc1357b7bec1fd0bdece2b9d08579226a8ebde53058e453aeffffffff0180380100000000001976a914c9b99cddf847d10685a4fabaa0baf505f7c3dfab88ac00000000",
-        verifyFlags: "LOW_S"
+        verifyFlags: "NONE" // TODO: Change to LOW_S once BIP16 is implemented.
     ),
-    */
 
     // cc60b1f899ec0a69b7c3f25ddf32c4524096a9c5b01cbd84c6d0312a0c478984, which is a fairly strange transaction which relies on OP_CHECKSIG returning 0 when checking a completely invalid sig of length 0
     .init(
@@ -682,6 +697,7 @@ fileprivate let testVectors: [TestVector] = [
         verifyFlags: "NULLFAIL"
     ),
 
+    // MARK: OP_CODESEPARATOR tests
     // Test that SignatureHash() removes OP_CODESEPARATOR with FindAndDelete()
     .init(
         previousOutputs: [
@@ -733,6 +749,216 @@ fileprivate let testVectors: [TestVector] = [
             ),
         ],
         serializedTransaction: "01000000015ebaa001d8e4ec7a88703a3bcf69d98c874bca6299cca0f191512bf2a7826832000000004948304502203bf754d1c6732fbf87c5dcd81258aefd30f2060d7bd8ac4a5696f7927091dad1022100f5bcb726c4cf5ed0ed34cc13dadeedf628ae1045b7cb34421bc60b89f4cecae701ffffffff010000000000000000016a00000000",
+        verifyFlags: "CONST_SCRIPTCODE,LOW_S"
+    ),
+
+    // But only if execution has reached it
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "a955032f4d6b0c9bfe8cad8f00a8933790b9c1dc28c82e0f48e75b35da0e4944",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(hex: "038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041")!),
+                    .checkSigVerify,
+                    .codeSeparator,
+                    .pushBytes(Data(hex: "038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041")!),
+                    .checkSigVerify,
+                    .codeSeparator,
+                    .constant(1)
+                ]
+            ),
+        ],
+        serializedTransaction: "010000000144490eda355be7480f2ec828dcc1b9903793a8008fad8cfe9b0c6b4d2f0355a900000000924830450221009c0a27f886a1d8cb87f6f595fbc3163d28f7a81ec3c4b252ee7f3ac77fd13ffa02203caa8dfa09713c8c4d7ef575c75ed97812072405d932bd11e6a1593a98b679370148304502201e3861ef39a526406bad1e20ecad06be7375ad40ddb582c9be42d26c3a0d7b240221009d0a3985e96522e59635d19cc4448547477396ce0ef17a58e7d74c3ef464292301ffffffff010000000000000000016a00000000",
+        verifyFlags: "CONST_SCRIPTCODE,LOW_S"
+    ),
+
+    // CODESEPARATOR in an unexecuted IF block does not change what is hashed
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "a955032f4d6b0c9bfe8cad8f00a8933790b9c1dc28c82e0f48e75b35da0e4944",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .if,
+                    .codeSeparator,
+                    .endIf,
+                    .pushBytes(Data(hex: "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71")!),
+                    .checkSigVerify,
+                    .codeSeparator,
+                    .constant(1)
+                ]
+            ),
+        ],
+        serializedTransaction: "010000000144490eda355be7480f2ec828dcc1b9903793a8008fad8cfe9b0c6b4d2f0355a9000000004a48304502207a6974a77c591fa13dff60cabbb85a0de9e025c09c65a4b2285e47ce8e22f761022100f0efaac9ff8ac36b10721e0aae1fb975c90500b50c56e8a0cc52b0403f0425dd0100ffffffff010000000000000000016a00000000",
+        verifyFlags: "CONST_SCRIPTCODE,LOW_S"
+    ),
+
+    // As above, with the IF block executed
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "a955032f4d6b0c9bfe8cad8f00a8933790b9c1dc28c82e0f48e75b35da0e4944",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .if,
+                    .codeSeparator,
+                    .endIf,
+                    .pushBytes(Data(hex: "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71")!),
+                    .checkSigVerify,
+                    .codeSeparator,
+                    .constant(1)
+                ]
+            ),
+        ],
+        serializedTransaction: "010000000144490eda355be7480f2ec828dcc1b9903793a8008fad8cfe9b0c6b4d2f0355a9000000004a483045022100fa4a74ba9fd59c59f46c3960cf90cbe0d2b743c471d24a3d5d6db6002af5eebb02204d70ec490fd0f7055a7c45f86514336e3a7f03503dacecabb247fc23f15c83510151ffffffff010000000000000000016a00000000",
+        verifyFlags: "CONST_SCRIPTCODE"
+    ),
+
+    // CHECKSIG is legal in scriptSigs
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "ccf7f4053a02e653c36ac75c891b7496d0dc5ce5214f6c913d9cf8f1329ebee0",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "ee5a6aa40facefb2655ac23c0c28c57c65c41f9b")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+        ],
+        serializedTransaction: "0100000001e0be9e32f1f89c3d916c4f21e55cdcd096741b895cc76ac353e6023a05f4f7cc00000000d86149304602210086e5f736a2c3622ebb62bd9d93d8e5d76508b98be922b97160edc3dcca6d8c47022100b23c312ac232a4473f19d2aeb95ab7bdf2b65518911a0d72d50e38b5dd31dc820121038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041ac4730440220508fa761865c8abd81244a168392876ee1d94e8ed83897066b5e2df2400dad24022043f5ee7538e87e9c6aef7ef55133d3e51da7cc522830a9c4d736977a76ef755c0121038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041ffffffff010000000000000000016a00000000",
+        verifyFlags: "SIGPUSHONLY,CONST_SCRIPTCODE,LOW_S,CLEANSTACK"
+    ),
+
+    // Same semantics for OP_CODESEPARATOR
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "10c9f0effe83e97f80f067de2b11c6a00c3088a4bce42c5ae761519af9306f3c",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "ee5a6aa40facefb2655ac23c0c28c57c65c41f9b")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+        ],
+        serializedTransaction: "01000000013c6f30f99a5161e75a2ce4bca488300ca0c6112bde67f0807fe983feeff0c91001000000e608646561646265656675ab61493046022100ce18d384221a731c993939015e3d1bcebafb16e8c0b5b5d14097ec8177ae6f28022100bcab227af90bab33c3fe0a9abfee03ba976ee25dc6ce542526e9b2e56e14b7f10121038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041ac493046022100c3b93edcc0fd6250eb32f2dd8a0bba1754b0f6c3be8ed4100ed582f3db73eba2022100bf75b5bd2eff4d6bf2bda2e34a40fcc07d4aa3cf862ceaa77b47b81eff829f9a01ab21038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041ffffffff010000000000000000016a00000000",
+        verifyFlags: "SIGPUSHONLY,CONST_SCRIPTCODE,LOW_S,CLEANSTACK"
+    ),
+
+    // Signatures are removed from the script they are in by FindAndDelete() in the CHECKSIG code; even multiple instances of one signature can be removed.
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "6056ebd549003b10cbbd915cea0d82209fe40b8617104be917a26fa92cbe3d6f",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "ee5a6aa40facefb2655ac23c0c28c57c65c41f9b")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+        ],
+        serializedTransaction: "01000000016f3dbe2ca96fa217e94b1017860be49f20820dea5c91bdcb103b0049d5eb566000000000fd1d0147304402203989ac8f9ad36b5d0919d97fa0a7f70c5272abee3b14477dc646288a8b976df5022027d19da84a066af9053ad3d1d7459d171b7e3a80bc6c4ef7a330677a6be548140147304402203989ac8f9ad36b5d0919d97fa0a7f70c5272abee3b14477dc646288a8b976df5022027d19da84a066af9053ad3d1d7459d171b7e3a80bc6c4ef7a330677a6be548140121038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041ac47304402203757e937ba807e4a5da8534c17f9d121176056406a6465054bdd260457515c1a02200f02eccf1bec0f3a0d65df37889143c2e88ab7acec61a7b6f5aa264139141a2b0121038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041ffffffff010000000000000000016a00000000",
+        verifyFlags: "SIGPUSHONLY,CONST_SCRIPTCODE,CLEANSTACK"
+    ),
+
+    // That also includes ahead of the opcode being executed.
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "5a6b0021a6042a686b6b94abc36b387bef9109847774e8b1e51eb8cc55c53921",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "ee5a6aa40facefb2655ac23c0c28c57c65c41f9b")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+        ],
+        serializedTransaction: "01000000012139c555ccb81ee5b1e87477840991ef7b386bc3ab946b6b682a04a621006b5a01000000fdb40148304502201723e692e5f409a7151db386291b63524c5eb2030df652b1f53022fd8207349f022100b90d9bbf2f3366ce176e5e780a00433da67d9e5c79312c6388312a296a5800390148304502201723e692e5f409a7151db386291b63524c5eb2030df652b1f53022fd8207349f022100b90d9bbf2f3366ce176e5e780a00433da67d9e5c79312c6388312a296a5800390121038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f2204148304502201723e692e5f409a7151db386291b63524c5eb2030df652b1f53022fd8207349f022100b90d9bbf2f3366ce176e5e780a00433da67d9e5c79312c6388312a296a5800390175ac4830450220646b72c35beeec51f4d5bc1cbae01863825750d7f490864af354e6ea4f625e9c022100f04b98432df3a9641719dbced53393022e7249fb59db993af1118539830aab870148304502201723e692e5f409a7151db386291b63524c5eb2030df652b1f53022fd8207349f022100b90d9bbf2f3366ce176e5e780a00433da67d9e5c79312c6388312a296a580039017521038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041ffffffff010000000000000000016a00000000",
+        verifyFlags: "SIGPUSHONLY,CONST_SCRIPTCODE,LOW_S,CLEANSTACK"
+    ),
+
+    // Finally CHECKMULTISIG removes all signatures prior to hashing the script containing those signatures. In conjunction with the SIGHASH_SINGLE bug this lets us test whether or not FindAndDelete() is actually present in scriptPubKey/redeemScript evaluation by including a signature of the digest 0x01 We can compute in advance for our pubkey, embed it in the scriptPubKey, and then also using a normal SIGHASH_ALL signature. If FindAndDelete() wasn't run, the 'bugged' signature would still be in the hashed script, and the normal signature would fail.
+    // Here's an example on mainnet within a P2SH redeemScript. Remarkably it's a standard transaction in <0.9
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "b5b598de91787439afd5938116654e0b16b7a0d0f82742ba37564219c5afcbf9",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "f6f365c40f0739b61de827a44751e5e99032ed8f")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+            .init(
+                transactionIdentifier: "ab9805c6d57d7070d9a42c5176e47bb705023e6b67249fb6760880548298e742",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .hash160,
+                    .pushBytes(Data(hex: "d8dacdadb7462ae15cd906f1878706d0da8660e6")!),
+                    .equalVerify
+                ]
+            ),
+        ],
+        serializedTransaction: "0100000002f9cbafc519425637ba4227f8d0a0b7160b4e65168193d5af39747891de98b5b5000000006b4830450221008dd619c563e527c47d9bd53534a770b102e40faa87f61433580e04e271ef2f960220029886434e18122b53d5decd25f1f4acb2480659fea20aabd856987ba3c3907e0121022b78b756e2258af13779c1a1f37ea6800259716ca4b7f0b87610e0bf3ab52a01ffffffff42e7988254800876b69f24676b3e0205b77be476512ca4d970707dd5c60598ab00000000fd260100483045022015bd0139bcccf990a6af6ec5c1c52ed8222e03a0d51c334df139968525d2fcd20221009f9efe325476eb64c3958e4713e9eefe49bf1d820ed58d2112721b134e2a1a53034930460221008431bdfa72bc67f9d41fe72e94c88fb8f359ffa30b33c72c121c5a877d922e1002210089ef5fc22dd8bfc6bf9ffdb01a9862d27687d424d1fefbab9e9c7176844a187a014c9052483045022015bd0139bcccf990a6af6ec5c1c52ed8222e03a0d51c334df139968525d2fcd20221009f9efe325476eb64c3958e4713e9eefe49bf1d820ed58d2112721b134e2a1a5303210378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71210378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c7153aeffffffff01a08601000000000017a914d8dacdadb7462ae15cd906f1878706d0da8660e68700000000",
+        verifyFlags: "CONST_SCRIPTCODE,LOW_S"
+    ),
+
+    // Same idea, but with bare CHECKMULTISIG
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "ceafe58e0f6e7d67c0409fbbf673c84c166e3c5d3c24af58f7175b18df3bb3db",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "f6f365c40f0739b61de827a44751e5e99032ed8f")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            ),
+            .init(
+                transactionIdentifier: "ceafe58e0f6e7d67c0409fbbf673c84c166e3c5d3c24af58f7175b18df3bb3db",
+                outputIndex: 1,
+                amount: 0,
+                scriptOperations: [
+                    .constant(2),
+                    .pushBytes(Data(hex: "3045022015bd0139bcccf990a6af6ec5c1c52ed8222e03a0d51c334df139968525d2fcd20221009f9efe325476eb64c3958e4713e9eefe49bf1d820ed58d2112721b134e2a1a5303")!),
+                    .pushBytes(Data(hex: "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71")!),
+                    .pushBytes(Data(hex: "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71")!),
+                    .constant(3),
+                    .checkMultiSig
+                ]
+            ),
+        ],
+        serializedTransaction: "0100000002dbb33bdf185b17f758af243c5d3c6e164cc873f6bb9f40c0677d6e0f8ee5afce000000006b4830450221009627444320dc5ef8d7f68f35010b4c050a6ed0d96b67a84db99fda9c9de58b1e02203e4b4aaa019e012e65d69b487fdf8719df72f488fa91506a80c49a33929f1fd50121022b78b756e2258af13779c1a1f37ea6800259716ca4b7f0b87610e0bf3ab52a01ffffffffdbb33bdf185b17f758af243c5d3c6e164cc873f6bb9f40c0677d6e0f8ee5afce010000009300483045022015bd0139bcccf990a6af6ec5c1c52ed8222e03a0d51c334df139968525d2fcd20221009f9efe325476eb64c3958e4713e9eefe49bf1d820ed58d2112721b134e2a1a5303483045022015bd0139bcccf990a6af6ec5c1c52ed8222e03a0d51c334df139968525d2fcd20221009f9efe325476eb64c3958e4713e9eefe49bf1d820ed58d2112721b134e2a1a5303ffffffff01a0860100000000001976a9149bc0bbdd3024da4d0c38ed1aecf5c68dd1d3fa1288ac00000000",
         verifyFlags: "CONST_SCRIPTCODE,LOW_S"
     ),
 

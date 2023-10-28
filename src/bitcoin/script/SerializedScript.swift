@@ -47,16 +47,9 @@ public struct SerializedScript: Script {
             guard let operation = ScriptOperation(data[startIndex...], version: version) else {
                 throw ScriptError.invalidInstruction
             }
-
-            /// Support for `OP_CODESEPARATOR` – and indirectly `OP_CHECKSIG` / `OP_CHECKSIGVERIFY`.
-            if operation == .codeSeparator {
-                context.lastCodeSeparatorOffset = context.programCounter
-            }
-
             context.decodedOperations.append(operation)
-            context.programCounter += operation.size
-
             try operation.execute(stack: &stack, context: &context)
+            context.programCounter += operation.size
         }
         guard context.pendingIfOperations.isEmpty, context.pendingElseOperations == 0 else {
             throw ScriptError.invalidScript
