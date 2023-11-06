@@ -34,7 +34,7 @@ struct ScriptContext {
     }
 
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`.
-    func getScriptCode(signature: Data) -> Data? {
+    func getScriptCode(signatures: [Data]) -> Data? {
         var scriptData = script.data
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)
@@ -47,9 +47,16 @@ struct ScriptContext {
                 return .none
             }
 
+            var operationContainsSignature = false
+            for sig in signatures {
+                if !sig.isEmpty, operation == .pushBytes(sig) {
+                    operationContainsSignature = true
+                    break
+                }
+            }
+
             if
-                operation != .codeSeparator &&
-                (signature.isEmpty || operation != .pushBytes(signature)) // Equivalent to FindAndDelete
+                operation != .codeSeparator && !operationContainsSignature // Equivalent to FindAndDelete
             {
                 scriptCode.append(operation.data)
             }

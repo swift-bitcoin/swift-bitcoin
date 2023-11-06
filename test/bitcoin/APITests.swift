@@ -78,6 +78,6 @@ final class APITests: XCTestCase {
                 )
             ])
         let previousOutputs = [coinbaseTx2.outputs[0]]
-        XCTAssert(tx.verify(previousOutputs: previousOutputs))
+        XCTAssert(tx.verify(previousOutputs: previousOutputs, configuration: .init(cleanStack: false)))
     }
 }

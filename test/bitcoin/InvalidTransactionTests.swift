@@ -30,10 +30,13 @@ final class InvalidTransactionTests: XCTestCase {
                 XCTAssertNoThrow(try tx.check())
             }
             var config = ScriptConfigurarion.standard
-            config.checkNullDummy = includeFlags.contains("NULLDUMMY")
-            config.checkLowS = includeFlags.contains("LOW_S")
-            config.checkStrictDER = includeFlags.contains("DERSIG")
-            config.checkStrictEncoding = includeFlags.contains("STRICTENC")
+            config.lowS = includeFlags.contains("LOW_S")
+            config.strictEncoding = includeFlags.contains("STRICTENC")
+            config.strictDER = includeFlags.contains("DERSIG")
+            config.pushOnly = includeFlags.contains("SIGPUSHONLY")
+            config.nullDummy = includeFlags.contains("NULLDUMMY")
+            config.cleanStack = includeFlags.contains("CLEANSTACK")
+            config.payToScriptHash = includeFlags.contains("P2SH")
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssertFalse(result)
         }
@@ -73,6 +76,92 @@ fileprivate let testVectors: [TestVector] = [
         ],
         serializedTransaction: "010000000127587a10248001f424ad94bb55cd6cd6086a0e05767173bdbdf647187beca76c000000004948304502201b822ad10d6adc1a341ae8835be3f70a25201bbff31f59cbb9c5353a5f0eca18022100ea7b2f7074e9aa9cf70aa8d0ffee13e6b45dddabf1ab961bda378bcdb778fa4701ffffffff0100f2052a010000001976a914fc50c5907d86fed474ba5ce8b12a66e0a4c139d888ac00000000",
         verifyFlags: "NONE"
+    ),
+
+    // This is the nearly-standard transaction with CHECKSIGVERIFY 1 instead of CHECKSIG from tx_valid.json but with the signature duplicated in the scriptPubKey with a non-standard pushdata prefix
+    // See FindAndDelete, which will only remove if it uses the same pushdata prefix as is standard
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
+                    .equalVerify,
+                    .checkSigVerify,
+                    .constant(1),
+                    .pushData1(Data(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a01")!),
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006a473044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a012103ba8c8b86dea131c22ab967e6dd99bdae8eff7a1f75a2c35f1f944109e3fe5e22ffffffff010000000000000000015100000000",
+        verifyFlags: "NONE"
+    ),
+
+    // Same as above, but with the sig in the scriptSig also pushed with the same non-standard OP_PUSHDATA
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
+                    .equalVerify,
+                    .checkSigVerify,
+                    .constant(1),
+                    .pushData1(Data(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a01")!),
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006b4c473044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a012103ba8c8b86dea131c22ab967e6dd99bdae8eff7a1f75a2c35f1f944109e3fe5e22ffffffff010000000000000000015100000000",
+        verifyFlags: "NONE"
+    ),
+
+    // This is the nearly-standard transaction with CHECKSIGVERIFY 1 instead of CHECKSIG from tx_valid.json but with the signature duplicated in the scriptPubKey with a different hashtype suffix
+    // See FindAndDelete, which will only remove if the signature, including the hash type, matches
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
+                    .equalVerify,
+                    .checkSigVerify,
+                    .constant(1),
+                    .pushBytes(Data(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a81")!),
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006a473044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a012103ba8c8b86dea131c22ab967e6dd99bdae8eff7a1f75a2c35f1f944109e3fe5e22ffffffff010000000000000000015100000000",
+        verifyFlags: "NONE"
+    ),
+
+    // An invalid P2SH Transaction
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .hash160,
+                    .pushBytes(Data(hex: "7a052c840ba73af26755de42cf01cc9e0a49fef0")!),
+                    .equal
+                ]
+            )
+        ],
+        serializedTransaction: "010000000100010000000000000000000000000000000000000000000000000000000000000000000009085768617420697320ffffffff010000000000000000015100000000",
+        verifyFlags: "P2SH"
     ),
 
     // Tests for CheckTransaction()

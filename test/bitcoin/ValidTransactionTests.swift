@@ -26,23 +26,32 @@ final class ValidTransactionTests: XCTestCase {
             var excludeFlags = Set(vector.verifyFlags.split(separator: ","))
             excludeFlags.remove("NONE")
             var config = ScriptConfigurarion.standard
-            if excludeFlags.contains("NULLDUMMY") {
-                config.checkNullDummy = false
+            if excludeFlags.contains("STRICTENC") {
+                config.strictEncoding = false
             }
             if excludeFlags.contains("LOW_S") {
-                config.checkLowS = false
+                config.lowS = false
             }
             if excludeFlags.contains("DERSIG") {
-                config.checkStrictDER = false
+                config.strictDER = false
             }
-            if excludeFlags.contains("STRICTENC") {
-                config.checkStrictEncoding = false
+            if excludeFlags.contains("NULLDUMMY") {
+                config.nullDummy = false
+            }
+            if excludeFlags.contains("CLEANSTACK") {
+                config.cleanStack = false
+            }
+            if excludeFlags.contains("P2SH") {
+                config.payToScriptHash = false
+            }
+            if excludeFlags.contains("SIGPUSHONLY") {
+                config.pushOnly = false
             }
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)
-            if !excludeFlags.isEmpty && !excludeFlags.contains("CLEANSTACK") && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("NULLFAIL") && !excludeFlags.contains("SIGPUSHONLY") {
-                let failure = tx.verify(previousOutputs: previousOutputs, configuration: .standard)
-                XCTAssertFalse(failure)
+            if !excludeFlags.isEmpty && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("NULLFAIL") {
+                 let failure = tx.verify(previousOutputs: previousOutputs, configuration: .standard)
+                 XCTAssertFalse(failure)
             }
         }
     }
@@ -356,7 +365,7 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006e493046022100c66c9cdf4c43609586d15424c54707156e316d88b0a1534c9e6b0d4f311406310221009c0fe51dbc9c4ab7cc25d3fdbeccf6679fe6827f08edf2b4a9f16ee3eb0e438a0123210338e8034509af564c62644c07691942e0c056752008a173c89f60ab2a88ac2ebfacffffffff010000000000000000015100000000",
-        verifyFlags: "NONE" // // TODO: Change to LOW_S once BIP16 is implemented.
+        verifyFlags: "LOW_S"
     ),
 
     // Tests for CheckTransaction()
@@ -375,7 +384,7 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006e493046022100e1eadba00d9296c743cb6ecc703fd9ddc9b3cd12906176a226ae4c18d6b00796022100a71aef7d2874deff681ba6080f1b278bac7bb99c61b08a85f4311970ffe7f63f012321030c0588dc44d92bdcbf8e72093466766fdc265ead8db64517b0c542275b70fffbacffffffff010040075af0750700015100000000",
-        verifyFlags: "NONE" // TODO: Change to LOW_S once BIP16 is implemented.
+        verifyFlags: "LOW_S"
     ),
 
     // MAX_MONEY output + 0 output
@@ -393,7 +402,7 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000006d483045022027deccc14aa6668e78a8c9da3484fbcd4f9dcc9bb7d1b85146314b21b9ae4d86022100d0b43dece8cfb07348de0ca8bc5b86276fa88f7f2138381128b7c36ab2e42264012321029bb13463ddd5d2cc05da6e84e37536cb9525703cfd8f43afdb414988987a92f6acffffffff020040075af075070001510000000000000000015100000000",
-        verifyFlags: "NONE" // TODO: Change to LOW_S once BIP16 is implemented.
+        verifyFlags: "LOW_S"
     ),
 
     // Coinbase of size 2
@@ -564,7 +573,7 @@ fileprivate let testVectors: [TestVector] = [
             )
         ],
         serializedTransaction: "01000000012312503f2491a2a97fcd775f11e108a540a5528b5d4dee7a3c68ae4add01dab300000000fdfe0000483045022100f6649b0eddfdfd4ad55426663385090d51ee86c3481bdc6b0c18ea6c0ece2c0b0220561c315b07cffa6f7dd9df96dbae9200c2dee09bf93cc35ca05e6cdf613340aa0148304502207aacee820e08b0b174e248abd8d7a34ed63b5da3abedb99934df9fddd65c05c4022100dfe87896ab5ee3df476c2655f9fbe5bd089dccbef3e4ea05b5d121169fe7f5f4014c695221031d11db38972b712a9fe1fc023577c7ae3ddb4a3004187d41c45121eecfdbb5b7210207ec36911b6ad2382860d32989c7b8728e9489d7bbc94a6b5509ef0029be128821024ea9fac06f666a4adc3fc1357b7bec1fd0bdece2b9d08579226a8ebde53058e453aeffffffff0180380100000000001976a914c9b99cddf847d10685a4fabaa0baf505f7c3dfab88ac00000000",
-        verifyFlags: "NONE" // TODO: Change to LOW_S once BIP16 is implemented.
+        verifyFlags: "LOW_S"
     ),
 
     // cc60b1f899ec0a69b7c3f25ddf32c4524096a9c5b01cbd84c6d0312a0c478984, which is a fairly strange transaction which relies on OP_CHECKSIG returning 0 when checking a completely invalid sig of length 0
@@ -921,7 +930,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .hash160,
                     .pushBytes(Data(hex: "d8dacdadb7462ae15cd906f1878706d0da8660e6")!),
-                    .equalVerify
+                    .equal
                 ]
             ),
         ],

@@ -16,14 +16,15 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
             default: preconditionFailure() // TODO: SegWit will require compressed public keys
         }
 
+        guard let scriptCode = context.getScriptCode(signatures: sigs) else {
+            throw ScriptError.invalidScript
+        }
+
         var result = false
         var i = 0
         while i < leftSigs.count {
             switch context.script.version {
                 case .legacy:
-                guard let scriptCode = context.getScriptCode(signature: leftSigs[i]) else {
-                    throw ScriptError.invalidScript
-                }
                 try checkSignature(leftSigs[i], scriptConfiguration: context.configuration)
                 result = context.transaction.verifySignature(extendedSignature: leftSigs[i], publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
                 default: preconditionFailure()

@@ -156,18 +156,62 @@ public struct Transaction: Equatable {
     //- MARK: Instance Methods
 
     /// Initial simplified version of transaction verification that allows for script execution.
-    public func verify(previousOutputs: [Output], configuration: ScriptConfigurarion = .standard) -> Bool{
+    public func verify(previousOutputs: [Output], configuration: ScriptConfigurarion = .standard) -> Bool {
         precondition(previousOutputs.count == inputs.count)
         for index in inputs.indices {
+            let scriptSig = inputs[index].script
+            let scriptPubKey = previousOutputs[index].script
+
+            // BIP62, BIP16
+            if configuration.pushOnly || (configuration.payToScriptHash && scriptPubKey.isPayToScriptHash) {
+                do {
+                    try scriptSig.checkPushOnly()
+                } catch {
+                    print("\(error) \(error.localizedDescription)")
+                    return false
+                }
+            }
             var stack = [Data]()
             do {
-                try inputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
-                try previousOutputs[index].script.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
+                try scriptSig.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
+            } catch {
+                print("\(error) \(error.localizedDescription)")
+                return false
+            }
+
+            // BIP16
+            let stackTmp = stack
+
+            do {
+                try scriptPubKey.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
             } catch {
                 print("\(error) \(error.localizedDescription)")
                 return false
             }
             if let last = stack.last, !ScriptBoolean(last).value {
+                return false
+            }
+
+            // BIP16
+            if configuration.payToScriptHash && scriptPubKey.isPayToScriptHash {
+                stack = stackTmp
+                guard let data = stack.popLast() else {
+                    preconditionFailure()
+                }
+                let redeemScript = SerializedScript(data)
+                do {
+                    try redeemScript.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
+                } catch {
+                    print("\(error) \(error.localizedDescription)")
+                    return false
+                }
+                if let last = stack.last, !ScriptBoolean(last).value {
+                    return false
+                }
+            }
+
+            // BIP62, BIP16
+            if configuration.cleanStack && stack.count != 1 {
                 return false
             }
         }

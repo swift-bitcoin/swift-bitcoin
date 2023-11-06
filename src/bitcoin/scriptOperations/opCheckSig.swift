@@ -8,7 +8,7 @@ func opCheckSig(_ stack: inout [Data], context: ScriptContext) throws {
     switch context.script.version {
         case .legacy:
         // Legacy semantics
-        guard let scriptCode = context.getScriptCode(signature: sig) else {
+        guard let scriptCode = context.getScriptCode(signatures: [sig]) else {
             throw ScriptError.invalidScript
         }
 
