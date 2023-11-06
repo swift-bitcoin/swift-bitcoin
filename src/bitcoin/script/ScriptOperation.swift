@@ -6,14 +6,19 @@ public enum ScriptOperation: Equatable {
 
     private func operationPreconditions() {
         switch(self) {
-        case .pushBytes(let d):
-            precondition(d.count > 0 && d.count <= 75)
-        case .pushData1(let d):
-            precondition(d.count > 75 && d.count <= UInt8.max)
-        case .pushData2(let d):
-            precondition(d.count > UInt8.max && d.count <= UInt16.max)
-        case .pushData4(let d):
-            precondition(d.count > UInt16.max && d.count <= UInt32.max)
+        case .pushBytes(_):
+            // TODO: Make precondition a script error when minimal data is enabled
+            // precondition(d.count > 0 && d.count <= 75)
+            break
+        case .pushData1(_):
+            // precondition(d.count > 75 && d.count <= UInt8.max)
+            break
+        case .pushData2(_):
+            // precondition(d.count > UInt8.max && d.count <= UInt16.max)
+            break
+        case .pushData4(_):
+            // precondition(d.count > UInt16.max && d.count <= UInt32.max)
+            break
         case .reserved(let k):
             precondition(k == 80 || (k >= 137 && k <= 138))
         case .constant(let k):

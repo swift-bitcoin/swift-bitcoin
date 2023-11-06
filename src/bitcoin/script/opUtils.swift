@@ -56,7 +56,7 @@ func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigur
     let sigs = Array(stack[(stack.endIndex - m)...].reversed())
     stack.removeLast(m)
     let dummyValue = stack.removeLast()
-    if configuration.checkNullDummy, dummyValue.count > 0 {
+    if configuration.nullDummy, dummyValue.count > 0 {
         throw ScriptError.dummyValueNotNull
     }
     return (n, publicKeys, m, sigs)
@@ -66,13 +66,13 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
     if extendedSignature.isEmpty { return }
-    if scriptConfiguration.checkStrictDER || scriptConfiguration.checkLowS || scriptConfiguration.checkStrictEncoding {
+    if scriptConfiguration.strictDER || scriptConfiguration.lowS || scriptConfiguration.strictEncoding {
         try checkSignatureEncoding(extendedSignature)
     }
-    if scriptConfiguration.checkLowS  {
+    if scriptConfiguration.lowS  {
         try checkSignatureLowS(extendedSignature)
     }
-    if scriptConfiguration.checkStrictEncoding  {
+    if scriptConfiguration.strictEncoding  {
         let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
         guard let sighashType = SighashType(sighashTypeData), sighashType.isDefined else {
             throw ScriptError.undefinedSighashType
@@ -81,7 +81,7 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
 }
 
 func checkPublicKey(_ publicKey: Data, scriptConfiguration: ScriptConfigurarion) throws {
-    if scriptConfiguration.checkStrictEncoding  {
+    if scriptConfiguration.strictEncoding  {
         try checkPublicKeyEncoding(publicKey)
     }
 }
