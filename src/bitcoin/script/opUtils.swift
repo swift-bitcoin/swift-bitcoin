@@ -47,7 +47,7 @@ func getSenaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data, Data, D
 
 func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigurarion) throws -> (Int, [Data], Int, [Data]) {
     guard stack.count > 4 else {
-        throw ScriptError.invalidScript
+        throw ScriptError.missingStackArgument
     }
     let n = try ScriptNumber(stack.removeLast()).value
     let publicKeys = Array(stack[(stack.endIndex - n)...].reversed())
@@ -55,6 +55,9 @@ func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigur
     let m = try ScriptNumber(stack.removeLast()).value
     let sigs = Array(stack[(stack.endIndex - m)...].reversed())
     stack.removeLast(m)
+    guard stack.count > 0 else {
+        throw ScriptError.missingDummyValue
+    }
     let dummyValue = stack.removeLast()
     if configuration.nullDummy, dummyValue.count > 0 {
         throw ScriptError.dummyValueNotNull

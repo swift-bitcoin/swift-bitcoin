@@ -15,12 +15,26 @@ public struct Locktime: Equatable {
         self.init(value32)
     }
 
-    private init(_ rawValue: UInt32) {
+    init(_ rawValue: UInt32) {
         self.init(Int(rawValue))
     }
 
     /// The numeric lock time value.
     public let locktimeValue: Int
+
+    var blockHeight: Int? {
+        guard locktimeValue <= Self.maxBlock.locktimeValue else {
+            return nil
+        }
+        return locktimeValue
+    }
+    
+    var secondsSince1970: Int? {
+        guard locktimeValue >= Self.minClock.locktimeValue else {
+            return nil
+        }
+        return locktimeValue
+    }
 
     var data: Data {
         withUnsafeBytes(of: rawValue) { Data($0) }
@@ -28,5 +42,7 @@ public struct Locktime: Equatable {
 
     var rawValue: UInt32 { UInt32(locktimeValue) }
 
+    public static let maxBlock = Self(minClock.locktimeValue - 1)
+    public static let minClock = Self(500_000_000)
     static let size = MemoryLayout<UInt32>.size
 }

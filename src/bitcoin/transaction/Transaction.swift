@@ -3,7 +3,7 @@ import Foundation
 /// A bitcoin transaction.
 public struct Transaction: Equatable {
 
-    //- MARK: Initializers
+    // MARK: - Initializers
 
     public init(version: Version, locktime: Locktime, inputs: [Input], outputs: [Output]) {
         self.version = version
@@ -75,7 +75,7 @@ public struct Transaction: Equatable {
         self.init(version: version, locktime: locktime, inputs: inputs, outputs: outputs)
     }
 
-    //- MARK: Instance Properties
+    // MARK: - Instance Properties
 
     /// The transaction's version.
     public let version: Version
@@ -153,7 +153,7 @@ public struct Transaction: Equatable {
         outputs.reduce(0) { $0 + $1.value }
     }
 
-    //- MARK: Instance Methods
+    // MARK: - Instance Methods
 
     /// Initial simplified version of transaction verification that allows for script execution.
     public func verify(previousOutputs: [Output], configuration: ScriptConfigurarion = .standard) -> Bool {
@@ -409,7 +409,7 @@ public struct Transaction: Equatable {
         return txCopy.data + sighashType.data32
     }
 
-    //- MARK: Type Properties
+    // MARK: - Type Properties
 
     /// The total amount of bitcoin supply is actually less than this number. But `maxMoney` as a limit for any amount is a  consensus-critical constant.
     static let maxMoney = 2_100_000_000_000_000
@@ -426,7 +426,7 @@ public struct Transaction: Equatable {
     /// BIP144
     private static let segwitFlag = UInt8(0x01)
 
-    //- MARK: Type Methods
+    // MARK: - Type Methods
 
     // No type methods yet.
 }

@@ -3,7 +3,7 @@ import Foundation
 /// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
 public struct ScriptConfigurarion {
 
-    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true) {
+    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
         self.pushOnly = pushOnly
         self.lowS = lowS
@@ -11,6 +11,7 @@ public struct ScriptConfigurarion {
         self.nullDummy = nullDummy
         self.strictEncoding = strictEncoding
         self.payToScriptHash = payToScriptHash || cleanStack
+        self.checkLockTimeVerify = checkLockTimeVerify
     }
 
     /// BIP66 (consensus) and BIP62 rule 1 (policy)
@@ -52,6 +53,9 @@ public struct ScriptConfigurarion {
 
     /// BIP16
     public var payToScriptHash = true
+
+    /// BIP65: Evaluate `OP_CHECKLOCKTIMEVERIFY`.
+    public var checkLockTimeVerify = true
 
     /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
     public static let standard = ScriptConfigurarion()

@@ -29,6 +29,7 @@ public struct Sequence: Equatable {
     var rawValue: UInt32 { UInt32(sequenceValue) }
 
     public static let initial = Self(0)
+    public static let final = Self(0xffffffff)
 
     static let size = MemoryLayout<UInt32>.size
 }

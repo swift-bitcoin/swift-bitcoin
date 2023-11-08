@@ -47,9 +47,12 @@ final class ValidTransactionTests: XCTestCase {
             if excludeFlags.contains("SIGPUSHONLY") {
                 config.pushOnly = false
             }
+            if excludeFlags.contains("CHECKLOCKTIMEVERIFY") {
+                config.checkLockTimeVerify = false
+            }
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)
-            if !excludeFlags.isEmpty && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("NULLFAIL") {
+            if !excludeFlags.isEmpty && !excludeFlags.contains("CONST_SCRIPTCODE") && !excludeFlags.contains("NULLFAIL") && !excludeFlags.contains("MINIMALDATA") {
                  let failure = tx.verify(previousOutputs: previousOutputs, configuration: .standard)
                  XCTAssertFalse(failure)
             }
@@ -72,6 +75,9 @@ fileprivate struct TestVector {
 }
 
 fileprivate let testVectors: [TestVector] = [
+
+    // MARK: - Valid transactions
+    // The following are deserialized transactions which are valid.
 
     // The following is 23b397edccd3740a74adb603c9756370fafcde9bcc4483eb271ecad09a94dd63
     // It is of particular interest because it contains an invalidly-encoded signature which OpenSSL accepts
@@ -368,7 +374,8 @@ fileprivate let testVectors: [TestVector] = [
         verifyFlags: "LOW_S"
     ),
 
-    // Tests for CheckTransaction()
+    // MARK: - Tests for CheckTransaction()
+
     // MAX_MONEY output
     .init(
         previousOutputs: [
@@ -706,7 +713,8 @@ fileprivate let testVectors: [TestVector] = [
         verifyFlags: "NULLFAIL"
     ),
 
-    // MARK: OP_CODESEPARATOR tests
+    // MARK: - OP_CODESEPARATOR tests
+
     // Test that SignatureHash() removes OP_CODESEPARATOR with FindAndDelete()
     .init(
         previousOutputs: [
@@ -969,6 +977,235 @@ fileprivate let testVectors: [TestVector] = [
         ],
         serializedTransaction: "0100000002dbb33bdf185b17f758af243c5d3c6e164cc873f6bb9f40c0677d6e0f8ee5afce000000006b4830450221009627444320dc5ef8d7f68f35010b4c050a6ed0d96b67a84db99fda9c9de58b1e02203e4b4aaa019e012e65d69b487fdf8719df72f488fa91506a80c49a33929f1fd50121022b78b756e2258af13779c1a1f37ea6800259716ca4b7f0b87610e0bf3ab52a01ffffffffdbb33bdf185b17f758af243c5d3c6e164cc873f6bb9f40c0677d6e0f8ee5afce010000009300483045022015bd0139bcccf990a6af6ec5c1c52ed8222e03a0d51c334df139968525d2fcd20221009f9efe325476eb64c3958e4713e9eefe49bf1d820ed58d2112721b134e2a1a5303483045022015bd0139bcccf990a6af6ec5c1c52ed8222e03a0d51c334df139968525d2fcd20221009f9efe325476eb64c3958e4713e9eefe49bf1d820ed58d2112721b134e2a1a5303ffffffff01a0860100000000001976a9149bc0bbdd3024da4d0c38ed1aecf5c68dd1d3fa1288ac00000000",
         verifyFlags: "CONST_SCRIPTCODE,LOW_S"
+    ),
+
+    // MARK: - CHECKLOCKTIMEVERIFY tests (BIP65)
+
+    // By-height locks, with argument == 0 and == tx nLockTime
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .zero,
+                    .checkLockTimeVerify,
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "010000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+        verifyFlags: "CLEANSTACK"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "1dcd64ff")!.reversed())), // 499_999_999
+                    .checkLockTimeVerify
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001000100000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000ff64cd1d",
+        verifyFlags: "NONE"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .zero,
+                    .checkLockTimeVerify,
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001000100000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000ff64cd1d",
+        verifyFlags: "CLEANSTACK"
+    ),
+
+    // By-time locks, with argument just beyond tx nLockTime (but within numerical boundaries)
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "1dcd6500")!.reversed())), // 500_000_000
+                    .checkLockTimeVerify,
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000065cd1d",
+        verifyFlags: "NONE"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .checkLockTimeVerify
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001000100000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000ffffffff",
+        verifyFlags: "NONE"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "1dcd6500")!.reversed())), // 500_000_000
+                    .checkLockTimeVerify
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001000100000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000ffffffff",
+        verifyFlags: "NONE"
+    ),
+
+    // Any non-maxint nSequence is fine
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .zero,
+                    .checkLockTimeVerify,
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "010000000100010000000000000000000000000000000000000000000000000000000000000000000000feffffff0100000000000000000000000000",
+        verifyFlags: "CLEANSTACK"
+    ),
+
+    // The argument can be calculated rather than created directly by a PUSHDATA
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "1dcd64ff")!.reversed())), // 499_999_999
+                    .oneAdd,
+                    .checkLockTimeVerify
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000065cd1d",
+        verifyFlags: "NONE"
+    ),
+
+    // Perhaps even by an ADD producing a 5-byte result that is out of bounds for other opcodes
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "7fffffff")!.reversed())), // 2_147_483_647
+                    .pushBytes(Data(Data(hex: "7fffffff")!.reversed())), // 2_147_483_647
+                    .add,
+                    .checkLockTimeVerify
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001000100000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000feffffff",
+        verifyFlags: "NONE"
+    ),
+
+    // 5 byte non-minimally-encoded arguments are valid
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(hex: "0x0000000000")!),
+                    .checkLockTimeVerify,
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "010000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+        verifyFlags: "CLEANSTACK,MINIMALDATA"
+    ),
+
+    // Valid CHECKLOCKTIMEVERIFY in scriptSig
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "01000000010001000000000000000000000000000000000000000000000000000000000000000000000251b1000000000100000000000000000001000000",
+        verifyFlags: "SIGPUSHONLY,CLEANSTACK"
+    ),
+
+    // Valid CHECKLOCKTIMEVERIFY in redeemScript
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .hash160,
+                    .pushBytes(Data(hex: "c5b93064159b3b2d6ab506a41b1f50463771b988")!),
+                    .equal
+                ]
+            )
+        ],
+        serializedTransaction: "0100000001000100000000000000000000000000000000000000000000000000000000000000000000030251b1000000000100000000000000000001000000",
+        verifyFlags: "NONE"
+    ),
+
+    // A transaction with a non-standard DER signature.
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "b1dbc81696c8a9c0fccd0693ab66d7c368dbc38c0def4e800685560ddd1b2132",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .dup,
+                    .hash160,
+                    .pushBytes(Data(hex: "4b3bd7eba3bc0284fd3007be7f3be275e94f5826")!),
+                    .equalVerify,
+                    .checkSig
+                ]
+            )
+        ],
+        serializedTransaction: "010000000132211bdd0d568506804eef0d8cc3db68c3d766ab9306cdfcc0a9c89616c8dbb1000000006c493045022100c7bb0faea0522e74ff220c20c022d2cb6033f8d167fb89e75a50e237a35fd6d202203064713491b1f8ad5f79e623d0219ad32510bfaa1009ab30cbee77b59317d6e30001210237af13eb2d84e4545af287b919c2282019c9691cc509e78e196a9d8274ed1be0ffffffff0100000000000000001976a914f1b3ed2eda9a2ebe5a9374f692877cdf87c0f95b88ac00000000",
+        verifyFlags: "DERSIG,LOW_S,STRICTENC"
     ),
 
 ]
