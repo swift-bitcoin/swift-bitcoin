@@ -13,7 +13,7 @@ public struct ScriptConfigurarion {
         self.payToScriptHash = payToScriptHash || cleanStack
     }
 
-    /// BIP62 rule 1
+    /// BIP66 (consensus) and BIP62 rule 1 (policy)
     /// Passing a non-strict-DER signature to a checksig operation causes script failure.
     public var strictDER = true
 
@@ -59,7 +59,6 @@ public struct ScriptConfigurarion {
     /// Mandatory script verification flags that all new transactions must comply with for them to be valid. Failing one of these tests may trigger a DoS ban. See `CheckInputScripts()` on Bitcoin Core  for details.
     /// Note that this does not affect consensus validity. See `GetBlockScriptFlags()` for that.
     public static let mandatory = ScriptConfigurarion(
-        strictDER: false,
         pushOnly: false,
         lowS: false,
         cleanStack: false,
