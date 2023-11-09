@@ -323,6 +323,108 @@ public struct Transaction: Equatable {
         }
     }
 
+    /// BIP68 - Untested - Entrypoint 1.
+    func checkSequenceLocks(scriptConfiguration: ScriptConfigurarion, coins: [Outpoint : Coin], chainTip: Int, previousBlockMedianTimePast: Int) throws {
+        // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate
+        // height based locks because when SequenceLocks() is called within
+        // ConnectBlock(), the height of the block *being*
+        // evaluated is what is used.
+        // Thus if we want to know if a transaction can be part of the
+        // *next* block, we need to use one more than chainActive.Height()
+        let nextBlockHeight = chainTip + 1
+        var heights = [Int]()
+        // pcoinsTip contains the UTXO set for chainActive.Tip()
+        for input in inputs {
+            guard let coin = coins[input.outpoint] else {
+                preconditionFailure()
+            }
+            if coin.height == 0x7FFFFFFF /* MEMPOOL_HEIGHT */ {
+                // Assume all mempool transaction confirm in the next block
+                heights.append(nextBlockHeight)
+            } else {
+                heights.append(coin.height)
+            }
+        }
+        let lockPair = calculateSequenceLocks(scriptConfiguration: scriptConfiguration, previousHeights: &heights, blockHeight: nextBlockHeight)
+        try evaluateSequenceLocks(blockHeight: nextBlockHeight, previousBlockMedianTimePast: previousBlockMedianTimePast, lockPair: lockPair)
+    }
+
+    /// BIP68 - Untested. Entrypoint 2.
+    func sequenceLocks(scriptConfiguration: ScriptConfigurarion, previousHeights: inout [Int], blockHeight: Int, previousBlockMedianTimePast: Int) throws {
+        try evaluateSequenceLocks(blockHeight: blockHeight, previousBlockMedianTimePast: previousBlockMedianTimePast, lockPair: calculateSequenceLocks(scriptConfiguration: scriptConfiguration, previousHeights: &previousHeights, blockHeight: blockHeight))
+    }
+
+    /// BIP68 - Untested
+    /// Calculates the block height and previous block's median time past at
+    /// which the transaction will be considered final in the context of BIP 68.
+    /// Also removes from the vector of input heights any entries which did not
+    /// correspond to sequence locked inputs as they do not affect the calculation.
+    /// Called from ``Transaction.sequenceLocks()``.
+    func calculateSequenceLocks(scriptConfiguration: ScriptConfigurarion, previousHeights: inout [Int], blockHeight: Int) -> (Int, Int) {
+
+        precondition(previousHeights.count == inputs.count);
+
+        // Will be set to the equivalent height- and time-based nLockTime
+        // values that would be necessary to satisfy all relative lock-
+        // time constraints given our view of block chain history.
+        // The semantics of nLockTime are the last invalid height/time, so
+        // use -1 to have the effect of any height or time being valid.
+        var minHeight = -1;
+        var minTime = -1;
+
+        // tx.nVersion is signed integer so requires cast to unsigned otherwise
+        // we would be doing a signed comparison and half the range of nVersion
+        // wouldn't support BIP 68.
+        let enforceBIP68 = version >= .v2 && scriptConfiguration.lockTimeSequence
+
+        // Do not enforce sequence numbers as a relative lock time
+        // unless we have been instructed to
+        guard enforceBIP68 else { return (minHeight, minTime) }
+
+        for inputIndex in inputs.indices {
+            let input = inputs[inputIndex]
+
+            // Sequence numbers with the most significant bit set are not
+            // treated as relative lock-times, nor are they given any
+            // consensus-enforced meaning at this point.
+            if input.sequence.isLocktimeDisabled {
+                // The height of this input is not relevant for sequence locks
+                previousHeights[inputIndex] = 0
+                continue
+            }
+
+            let coinHeight = previousHeights[inputIndex]
+
+            if let locktimeSeconds = input.sequence.locktimeSeconds {
+                // NOTE: Subtract 1 to maintain nLockTime semantics
+                // BIP 68 relative lock times have the semantics of calculating
+                // the first block or time at which the transaction would be
+                // valid. When calculating the effective block time or height
+                // for the entire transaction, we switch to using the
+                // semantics of nLockTime which is the last invalid block
+                // time or height.  Thus we subtract 1 from the calculated
+                // time or height.
+                //
+                // Time-based relative lock-times are measured from the
+                // smallest allowed timestamp of the block containing the
+                // txout being spent, which is the median time past of the
+                // block prior.
+                let coinTime = 0 // TODO: Retrieve the block previous to the coin height `blockHeight.GetAncestor(std::max(nCoinHeight-1, 0))->GetMedianTimePast()`
+                minTime = max(minTime, coinTime + locktimeSeconds - 1)
+            } else if let locktimeBlocks = input.sequence.locktimeBlocks {
+                minHeight = max(minHeight, coinHeight + locktimeBlocks - 1)
+            }
+        }
+        return (minHeight, minTime)
+    }
+
+    /// BIP68 - Untested. Called by ``Transaction.checkSequenceLocks()`` and ``Transaction.sequenceLocks()``.
+    func evaluateSequenceLocks(blockHeight: Int, previousBlockMedianTimePast: Int, lockPair: (Int, Int)) throws {
+        if lockPair.0 >= blockHeight || lockPair.1 >= previousBlockMedianTimePast {
+            throw TransactionError.futureLockTime
+        }
+    }
+
     func verifySignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Bool {
         if extendedSignature.isEmpty {
             return false
