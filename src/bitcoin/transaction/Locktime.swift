@@ -12,11 +12,7 @@ public struct Locktime: Equatable {
             return nil
         }
         let value32 = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        self.init(value32)
-    }
-
-    init(_ rawValue: UInt32) {
-        self.init(Int(rawValue))
+        self.init(Int(value32))
     }
 
     /// The numeric lock time value.

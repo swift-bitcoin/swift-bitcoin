@@ -15,5 +15,6 @@ enum TransactionError: Error {
          prematureCoinbaseSpend,
          inputValuesOutOfRange,
          inputsValueBelowOutput,
-         feeOutOfRange
+         feeOutOfRange,
+         futureLockTime
 }
