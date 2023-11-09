@@ -6,39 +6,49 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
     precondition(m <= n)
     precondition(publicKeys.count == n)
     precondition(sigs.count == m)
-    var leftPubKeys = publicKeys
-    var leftSigs = sigs
 
-    // TODO: Fix bug #60
-    while leftPubKeys.count > 0 && leftSigs.count > 0 {
-        let publicKey = leftPubKeys.removeFirst()
-
-        switch context.script.version {
-            case .legacy: try checkPublicKey(publicKey, scriptConfiguration: context.configuration)
-            default: preconditionFailure() // TODO: SegWit will require compressed public keys
-        }
-
-        guard let scriptCode = context.getScriptCode(signatures: sigs) else {
-            throw ScriptError.invalidScript
-        }
-
-        var result = false
-        var i = 0
-        while i < leftSigs.count {
-            switch context.script.version {
-                case .legacy:
-                try checkSignature(leftSigs[i], scriptConfiguration: context.configuration)
-                result = context.transaction.verifySignature(extendedSignature: leftSigs[i], publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
-                default: preconditionFailure()
-            }
-            if result {
-                break
-            }
-            i += 1
-        }
-        if result {
-            leftSigs.remove(at: i)
-        }
+    guard let scriptCode = context.getScriptCode(signatures: sigs) else {
+        throw ScriptError.invalidScript
     }
-    stack.append(ScriptBoolean(leftSigs.count == 0).data)
+
+    var keysCount = publicKeys.count
+    var sigsCount = sigs.count
+    var keyIndex = publicKeys.startIndex
+    var sigIndex = sigs.startIndex
+    var success = true
+    while success && sigsCount > 0 {
+        let sig = sigs[sigIndex]
+        let pubKey =  publicKeys[keyIndex]
+
+        // Note how this makes the exact order of pubkey/signature evaluation
+        // distinguishable by CHECKMULTISIG NOT if the STRICTENC flag is set.
+        // See the script_(in)valid tests for details.
+        switch context.script.version {
+        case .legacy: try checkPublicKey(pubKey, scriptConfiguration: context.configuration)
+        default: preconditionFailure() // TODO: SegWit will require compressed public keys
+        }
+
+        // Check signature
+        var ok = false
+        switch context.script.version {
+        case .legacy:
+            try checkSignature(sig, scriptConfiguration: context.configuration)
+            ok = context.transaction.verifySignature(extendedSignature: sig, publicKey: pubKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
+        default: preconditionFailure()
+        }
+
+        if ok {
+            sigIndex += 1
+            sigsCount -= 1
+        }
+        keyIndex += 1
+        keysCount -= 1
+
+        // If there are more signatures left than keys left,
+        // then too many signatures have failed. Exit early,
+        // without checking any further signatures.
+        if sigsCount > keysCount { success = false }
+    }
+
+    stack.append(ScriptBoolean(success).data)
 }

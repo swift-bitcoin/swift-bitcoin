@@ -383,8 +383,6 @@ fileprivate let testVectors: [TestVector] = [
         verifyFlags: "NONE"
     ),
 
-    // The following transaction is commented out due to #60
-    /*
     // CHECKMULTISIG with incorrect signature order
     // Note the input is just required to make the tester happy
     .init(
@@ -403,7 +401,6 @@ fileprivate let testVectors: [TestVector] = [
         serializedTransaction: "01000000012312503f2491a2a97fcd775f11e108a540a5528b5d4dee7a3c68ae4add01dab300000000fdfe000048304502207aacee820e08b0b174e248abd8d7a34ed63b5da3abedb99934df9fddd65c05c4022100dfe87896ab5ee3df476c2655f9fbe5bd089dccbef3e4ea05b5d121169fe7f5f401483045022100f6649b0eddfdfd4ad55426663385090d51ee86c3481bdc6b0c18ea6c0ece2c0b0220561c315b07cffa6f7dd9df96dbae9200c2dee09bf93cc35ca05e6cdf613340aa014c695221031d11db38972b712a9fe1fc023577c7ae3ddb4a3004187d41c45121eecfdbb5b7210207ec36911b6ad2382860d32989c7b8728e9489d7bbc94a6b5509ef0029be128821024ea9fac06f666a4adc3fc1357b7bec1fd0bdece2b9d08579226a8ebde53058e453aeffffffff0180380100000000001976a914c9b99cddf847d10685a4fabaa0baf505f7c3dfab88ac00000000",
         verifyFlags: "P2SH"
     ),
-    */
 
     // The following is a tweaked form of 23b397edccd3740a74adb603c9756370fafcde9bcc4483eb271ecad09a94dd63
     // It is an OP_CHECKMULTISIG with the dummy value missing
