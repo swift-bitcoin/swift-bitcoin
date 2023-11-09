@@ -3,7 +3,7 @@ import Foundation
 /// A single input of a ``Transaction``.
 public struct Input: Equatable {
 
-    //- MARK: Initializers
+    // MARK: - Initializers
 
     /// Constructs a transaction input.
     /// - Parameters:
@@ -42,7 +42,7 @@ public struct Input: Equatable {
         self.init(outpoint: outpoint, sequence: sequence, script: script)
     }
 
-    //- MARK: Instance Properties
+    // MARK: - Instance Properties
 
     /// A reference to a previously unspent output of a prior transaction.
     public var outpoint: Outpoint

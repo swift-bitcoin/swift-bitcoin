@@ -8,6 +8,8 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
     precondition(sigs.count == m)
     var leftPubKeys = publicKeys
     var leftSigs = sigs
+
+    // TODO: Fix bug #60
     while leftPubKeys.count > 0 && leftSigs.count > 0 {
         let publicKey = leftPubKeys.removeFirst()
 

@@ -14,5 +14,11 @@ enum ScriptError: Error {
          invalidPublicKeyEncoding,
          invalidSignatureEncoding,
          undefinedSighashType,
-         dummyValueNotNull
+         missingDummyValue,
+         dummyValueNotNull,
+         invalidLockTimeArgument,
+         lockTimeHeightEarly,
+         lockTimeSecondsEarly,
+         inputSequenceFinal,
+         missingStackArgument
 }

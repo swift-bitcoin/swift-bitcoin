@@ -2,7 +2,7 @@ import Foundation
 
 /// RIPE Message Digest 160 Swift implementation. Reference implementation [here](https://github.com/MiclausCorp/ripemd160-Swift/)
 struct RIPEMD160 {
-    // MARK: Internal Variables
+    // MARK: - Internal Variables
     /// Message Digest buffer
     private var MDbuffer: (UInt32, UInt32, UInt32, UInt32, UInt32)
 
