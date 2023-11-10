@@ -22,14 +22,17 @@ final class InvalidTransactionTests: XCTestCase {
             let previousOutputs = vector.previousOutputs.map { previousOutput in
                 Output(value: previousOutput.amount, script: ParsedScript(previousOutput.scriptOperations))
             }
-            let includeFlags = Set(vector.verifyFlags.split(separator: ","))
+            var includeFlags = Set(vector.verifyFlags.split(separator: ","))
+            includeFlags.remove("NONE")
             if includeFlags.contains("BADTX") {
                 XCTAssertThrowsError(try tx.check())
                 continue
             } else {
                 XCTAssertNoThrow(try tx.check())
             }
+            includeFlags.remove("BADTX")
             var config = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false)
+
             if includeFlags.contains("STRICTENC") {
                 config.strictEncoding = true
             }
@@ -59,6 +62,12 @@ final class InvalidTransactionTests: XCTestCase {
             }
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssertFalse(result)
+
+            if !includeFlags.isEmpty {
+                let configSuccess = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false)
+                let resultSuccess = tx.verify(previousOutputs: previousOutputs, configuration: configSuccess)
+                XCTAssert(resultSuccess)
+            }
         }
     }
 }
@@ -90,7 +99,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(hex: "043b640e983c9690a14c039a2037ecc3467b27a0dcd58f19d76c7bc118d09fec45adc5370a1c5bf8067ca9f5557a4cf885fdb0fe0dcc9c3a7137226106fbc779a5")!),
+                    .pushBytes(.init(hex: "043b640e983c9690a14c039a2037ecc3467b27a0dcd58f19d76c7bc118d09fec45adc5370a1c5bf8067ca9f5557a4cf885fdb0fe0dcc9c3a7137226106fbc779a5")!),
                     .checkSig,
                     .verify,
                     .constant(1)
@@ -112,11 +121,11 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(Data(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
+                    .pushBytes(.init(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
                     .equalVerify,
                     .checkSigVerify,
                     .constant(1),
-                    .pushData1(Data(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a01")!),
+                    .pushData1(.init(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a01")!),
                 ]
             )
         ],
@@ -134,11 +143,11 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(Data(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
+                    .pushBytes(.init(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
                     .equalVerify,
                     .checkSigVerify,
                     .constant(1),
-                    .pushData1(Data(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a01")!),
+                    .pushData1(.init(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a01")!),
                 ]
             )
         ],
@@ -157,11 +166,11 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(Data(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
+                    .pushBytes(.init(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
                     .equalVerify,
                     .checkSigVerify,
                     .constant(1),
-                    .pushBytes(Data(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a81")!),
+                    .pushBytes(.init(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a81")!),
                 ]
             )
         ],
@@ -178,7 +187,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(Data(hex: "7a052c840ba73af26755de42cf01cc9e0a49fef0")!),
+                    .pushBytes(.init(hex: "7a052c840ba73af26755de42cf01cc9e0a49fef0")!),
                     .equal
                 ]
             )
@@ -198,7 +207,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(Data(hex: "05ab9e14d983742513f0f451e105ffb4198d1dd4")!),
+                    .pushBytes(.init(hex: "05ab9e14d983742513f0f451e105ffb4198d1dd4")!),
                     .equal
                 ]
             )
@@ -216,7 +225,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(Data(hex: "ae609aca8061d77c5e111f6bb62501a6bbe2bfdb")!),
+                    .pushBytes(.init(hex: "ae609aca8061d77c5e111f6bb62501a6bbe2bfdb")!),
                     .equal
                 ]
             )
@@ -234,7 +243,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(Data(hex: "32afac281462b822adbec5094b8d4d337dd5bd6a")!),
+                    .pushBytes(.init(hex: "32afac281462b822adbec5094b8d4d337dd5bd6a")!),
                     .equal
                 ]
             )
@@ -252,7 +261,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(Data(hex: "b558cbf4930954aa6a344363a15668d7477ae716")!),
+                    .pushBytes(.init(hex: "b558cbf4930954aa6a344363a15668d7477ae716")!),
                     .equal
                 ]
             )
@@ -270,7 +279,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(Data(hex: "236d0639db62b0773fd8ac34dc85ae19e9aba80a")!),
+                    .pushBytes(.init(hex: "236d0639db62b0773fd8ac34dc85ae19e9aba80a")!),
                     .equal
                 ]
             )
@@ -368,7 +377,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(hex: "035e7f0d4d0841bcd56c39337ed086b1a633ee770c1ffdd94ac552a95ac2ce0efc")!),
+                    .pushBytes(.init(hex: "035e7f0d4d0841bcd56c39337ed086b1a633ee770c1ffdd94ac552a95ac2ce0efc")!),
                     .checkSig
                 ]
             ),
@@ -377,7 +386,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(hex: "035e7f0d4d0841bcd56c39337ed086b1a633ee770c1ffdd94ac552a95ac2ce0efc")!),
+                    .pushBytes(.init(hex: "035e7f0d4d0841bcd56c39337ed086b1a633ee770c1ffdd94ac552a95ac2ce0efc")!),
                     .checkSig
                 ]
             ),
@@ -396,7 +405,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(Data(hex: "b1ce99298d5f07364b57b1e5c9cc00be0b04a954")!),
+                    .pushBytes(.init(hex: "b1ce99298d5f07364b57b1e5c9cc00be0b04a954")!),
                     .equal
                 ]
             ),
@@ -415,8 +424,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(1),
-                    .pushBytes(Data(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
-                    .pushBytes(Data(hex: "0x0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
+                    .pushBytes(.init(hex: "0x0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
                     .constant(2),
                     .checkMultiSig
                 ]
@@ -438,8 +447,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(1),
-                    .pushBytes(Data(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
-                    .pushBytes(Data(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
+                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
                     .constant(2),
                     .checkMultiSig
                 ]
@@ -475,7 +484,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "1dcd64ff")!.reversed())), // 499_999_999
+                    .pushBytes(.init(Data(hex: "1dcd64ff")!.reversed())), // 499_999_999
                     .checkLockTimeVerify
                 ]
             )
@@ -492,7 +501,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "1dcd6501")!.reversed())), // 500_000_001
+                    .pushBytes(.init(Data(hex: "1dcd6501")!.reversed())), // 500_000_001
                     .checkLockTimeVerify
                 ]
             )
@@ -508,7 +517,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .pushBytes(.init(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
                     .checkLockTimeVerify
                 ]
             )
@@ -698,7 +707,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "1dcd64ff")!.reversed())), // 499_999_999
+                    .pushBytes(.init(Data(hex: "1dcd64ff")!.reversed())), // 499_999_999
                     .checkLockTimeVerify,
                 ]
             )
@@ -714,7 +723,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "1dcd6500")!.reversed())), // 500_000_000
+                    .pushBytes(.init(Data(hex: "1dcd6500")!.reversed())), // 500_000_000
                     .checkLockTimeVerify
                 ]
             )
@@ -730,7 +739,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "1dcd6500")!.reversed())), // 500_000_000
+                    .pushBytes(.init(Data(hex: "1dcd6500")!.reversed())), // 500_000_000
                     .checkLockTimeVerify
                 ]
             )
@@ -747,7 +756,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "1000000000")!.reversed())),
+                    .pushBytes(.init(Data(hex: "1000000000")!.reversed())),
                     .checkLockTimeVerify
                 ]
             )
@@ -764,7 +773,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "80000000")!.reversed())), // 2_147_483_648
+                    .pushBytes(.init(Data(hex: "0080000000")!.reversed())), // 2_147_483_648
                     .checkLockTimeVerify
                 ]
             )
@@ -781,7 +790,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(hex: "000000000000")!),
+                    .pushBytes(.init(hex: "000000000000")!),
                     .checkLockTimeVerify,
                     .constant(1)
                 ]
@@ -871,7 +880,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "40ffff")!.reversed())), // 4_259_839
+                    .pushBytes(.init(Data(hex: "40ffff")!.reversed())), // 4_259_839
                     .checkSequenceVerify,
                 ]
             )
@@ -888,7 +897,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "400001")!.reversed())), // 4_194_305
+                    .pushBytes(.init(Data(hex: "400001")!.reversed())), // 4_194_305
                     .checkSequenceVerify,
                 ]
             )
@@ -904,7 +913,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "40ffff")!.reversed())), // 4_259_839
+                    .pushBytes(.init(Data(hex: "40ffff")!.reversed())), // 4_259_839
                     .checkSequenceVerify,
                 ]
             )
@@ -989,7 +998,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "00ffff")!.reversed())), // 65_535
+                    .pushBytes(.init(Data(hex: "00ffff")!.reversed())), // 65_535
                     .checkSequenceVerify
                 ]
             )
@@ -1005,7 +1014,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "400000")!.reversed())), // 4_194_304
+                    .pushBytes(.init(Data(hex: "400000")!.reversed())), // 4_194_304
                     .checkSequenceVerify
                 ]
             )
@@ -1021,7 +1030,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "40ffff")!.reversed())), // 4_259_839
+                    .pushBytes(.init(Data(hex: "40ffff")!.reversed())), // 4_259_839
                     .checkSequenceVerify
                 ]
             )
@@ -1107,7 +1116,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(Data(Data(hex: "400000")!.reversed())), // 4_194_304
+                    .pushBytes(.init(Data(hex: "400000")!.reversed())), // 4_194_304
                     .checkSequenceVerify
                 ]
             )
