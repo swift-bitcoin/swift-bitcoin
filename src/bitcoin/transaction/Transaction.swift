@@ -323,6 +323,27 @@ public struct Transaction: Equatable {
         }
     }
 
+    func isFinal(blockHeight: Int?, blockTime: Int?) -> Bool {
+        precondition((blockHeight == .none && blockTime != .none) || (blockHeight != .none && blockTime == .none))
+        if locktime == .disabled { return true }
+
+        if let blockHeight, let txBlockHeight = locktime.blockHeight, txBlockHeight < blockHeight {
+            return true
+        } else if let blockTime, let txBlockTime = locktime.secondsSince1970, txBlockTime < blockTime {
+            return true
+        }
+
+        // Even if tx.nLockTime isn't satisfied by nBlockHeight/nBlockTime, a
+        // transaction is still considered final if all inputs' nSequence ==
+        // SEQUENCE_FINAL (0xffffffff), in which case nLockTime is ignored.
+        //
+        // Because of this behavior OP_CHECKLOCKTIMEVERIFY/CheckLockTime() will
+        // also check that the spending input's nSequence != SEQUENCE_FINAL,
+        // ensuring that an unsatisfied nLockTime value will actually cause
+        // IsFinalTx() to return false here:
+        return inputs.allSatisfy { $0.sequence == .final }
+    }
+
     /// BIP68 - Untested - Entrypoint 1.
     func checkSequenceLocks(scriptConfiguration: ScriptConfigurarion, coins: [Outpoint : Coin], chainTip: Int, previousBlockMedianTimePast: Int) throws {
         // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate

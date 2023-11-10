@@ -38,6 +38,7 @@ public struct Locktime: Equatable {
 
     var rawValue: UInt32 { UInt32(locktimeValue) }
 
+    public static let disabled = Self(0)
     public static let maxBlock = Self(minClock.locktimeValue - 1)
     public static let minClock = Self(500_000_000)
     static let size = MemoryLayout<UInt32>.size
