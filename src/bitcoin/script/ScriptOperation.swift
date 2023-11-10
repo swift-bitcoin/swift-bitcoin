@@ -2,7 +2,7 @@ import Foundation
 
 /// A script operation.
 public enum ScriptOperation: Equatable {
-    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), constant(UInt8), noOp, ver, `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultiSig, checkMultiSigVerify, noOp1, checkLockTimeVerify, noOp3, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
+    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), constant(UInt8), noOp, ver, `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultiSig, checkMultiSigVerify, noOp1, checkLockTimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
 
     private func operationPreconditions() {
         switch(self) {
@@ -139,7 +139,7 @@ public enum ScriptOperation: Equatable {
         case .checkMultiSigVerify: 0xaf
         case .noOp1: 0xb0
         case .checkLockTimeVerify: 0xb1
-        case .noOp3: 0xb2
+        case .checkSequenceVerify: 0xb2
         case .noOp4: 0xb3
         case .noOp5: 0xb4
         case .noOp6: 0xb5
@@ -244,7 +244,7 @@ public enum ScriptOperation: Equatable {
         case .checkMultiSigVerify: "OP_CHECKMULTISIGVERIFY"
         case .noOp1: "OP_NOP1"
         case .checkLockTimeVerify: "OP_CHECKLOCKTIMEVERIFY"
-        case .noOp3: "OP_NOP3"
+        case .checkSequenceVerify: "OP_NOP3"
         case .noOp4: "OP_NOP4"
         case .noOp5: "OP_NOP5"
         case .noOp6: "OP_NOP6"
@@ -357,7 +357,10 @@ public enum ScriptOperation: Equatable {
         case .checkLockTimeVerify:
             guard context.configuration.checkLockTimeVerify else { break }
             try opCheckLockTimeVerify(&stack, context: context)
-        case .noOp3, .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
+        case .checkSequenceVerify:
+            guard context.configuration.checkSequenceVerify else { break }
+            try opCheckSequenceVerify(&stack, context: context)
+        case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
         case .unknown(_): throw ScriptError.invalidScript
         case .pubKeyHash: throw ScriptError.disabledOperation
         case .pubKey:  throw ScriptError.disabledOperation
@@ -544,7 +547,7 @@ public enum ScriptOperation: Equatable {
         case Self.checkMultiSigVerify.opCode: self = .checkMultiSigVerify
         case Self.noOp1.opCode: self = .noOp1
         case Self.checkLockTimeVerify.opCode: self = .checkLockTimeVerify
-        case Self.noOp3.opCode: self = .noOp3
+        case Self.checkSequenceVerify.opCode: self = .checkSequenceVerify
         case Self.noOp4.opCode: self = .noOp4
         case Self.noOp5.opCode: self = .noOp5
         case Self.noOp6.opCode: self = .noOp6
