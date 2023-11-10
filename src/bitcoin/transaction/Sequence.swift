@@ -69,6 +69,9 @@ public struct Sequence: Equatable {
     public static let zeroLocktimeSeconds = Self(locktimeClockFlag)
     public static let maxLocktimeSeconds = Self(locktimeClockFlag | locktimeMask)
 
+    /// BIP112
+    static let maxCSVArgument = 0x0180000000 // 3 << 31
+
     static let size = MemoryLayout<UInt32>.size
     private static let locktimeMask = 0xffff
     private static let locktimeClockFlag = 0x400000 // 1 << 22

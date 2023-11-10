@@ -60,6 +60,9 @@ public struct ScriptConfigurarion {
     /// BIP68 `LOCKTIME_VERIFY_SEQUENCE`
     public var lockTimeSequence = true
 
+    /// BIP112: Evaluate `OP_CHECKSEQUENCEVERIFY`.
+    public var checkSequenceVerify = true
+
     /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
     public static let standard = ScriptConfigurarion()
 

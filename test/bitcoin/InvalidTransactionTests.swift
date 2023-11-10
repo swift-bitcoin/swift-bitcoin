@@ -54,6 +54,9 @@ final class InvalidTransactionTests: XCTestCase {
             if includeFlags.contains("CHECKLOCKTIMEVERIFY") {
                 config.checkLockTimeVerify = true
             }
+            if includeFlags.contains("CHECKSEQUENCEVERIFY") {
+                config.checkSequenceVerify = true
+            }
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssertFalse(result)
         }
@@ -841,4 +844,276 @@ fileprivate let testVectors: [TestVector] = [
         serializedTransaction: "010000000132211bdd0d568506804eef0d8cc3db68c3d766ab9306cdfcc0a9c89616c8dbb1000000006c493045022100c7bb0faea0522e74ff220c20c022d2cb6033f8d167fb89e75a50e237a35fd6d202203064713491b1f8ad5f79e623d0219ad32510bfaa1009ab30cbee77b59317d6e30001210237af13eb2d84e4545af287b919c2282019c9691cc509e78e196a9d8274ed1be0ffffffff0100000000000000001976a914f1b3ed2eda9a2ebe5a9374f692877cdf87c0f95b88ac00000000",
         verifyFlags: "DERSIG"
     ),
+
+    // MARK: - CHECKSEQUENCEVERIFY tests
+
+    // By-height locks, with argument just beyond txin.nSequence
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1),
+                    .checkSequenceVerify,
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "40ffff")!.reversed())), // 4_259_839
+                    .checkSequenceVerify,
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000feff40000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    // By-time locks, with argument just beyond txin.nSequence (but within numerical boundaries)
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "400001")!.reversed())), // 4_194_305
+                    .checkSequenceVerify,
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000040000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "40ffff")!.reversed())), // 4_259_839
+                    .checkSequenceVerify,
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000feff40000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    // Argument missing
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .checkSequenceVerify,
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    // Argument negative with by-blockheight txin.nSequence=0
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .oneNegate,
+                    .checkSequenceVerify
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    // Argument negative with by-blocktime txin.nSequence=CTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .oneNegate,
+                    .checkSequenceVerify
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000040000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    // Argument/tx height/time mismatch, both versions
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .zero,
+                    .checkSequenceVerify,
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000040000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "00ffff")!.reversed())), // 65_535
+                    .checkSequenceVerify
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000040000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "400000")!.reversed())), // 4_194_304
+                    .checkSequenceVerify
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "40ffff")!.reversed())), // 4_259_839
+                    .checkSequenceVerify
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    // 6 byte non-minimally-encoded arguments are invalid even if their contents are valid
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(.init(hex: "000000000000")!),
+                    .checkSequenceVerify,
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "020000000100010000000000000000000000000000000000000000000000000000000000000000000000ffff00000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    // Failure due to failing CHECKSEQUENCEVERIFY in scriptSig
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "02000000010001000000000000000000000000000000000000000000000000000000000000000000000251b2000000000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    // Failure due to failing CHECKSEQUENCEVERIFY in redeemScript
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .hash160,
+                    .pushBytes(.init(hex: "7c17aff532f22beb54069942f9bf567a66133eaf")!),
+                    .equal
+                ]
+            )
+        ],
+        serializedTransaction: "0200000001000100000000000000000000000000000000000000000000000000000000000000000000030251b2000000000100000000000000000000000000",
+        verifyFlags: "P2SH,CHECKSEQUENCEVERIFY"
+    ),
+
+    // Failure due to insufficient tx.nVersion (<2)
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .zero,
+                    .checkSequenceVerify,
+                    .constant(1)
+                ]
+            )
+        ],
+        serializedTransaction: "010000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
+    .init(
+        previousOutputs: [
+            .init(
+                transactionIdentifier: "0000000000000000000000000000000000000000000000000000000000000100",
+                outputIndex: 0,
+                amount: 0,
+                scriptOperations: [
+                    .pushBytes(Data(Data(hex: "400000")!.reversed())), // 4_194_304
+                    .checkSequenceVerify
+                ]
+            )
+        ],
+        serializedTransaction: "010000000100010000000000000000000000000000000000000000000000000000000000000000000000000040000100000000000000000000000000",
+        verifyFlags: "CHECKSEQUENCEVERIFY"
+    ),
+
 ]
