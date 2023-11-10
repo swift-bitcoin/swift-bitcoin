@@ -3,7 +3,7 @@ import Foundation
 /// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
 public struct ScriptConfigurarion {
 
-    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true) {
+    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
         self.pushOnly = pushOnly
         self.lowS = lowS
@@ -12,6 +12,7 @@ public struct ScriptConfigurarion {
         self.strictEncoding = strictEncoding
         self.payToScriptHash = payToScriptHash || cleanStack
         self.checkLockTimeVerify = checkLockTimeVerify
+        self.checkSequenceVerify = checkSequenceVerify
     }
 
     /// BIP66 (consensus) and BIP62 rule 1 (policy)
