@@ -19,17 +19,6 @@ public struct Transaction: Equatable {
         }
         data = data.dropFirst(Version.size)
 
-        // Check for marker and segwit flag
-        let maybeSegwitMarker = data[data.startIndex]
-        let maybeSegwitFlag = data[data.startIndex + 1]
-        let isSegwit: Bool
-        if maybeSegwitMarker == Transaction.segwitMarker && maybeSegwitFlag == Transaction.segwitFlag {
-            isSegwit = true
-            data = data.dropFirst(2)
-        } else {
-            isSegwit = false
-        }
-
         guard let inputsCount = data.varInt else {
             return nil
         }
@@ -58,16 +47,6 @@ public struct Transaction: Equatable {
             data = data.dropFirst(out.size)
         }
 
-        if isSegwit {
-            for i in inputs.indices {
-                guard let witness = Witness(data) else {
-                    return nil
-                }
-                inputs[i].witness = witness
-                data = data.dropFirst(witness.size)
-            }
-        }
-
         guard let locktime = Locktime(data) else {
             return nil
         }
@@ -93,21 +72,10 @@ public struct Transaction: Equatable {
     public var data: Data {
         var ret = Data()
         ret += version.data
-        if hasWitness {
-            ret += Data([Transaction.segwitMarker, Transaction.segwitFlag])
-        }
         ret += Data(varInt: inputsUInt64)
         ret += inputs.reduce(Data()) { $0 + $1.data }
         ret += Data(varInt: outputsUInt64)
         ret += outputs.reduce(Data()) { $0 + $1.data }
-        if hasWitness {
-            ret += inputs.reduce(Data()) {
-                guard let witness = $1.witness else {
-                    return $0
-                }
-                return $0 + witness.data
-            }
-        }
         ret += locktime.data
         return ret
     }
@@ -126,11 +94,6 @@ public struct Transaction: Equatable {
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
     public var identifier: Data { Data(hash256(identifierData).reversed()) }
 
-    /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
-    public var witnessIdentifier: Data { Data(hash256(data).reversed()) }
-
-    public var size: Int { nonWitnessSize + witnessSize }
-
     public var isCoinbase: Bool {
         inputs.count == 1 && inputs[0].outpoint == Outpoint.coinbase
     }
@@ -138,16 +101,9 @@ public struct Transaction: Equatable {
     private var inputsUInt64: UInt64 { .init(inputs.count) }
     private var outputsUInt64: UInt64 { .init(outputs.count) }
 
-    private var nonWitnessSize: Int {
+    public var size: Int {
         Version.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + Locktime.size
     }
-
-    /// Part of BIP144 implementation.
-    private var witnessSize: Int {
-        hasWitness ? (MemoryLayout.size(ofValue: Transaction.segwitMarker) + MemoryLayout.size(ofValue: Transaction.segwitFlag)) + inputs.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
-    }
-
-    private var hasWitness: Bool { inputs.contains { $0.witness != .none } }
 
     private var valueOut: Amount {
         outputs.reduce(0) { $0 + $1.value }
@@ -236,8 +192,6 @@ public struct Transaction: Equatable {
             throw TransactionError.noOutputs
         }
 
-        // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
-        // TODO: Replace with weight after BIP141
         guard size <= Self.maxBlockWeight else {
             throw TransactionError.oversized
         }
@@ -542,12 +496,6 @@ public struct Transaction: Equatable {
 
     static let maxBlockWeight = 4_000_000
     static let identifierSize = 32
-
-    /// BIP144
-    private static let segwitMarker = UInt8(0x00)
-
-    /// BIP144
-    private static let segwitFlag = UInt8(0x01)
 
     // MARK: - Type Methods
 
