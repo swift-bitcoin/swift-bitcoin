@@ -49,4 +49,35 @@ extension Script {
             }
         }
     }
+
+    /// BIP141
+    var isSegwit: Bool {
+        if size >= 3 && size <= 41,
+           let operations = parsed?.operations,
+           operations.count == 2,
+           case .pushBytes(_) = operations[1]
+        {
+            if case .constant(_) = operations[0] { true } else { operations[0] == .zero }
+        } else {
+            false
+        }
+    }
+
+    /// BIP141
+    var witnessProgram: Data {
+        precondition(isSegwit)
+        guard let operations = parsed?.operations, case let .pushBytes(data) = operations[1] else {
+            preconditionFailure()
+        }
+        return data
+    }
+
+    /// BIP141
+    var witnessVersion: Int {
+        precondition(isSegwit)
+        guard let operations = parsed?.operations else {
+            preconditionFailure()
+        }
+        return if case let .constant(value) = operations[0] { Int(value) } else if operations[0] == .zero { 0 } else { preconditionFailure() }
+    }
 }

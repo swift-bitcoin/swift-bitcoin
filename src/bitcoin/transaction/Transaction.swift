@@ -12,12 +12,24 @@ public struct Transaction: Equatable {
         self.outputs = outputs
     }
 
+    /// BIP 144
     public init?(_ data: Data) {
         var data = data
         guard let version = Version(data) else {
             return nil
         }
         data = data.dropFirst(Version.size)
+
+        // BIP144 - Check for marker and segwit flag
+        let maybeSegwitMarker = data[data.startIndex]
+        let maybeSegwitFlag = data[data.startIndex + 1]
+        let isSegwit: Bool
+        if maybeSegwitMarker == Transaction.segwitMarker && maybeSegwitFlag == Transaction.segwitFlag {
+            isSegwit = true
+            data = data.dropFirst(2)
+        } else {
+            isSegwit = false
+        }
 
         guard let inputsCount = data.varInt else {
             return nil
@@ -47,6 +59,17 @@ public struct Transaction: Equatable {
             data = data.dropFirst(out.size)
         }
 
+        // BIP144
+        if isSegwit {
+            for i in inputs.indices {
+                guard let witness = Witness(data) else {
+                    return nil
+                }
+                inputs[i].witness = witness
+                data = data.dropFirst(witness.size)
+            }
+        }
+
         guard let locktime = Locktime(data) else {
             return nil
         }
@@ -68,14 +91,30 @@ public struct Transaction: Equatable {
     /// The outputs created by this transaction.
     public var outputs: [Output]
 
-    /// Raw format byte serialization of this transaction. Supports updated serialization format specified in BIP144.
+    /// BIP144 - Raw format byte serialization of this transaction. Supports updated serialization format specified in BIP144.
     public var data: Data {
         var ret = Data()
         ret += version.data
+
+        // BIP144
+        if hasWitness {
+            ret += Data([Transaction.segwitMarker, Transaction.segwitFlag])
+        }
         ret += Data(varInt: inputsUInt64)
         ret += inputs.reduce(Data()) { $0 + $1.data }
         ret += Data(varInt: outputsUInt64)
         ret += outputs.reduce(Data()) { $0 + $1.data }
+
+        // BIP144
+        if hasWitness {
+            ret += inputs.reduce(Data()) {
+                guard let witness = $1.witness else {
+                    return $0
+                }
+                return $0 + witness.data
+            }
+        }
+
         ret += locktime.data
         return ret
     }
@@ -94,6 +133,19 @@ public struct Transaction: Equatable {
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
     public var identifier: Data { Data(hash256(identifierData).reversed()) }
 
+    /// BIP141
+    /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
+    public var witnessIdentifier: Data { Data(hash256(data).reversed()) }
+
+    /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
+    public var weight: Int { baseSize * 4 + witnessSize }
+
+    /// BIP141: Total transaction size is the transaction size in bytes serialized as described in BIP144, including base data and witness data.
+    public var size: Int { baseSize + witnessSize }
+
+    ///  BIP141: Virtual transaction size is defined as Transaction weight / 4 (rounded up to the next integer).
+    public var virtualSize: Int { Int((Double(weight) / 4).rounded(.up)) }
+
     public var isCoinbase: Bool {
         inputs.count == 1 && inputs[0].outpoint == Outpoint.coinbase
     }
@@ -101,9 +153,18 @@ public struct Transaction: Equatable {
     private var inputsUInt64: UInt64 { .init(inputs.count) }
     private var outputsUInt64: UInt64 { .init(outputs.count) }
 
-    public var size: Int {
+    /// BIP141: Base transaction size is the size of the transaction serialised with the witness data stripped.
+    private var baseSize: Int {
         Version.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + Locktime.size
     }
+
+    /// BIP141 / BIP144
+    private var witnessSize: Int {
+        hasWitness ? (MemoryLayout.size(ofValue: Transaction.segwitMarker) + MemoryLayout.size(ofValue: Transaction.segwitFlag)) + inputs.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
+    }
+
+    /// BIP141
+    private var hasWitness: Bool { inputs.contains { $0.witness != .none } }
 
     private var valueOut: Amount {
         outputs.reduce(0) { $0 + $1.value }
@@ -111,67 +172,168 @@ public struct Transaction: Equatable {
 
     // MARK: - Instance Methods
 
-    /// Initial simplified version of transaction verification that allows for script execution.
     public func verify(previousOutputs: [Output], configuration: ScriptConfigurarion = .standard) -> Bool {
-        precondition(previousOutputs.count == inputs.count)
-        for index in inputs.indices {
-            let scriptSig = inputs[index].script
-            let scriptPubKey = previousOutputs[index].script
-
-            // BIP62, BIP16
-            if configuration.pushOnly || (configuration.payToScriptHash && scriptPubKey.isPayToScriptHash) {
-                do {
-                    try scriptSig.checkPushOnly()
-                } catch {
-                    print("\(error) \(error.localizedDescription)")
-                    return false
-                }
-            }
-            var stack = [Data]()
+        for i in inputs.indices {
             do {
-                try scriptSig.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
+                try verify(inputIndex: i, previousOutputs: previousOutputs, configuration: configuration)
             } catch {
                 print("\(error) \(error.localizedDescription)")
-                return false
-            }
-
-            // BIP16
-            let stackTmp = stack
-
-            do {
-                try scriptPubKey.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
-            } catch {
-                print("\(error) \(error.localizedDescription)")
-                return false
-            }
-            if let last = stack.last, !ScriptBoolean(last).value {
-                return false
-            }
-
-            // BIP16
-            if configuration.payToScriptHash && scriptPubKey.isPayToScriptHash {
-                stack = stackTmp
-                guard let data = stack.popLast() else {
-                    preconditionFailure()
-                }
-                let redeemScript = SerializedScript(data)
-                do {
-                    try redeemScript.run(&stack, transaction: self, inputIndex: index, previousOutputs: previousOutputs, configuration: configuration)
-                } catch {
-                    print("\(error) \(error.localizedDescription)")
-                    return false
-                }
-                if let last = stack.last, !ScriptBoolean(last).value {
-                    return false
-                }
-            }
-
-            // BIP62, BIP16
-            if configuration.cleanStack && stack.count != 1 {
                 return false
             }
         }
         return true
+    }
+
+    /// Initial simplified version of transaction verification that allows for script execution.
+    func verify(inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+
+        precondition(previousOutputs.count == inputs.count)
+
+        let scriptSig = inputs[inputIndex].script
+        let scriptPubKey = previousOutputs[inputIndex].script
+
+        // BIP16
+        let isPayToScriptHash = configuration.payToScriptHash && scriptPubKey.isPayToScriptHash
+
+        // BIP141
+        let isNativeSegwit = configuration.witness && scriptPubKey.isSegwit
+        let isSegwit: Bool
+        let witnessVersion: Int?
+        let witnessProgram: Data?
+
+        // The scriptSig must be exactly empty or validation fails.
+        if isNativeSegwit && !scriptSig.isEmpty {
+            throw ScriptError.scriptSigNotEmpty
+        }
+
+        // BIP62, BIP16
+        if configuration.pushOnly || isPayToScriptHash {
+            try scriptSig.checkPushOnly()
+        }
+
+        if isNativeSegwit {
+            isSegwit = true
+            witnessVersion = scriptPubKey.witnessVersion
+            witnessProgram = scriptPubKey.witnessProgram
+        } else {
+            // Execute scriptSig
+            var stack = [Data]()
+            try scriptSig.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+            let stackTmp = stack // BIP16
+
+            // Execute scriptPubKey separately on the stack left by scriptSig
+            try scriptPubKey.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+            if let last = stack.last, !ScriptBoolean(last).value {
+                throw ScriptError.falseReturned
+            }
+
+            // BIP16
+            if isPayToScriptHash {
+                stack = stackTmp
+                guard let data = stack.popLast() else { preconditionFailure() }
+
+                let redeemScript = SerializedScript(data)
+
+                // BIP141 - P2SH witness program
+                if redeemScript.isSegwit {
+                    isSegwit = true
+                    witnessVersion = redeemScript.witnessVersion
+                    witnessProgram = redeemScript.witnessProgram
+
+                    // The scriptSig must be exactly a push of the BIP16 redeemScript or validation fails.
+                    if !stack.isEmpty {
+                        // We already checked that scriptSig was push only.
+                        throw ScriptError.scriptSigTooManyPushes
+                    }
+                } else {
+                    isSegwit = false
+                    witnessVersion = .none
+                    witnessProgram = .none
+
+                    try redeemScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+                    if let last = stack.last, !ScriptBoolean(last).value {
+                        throw ScriptError.falseReturned
+                    }
+                }
+
+            } else {
+                isSegwit = false
+                witnessVersion = .none
+                witnessProgram = .none
+            }
+
+            if !isSegwit && configuration.cleanStack && stack.count != 1 { // BIP62, BIP16
+                throw ScriptError.uncleanStack
+            }
+        }
+
+        if isSegwit {
+            guard let witnessVersion, let witnessProgram else { preconditionFailure() }
+            try verifyWitness(inputIndex: inputIndex, witnessVersion: witnessVersion, witnessProgram: witnessProgram, previousOutputs: previousOutputs, configuration: configuration)
+        }
+    }
+
+    private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+        guard witnessVersion == 0 else {
+            if configuration.discourageUpgradableWitnessProgram {
+                throw ScriptError.disallowedWitnessVersion
+            }
+            // If the version byte is 1 to 16, no further interpretation of the witness program or witness stack happens
+            return
+        }
+
+        guard var stack = inputs[inputIndex].witness?.elements else { preconditionFailure() }
+
+        if witnessProgram.count == 20 {
+            // If the version byte is 0, and the witness program is 20 bytes: It is interpreted as a pay-to-witness-public-key-hash (P2WPKH) program.
+
+            // The witness must consist of exactly 2 items (≤ 520 bytes each). The first one a signature, and the second one a public key.
+            guard stack.count == 2, stack.allSatisfy({ $0.count <= 520 }) else {
+                throw ScriptError.witnessElementTooBig
+            }
+
+            // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
+            let witnessScript = ParsedScript([
+                .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
+            ], version: .witnessV0)
+
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+
+            // The verification must result in a single TRUE on the stack.
+            guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
+                throw ScriptError.falseReturned
+            }
+        } else if witnessProgram.count == 32 {
+            // If the version byte is 0, and the witness program is 32 bytes: It is interpreted as a pay-to-witness-script-hash (P2WSH) program.
+
+            // The witnessScript (≤ 10,000 bytes) is popped off the initial witness stack.
+            guard var stack = inputs[inputIndex].witness?.elements, let witnessScriptRaw = stack.popLast() else {
+                preconditionFailure()
+            }
+            if witnessScriptRaw.count > 10_000 {
+                throw ScriptError.witnessScriptTooBig
+            }
+
+            // SHA256 of the witnessScript must match the 32-byte witness program.
+            guard sha256(witnessScriptRaw) == witnessProgram else {
+                throw ScriptError.wrongWitnessScriptHash
+            }
+
+            // The witnessScript is deserialized, and executed after normal script evaluation with the remaining witness stack (≤ 520 bytes for each stack item).
+            guard stack.allSatisfy({ $0.count <= 520 }) else {
+                throw ScriptError.witnessElementTooBig
+            }
+            let witnessScript = SerializedScript(witnessScriptRaw, version: .witnessV0)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+
+            // The script must not fail, and result in exactly a single TRUE on the stack.
+            guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
+                throw ScriptError.falseReturned
+            }
+        } else {
+            // If the version byte is 0, but the witness program is neither 20 nor 32 bytes, the script must fail.
+            throw ScriptError.witnessProgramWrongLength
+        }
     }
 
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.
@@ -192,7 +354,8 @@ public struct Transaction: Equatable {
             throw TransactionError.noOutputs
         }
 
-        guard size <= Self.maxBlockWeight else {
+        // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
+        guard weight <= Self.maxBlockWeight else {
             throw TransactionError.oversized
         }
 
@@ -349,7 +512,7 @@ public struct Transaction: Equatable {
 
         // tx.nVersion is signed integer so requires cast to unsigned otherwise
         // we would be doing a signed comparison and half the range of nVersion
-        // wouldn't support BIP 68.
+        // wouldn't support BIP68.
         let enforceBIP68 = version >= .v2 && scriptConfiguration.lockTimeSequence
 
         // Do not enforce sequence numbers as a relative lock time
@@ -372,7 +535,7 @@ public struct Transaction: Equatable {
 
             if let locktimeSeconds = input.sequence.locktimeSeconds {
                 // NOTE: Subtract 1 to maintain nLockTime semantics
-                // BIP 68 relative lock times have the semantics of calculating
+                // BIP68 relative lock times have the semantics of calculating
                 // the first block or time at which the transaction would be
                 // valid. When calculating the effective block time or height
                 // for the entire transaction, we switch to using the
@@ -400,7 +563,7 @@ public struct Transaction: Equatable {
         }
     }
 
-    func verifySignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Bool {
+    func verifySignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptVersion: ScriptVersion) -> Bool {
         if extendedSignature.isEmpty {
             return false
         }
@@ -409,7 +572,11 @@ public struct Transaction: Equatable {
         guard let sighashType = SighashType(sighashTypeData) else {
             preconditionFailure()
         }
-        let sighash = signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
+        let sighash = if scriptVersion == .legacy {
+            signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
+        } else if scriptVersion == .witnessV0 {
+            segwitSignatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
+        } else { preconditionFailure() }
         let result = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
         return result
     }
@@ -486,6 +653,57 @@ public struct Transaction: Equatable {
         return txCopy.data + sighashType.data32
     }
 
+    /// BIP143
+    func segwitSignatureHash(sighashType: SighashType, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Data {
+        hash256(segwitSignatureMessage(sighashType: sighashType, inputIndex: inputIndex, scriptCode: scriptCode, amount: previousOutput.value))
+    }
+
+    /// BIP143: SegWit v0 signature message (sigMsg).
+    func segwitSignatureMessage(sighashType: SighashType, inputIndex: Int, scriptCode: Data, amount: Amount) -> Data {
+        //If the ANYONECANPAY flag is not set, hashPrevouts is the double SHA256 of the serialization of all input outpoints;
+        // Otherwise, hashPrevouts is a uint256 of 0x0000......0000.
+        var hashPrevouts: Data
+        if sighashType.isAnyCanPay {
+            hashPrevouts = Data(repeating: 0, count: 32)
+        } else {
+            let prevouts = inputs.reduce(Data()) { $0 + $1.outpoint.data }
+            hashPrevouts = hash256(prevouts)
+        }
+        
+        // If none of the ANYONECANPAY, SINGLE, NONE sighash type is set, hashSequence is the double SHA256 of the serialization of nSequence of all inputs;
+        // Otherwise, hashSequence is a uint256 of 0x0000......0000.
+        let hashSequence: Data
+        if !sighashType.isAnyCanPay && !sighashType.isSingle && !sighashType.isNone {
+            let sequence = inputs.reduce(Data()) {
+                $0 + $1.sequence.data
+            }
+            hashSequence = hash256(sequence)
+        } else {
+            hashSequence = Data(repeating: 0, count: 32)
+        }
+
+        // If the sighash type is neither SINGLE nor NONE, hashOutputs is the double SHA256 of the serialization of all output amount (8-byte little endian) with scriptPubKey (serialized as scripts inside CTxOuts);
+        // If sighash type is SINGLE and the input index is smaller than the number of outputs, hashOutputs is the double SHA256 of the output amount with scriptPubKey of the same index as the input;
+        // Otherwise, hashOutputs is a uint256 of 0x0000......0000.[7]
+        let hashOuts: Data
+        if !sighashType.isSingle && !sighashType.isNone {
+            let outsData = outputs.reduce(Data()) { $0 + $1.data }
+            hashOuts = hash256(outsData)
+        } else if sighashType.isSingle && inputIndex < outputs.count {
+            hashOuts = hash256(outputs[inputIndex].data)
+        } else {
+            hashOuts = Data(repeating: 0, count: 32)
+        }
+
+        let outpointData = inputs[inputIndex].outpoint.data
+        let scriptCodeData = scriptCode.varLenData
+        let amountData = withUnsafeBytes(of: amount) { Data($0) }
+        let sequenceData = inputs[inputIndex].sequence.data
+
+        let remaindingData = sequenceData + hashOuts + locktime.data + sighashType.data32
+        return version.data + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remaindingData
+    }
+
     // MARK: - Type Properties
 
     /// The total amount of bitcoin supply is actually less than this number. But `maxMoney` as a limit for any amount is a  consensus-critical constant.
@@ -496,6 +714,12 @@ public struct Transaction: Equatable {
 
     static let maxBlockWeight = 4_000_000
     static let identifierSize = 32
+
+    /// BIP141
+    private static let segwitMarker = UInt8(0x00)
+
+    /// BIP141
+    private static let segwitFlag = UInt8(0x01)
 
     // MARK: - Type Methods
 

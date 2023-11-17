@@ -10,14 +10,18 @@ public struct Input: Equatable {
     ///   - outpoint: the output that this input is spending.
     ///   - sequence: this input's sequence number.
     ///   - script: optional script to unlock the output.
-    public init(outpoint: Outpoint, sequence: Sequence, script: SerializedScript = .empty) {
+    ///   - witness: optional witness data for this input. BIP141
+    public init(outpoint: Outpoint, sequence: Sequence, script: SerializedScript = .empty, /* BIP141 */ witness: Witness? = .none) {
         self.outpoint = outpoint
         self.sequence = sequence
         self.script = script
+
+        // BIP141
+        self.witness = witness
     }
 
-    public init(outpoint: Outpoint, sequence: Sequence, script: ParsedScript) {
-        self.init(outpoint: outpoint, sequence: sequence, script: script.serialized)
+    public init(outpoint: Outpoint, sequence: Sequence, script: ParsedScript, /* BIP141 */ witness: Witness? = .none) {
+        self.init(outpoint: outpoint, sequence: sequence, script: script.serialized, witness: witness)
     }
 
     init?(_ data: Data) {
@@ -50,6 +54,9 @@ public struct Input: Equatable {
 
     /// The script that unlocks the output associated with this input.
     public var script: SerializedScript
+
+    /// BIP141 - Segregated witness data associated with this input.
+    public var witness: Witness?
 
     /// Used by ``Transaction/data``.
     var data: Data {

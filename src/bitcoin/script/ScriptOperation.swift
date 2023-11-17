@@ -265,7 +265,7 @@ public enum ScriptOperation: Equatable {
         // If branch consideration
         if !context.evaluateBranch {
             switch(self) {
-            case .if, .notIf, .else, .endIf, .verIf, .verNotIf:
+            case .if, .notIf, .else, .endIf, .verIf, .verNotIf, .codeSeparator:
                 break
             default: return
             }
@@ -348,7 +348,7 @@ public enum ScriptOperation: Equatable {
         case .sha256: try opSHA256(&stack)
         case .hash160: try opHash160(&stack)
         case .hash256: try opHash256(&stack)
-        case .codeSeparator: opCodeSeparator(context: &context)
+        case .codeSeparator: try opCodeSeparator(context: &context)
         case .checkSig: try opCheckSig(&stack, context: context)
         case .checkSigVerify: try opCheckSigVerify(&stack, context: context)
         case .checkMultiSig: try opCheckMultiSig(&stack, context: context)

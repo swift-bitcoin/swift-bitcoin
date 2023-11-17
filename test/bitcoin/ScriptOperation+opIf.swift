@@ -163,22 +163,22 @@ final class OpIfTests: XCTestCase {
 
     func testMinimalif() {
         // True-ish value
-        var script = ParsedScript([.constant(2), .if, .constant(2), .else, .constant(3), .endIf])
+        var script = ParsedScript([.constant(2), .if, .constant(2), .else, .constant(3), .endIf], version: .witnessV0)
         var stack = [Data]()
         XCTAssertThrowsError(try script.run(&stack))
 
         // Falsish value
-        script = ParsedScript([.pushBytes(Data([0])), .if, .constant(2), .else, .constant(3), .endIf])
+        script = ParsedScript([.pushBytes(Data([0])), .if, .constant(2), .else, .constant(3), .endIf], version: .witnessV0)
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
         // Falsish value not-if
-        script = ParsedScript([.pushBytes(Data([0])), .notIf, .constant(2), .else, .constant(3), .endIf])
+        script = ParsedScript([.pushBytes(Data([0])), .notIf, .constant(2), .else, .constant(3), .endIf], version: .witnessV0)
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
         // true-ish value not-if
-        script = ParsedScript([.constant(2), .notIf, .constant(2), .else, .constant(3), .endIf])
+        script = ParsedScript([.constant(2), .notIf, .constant(2), .else, .constant(3), .endIf], version: .witnessV0)
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
     }

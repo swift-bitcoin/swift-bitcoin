@@ -20,5 +20,16 @@ enum ScriptError: Error {
          lockTimeHeightEarly,
          lockTimeSecondsEarly,
          inputSequenceFinal,
-         missingStackArgument
+         missingStackArgument,
+         scriptSigNotEmpty,
+         falseReturned,
+         scriptSigTooManyPushes,
+         uncleanStack,
+         wrongWitnessScriptHash,
+         witnessProgramWrongLength,
+         witnessScriptTooBig,
+         witnessElementTooBig,
+         disallowedWitnessVersion,
+         nonConstantScript,
+         signatureNotEmpty
 }

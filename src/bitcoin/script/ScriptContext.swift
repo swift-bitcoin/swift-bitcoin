@@ -33,8 +33,9 @@ struct ScriptContext {
         return lastEvaluatedIfResult
     }
 
-    /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`.
-    func getScriptCode(signatures: [Data]) -> Data? {
+    /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`. Legacy scripts only.
+    func getScriptCode(signatures: [Data]) throws -> Data {
+        precondition(script.version == .legacy)
         var scriptData = script.data
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)
@@ -44,13 +45,17 @@ struct ScriptContext {
         var programCounter2 = scriptData.startIndex
         while programCounter2 < scriptData.endIndex {
             guard let operation = ScriptOperation(scriptData[programCounter2...], version: script.version) else {
-                return .none
+                preconditionFailure()
+                // TODO: What happens to scriptCode if script cannot be fully decoded?
             }
 
             var operationContainsSignature = false
             for sig in signatures {
                 if !sig.isEmpty, operation == .pushBytes(sig) {
                     operationContainsSignature = true
+                    if configuration.constantScriptCode {
+                        throw ScriptError.nonConstantScript
+                    }
                     break
                 }
             }
@@ -63,5 +68,15 @@ struct ScriptContext {
             programCounter2 += operation.size
         }
         return scriptCode
+    }
+
+    /// BIP143
+    var segwitScriptCode: Data {
+        var scriptData = script.data
+        // if the witnessScript contains any OP_CODESEPARATOR, the scriptCode is the witnessScript but removing everything up to and including the last executed OP_CODESEPARATOR before the signature checking opcode being executed, serialized as scripts inside CTxOut.
+        if let codesepOffset = lastCodeSeparatorOffset {
+            scriptData.removeFirst(codesepOffset + 1)
+        }
+        return scriptData
     }
 }

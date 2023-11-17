@@ -38,10 +38,11 @@ final class TransactionTests: XCTestCase {
             let expectedLocktime = txInfo.locktime
             XCTAssertEqual(tx.locktime.locktimeValue, expectedLocktime)
 
-            guard let expectedID = Data(hex: txInfo.txid) else {
+            guard let expectedID = Data(hex: txInfo.txid), let expectedWitnessID = Data(hex: txInfo.hash) else {
                 XCTFail(); return
             }
             XCTAssertEqual(tx.identifier, expectedID)
+            XCTAssertEqual(tx.witnessIdentifier, expectedWitnessID)
 
             let expectedSize = txInfo.size
             XCTAssertEqual(tx.size, expectedSize)
@@ -78,6 +79,12 @@ final class TransactionTests: XCTestCase {
                     XCTAssertEqual(input.outpoint.outputIndex, expectedOutput)
                     let expectedScript = SerializedScript(expectedScriptData)
                     XCTAssertEqual(input.script, expectedScript)
+
+                    if let witness = vinData.txinwitness {
+                        let expectedWitnessData = witness.compactMap { Data(hex: $0) }
+                        let expectedWitness = Witness(expectedWitnessData)
+                        XCTAssertEqual(input.witness, expectedWitness)
+                    }
                 } else {
                     XCTFail(); return
                 }

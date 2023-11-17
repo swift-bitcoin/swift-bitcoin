@@ -27,48 +27,50 @@ func checkSignatureEncoding(_ sig: Data) throws {
     if sig.count < 9 { throw ScriptError.invalidSignatureEncoding }
     if sig.count > 73{ throw ScriptError.invalidSignatureEncoding }
 
+    let start = sig.startIndex
+
     // A signature is of type 0x30 (compound).
-    if sig[0] != 0x30{ throw ScriptError.invalidSignatureEncoding }
+    if sig[start] != 0x30{ throw ScriptError.invalidSignatureEncoding }
 
     // Make sure the length covers the entire signature.
-    if sig[1] != sig.count - 3{ throw ScriptError.invalidSignatureEncoding }
+    if sig[start + 1] != sig.count - 3 { throw ScriptError.invalidSignatureEncoding }
 
     // Extract the length of the R element.
-    let lenR = Int(sig[3])
+    let lenR = Int(sig[start + 3])
 
     // Make sure the length of the S element is still inside the signature.
     if 5 + lenR >= sig.count{ throw ScriptError.invalidSignatureEncoding }
 
     // Extract the length of the S element.
-    let lenS = Int(sig[5 + lenR])
+    let lenS = Int(sig[start + 5 + lenR])
 
     // Verify that the length of the signature matches the sum of the length
     // of the elements.
     if lenR + lenS + 7 != sig.count { throw ScriptError.invalidSignatureEncoding }
 
     // Check whether the R element is an integer.
-    if sig[2] != 0x02{ throw ScriptError.invalidSignatureEncoding }
+    if sig[start + 2] != 0x02{ throw ScriptError.invalidSignatureEncoding }
 
     // Zero-length integers are not allowed for R.
     if lenR == 0 { throw ScriptError.invalidSignatureEncoding }
 
     // Negative numbers are not allowed for R.
-    if sig[4] & 0x80 != 0 { throw ScriptError.invalidSignatureEncoding }
+    if sig[start + 4] & 0x80 != 0 { throw ScriptError.invalidSignatureEncoding }
 
     // Null bytes at the start of R are not allowed, unless R would
     // otherwise be interpreted as a negative number.
-    if lenR > 1 && sig[4] == 0x00 && sig[5] & 0x80 == 0 { throw ScriptError.invalidSignatureEncoding }
+    if lenR > 1 && sig[start + 4] == 0x00 && sig[start + 5] & 0x80 == 0 { throw ScriptError.invalidSignatureEncoding }
 
     // Check whether the S element is an integer.
-    if sig[lenR + 4] != 0x02 { throw ScriptError.invalidSignatureEncoding }
+    if sig[start + lenR + 4] != 0x02 { throw ScriptError.invalidSignatureEncoding }
 
     // Zero-length integers are not allowed for S.
     if lenS == 0 { throw ScriptError.invalidSignatureEncoding }
 
     // Negative numbers are not allowed for S.
-    if sig[lenR + 6] & 0x80 != 0 { throw ScriptError.invalidSignatureEncoding }
+    if sig[start + lenR + 6] & 0x80 != 0 { throw ScriptError.invalidSignatureEncoding }
 
     // Null bytes at the start of S are not allowed, unless S would otherwise be
     // interpreted as a negative number.
-    if lenS > 1 && sig[lenR + 6] == 0x00 && sig[lenR + 7] & 0x80 == 0 { throw ScriptError.invalidSignatureEncoding }
+    if lenS > 1 && sig[start + lenR + 6] == 0x00 && sig[start + lenR + 7] & 0x80 == 0 { throw ScriptError.invalidSignatureEncoding }
 }

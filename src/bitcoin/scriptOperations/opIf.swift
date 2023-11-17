@@ -9,7 +9,11 @@ func opIf(_ stack: inout [Data], isNotIf: Bool = false, context: inout ScriptCon
         return
     }
     let first = try getUnaryParam(&stack)
-    let condition = try ScriptBoolean(minimalData: first)
+    let condition = if context.script.version == .witnessV0 && context.configuration.minimalIf {
+        try ScriptBoolean(minimalData: first)
+    } else {
+        ScriptBoolean(first)
+    }
     let evalIfBranch = (!isNotIf && condition.value) || (isNotIf && !condition.value)
     context.pendingIfOperations.append(evalIfBranch)
 }

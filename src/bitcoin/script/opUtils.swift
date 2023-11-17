@@ -83,8 +83,12 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
     }
 }
 
-func checkPublicKey(_ publicKey: Data, scriptConfiguration: ScriptConfigurarion) throws {
+func checkPublicKey(_ publicKey: Data, scriptVersion: ScriptVersion, scriptConfiguration: ScriptConfigurarion) throws {
     if scriptConfiguration.strictEncoding  {
         try checkPublicKeyEncoding(publicKey)
+    }
+    // Only compressed keys are accepted in segwit
+    if scriptVersion == .witnessV0 && scriptConfiguration.witnessCompressedPublicKey {
+        try checkCompressedPublicKeyEncoding(publicKey)
     }
 }
