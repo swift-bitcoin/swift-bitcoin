@@ -1,4 +1,5 @@
 /// The version of a ``Script``.
 public enum ScriptVersion: String {
-    case legacy
+    case legacy,
+         witnessV0 // BIP141
 }

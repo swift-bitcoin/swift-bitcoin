@@ -3,66 +3,79 @@ import Foundation
 /// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
 public struct ScriptConfigurarion {
 
-    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true) {
+    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, lockTimeSequence: Bool = true, checkSequenceVerify: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
         self.pushOnly = pushOnly
         self.lowS = lowS
-        self.cleanStack = cleanStack
+        self.cleanStack = cleanStack && payToScriptHash
         self.nullDummy = nullDummy
         self.strictEncoding = strictEncoding
-        self.payToScriptHash = payToScriptHash || cleanStack
+        self.payToScriptHash = payToScriptHash
         self.checkLockTimeVerify = checkLockTimeVerify
+        self.lockTimeSequence = lockTimeSequence
         self.checkSequenceVerify = checkSequenceVerify
+        self.constantScriptCode = constantScriptCode
+        self.witness = witness
+        self.witnessCompressedPublicKey = witnessCompressedPublicKey && witness
+        self.minimalIf = minimalIf
+        self.nullFail = nullFail
+        self.discourageUpgradableWitnessProgram = discourageUpgradableWitnessProgram && witness
     }
 
     /// BIP66 (consensus) and BIP62 rule 1 (policy)
     /// Passing a non-strict-DER signature to a checksig operation causes script failure.
-    public var strictDER = true
+    public let strictDER: Bool
 
     /// BIP62 rule 2
     /// Using a non-push operator in the scriptSig causes script failure.
-    public var pushOnly = true
+    public let pushOnly: Bool
 
     /// BIP62 rule 5
     /// Passing a non-strict-DER signature or one with S > order/2 to a checksig operation causes script failure.
-    public var lowS = true {
-        didSet {
-            strictDER = strictDER || lowS || strictEncoding
-        }
-    }
+    public let lowS: Bool
 
     /// BIP62 rule 6
-    /// Require that only a single stack element remains after evaluation.
-    public var cleanStack = true {
-        didSet {
-            payToScriptHash = payToScriptHash || cleanStack
-        }
-    }
+    /// Require that only a single stack element remains after evaluation. Only to be used with P2SH.
+    public let cleanStack: Bool
 
     /// BIP62 rule 7
     /// Verify dummy stack item consumed by `CHECKMULTISIG` is of zero-length.
-    public var nullDummy = true
+    public let nullDummy: Bool
 
     /// Passing a non-strict-DER signature or one with undefined hashtype to a checksig operation causes script failure.
     /// Evaluating a pubkey that is not (0x04 + 64 bytes) or (0x02 or 0x03 + 32 bytes) by checksig causes script failure.
     /// Not used or intended as a consensus rule.
-    public var strictEncoding = true {
-        didSet {
-            strictDER = strictDER || lowS || strictEncoding
-        }
-    }
+    public let strictEncoding: Bool
 
     /// BIP16
-    public var payToScriptHash = true
+    public let payToScriptHash: Bool
 
     /// BIP65: Evaluate `OP_CHECKLOCKTIMEVERIFY`.
-    public var checkLockTimeVerify = true
+    public let checkLockTimeVerify: Bool
 
     /// BIP68 `LOCKTIME_VERIFY_SEQUENCE`
-    public var lockTimeSequence = true
+    public let lockTimeSequence: Bool
 
     /// BIP112: Evaluate `OP_CHECKSEQUENCEVERIFY`.
-    public var checkSequenceVerify = true
+    public let checkSequenceVerify: Bool
+
+    /// Making OP_CODESEPARATOR and FindAndDelete fail any non-segwit scripts
+    public let constantScriptCode: Bool
+
+    /// BIP141
+    public let witness: Bool
+
+    /// BIP141: Only compressed public keys are accepted in P2WPKH and P2WSH (See BIP143). Relay/mining policy rule 1.
+    public let witnessCompressedPublicKey: Bool
+
+    /// BIP141: The argument of OP_IF/NOTIF in P2WSH must be minimal. Relay/mining policy rule 2.
+    public let minimalIf: Bool
+
+    /// BIP141: Signature(s) must be null vector(s) if an OP_CHECKSIG or OP_CHECKMULTISIG is failed (for both pre-segregated witness script and P2WSH. See BIP146). Relay/mining policy rule 3.
+    public let nullFail: Bool
+
+    /// Making v1-v16 witness program non-standard.
+    public let discourageUpgradableWitnessProgram: Bool
 
     /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
     public static let standard = ScriptConfigurarion()
@@ -70,10 +83,22 @@ public struct ScriptConfigurarion {
     /// Mandatory script verification flags that all new transactions must comply with for them to be valid. Failing one of these tests may trigger a DoS ban. See `CheckInputScripts()` on Bitcoin Core  for details.
     /// Note that this does not affect consensus validity. See `GetBlockScriptFlags()` for that.
     public static let mandatory = ScriptConfigurarion(
+        // strictDER: true, // After DEPLOYMENT_DERSIG (BIP66) buried deployment block (1st)
         pushOnly: false,
         lowS: false,
         cleanStack: false,
-        nullDummy: false,
-        strictEncoding: false
+        // nullDummy: false, // After DEPLOYMENT_SEGWIT (BIP147) buried deployment block (3rd)
+        strictEncoding: false,
+        // payToScriptHash: true, // From chain start with 1 block excepted on mainnet
+        // checkLockTimeVerify: true, // After DEPLOYMENT_CLTV (BIP65) buried deployment block (2st)
+        lockTimeSequence: false,
+        //checkSequenceVerify: true, // After DEPLOYMENT_CSV (BIP112) buried deployment block (3rd)
+        constantScriptCode: false,
+        // witness: true, // From chain start with 0 blocks excepted
+        witnessCompressedPublicKey: false,
+        minimalIf: false,
+        nullFail: false,
+        discourageUpgradableWitnessProgram: false
+        // taproot: true, // From chain start with 1 block excepted on mainnet
     )
 }

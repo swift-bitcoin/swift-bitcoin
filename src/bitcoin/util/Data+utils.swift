@@ -54,18 +54,18 @@ extension Data {
         }
         if firstByte == 0xfd {
             let value = tail.withUnsafeBytes {
-                $0.load(as: UInt16.self)
+                $0.loadUnaligned(as: UInt16.self)
             }
             return UInt64(value)
         }
         if firstByte == 0xfd {
             let value = tail.withUnsafeBytes {
-                $0.load(as: UInt32.self)
+                $0.loadUnaligned(as: UInt32.self)
             }
             return UInt64(value)
         }
         let value = tail.withUnsafeBytes {
-            $0.load(as: UInt64.self)
+            $0.loadUnaligned(as: UInt64.self)
         }
         return value
     }

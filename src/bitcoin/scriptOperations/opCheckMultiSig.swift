@@ -7,9 +7,7 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
     precondition(publicKeys.count == n)
     precondition(sigs.count == m)
 
-    guard let scriptCode = context.getScriptCode(signatures: sigs) else {
-        throw ScriptError.invalidScript
-    }
+    let scriptCode = try context.script.version == .legacy ? context.getScriptCode(signatures: sigs) : context.segwitScriptCode
 
     var keysCount = publicKeys.count
     var sigsCount = sigs.count
@@ -23,19 +21,11 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
         // Note how this makes the exact order of pubkey/signature evaluation
         // distinguishable by CHECKMULTISIG NOT if the STRICTENC flag is set.
         // See the script_(in)valid tests for details.
-        switch context.script.version {
-        case .legacy: try checkPublicKey(pubKey, scriptConfiguration: context.configuration)
-        default: preconditionFailure() // TODO: SegWit will require compressed public keys
-        }
+        try checkPublicKey(pubKey , scriptVersion: context.script.version, scriptConfiguration: context.configuration)
 
         // Check signature
-        var ok = false
-        switch context.script.version {
-        case .legacy:
-            try checkSignature(sig, scriptConfiguration: context.configuration)
-            ok = context.transaction.verifySignature(extendedSignature: sig, publicKey: pubKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
-        default: preconditionFailure()
-        }
+        try checkSignature(sig, scriptConfiguration: context.configuration)
+        let ok = context.transaction.verifySignature(extendedSignature: sig, publicKey: pubKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
 
         if ok {
             sigIndex += 1
@@ -48,6 +38,10 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
         // then too many signatures have failed. Exit early,
         // without checking any further signatures.
         if sigsCount > keysCount { success = false }
+    }
+
+    if !success && context.configuration.nullFail && !sigs.allSatisfy(\.isEmpty) {
+        throw ScriptError.signatureNotEmpty
     }
 
     stack.append(ScriptBoolean(success).data)

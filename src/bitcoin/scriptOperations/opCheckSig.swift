@@ -4,21 +4,17 @@ import Foundation
 func opCheckSig(_ stack: inout [Data], context: ScriptContext) throws {
     let (sig, publicKey) = try getBinaryParams(&stack)
 
-    let result: Bool
-    switch context.script.version {
-        case .legacy:
-        // Legacy semantics
-        guard let scriptCode = context.getScriptCode(signatures: [sig]) else {
-            throw ScriptError.invalidScript
-        }
+    let scriptCode = try context.script.version == .legacy ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
 
-        // TODO: SegWit will require compressed public keys
-        try checkPublicKey(publicKey, scriptConfiguration: context.configuration)
+    try checkPublicKey(publicKey, scriptVersion: context.script.version, scriptConfiguration: context.configuration)
 
-        try checkSignature(sig, scriptConfiguration: context.configuration)
-        result = context.transaction.verifySignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
-        default:
-            preconditionFailure()
+    try checkSignature(sig, scriptConfiguration: context.configuration)
+
+    let result = context.transaction.verifySignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
+
+    if !result && context.configuration.nullFail && !sig.isEmpty {
+        throw ScriptError.signatureNotEmpty
     }
+
     stack.append(ScriptBoolean(result).data)
 }
