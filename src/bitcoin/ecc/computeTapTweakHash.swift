@@ -1,6 +1,5 @@
 import Foundation
 import ECCHelper
-import CryptoKit
 
 func computeTapTweakHash(xOnlyPublicKey: Data, merkleRoot: Data?) -> Data {
     var joined = xOnlyPublicKey

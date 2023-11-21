@@ -21,7 +21,7 @@ public struct Sequence: Equatable {
         }
         self.init(blocks)
     }
-    
+
     public init?(locktimeSeconds seconds: Int) {
         guard seconds >= Self.initial.sequenceValue && seconds <= Self.maxSeconds else {
             return nil
@@ -35,18 +35,18 @@ public struct Sequence: Equatable {
     public var isLocktimeDisabled: Bool {
         sequenceValue & Self.locktimeDisableFlag != 0
     }
-    
+
     public var isLocktimeBlocks: Bool {
         sequenceValue & Self.locktimeClockFlag == 0
     }
-    
+
     public var locktimeBlocks: Int? {
         guard !isLocktimeDisabled && isLocktimeBlocks else {
             return nil
         }
         return sequenceValue & Self.locktimeMask
     }
-    
+
     public var locktimeSeconds: Int? {
         guard !isLocktimeDisabled && !isLocktimeBlocks else {
             return nil
@@ -57,7 +57,7 @@ public struct Sequence: Equatable {
     var data: Data {
         withUnsafeBytes(of: rawValue) { Data($0) }
     }
-    
+
     var rawValue: UInt32 { UInt32(sequenceValue) }
 
     public static let initial = Self(0)

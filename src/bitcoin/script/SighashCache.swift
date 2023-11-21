@@ -13,7 +13,7 @@ struct SighashCache {
         self.shaOuts = shaOuts
         self.shaOutsUsed = shaOutsUsed
     }
-    
+
     var shaPrevouts: Data?
     var shaPrevoutsUsed: Bool = false
     var shaAmounts: Data?

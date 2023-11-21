@@ -24,6 +24,6 @@ func opCheckLockTimeVerify(_ stack: inout [Data], context: ScriptContext) throws
     } else {
         throw ScriptError.invalidScript
     }
-    
+
     if context.transaction.inputs[context.inputIndex].sequence == .final { throw ScriptError.inputSequenceFinal }
 }

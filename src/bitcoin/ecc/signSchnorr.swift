@@ -6,7 +6,6 @@ func signSchnorr(msg: Data, secretKey: Data, merkleRoot: Data?, skipTweak: Bool 
     let secretKeyPtr = secretKey.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress! }
     let merkleRootPtr = merkleRoot?.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress! }
     let auxPtr = aux?.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress! }
-    
     let sig: [UInt8] = .init(unsafeUninitializedCapacity: 64) { buf, len in
         let successOrError = signSchnorr(computeTapTweakHashExtern(_:_:_:), buf.baseAddress, &len, msgPtr, merkleRootPtr, skipTweak ? 1 : 0, auxPtr, secretKeyPtr)
         precondition(len == 64, "Signature must be 64 bytes long.")

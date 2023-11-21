@@ -34,16 +34,16 @@ const int signSchnorr(void (*computeTapTweakHash)(u_char*, const u_char*, const 
     if (!skipTweak) {
         secp256k1_xonly_pubkey pubKey;
         if (!secp256k1_keypair_xonly_pub(secp256k1_context_sign, &pubKey, NULL, &keypair)) return 0;
-        
+
         u_char* pubKey32 = malloc(KEY_LEN);
         if (!secp256k1_xonly_pubkey_serialize(secp256k1_context_sign, pubKey32, &pubKey)) return 0;
-        
+
         u_char* tweak32 = malloc(HASH_LEN);
         computeTapTweakHash(tweak32, pubKey32, merkleRoot32);
 
         if (!secp256k1_keypair_xonly_tweak_add(secp256k1_context_static, &keypair, tweak32)) return 0;
     }
-    
+
     // Do the signing.
     u_char* sigOutTmp64 = malloc(SIG_LEN);
     int result = secp256k1_schnorrsig_sign32(secp256k1_context_sign, sigOutTmp64, msg32, &keypair, aux32);
@@ -69,20 +69,20 @@ const int createSecretKeyTapTweak(void (*computeTapTweakHash)(u_char*, const u_c
     secp256k1_keypair keypair;
     assert(secp256k1_context_sign != NULL);
     if (!secp256k1_keypair_create(secp256k1_context_sign, &keypair, secretKey32)) return 0;
-    
+
     // Find out the internal key
     secp256k1_xonly_pubkey pubKey;
     if (!secp256k1_keypair_xonly_pub(secp256k1_context_static, &pubKey, NULL, &keypair)) return 0;
     u_char* internalKey32 = malloc(KEY_LEN);
     if (!secp256k1_xonly_pubkey_serialize(secp256k1_context_static, internalKey32, &pubKey)) return 0;
-    
+
     // Calculate the tweak hash
     u_char* tweak = malloc(32);
     computeTapTweakHash(tweak, internalKey32, merkleRoot32);
-    
+
     // Tweak the keypair
     if (!secp256k1_keypair_xonly_tweak_add(secp256k1_context_static, &keypair, tweak)) return 0;
-    
+
     u_char* tweakedSecretKey32 = malloc(KEY_LEN);
     if (!secp256k1_keypair_sec(secp256k1_context_static, tweakedSecretKey32, &keypair)) return 0;
 
@@ -105,7 +105,7 @@ const int createTapTweak(void (*computeTapTweakHash)(u_char*, const u_char*, con
     u_char pubkey_bytes[32];
     secp256k1_xonly_pubkey_serialize(secp256k1_context_static, pubkey_bytes, &out_xonly);
     assert(parity == 0 || parity == 1);
-        
+
     // Result output
     memcpy(tweakedKeyOut, pubkey_bytes, KEY_LEN);
     *tweakedKeyOutLen = KEY_LEN;
@@ -114,12 +114,12 @@ const int createTapTweak(void (*computeTapTweakHash)(u_char*, const u_char*, con
 }
 
 const int checkTapTweak(void (*computeTapTweakHash)(u_char*, const u_char*, const u_char*), const u_char* pubKey32, const u_char* tweakedKey32, const u_char* merkleRoot32, const u_char parity) {
-    
+
     secp256k1_xonly_pubkey pubKey;
     if (!secp256k1_xonly_pubkey_parse(secp256k1_context_static, &pubKey, pubKey32)) return 0;
     u_char* tweak = malloc(32);
     computeTapTweakHash(tweak, pubKey32, merkleRoot32);
-    
+
     const int result = secp256k1_xonly_pubkey_tweak_add_check(secp256k1_context_static, tweakedKey32, parity, &pubKey, tweak);
     return result;
 }
@@ -135,7 +135,7 @@ const int verifySchnorr(const u_char* msg32, const u_char* sigBytes64, const u_c
 
     secp256k1_xonly_pubkey pubkey;
     if (!secp256k1_xonly_pubkey_parse(secp256k1_context_static, &pubkey, pubKey32)) return 0;
-    
+
     return secp256k1_schnorrsig_verify(secp256k1_context_static, sigBytes64, msg32, 32, &pubkey);
 }
 

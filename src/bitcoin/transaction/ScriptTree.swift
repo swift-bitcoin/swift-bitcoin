@@ -26,7 +26,7 @@ public indirect enum ScriptTree: Equatable {
     var leafs: [ScriptTree] {
         leafs()
     }
-    
+
     private func leafs(_ partial: [ScriptTree] = []) -> [ScriptTree] {
         switch self {
         case .leaf(_, _):
@@ -35,7 +35,7 @@ public indirect enum ScriptTree: Equatable {
             return left.leafs(partial) + right.leafs(partial)
         }
     }
-    
+
     var leafHash: Data {
         guard case .leaf(let version, let scriptData) = self else {
             preconditionFailure("Needs to be a leaf.")
@@ -43,7 +43,7 @@ public indirect enum ScriptTree: Equatable {
         let leafVersionData = withUnsafeBytes(of: UInt8(version)) { Data($0) }
         return taggedHash(tag: "TapLeaf", payload: leafVersionData + scriptData.varLenData)
     }
-    
+
     public func getOutputKey(secretKey: Data) -> Data {
         let (_, merkleRoot) = calcMerkleRoot()
         return Bitcoin.getOutputKey(secretKey: secretKey, merkleRoot: merkleRoot)

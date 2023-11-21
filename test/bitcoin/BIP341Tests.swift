@@ -5,15 +5,15 @@ import XCTest
 /// https://github.com/bitcoin/bips/blob/master/bip-0341/wallet-test-vectors.json
 /// Validation test vectors used in the Bitcoin Core unit [test framework](https://github.com/bitcoin/bitcoin/blob/3820090bd619ac85ab35eff376c03136fe4a9f04/src/test/script_tests.cpp#L1718) can be found [here](https://raw.githubusercontent.com/bitcoin-core/qa-assets/main/unit_test_data/script_assets_test.json).
 final class BIP341Tests: XCTestCase {
-    
+
     override class func setUp() {
         eccStart()
     }
-    
+
     override class func tearDown() {
         eccStop()
     }
-    
+
     func testScriptPubKey() {
         let scriptPubKeyTestVector = [
             (
@@ -190,7 +190,7 @@ final class BIP341Tests: XCTestCase {
                 )
             )
         ]
-        
+
         for i in scriptPubKeyTestVector.indices {
             let testCase = scriptPubKeyTestVector[i]
             let merkleRoot: Data?
@@ -220,9 +220,9 @@ final class BIP341Tests: XCTestCase {
 
             // TODO: BIP350
             /* guard let bip350Address = try? SegwitAddrCoder(bech32m: true).encode(hrp: "bc", version: 1, program: tweakedPubkey) else {
-                XCTFail()
-                return
-            }*/
+             XCTFail()
+             return
+             }*/
 
             XCTAssertEqual(leafHashes, testCase.intermediary.leafHashes)
             XCTAssertEqual(merkleRoot, testCase.intermediary.merkleRoot)
@@ -231,12 +231,12 @@ final class BIP341Tests: XCTestCase {
             XCTAssertEqual(scriptPubKey, testCase.expected.scriptPubKey)
             // XCTAssertEqual(bip350Address, testCase.expected.bip350Address)
             XCTAssertEqual(controlBlocks, testCase.expected.scriptPathControlBlocks)
-            
+
         }
     }
 
     func testKeyPathSpending() {
-        
+
         var tx = Transaction(.init(hex: "02000000097de20cbff686da83a54981d2b9bab3586f4ca7e48f57f5b55963115f3b334e9c010000000000000000d7b7cab57b1393ace2d064f4d4a2cb8af6def61273e127517d44759b6dafdd990000000000fffffffff8e1f583384333689228c5d28eac13366be082dc57441760d957275419a418420000000000fffffffff0689180aa63b30cb162a73c6d2a38b7eeda2a83ece74310fda0843ad604853b0100000000feffffffaa5202bdf6d8ccd2ee0f0202afbbb7461d9264a25e5bfd3c5a52ee1239e0ba6c0000000000feffffff956149bdc66faa968eb2be2d2faa29718acbfe3941215893a2a3446d32acd050000000000000000000e664b9773b88c09c32cb70a2a3e4da0ced63b7ba3b22f848531bbb1d5d5f4c94010000000000000000e9aa6b8e6c9de67619e6a3924ae25696bb7b694bb677a632a74ef7eadfd4eabf0000000000ffffffffa778eb6a263dc090464cd125c466b5a99667720b1c110468831d058aa1b82af10100000000ffffffff0200ca9a3b000000001976a91406afd46bcdfd22ef94ac122aa11f241244a37ecc88ac807840cb0000000020ac9a87f5594be208f8532db38cff670c450ed2fea8fcdefcc9a663f78bab962b0065cd1d")!)!
 
         let utxosSpent = [
@@ -250,7 +250,7 @@ final class BIP341Tests: XCTestCase {
             Output(value: 546000000, script: .init(Data(hex: "5120712447206d7a5238acc7ff53fbe94a3b64539ad291c7cdbc490b7577e4b17df5")!)),
             Output(value: 588000000, script: .init(Data(hex: "512077e30a5522dd9f894c3f8b8bd4c4b2cf82ca7da8a3ea6a239655c39c050ab220")!))
         ]
-        
+
         let intermediary = (
             hashAmounts: Data(hex: "58a6964a4f5f8f0b642ded0a8a553be7622a719da71d1f5befcefcdee8e0fde6")!,
             hashOutputs: Data(hex: "a2e6dab7c1f0dcd297c8d61647fd17d821541ea69c3cc37dcbad7f90d4eb4bc5")!,
@@ -258,7 +258,7 @@ final class BIP341Tests: XCTestCase {
             hashScriptPubkeys: Data(hex: "23ad0f61ad2bca5ba6a7693f50fce988e17c3780bf2b1e720cfbb38fbdd52e21")!,
             hashSequences: Data(hex: "18959c7221ab5ce9e26c3cd67b22c24f8baa54bac281d8e6b05e400e6c3a957e")!
         )
-        
+
         var cache = SighashCache()
         _ = tx.taprootSignatureMessage(sighashType: SighashType?.none, inputIndex: 0, previousOutputs: utxosSpent, sighashCache: &cache)
         if let shaAmounts = cache.shaAmounts, let shaOuts = cache.shaOuts, let shaPrevouts = cache.shaPrevouts, let shaScriptPubKeys = cache.shaScriptPubKeys, let shaSequences = cache.shaSequences {
@@ -270,7 +270,7 @@ final class BIP341Tests: XCTestCase {
         } else {
             XCTFail("Could not produce some of the hashes required for the signature message.")
         }
-        
+
         let inputSpending = [
             (
                 given: (
@@ -448,14 +448,14 @@ final class BIP341Tests: XCTestCase {
                 ]
             )
         ]
-        
+
         for testCase in inputSpending {
             // Given
             let secretKey = testCase.given.internalSecretKey
             let merkleRoot = testCase.given.merkleRoot
             let sighashType = testCase.given.sighashType
             let inputIndex = testCase.given.txinIndex
-            
+
             // Expected
             let expectedInternalPublicKey = testCase.intermediary.internalPubkey
             let expectedTweak = testCase.intermediary.tweak
@@ -463,13 +463,13 @@ final class BIP341Tests: XCTestCase {
             let expectedSigMsg = testCase.intermediary.sigMsg
             let expectedSighash = testCase.intermediary.sighash
             let expectedWitness = testCase.expectedWitness
-            
+
             let internalPublicKey = getInternalKey(secretKey: secretKey)
             XCTAssertEqual(internalPublicKey, expectedInternalPublicKey)
 
             let tweak = computeTapTweakHash(xOnlyPublicKey: internalPublicKey, merkleRoot: merkleRoot)
             XCTAssertEqual(tweak, expectedTweak)
-            
+
             let tweakedSecretKey = createSecretKeyTapTweak(secretKey: secretKey, merkleRoot: merkleRoot)
             XCTAssertEqual(tweakedSecretKey, expectedTweakedSecretKey)
 
@@ -484,7 +484,7 @@ final class BIP341Tests: XCTestCase {
 
             let sighash = tx.taprootSignatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: utxosSpent, sighashCache: &cache)
             XCTAssertEqual(sighash, expectedSighash)
-            
+
             let hashTypeSuffix: Data
             if let sighashType {
                 hashTypeSuffix = sighashType.data

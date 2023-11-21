@@ -44,8 +44,8 @@ public struct SighashType {
 
     var isDefined: Bool {
         switch value8 & ~Self.sighashAnyCanPay {
-            case Self.sighashAll, Self.sighashNone, Self.sighashSingle: true
-            default: false
+        case Self.sighashAll, Self.sighashNone, Self.sighashSingle: true
+        default: false
         }
     }
 
@@ -65,7 +65,7 @@ public struct SighashType {
 
 /// BIP341: Used to represent the `default` signature hash type.
 extension Optional where Wrapped == SighashType {
-    
+
     private var assumed: SighashType { .all }
 
     var isNone: Bool {
@@ -95,7 +95,7 @@ extension Optional where Wrapped == SighashType {
         }
         return assumed.isAnyCanPay
     }
-    
+
     var data: Data {
         if case let .some(wrapped) = self {
             return wrapped.data
