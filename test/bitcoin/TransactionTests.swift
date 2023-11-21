@@ -67,7 +67,7 @@ final class TransactionTests: XCTestCase {
                     let expectedOutpoint = Outpoint.coinbase
                     XCTAssertEqual(input.outpoint, expectedOutpoint)
 
-                    let expectedScript = SerializedScript(expectedCoinbase)
+                    let expectedScript = Script(expectedCoinbase)
                     XCTAssertEqual(input.script, expectedScript)
 
                 } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig, let expectedScriptData = Data(hex: scriptSig.hex) {
@@ -77,7 +77,7 @@ final class TransactionTests: XCTestCase {
 
                     XCTAssertEqual(input.outpoint.transactionIdentifier, expectedTransaction)
                     XCTAssertEqual(input.outpoint.outputIndex, expectedOutput)
-                    let expectedScript = SerializedScript(expectedScriptData)
+                    let expectedScript = Script(expectedScriptData)
                     XCTAssertEqual(input.script, expectedScript)
 
                     if let witness = vinData.txinwitness {
@@ -99,7 +99,7 @@ final class TransactionTests: XCTestCase {
                 guard let expectedScriptData = Data(hex: voutData.scriptPubKey.hex) else {
                     XCTFail(); return
                 }
-                let expectedScript = SerializedScript(expectedScriptData)
+                let expectedScript = Script(expectedScriptData)
                 XCTAssertEqual(output.script, expectedScript)
             }
         }

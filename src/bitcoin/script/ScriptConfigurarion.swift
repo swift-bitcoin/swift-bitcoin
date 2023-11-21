@@ -3,7 +3,7 @@ import Foundation
 /// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
 public struct ScriptConfigurarion {
 
-    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, lockTimeSequence: Bool = true, checkSequenceVerify: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true) {
+    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
         self.pushOnly = pushOnly
         self.lowS = lowS
@@ -12,7 +12,6 @@ public struct ScriptConfigurarion {
         self.strictEncoding = strictEncoding
         self.payToScriptHash = payToScriptHash
         self.checkLockTimeVerify = checkLockTimeVerify
-        self.lockTimeSequence = lockTimeSequence
         self.checkSequenceVerify = checkSequenceVerify
         self.constantScriptCode = constantScriptCode
         self.witness = witness // TODO: Maybe add ` && payToScriptHash`?
@@ -55,9 +54,6 @@ public struct ScriptConfigurarion {
     /// BIP65: Evaluate `OP_CHECKLOCKTIMEVERIFY`.
     public let checkLockTimeVerify: Bool
 
-    /// BIP68 `LOCKTIME_VERIFY_SEQUENCE`
-    public let lockTimeSequence: Bool
-
     /// BIP112: Evaluate `OP_CHECKSEQUENCEVERIFY`.
     public let checkSequenceVerify: Bool
 
@@ -99,7 +95,6 @@ public struct ScriptConfigurarion {
         strictEncoding: false,
         // payToScriptHash: true, // From chain start with 1 block excepted on mainnet
         // checkLockTimeVerify: true, // After DEPLOYMENT_CLTV (BIP65) buried deployment block (2st)
-        lockTimeSequence: false,
         //checkSequenceVerify: true, // After DEPLOYMENT_CSV (BIP112) buried deployment block (3rd)
         constantScriptCode: false,
         // witness: true, // From chain start with 0 blocks excepted

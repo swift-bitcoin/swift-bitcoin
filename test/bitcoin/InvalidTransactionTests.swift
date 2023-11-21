@@ -20,7 +20,7 @@ final class InvalidTransactionTests: XCTestCase {
                 XCTFail(); continue
             }
             let previousOutputs = vector.previousOutputs.map { previousOutput in
-                Output(value: previousOutput.amount, script: ParsedScript(previousOutput.scriptOperations))
+                Output(value: previousOutput.amount, script: Script(previousOutput.scriptOperations))
             }
             var includeFlags = Set(vector.verifyFlags.split(separator: ","))
             includeFlags.remove("NONE")
@@ -40,7 +40,6 @@ final class InvalidTransactionTests: XCTestCase {
                 strictEncoding: includeFlags.contains("STRICTENC"),
                 payToScriptHash: includeFlags.contains("P2SH"),
                 checkLockTimeVerify: includeFlags.contains("CHECKLOCKTIMEVERIFY"),
-                lockTimeSequence: false,
                 checkSequenceVerify: includeFlags.contains("CHECKSEQUENCEVERIFY"),
                 constantScriptCode: includeFlags.contains("CONST_SCRIPTCODE"),
                 witness: includeFlags.contains("WITNESS"),
@@ -51,12 +50,12 @@ final class InvalidTransactionTests: XCTestCase {
                 taproot: false,
                 discourageUpgradableTaprootVersion: false
             )
-            let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
+            let result = tx.verifyScript(previousOutputs: previousOutputs, configuration: config)
             XCTAssertFalse(result)
 
             if !includeFlags.isEmpty {
                 let configSuccess = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, taproot: false, discourageUpgradableTaprootVersion: false)
-                let resultSuccess = tx.verify(previousOutputs: previousOutputs, configuration: configSuccess)
+                let resultSuccess = tx.verifyScript(previousOutputs: previousOutputs, configuration: configSuccess)
                 XCTAssert(resultSuccess)
             }
         }

@@ -7,7 +7,7 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
     precondition(publicKeys.count == n)
     precondition(sigs.count == m)
 
-    let scriptCode = try context.script.version == .legacy ? context.getScriptCode(signatures: sigs) : context.segwitScriptCode
+    let scriptCode = try context.script.version == .base ? context.getScriptCode(signatures: sigs) : context.segwitScriptCode
 
     var keysCount = publicKeys.count
     var sigsCount = sigs.count
@@ -25,7 +25,7 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
 
         // Check signature
         try checkSignature(sig, scriptConfiguration: context.configuration)
-        let ok = context.transaction.verifySignature(extendedSignature: sig, publicKey: pubKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
+        let ok = context.transaction.checkECDSASignature(extendedSignature: sig, publicKey: pubKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
 
         if ok {
             sigIndex += 1

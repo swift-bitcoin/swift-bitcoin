@@ -27,7 +27,7 @@ struct ScriptNumber: Equatable {
     }
 
     init(_ data: Data, extendedLength: Bool = false) throws {
-        // TODO: optionally check for minimal data (no leading zero bytes unless next previous byte is max)
+        // TODO: optionally enforce MINIMALDATA (no leading zero bytes unless next previous byte is max)
         if data.isEmpty {
             value = 0
             return

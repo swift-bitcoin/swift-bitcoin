@@ -7,21 +7,21 @@ func opCheckSig(_ stack: inout [Data], context: ScriptContext) throws {
     let result: Bool
 
     switch context.script.version {
-    case .legacy, .witnessV0:
-        let scriptCode = try context.script.version == .legacy ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
+    case .base, .witnessV0:
+        let scriptCode = try context.script.version == .base ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
 
         try checkPublicKey(publicKey, scriptVersion: context.script.version, scriptConfiguration: context.configuration)
 
         try checkSignature(sig, scriptConfiguration: context.configuration)
 
-        result = context.transaction.verifySignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
+        result = context.transaction.checkECDSASignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
     case .witnessV1:
         guard let tapLeafHash = context.tapLeafHash, let keyVersion = context.keyVersion else {
             preconditionFailure()
         }
 
         // Tapscript semantics
-        result = context.transaction.checkTaprootSignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, extFlag: 1, tapscriptExtension: .init(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition))
+        result = context.transaction.checkSchnorrSignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, extFlag: 1, tapscriptExtension: .init(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition))
     }
 
     if !result && context.configuration.nullFail && !sig.isEmpty {

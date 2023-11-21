@@ -3,23 +3,21 @@ import Foundation
 public struct SighashType {
 
     init?(_ data: Data) {
-        guard let value8 = data.first else {
+        guard let value = data.first else {
             return nil
         }
-        value = Int(value8)
+        self.value = value
     }
 
-    init?(_ value: Int) {
+    init?(_ value: UInt8) {
         self.value = value
         if !isDefined { return nil }
     }
 
-    let value: Int
-
-    var value8: UInt8 { .init(value) }
+    let value: UInt8
 
     var data: Data {
-        withUnsafeBytes(of: value8) { Data($0) }
+        withUnsafeBytes(of: value) { Data($0) }
     }
 
     var data32: Data {
@@ -27,23 +25,23 @@ public struct SighashType {
     }
 
     var isAll: Bool {
-        value8 & Self.maskAnyCanPay == Self.sighashAll
+        value & Self.maskAnyCanPay == Self.sighashAll
     }
 
     var isNone: Bool {
-        value8 & Self.maskAnyCanPay == Self.sighashNone
+        value & Self.maskAnyCanPay == Self.sighashNone
     }
 
     var isSingle: Bool {
-        value8 & Self.maskAnyCanPay == Self.sighashSingle
+        value & Self.maskAnyCanPay == Self.sighashSingle
     }
 
     var isAnyCanPay: Bool {
-        value8 & Self.sighashAnyCanPay == Self.sighashAnyCanPay
+        value & Self.sighashAnyCanPay == Self.sighashAnyCanPay
     }
 
     var isDefined: Bool {
-        switch value8 & ~Self.sighashAnyCanPay {
+        switch value & ~Self.sighashAnyCanPay {
         case Self.sighashAll, Self.sighashNone, Self.sighashSingle: true
         default: false
         }
@@ -55,12 +53,12 @@ public struct SighashType {
     private static let sighashAnyCanPay = UInt8(0x80)
     private static let maskAnyCanPay = UInt8(0x1f)
 
-    static let all = Self(Int(Self.sighashAll))!
-    static let none = Self(Int(Self.sighashNone))!
-    static let single = Self(Int(Self.sighashSingle))!
-    static let allAnyCanPay = Self(Int(Self.sighashAll | Self.sighashAnyCanPay))!
-    static let noneAnyCanPay = Self(Int(Self.sighashNone | Self.sighashAnyCanPay))!
-    static let singleAnyCanPay = Self(Int(Self.sighashSingle | Self.sighashAnyCanPay))!
+    static let all = Self(Self.sighashAll)!
+    static let none = Self(Self.sighashNone)!
+    static let single = Self(Self.sighashSingle)!
+    static let allAnyCanPay = Self(Self.sighashAll | Self.sighashAnyCanPay)!
+    static let noneAnyCanPay = Self(Self.sighashNone | Self.sighashAnyCanPay)!
+    static let singleAnyCanPay = Self(Self.sighashSingle | Self.sighashAnyCanPay)!
 }
 
 /// BIP341: Used to represent the `default` signature hash type.
