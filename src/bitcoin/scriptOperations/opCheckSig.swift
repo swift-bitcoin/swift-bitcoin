@@ -4,13 +4,25 @@ import Foundation
 func opCheckSig(_ stack: inout [Data], context: ScriptContext) throws {
     let (sig, publicKey) = try getBinaryParams(&stack)
 
-    let scriptCode = try context.script.version == .legacy ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
+    let result: Bool
 
-    try checkPublicKey(publicKey, scriptVersion: context.script.version, scriptConfiguration: context.configuration)
+    switch context.script.version {
+    case .legacy, .witnessV0:
+        let scriptCode = try context.script.version == .legacy ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
 
-    try checkSignature(sig, scriptConfiguration: context.configuration)
+        try checkPublicKey(publicKey, scriptVersion: context.script.version, scriptConfiguration: context.configuration)
 
-    let result = context.transaction.verifySignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
+        try checkSignature(sig, scriptConfiguration: context.configuration)
+
+        result = context.transaction.verifySignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
+    case .witnessV1:
+        guard let tapLeafHash = context.tapLeafHash, let keyVersion = context.keyVersion else {
+            preconditionFailure()
+        }
+
+        // Tapscript semantics
+        result = context.transaction.checkTaprootSignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, extFlag: 1, tapscriptExtension: .init(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition))
+    }
 
     if !result && context.configuration.nullFail && !sig.isEmpty {
         throw ScriptError.signatureNotEmpty

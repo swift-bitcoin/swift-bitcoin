@@ -12,12 +12,18 @@ public protocol Script: Equatable {
     var serialized: SerializedScript { get }
     var isEmpty: Bool { get }
 
+    func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, configuration: ScriptConfigurarion) throws
+
     func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws
 
     static var empty: Self { get }
 }
 
 extension Script {
+
+    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+        try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, configuration: configuration)
+    }
 
     public var prefixedData: Data {
         data.varLenData

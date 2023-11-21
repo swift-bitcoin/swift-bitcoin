@@ -96,4 +96,27 @@ struct ScriptNumber: Equatable {
     mutating func negate() {
         value = -value
     }
+
+    var size: Int {
+        if value == 0 {
+            return 0
+        }
+        let magnitude = value.magnitude
+        if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
+            return 1
+        }
+        if magnitude < Int(pow(Double(2), 8 * 2 - 1)) {
+            return 2
+        }
+        if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
+            return 3
+        }
+        if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
+            return 4
+        }
+        if magnitude <= Self.maxValue {
+            return 5
+        }
+        preconditionFailure() // Should never reach here
+    }
 }

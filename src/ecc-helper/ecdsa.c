@@ -166,7 +166,7 @@ int ecdsa_signature_parse_der_lax(secp256k1_ecdsa_signature* sig, const unsigned
     }
     if (overflow) {
         /* Overwrite the result again with a correctly-parsed but invalid
-           signature if parsing failed. */
+         signature if parsing failed. */
         memset(tmpsig, 0, 64);
         secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, sig, tmpsig);
     }
@@ -190,7 +190,7 @@ char SigHasLowR(const secp256k1_ecdsa_signature* sig)
 const int signECDSA(u_char* sigOut, size_t* sigLenOut, const u_char* msg32, const u_char* secretKey32, const u_char grind) {
     const size_t SIGNATURE_SIZE = 72;
     const u_char test_case = 0;
-    
+
     u_char extra_entropy[32] = {0};
     WriteLE32(extra_entropy, test_case);
     secp256k1_ecdsa_signature sig;

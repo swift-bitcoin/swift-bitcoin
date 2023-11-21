@@ -24,7 +24,7 @@ public struct Locktime: Equatable {
         }
         return locktimeValue
     }
-    
+
     var secondsSince1970: Int? {
         guard locktimeValue >= Self.minClock.locktimeValue else {
             return nil

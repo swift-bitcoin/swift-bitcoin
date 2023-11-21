@@ -3,7 +3,7 @@ import Foundation
 /// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
 public struct ScriptConfigurarion {
 
-    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, lockTimeSequence: Bool = true, checkSequenceVerify: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true) {
+    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, lockTimeSequence: Bool = true, checkSequenceVerify: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
         self.pushOnly = pushOnly
         self.lowS = lowS
@@ -15,11 +15,13 @@ public struct ScriptConfigurarion {
         self.lockTimeSequence = lockTimeSequence
         self.checkSequenceVerify = checkSequenceVerify
         self.constantScriptCode = constantScriptCode
-        self.witness = witness
-        self.witnessCompressedPublicKey = witnessCompressedPublicKey && witness
+        self.witness = witness // TODO: Maybe add ` && payToScriptHash`?
+        self.witnessCompressedPublicKey = witnessCompressedPublicKey && self.witness
         self.minimalIf = minimalIf
         self.nullFail = nullFail
-        self.discourageUpgradableWitnessProgram = discourageUpgradableWitnessProgram && witness
+        self.discourageUpgradableWitnessProgram = discourageUpgradableWitnessProgram && self.witness
+        self.taproot = taproot && self.witness
+        self.discourageUpgradableTaprootVersion = discourageUpgradableTaprootVersion && self.taproot
     }
 
     /// BIP66 (consensus) and BIP62 rule 1 (policy)
@@ -62,7 +64,7 @@ public struct ScriptConfigurarion {
     /// Making OP_CODESEPARATOR and FindAndDelete fail any non-segwit scripts
     public let constantScriptCode: Bool
 
-    /// BIP141
+    /// BIP141: Verify witness program (all witness versions).
     public let witness: Bool
 
     /// BIP141: Only compressed public keys are accepted in P2WPKH and P2WSH (See BIP143). Relay/mining policy rule 1.
@@ -74,8 +76,14 @@ public struct ScriptConfigurarion {
     /// BIP141: Signature(s) must be null vector(s) if an OP_CHECKSIG or OP_CHECKMULTISIG is failed (for both pre-segregated witness script and P2WSH. See BIP146). Relay/mining policy rule 3.
     public let nullFail: Bool
 
-    /// Making v1-v16 witness program non-standard.
+    /// Making v2-v16 witness program non-standard.
     public let discourageUpgradableWitnessProgram: Bool
+
+    /// BIP341, BIP342: Taproot/Tapscript validation.
+    public let taproot: Bool
+
+    /// Making unknown Taproot leaf versions non-standard.
+    public let discourageUpgradableTaprootVersion: Bool
 
     /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
     public static let standard = ScriptConfigurarion()
@@ -98,7 +106,8 @@ public struct ScriptConfigurarion {
         witnessCompressedPublicKey: false,
         minimalIf: false,
         nullFail: false,
-        discourageUpgradableWitnessProgram: false
+        discourageUpgradableWitnessProgram: false,
         // taproot: true, // From chain start with 1 block excepted on mainnet
+        discourageUpgradableTaprootVersion: false
     )
 }

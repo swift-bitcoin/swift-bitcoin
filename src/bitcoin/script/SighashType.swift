@@ -9,6 +9,11 @@ public struct SighashType {
         value = Int(value8)
     }
 
+    init?(_ value: Int) {
+        self.value = value
+        if !isDefined { return nil }
+    }
+
     let value: Int
 
     var value8: UInt8 { .init(value) }
@@ -39,14 +44,62 @@ public struct SighashType {
 
     var isDefined: Bool {
         switch value8 & ~Self.sighashAnyCanPay {
-            case Self.sighashAll, Self.sighashNone, Self.sighashSingle: true
-            default: false
+        case Self.sighashAll, Self.sighashNone, Self.sighashSingle: true
+        default: false
         }
     }
 
-    static let sighashAll = UInt8(0x01)
-    static let sighashNone = UInt8(0x02)
-    static let sighashSingle = UInt8(0x03)
-    static let sighashAnyCanPay = UInt8(0x80)
-    static let maskAnyCanPay = UInt8(0x1f)
+    private static let sighashAll = UInt8(0x01)
+    private static let sighashNone = UInt8(0x02)
+    private static let sighashSingle = UInt8(0x03)
+    private static let sighashAnyCanPay = UInt8(0x80)
+    private static let maskAnyCanPay = UInt8(0x1f)
+
+    static let all = Self(Int(Self.sighashAll))!
+    static let none = Self(Int(Self.sighashNone))!
+    static let single = Self(Int(Self.sighashSingle))!
+    static let allAnyCanPay = Self(Int(Self.sighashAll | Self.sighashAnyCanPay))!
+    static let noneAnyCanPay = Self(Int(Self.sighashNone | Self.sighashAnyCanPay))!
+    static let singleAnyCanPay = Self(Int(Self.sighashSingle | Self.sighashAnyCanPay))!
+}
+
+/// BIP341: Used to represent the `default` signature hash type.
+extension Optional where Wrapped == SighashType {
+
+    private var assumed: SighashType { .all }
+
+    var isNone: Bool {
+        if case let .some(wrapped) = self {
+            return wrapped.isNone
+        }
+        return assumed.isNone
+    }
+
+    var isAll: Bool {
+        if case let .some(wrapped) = self {
+            return wrapped.isAll
+        }
+        return assumed.isAll
+    }
+
+    var isSingle: Bool {
+        if case let .some(wrapped) = self {
+            return wrapped.isSingle
+        }
+        return assumed.isSingle
+    }
+
+    var isAnyCanPay: Bool {
+        if case let .some(wrapped) = self {
+            return wrapped.isAnyCanPay
+        }
+        return assumed.isAnyCanPay
+    }
+
+    var data: Data {
+        if case let .some(wrapped) = self {
+            return wrapped.data
+        }
+        return withUnsafeBytes(of: UInt8(0)) { Data($0) }
+    }
 }

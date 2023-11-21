@@ -10,10 +10,10 @@ func opCheckSequenceVerify(_ stack: inout [Data], context: ScriptContext) throws
         sequence64 >= 0,
         sequence64 <= Sequence.maxCSVArgument
     else { throw ScriptError.invalidScript }
-    
+
     let sequence = Sequence(sequence64)
     if sequence.isLocktimeDisabled { return }
-    
+
     if context.transaction.version == .v1 { throw ScriptError.invalidScript }
 
     let txSequence = context.transaction.inputs[context.inputIndex].sequence

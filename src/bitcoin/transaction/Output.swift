@@ -42,7 +42,7 @@ public struct Output: Equatable {
         MemoryLayout.size(ofValue: value) + script.prefixedSize
     }
 
-    private var valueData: Data {
+    var valueData: Data {
         withUnsafeBytes(of: value) { Data($0) }
     }
 }
