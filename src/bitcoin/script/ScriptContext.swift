@@ -6,7 +6,7 @@ struct ScriptContext {
     let inputIndex: Int
     let previousOutputs: [Output]
     let configuration: ScriptConfigurarion
-    let script: any Script
+    let script: Script
     var decodedOperations = [ScriptOperation]()
     var operationIndex: Int = 0
     var programCounter: Int = 0
@@ -43,7 +43,7 @@ struct ScriptContext {
 
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`. Legacy scripts only.
     func getScriptCode(signatures: [Data]) throws -> Data {
-        precondition(script.version == .legacy)
+        precondition(script.version == .base)
         var scriptData = script.data
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)

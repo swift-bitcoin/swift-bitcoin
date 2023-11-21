@@ -3,13 +3,9 @@ import Foundation
 /// The output of a ``Transaction``.
 public struct Output: Equatable {
 
-    public init(value: Amount, script: SerializedScript) {
+    public init(value: Amount, script: Script) {
         self.value = value
         self.script = script
-    }
-
-    public init(value: Amount, script: ParsedScript) {
-        self.init(value: value, script: script.serialized)
     }
 
     init?(_ data: Data) {
@@ -19,7 +15,7 @@ public struct Output: Equatable {
         var data = data
         let value = data.withUnsafeBytes { $0.loadUnaligned(as: Amount.self) }
         data = data.dropFirst(MemoryLayout.size(ofValue: value))
-        guard let script = SerializedScript(prefixedData: data) else {
+        guard let script = Script(prefixedData: data) else {
             return nil
         }
         self.init(value: value, script: script)
@@ -29,7 +25,7 @@ public struct Output: Equatable {
     public var value: Amount
 
     /// The script that locks this output.
-    public var script: SerializedScript
+    public var script: Script
 
     var data: Data {
         var ret = Data()

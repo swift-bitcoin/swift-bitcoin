@@ -5,7 +5,7 @@ extension Transaction {
     static let empty = Self(version: .v1, locktime: .init(0), inputs: [], outputs: [])
 }
 
-extension ParsedScript {
+extension Script {
     func run(_ stack: inout [Data]) throws {
         try run(&stack, transaction: .empty, inputIndex: -1, previousOutputs: [], configuration: .standard)
     }

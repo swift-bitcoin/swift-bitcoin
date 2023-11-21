@@ -12,6 +12,7 @@ public struct Transaction: Equatable {
         self.outputs = outputs
     }
 
+    /// Initialize from serialized raw data.
     /// BIP 144
     public init?(_ data: Data) {
         var data = data
@@ -91,7 +92,8 @@ public struct Transaction: Equatable {
     /// The outputs created by this transaction.
     public var outputs: [Output]
 
-    /// BIP144 - Raw format byte serialization of this transaction. Supports updated serialization format specified in BIP144.
+    /// Raw format byte serialization of this transaction. Supports updated serialization format specified in BIP144.
+    /// BIP144
     public var data: Data {
         var ret = Data()
         ret += version.data
@@ -119,17 +121,6 @@ public struct Transaction: Equatable {
         return ret
     }
 
-    var identifierData: Data {
-        var ret = Data()
-        ret += version.data
-        ret += Data(varInt: inputsUInt64)
-        ret += inputs.reduce(Data()) { $0 + $1.data }
-        ret += Data(varInt: outputsUInt64)
-        ret += outputs.reduce(Data()) { $0 + $1.data }
-        ret += locktime.data
-        return ret
-    }
-
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
     public var identifier: Data { Data(hash256(identifierData).reversed()) }
 
@@ -153,6 +144,17 @@ public struct Transaction: Equatable {
     private var inputsUInt64: UInt64 { .init(inputs.count) }
     private var outputsUInt64: UInt64 { .init(outputs.count) }
 
+    private var identifierData: Data {
+        var ret = Data()
+        ret += version.data
+        ret += Data(varInt: inputsUInt64)
+        ret += inputs.reduce(Data()) { $0 + $1.data }
+        ret += Data(varInt: outputsUInt64)
+        ret += outputs.reduce(Data()) { $0 + $1.data }
+        ret += locktime.data
+        return ret
+    }
+
     /// BIP141: Base transaction size is the size of the transaction serialised with the witness data stripped.
     private var baseSize: Int {
         Version.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + Locktime.size
@@ -172,10 +174,10 @@ public struct Transaction: Equatable {
 
     // MARK: - Instance Methods
 
-    public func verify(previousOutputs: [Output], configuration: ScriptConfigurarion = .standard) -> Bool {
+    public func verifyScript(previousOutputs: [Output], configuration: ScriptConfigurarion = .standard) -> Bool {
         for i in inputs.indices {
             do {
-                try verify(inputIndex: i, previousOutputs: previousOutputs, configuration: configuration)
+                try verifyScript(inputIndex: i, previousOutputs: previousOutputs, configuration: configuration)
             } catch {
                 print("\(error) \(error.localizedDescription)")
                 return false
@@ -185,7 +187,7 @@ public struct Transaction: Equatable {
     }
 
     /// Initial simplified version of transaction verification that allows for script execution.
-    func verify(inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+    func verifyScript(inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
 
         precondition(previousOutputs.count == inputs.count)
 
@@ -221,7 +223,7 @@ public struct Transaction: Equatable {
             try scriptSig.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
             let stackTmp = stack // BIP16
 
-            // Execute scriptPubKey separately on the stack left by scriptSig
+            // scriptSig and scriptPubKey must be evaluated sequentially on the same stack rather than being simply concatenated (see CVE-2010-5141)
             try scriptPubKey.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
             if let last = stack.last, !ScriptBoolean(last).value {
                 throw ScriptError.falseReturned
@@ -232,7 +234,7 @@ public struct Transaction: Equatable {
                 stack = stackTmp
                 guard let data = stack.popLast() else { preconditionFailure() }
 
-                let redeemScript = SerializedScript(data)
+                let redeemScript = Script(data)
 
                 // BIP141 - P2SH witness program
                 if redeemScript.isSegwit {
@@ -302,7 +304,7 @@ public struct Transaction: Equatable {
             // If the sig is 64 bytes long, return Verify(q, hashTapSighash(0x00 || SigMsg(0x00, 0)), sig)[20], where Verify is defined in BIP340.
             // If the sig is 65 bytes long, return sig[64] ≠ 0x00[21] and Verify(q, hashTapSighash(0x00 || SigMsg(sig[64], 0)), sig[0:64]).
             // Otherwise, fail[22].
-            guard checkTaprootSignature(extendedSignature: stack[0], publicKey: outputKey, inputIndex: inputIndex, previousOutputs: previousOutputs) else {
+            guard checkSchnorrSignature(extendedSignature: stack[0], publicKey: outputKey, inputIndex: inputIndex, previousOutputs: previousOutputs) else {
                 throw ScriptError.invalidSchnorrSignature
             }
             return
@@ -352,7 +354,7 @@ public struct Transaction: Equatable {
             return
         }
 
-        let tapscript = SerializedScript(tapscriptData, version: .witnessV1)
+        let tapscript = Script(tapscriptData, version: .witnessV1)
         try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, configuration: configuration)
     }
 
@@ -368,7 +370,7 @@ public struct Transaction: Equatable {
             }
 
             // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
-            let witnessScript = ParsedScript([
+            let witnessScript = Script([
                 .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
             ], version: .witnessV0)
 
@@ -398,7 +400,7 @@ public struct Transaction: Equatable {
             guard stack.allSatisfy({ $0.count <= 520 }) else {
                 throw ScriptError.witnessElementTooBig
             }
-            let witnessScript = SerializedScript(witnessScriptRaw, version: .witnessV0)
+            let witnessScript = Script(witnessScriptRaw, version: .witnessV0)
             try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
@@ -537,7 +539,7 @@ public struct Transaction: Equatable {
     }
 
     /// BIP68 - Untested - Entrypoint 1.
-    func checkSequenceLocks(scriptConfiguration: ScriptConfigurarion, coins: [Outpoint : Coin], chainTip: Int, previousBlockMedianTimePast: Int) throws {
+    func checkSequenceLocks(verifyLockTimeSequence: Bool, coins: [Outpoint : Coin], chainTip: Int, previousBlockMedianTimePast: Int) throws {
         // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate
         // height based locks because when SequenceLocks() is called within
         // ConnectBlock(), the height of the block *being*
@@ -558,13 +560,13 @@ public struct Transaction: Equatable {
                 heights.append(coin.height)
             }
         }
-        let lockPair = calculateSequenceLocks(scriptConfiguration: scriptConfiguration, previousHeights: &heights, blockHeight: nextBlockHeight)
+        let lockPair = calculateSequenceLocks(verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &heights, blockHeight: nextBlockHeight)
         try evaluateSequenceLocks(blockHeight: nextBlockHeight, previousBlockMedianTimePast: previousBlockMedianTimePast, lockPair: lockPair)
     }
 
     /// BIP68 - Untested. Entrypoint 2.
-    func sequenceLocks(scriptConfiguration: ScriptConfigurarion, previousHeights: inout [Int], blockHeight: Int, previousBlockMedianTimePast: Int) throws {
-        try evaluateSequenceLocks(blockHeight: blockHeight, previousBlockMedianTimePast: previousBlockMedianTimePast, lockPair: calculateSequenceLocks(scriptConfiguration: scriptConfiguration, previousHeights: &previousHeights, blockHeight: blockHeight))
+    func sequenceLocks(verifyLockTimeSequence: Bool, previousHeights: inout [Int], blockHeight: Int, previousBlockMedianTimePast: Int) throws {
+        try evaluateSequenceLocks(blockHeight: blockHeight, previousBlockMedianTimePast: previousBlockMedianTimePast, lockPair: calculateSequenceLocks(verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights, blockHeight: blockHeight))
     }
 
     /// BIP68 - Untested
@@ -573,7 +575,7 @@ public struct Transaction: Equatable {
     /// Also removes from the vector of input heights any entries which did not
     /// correspond to sequence locked inputs as they do not affect the calculation.
     /// Called from ``Transaction.sequenceLocks()``.
-    func calculateSequenceLocks(scriptConfiguration: ScriptConfigurarion, previousHeights: inout [Int], blockHeight: Int) -> (Int, Int) {
+    func calculateSequenceLocks(verifyLockTimeSequence: Bool, previousHeights: inout [Int], blockHeight: Int) -> (Int, Int) {
 
         precondition(previousHeights.count == inputs.count);
 
@@ -588,7 +590,7 @@ public struct Transaction: Equatable {
         // tx.nVersion is signed integer so requires cast to unsigned otherwise
         // we would be doing a signed comparison and half the range of nVersion
         // wouldn't support BIP68.
-        let enforceBIP68 = version >= .v2 && scriptConfiguration.lockTimeSequence
+        let enforceBIP68 = version >= .v2 && verifyLockTimeSequence
 
         // Do not enforce sequence numbers as a relative lock time
         // unless we have been instructed to
@@ -638,7 +640,7 @@ public struct Transaction: Equatable {
         }
     }
 
-    func verifySignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptVersion: ScriptVersion) -> Bool {
+    func checkECDSASignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptVersion: ScriptVersion) -> Bool {
         if extendedSignature.isEmpty {
             return false
         }
@@ -647,22 +649,22 @@ public struct Transaction: Equatable {
         guard let sighashType = SighashType(sighashTypeData) else {
             preconditionFailure()
         }
-        let sighash = if scriptVersion == .legacy {
+        let sighash = if scriptVersion == .base {
             signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
         } else if scriptVersion == .witnessV0 {
-            segwitSignatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
+            signatureHashSegwit(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
         } else { preconditionFailure() }
         let result = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
         return result
     }
 
-    func checkTaprootSignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutputs: [Output], extFlag: UInt8 = 0, tapscriptExtension: TapscriptExtension? = .none) -> Bool {
+    func checkSchnorrSignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutputs: [Output], extFlag: UInt8 = 0, tapscriptExtension: TapscriptExtension? = .none) -> Bool {
         // If the sig is 64 bytes long, return Verify(q, hashTapSighash(0x00 || SigMsg(0x00, 0)), sig), where Verify is defined in BIP340.
         // If the sig is 65 bytes long, return sig[64] ≠ 0x00 and Verify(q, hashTapSighash(0x00 || SigMsg(sig[64], 0)), sig[0:64]).
         // Otherwise, fail.
         var sigTmp = extendedSignature
         let sighashType: SighashType?
-        if sigTmp.count == 65, let rawValue = sigTmp.popLast(), let maybeHashType = SighashType(Int(rawValue)) {
+        if sigTmp.count == 65, let rawValue = sigTmp.popLast(), let maybeHashType = SighashType(rawValue) {
             sighashType = maybeHashType
         } else if sigTmp.count == 64 {
             sighashType = SighashType?.none
@@ -671,9 +673,9 @@ public struct Transaction: Equatable {
         }
         let sig = sigTmp
 
-        var txCopy = self
+        let txCopy = self
         var cache = SighashCache() // TODO: Hold on to cache.
-        let sighash = txCopy.taprootSignatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
+        let sighash = txCopy.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
         let result = verifySchnorr(sig: sig, msg: sighash, publicKey: publicKey)
         return result
     }
@@ -733,7 +735,7 @@ public struct Transaction: Equatable {
                     newOuts.append(out)
                 } else if i < inputIndex {
                     // Value is "long -1" which means UInt64(bitPattern: -1) aka UInt64.max
-                    newOuts.append(.init(value: -1, script: SerializedScript.empty))
+                    newOuts.append(.init(value: -1, script: Script.empty))
                 }
             }
         } else if sighashType.isNone {
@@ -751,12 +753,12 @@ public struct Transaction: Equatable {
     }
 
     /// BIP143
-    func segwitSignatureHash(sighashType: SighashType, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Data {
-        hash256(segwitSignatureMessage(sighashType: sighashType, inputIndex: inputIndex, scriptCode: scriptCode, amount: previousOutput.value))
+    func signatureHashSegwit(sighashType: SighashType, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Data {
+        hash256(signatureMessageSegwit(sighashType: sighashType, inputIndex: inputIndex, scriptCode: scriptCode, amount: previousOutput.value))
     }
 
     /// BIP143: SegWit v0 signature message (sigMsg).
-    func segwitSignatureMessage(sighashType: SighashType, inputIndex: Int, scriptCode: Data, amount: Amount) -> Data {
+    func signatureMessageSegwit(sighashType: SighashType, inputIndex: Int, scriptCode: Data, amount: Amount) -> Data {
         //If the ANYONECANPAY flag is not set, hashPrevouts is the double SHA256 of the serialization of all input outpoints;
         // Otherwise, hashPrevouts is a uint256 of 0x0000......0000.
         var hashPrevouts: Data
@@ -802,14 +804,14 @@ public struct Transaction: Equatable {
     }
 
     /// BIP341
-    mutating func taprootSignatureHash(sighashType: SighashType?, inputIndex: Int, previousOutputs: [Output], tapscriptExtension: TapscriptExtension? = .none) -> Data {
+    func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [Output], tapscriptExtension: TapscriptExtension? = .none) -> Data {
         var cache = SighashCache()
-        return taprootSignatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
+        return signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
     }
 
     /// BIP341
-    mutating func taprootSignatureHash(sighashType: SighashType?, inputIndex: Int, previousOutputs: [Output], tapscriptExtension: TapscriptExtension? = .none, sighashCache: inout SighashCache) -> Data {
-        var payload = taprootSignatureMessage(sighashType: sighashType, extFlag: tapscriptExtension == .none ? 0 : 1, inputIndex: inputIndex, previousOutputs: previousOutputs, sighashCache: &sighashCache)
+    func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [Output], tapscriptExtension: TapscriptExtension? = .none, sighashCache: inout SighashCache) -> Data {
+        var payload = signatureMessageSchnorr(sighashType: sighashType, extFlag: tapscriptExtension == .none ? 0 : 1, inputIndex: inputIndex, previousOutputs: previousOutputs, sighashCache: &sighashCache)
         if let tapscriptExtension {
             payload += tapscriptExtension.data
         }
@@ -819,7 +821,7 @@ public struct Transaction: Equatable {
     /// BIP341: SegWit v1 (Schnorr / TapRoot) signature message (sigMsg). More at https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#common-signature-message .
     /// https://github.com/bitcoin/bitcoin/blob/58da1619be7ac13e686cb8bbfc2ab0f836eb3fa5/src/script/interpreter.cpp#L1477
     /// https://bitcoin.stackexchange.com/questions/115328/how-do-you-calculate-a-taproot-sighash
-    func taprootSignatureMessage(sighashType: SighashType?, extFlag: UInt8 = 0, inputIndex: Int, previousOutputs: [Output], sighashCache: inout SighashCache) -> Data {
+    func signatureMessageSchnorr(sighashType: SighashType?, extFlag: UInt8 = 0, inputIndex: Int, previousOutputs: [Output], sighashCache: inout SighashCache) -> Data {
 
         precondition(previousOutputs.count == inputs.count, "The corresponding (aligned) UTXO for each transaction input is required.")
         precondition(!sighashType.isSingle || inputIndex < outputs.count, "For single hash type, the selected input needs to have a matching output.")

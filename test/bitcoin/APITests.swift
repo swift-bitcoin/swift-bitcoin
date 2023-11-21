@@ -40,7 +40,7 @@ fileprivate let coinbaseTx2 = Transaction(
     outputs: [
         .init(
             value: 5_000_000_000, // 50 BTC
-            script: .init([.constant(1)])
+            script: Script([.constant(1)])
         )
     ])
 final class APITests: XCTestCase {
@@ -65,7 +65,7 @@ final class APITests: XCTestCase {
                 .init(
                     outpoint: outpoint,
                     sequence: .init(0),
-                    script: .init([.constant(1)])
+                    script: Script([.constant(1)])
                 )
             ],
             outputs: [
@@ -78,6 +78,6 @@ final class APITests: XCTestCase {
                 )
             ])
         let previousOutputs = [coinbaseTx2.outputs[0]]
-        XCTAssert(tx.verify(previousOutputs: previousOutputs, configuration: .init(cleanStack: false)))
+        XCTAssert(tx.verifyScript(previousOutputs: previousOutputs, configuration: .init(cleanStack: false)))
     }
 }

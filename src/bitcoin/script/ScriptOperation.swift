@@ -7,7 +7,7 @@ public enum ScriptOperation: Equatable {
     private func operationPreconditions() {
         switch(self) {
         case .pushBytes(_):
-            // TODO: Make precondition a script error when minimal data is enabled
+            // TODO: Make precondition a script error when MINIMALDATA is enforced
             // precondition(d.count > 0 && d.count <= 75)
             break
         case .pushData1(_):
@@ -359,10 +359,10 @@ public enum ScriptOperation: Equatable {
         case .checkSig: try opCheckSig(&stack, context: context)
         case .checkSigVerify: try opCheckSigVerify(&stack, context: context)
         case .checkMultiSig:
-            guard context.script.version == .legacy || context.script.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
+            guard context.script.version == .base || context.script.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSig(&stack, context: context)
         case .checkMultiSigVerify:
-            guard context.script.version == .legacy || context.script.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
+            guard context.script.version == .base || context.script.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSigVerify(&stack, context: context)
         case .noOp1: break
         case .checkLockTimeVerify:
@@ -455,7 +455,7 @@ public enum ScriptOperation: Equatable {
         }
     }
 
-    init?(_ data: Data, version: ScriptVersion = .legacy) {
+    init?(_ data: Data, version: ScriptVersion = .base) {
         var data = data
         guard data.count > 0 else {
             return nil
@@ -472,7 +472,7 @@ public enum ScriptOperation: Equatable {
 
         case Self.reserved(80).opCode,
              Self.reserved(137).opCode ... Self.reserved(138).opCode:
-            self = if version == .legacy || version == .witnessV0 {
+            self = if version == .base || version == .witnessV0 {
                 .reserved(opCode)
             } else {
                 .success(opCode)
@@ -496,7 +496,7 @@ public enum ScriptOperation: Equatable {
 
         // OP_VER / OP_SUCCESS
         case Self.ver.opCode:
-            self = if version == .legacy || version == .witnessV0 {
+            self = if version == .base || version == .witnessV0 {
                 .ver
             } else {
                 .success(opCode)

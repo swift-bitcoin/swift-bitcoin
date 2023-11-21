@@ -28,7 +28,6 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 strictEncoding: includeFlags.contains("STRICTENC"),
                 payToScriptHash: includeFlags.contains("P2SH"),
                 checkLockTimeVerify: includeFlags.contains("CHECKLOCKTIMEVERIFY"),
-                lockTimeSequence: true,
                 checkSequenceVerify: includeFlags.contains("CHECKSEQUENCEVERIFY"),
                 constantScriptCode: includeFlags.contains("CONST_SCRIPTCODE"),
                 witness: includeFlags.contains("WITNESS"),
@@ -43,13 +42,13 @@ final class BitcoinCoreTaprootTests: XCTestCase {
             if let success = testCase.success {
                 tx.inputs[inputIndex].script = .init(Data(hex: success.scriptSig)!)
                 tx.inputs[inputIndex].witness = .init(success.witness.map { Data(hex: $0)! })
-                XCTAssertNoThrow(try tx.verify(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: testCase.final ? config : allOff))
+                XCTAssertNoThrow(try tx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: testCase.final ? config : allOff))
             }
             if let failure = testCase.failure, testCase.final {
                 var failTx = unsigned
                 failTx.inputs[inputIndex].script = .init(Data(hex: failure.scriptSig)!)
                 failTx.inputs[inputIndex].witness = .init(failure.witness.map { Data(hex: $0)! })
-                XCTAssertThrowsError(try failTx.verify(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: .standard))
+                XCTAssertThrowsError(try failTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: .standard))
             }
         }
     }

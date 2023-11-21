@@ -11,17 +11,13 @@ public struct Input: Equatable {
     ///   - sequence: this input's sequence number.
     ///   - script: optional script to unlock the output.
     ///   - witness: optional witness data for this input. BIP141
-    public init(outpoint: Outpoint, sequence: Sequence, script: SerializedScript = .empty, /* BIP141 */ witness: Witness? = .none) {
+    public init(outpoint: Outpoint, sequence: Sequence, script: Script = .empty, /* BIP141 */ witness: Witness? = .none) {
         self.outpoint = outpoint
         self.sequence = sequence
         self.script = script
 
         // BIP141
         self.witness = witness
-    }
-
-    public init(outpoint: Outpoint, sequence: Sequence, script: ParsedScript, /* BIP141 */ witness: Witness? = .none) {
-        self.init(outpoint: outpoint, sequence: sequence, script: script.serialized, witness: witness)
     }
 
     init?(_ data: Data) {
@@ -31,7 +27,7 @@ public struct Input: Equatable {
         }
         offset += Outpoint.size
 
-        guard let script = SerializedScript(prefixedData: data[offset...]) else {
+        guard let script = Script(prefixedData: data[offset...]) else {
             return nil
         }
         offset += script.prefixedSize
@@ -53,7 +49,7 @@ public struct Input: Equatable {
     public var sequence: Sequence
 
     /// The script that unlocks the output associated with this input.
-    public var script: SerializedScript
+    public var script: Script
 
     /// BIP141 - Segregated witness data associated with this input.
     public var witness: Witness?
