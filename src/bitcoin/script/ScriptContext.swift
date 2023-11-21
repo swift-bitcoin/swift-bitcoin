@@ -25,6 +25,14 @@ struct ScriptContext {
     var pendingIfOperations = [Bool?]()
     var pendingElseOperations = 0
 
+    /// BIP342
+    var lastCodeSeparatorIndex: Int? = .none
+    private(set) var succeedUnconditionally = false
+
+    /// BIP341
+    let tapLeafHash: Data?
+    let keyVersion: UInt8? = 0
+
     /// Support for `OP_IF`, `OP_NOTIF`, `OP_ELSE` and `OP_ENDIF`.
     var evaluateBranch: Bool {
         guard let lastEvaluatedIfResult = pendingIfOperations.last(where: { $0 != .none }), let lastEvaluatedIfResult else {
@@ -78,5 +86,18 @@ struct ScriptContext {
             scriptData.removeFirst(codesepOffset + 1)
         }
         return scriptData
+    }
+
+    /// BIP342
+    var codeSeparatorPosition: UInt32 {
+        // https://bitcoin.stackexchange.com/questions/115695/what-are-the-last-bytes-for-in-a-taproot-script-path-sighash
+        if let index = lastCodeSeparatorIndex { UInt32(index) } else { UInt32(0xffffffff) }
+    }
+
+    /// BIP342
+    mutating func setSucceedUnconditionally() {
+        if !succeedUnconditionally {
+            succeedUnconditionally.toggle()
+        }
     }
 }

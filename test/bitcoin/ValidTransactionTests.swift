@@ -41,7 +41,9 @@ final class ValidTransactionTests: XCTestCase {
                 witnessCompressedPublicKey: true,
                 minimalIf: true,
                 nullFail: !excludeFlags.contains("NULLFAIL"),
-                discourageUpgradableWitnessProgram:  !excludeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM")
+                discourageUpgradableWitnessProgram:  !excludeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"),
+                taproot: true,
+                discourageUpgradableTaprootVersion: true
             )
             let result = tx.verify(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)

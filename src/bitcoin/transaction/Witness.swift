@@ -38,4 +38,14 @@ public struct Witness: Equatable {
     var size: Int {
         UInt64(elements.count).varIntSize + elements.varLenSize
     }
+
+    /// BIP341
+    var taprootAnnex: Data? {
+        // If there are at least two witness elements, and the first byte of the last element is 0x50, this last element is called annex a
+        if elements.count > 1, let maybeAnnex = elements.last, let firstElem = maybeAnnex.first, firstElem == 0x50 {
+            return maybeAnnex
+        } else {
+            return .none
+        }
+    }
 }

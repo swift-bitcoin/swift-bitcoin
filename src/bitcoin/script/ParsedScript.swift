@@ -53,12 +53,16 @@ public struct ParsedScript: Script {
         SerializedScript(data, version: version)
     }
 
-    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
-        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration, script: self)
+    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data? = .none, configuration: ScriptConfigurarion) throws {
+        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
 
         for operation in operations {
             context.decodedOperations.append(operation)
             try operation.execute(stack: &stack, context: &context)
+
+            // BIP342: OP_SUCCESS
+            if context.succeedUnconditionally { return }
+
             context.programCounter += operation.size
         }
         guard context.pendingIfOperations.isEmpty, context.pendingElseOperations == 0 else {

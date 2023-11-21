@@ -31,5 +31,12 @@ enum ScriptError: Error {
          witnessElementTooBig,
          disallowedWitnessVersion,
          nonConstantScript,
-         signatureNotEmpty
+         signatureNotEmpty,
+         tapscriptCheckMultiSigDisabled,
+         invalidSchnorrSignature,
+         invalidTapscriptControlBlock,
+         invalidTaprootPublicKey,
+         invalidTaprootTweak,
+         missingTaprootWitness,
+         disallowedTaprootVersion
 }

@@ -2,7 +2,7 @@ import Foundation
 
 /// A script operation.
 public enum ScriptOperation: Equatable {
-    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), constant(UInt8), noOp, ver, `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultiSig, checkMultiSigVerify, noOp1, checkLockTimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
+    case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), success(UInt8), constant(UInt8), noOp, ver, `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultiSig, checkMultiSigVerify, noOp1, checkLockTimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, checkSigAdd, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
 
     private func operationPreconditions() {
         switch(self) {
@@ -21,6 +21,8 @@ public enum ScriptOperation: Equatable {
             break
         case .reserved(let k):
             precondition(k == 80 || (k >= 137 && k <= 138))
+        case .success(let k):
+            precondition(k == 80 || k == 98 || (k >= 126 && k <= 129) || (k >= 131 && k <= 134) || (k >= 137 && k <= 138) || (k >= 141 && k <= 142) || (k >= 149 && k <= 153) || (k >= 187 && k <= 254))
         case .constant(let k):
             precondition(k > 0 && k < 17)
         case .unknown(let k):
@@ -57,6 +59,7 @@ public enum ScriptOperation: Equatable {
         case .pushData4(_): 0x4e
         case .oneNegate: 0x4f
         case .reserved(let k): k
+        case .success(let k): k
         case .constant(let k): 0x50 + k
         case .noOp: 0x61
         case .ver: 0x62
@@ -147,6 +150,7 @@ public enum ScriptOperation: Equatable {
         case .noOp8: 0xb7
         case .noOp9: 0xb8
         case .noOp10: 0xb9
+        case .checkSigAdd: 0xba
         case .unknown(let k): k
         case .pubKeyHash: 0xfd
         case .pubKey: 0xfe
@@ -164,6 +168,7 @@ public enum ScriptOperation: Equatable {
         case .pushData4(_): "OP_PUSHDATA4"
         case .oneNegate: "OP_1NEGATE"
         case .reserved(let k): "OP_RESERVED\(k == 80 ? "" : k == 137 ? "1" : "2")"
+        case .success(let k): "OP_SUCCESS\(k)"
         case .constant(let k): "OP_\(k)"
         case .noOp: "OP_NOP"
         case .ver: "OP_VER"
@@ -252,6 +257,7 @@ public enum ScriptOperation: Equatable {
         case .noOp8: "OP_NOP8"
         case .noOp9: "OP_NOP9"
         case .noOp10: "OP_NOP10"
+        case .checkSigAdd: "OP_CHECKSIGADD"
         case .unknown(_): "OP_UNKNOWN"
         case .pubKeyHash: "OP_PUBKEYHASH"
         case .pubKey: "OP_PUBKEY"
@@ -265,7 +271,7 @@ public enum ScriptOperation: Equatable {
         // If branch consideration
         if !context.evaluateBranch {
             switch(self) {
-            case .if, .notIf, .else, .endIf, .verIf, .verNotIf, .codeSeparator:
+            case .if, .notIf, .else, .endIf, .verIf, .verNotIf, .codeSeparator, .success(_):
                 break
             default: return
             }
@@ -276,6 +282,7 @@ public enum ScriptOperation: Equatable {
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): opPushData(data: d, stack: &stack)
         case .oneNegate: op1Negate(&stack)
         case .reserved(_): throw ScriptError.invalidScript
+        case .success(_): opSuccess(context: &context)
         case .constant(let k): opConstant(k, stack: &stack)
         case .noOp: break
         case .ver: throw ScriptError.invalidScript
@@ -351,8 +358,12 @@ public enum ScriptOperation: Equatable {
         case .codeSeparator: try opCodeSeparator(context: &context)
         case .checkSig: try opCheckSig(&stack, context: context)
         case .checkSigVerify: try opCheckSigVerify(&stack, context: context)
-        case .checkMultiSig: try opCheckMultiSig(&stack, context: context)
-        case .checkMultiSigVerify: try opCheckMultiSigVerify(&stack, context: context)
+        case .checkMultiSig:
+            guard context.script.version == .legacy || context.script.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
+            try opCheckMultiSig(&stack, context: context)
+        case .checkMultiSigVerify:
+            guard context.script.version == .legacy || context.script.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
+            try opCheckMultiSigVerify(&stack, context: context)
         case .noOp1: break
         case .checkLockTimeVerify:
             guard context.configuration.checkLockTimeVerify else { break }
@@ -361,6 +372,7 @@ public enum ScriptOperation: Equatable {
             guard context.configuration.checkSequenceVerify else { break }
             try opCheckSequenceVerify(&stack, context: context)
         case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
+        case .checkSigAdd: try opCheckSigAdd(&stack, context: context)
         case .unknown(_): throw ScriptError.invalidScript
         case .pubKeyHash: throw ScriptError.disabledOperation
         case .pubKey:  throw ScriptError.disabledOperation
@@ -415,16 +427,16 @@ public enum ScriptOperation: Equatable {
         case 0x4c ... 0x4e:
             let byteCount: Int
             if opCode == 0x4c {
-                let pushSize = data.withUnsafeBytes {  $0.load(as: UInt8.self) }
+                let pushSize = data.withUnsafeBytes {  $0.loadUnaligned(as: UInt8.self) }
                 data = data.dropFirst(MemoryLayout.size(ofValue: pushSize))
                 byteCount = Int(pushSize)
             } else if opCode == 0x4d {
-                let pushSize = data.withUnsafeBytes {  $0.load(as: UInt16.self) }
+                let pushSize = data.withUnsafeBytes {  $0.loadUnaligned(as: UInt16.self) }
                 data = data.dropFirst(MemoryLayout.size(ofValue: pushSize))
                 byteCount = Int(pushSize)
             } else {
                 // opCode == 0x4e
-                let pushSize = data.withUnsafeBytes {  $0.load(as: UInt32.self) }
+                let pushSize = data.withUnsafeBytes {  $0.loadUnaligned(as: UInt32.self) }
                 data = data.dropFirst(MemoryLayout.size(ofValue: pushSize))
                 byteCount = Int(pushSize)
             }
@@ -460,7 +472,19 @@ public enum ScriptOperation: Equatable {
 
         case Self.reserved(80).opCode,
              Self.reserved(137).opCode ... Self.reserved(138).opCode:
-            self = .reserved(opCode)
+            self = if version == .legacy || version == .witnessV0 {
+                .reserved(opCode)
+            } else {
+                .success(opCode)
+            }
+
+        // If any opcode numbered 80, 98, 126-129, 131-134, 137-138, 141-142, 149-153, 187-254 is encountered, validation succeeds
+        case Self.success(126).opCode ... Self.success(129).opCode,
+             Self.success(131).opCode ... Self.success(134).opCode,
+             Self.success(141).opCode ... Self.success(142).opCode,
+             Self.success(149).opCode ... Self.success(153).opCode,
+             Self.success(187).opCode ... Self.success(254).opCode:
+            self = .success(opCode)
 
         case Self.oneNegate.opCode: self = .oneNegate
 
@@ -469,7 +493,15 @@ public enum ScriptOperation: Equatable {
             self = .constant(opCode - 0x50)
 
         case Self.noOp.opCode: self = .noOp
-        case Self.ver.opCode: self = .ver
+
+        // OP_VER / OP_SUCCESS
+        case Self.ver.opCode:
+            self = if version == .legacy || version == .witnessV0 {
+                .ver
+            } else {
+                .success(opCode)
+            }
+
         case Self.if.opCode: self = .if
         case Self.notIf.opCode: self = .notIf
         case Self.verIf.opCode: self = .verIf
@@ -555,6 +587,7 @@ public enum ScriptOperation: Equatable {
         case Self.noOp8.opCode: self = .noOp8
         case Self.noOp9.opCode: self = .noOp9
         case Self.noOp10.opCode: self = .noOp10
+        case Self.checkSigAdd.opCode: self = .checkSigAdd
         case Self.unknown(0xbb).opCode ... Self.unknown(0xfc).opCode: self = .unknown(opCode)
         case Self.pubKeyHash.opCode: self = .pubKeyHash
         case Self.pubKey.opCode: self = .pubKey
