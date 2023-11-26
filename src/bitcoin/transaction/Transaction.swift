@@ -354,8 +354,8 @@ public struct Transaction: Equatable {
             return
         }
 
-        let tapscript = Script(tapscriptData, version: .witnessV1)
-        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, configuration: configuration)
+        let tapscript = Script(tapscriptData)
+        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash,version: .witnessV1, configuration: configuration)
     }
 
     private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
@@ -372,9 +372,9 @@ public struct Transaction: Equatable {
             // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
             let witnessScript = Script([
                 .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
-            ], version: .witnessV0)
+            ])
 
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, version: .witnessV0, configuration: configuration)
 
             // The verification must result in a single TRUE on the stack.
             guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
@@ -400,8 +400,8 @@ public struct Transaction: Equatable {
             guard stack.allSatisfy({ $0.count <= 520 }) else {
                 throw ScriptError.witnessElementTooBig
             }
-            let witnessScript = Script(witnessScriptRaw, version: .witnessV0)
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+            let witnessScript = Script(witnessScriptRaw)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, version: .witnessV0, configuration: configuration)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
             guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {

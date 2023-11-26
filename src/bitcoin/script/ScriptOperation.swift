@@ -359,10 +359,10 @@ public enum ScriptOperation: Equatable {
         case .checkSig: try opCheckSig(&stack, context: context)
         case .checkSigVerify: try opCheckSigVerify(&stack, context: context)
         case .checkMultiSig:
-            guard context.script.version == .base || context.script.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
+            guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSig(&stack, context: context)
         case .checkMultiSigVerify:
-            guard context.script.version == .base || context.script.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
+            guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSigVerify(&stack, context: context)
         case .noOp1: break
         case .checkLockTimeVerify:
@@ -416,7 +416,7 @@ public enum ScriptOperation: Equatable {
         return opCodeData + lengthData + rawData
     }
 
-    private init?(pushOpCode opCode: UInt8, _ data: Data, version: ScriptVersion) {
+    private init?(pushOpCode opCode: UInt8, _ data: Data) {
         var data = data
         switch(opCode) {
         case 0x01 ... 0x4b:
@@ -468,7 +468,7 @@ public enum ScriptOperation: Equatable {
         case Self.zero.opCode: self = .zero
 
         // OP_PUSHBYTES, OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
-        case 0x01 ... 0x4e: self.init(pushOpCode: opCode, data, version: version)
+        case 0x01 ... 0x4e: self.init(pushOpCode: opCode, data)
 
         case Self.reserved(80).opCode,
              Self.reserved(137).opCode ... Self.reserved(138).opCode:

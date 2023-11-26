@@ -7,7 +7,7 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
     precondition(publicKeys.count == n)
     precondition(sigs.count == m)
 
-    let scriptCode = try context.script.version == .base ? context.getScriptCode(signatures: sigs) : context.segwitScriptCode
+    let scriptCode = try context.version == .base ? context.getScriptCode(signatures: sigs) : context.segwitScriptCode
 
     var keysCount = publicKeys.count
     var sigsCount = sigs.count
@@ -21,11 +21,11 @@ func opCheckMultiSig(_ stack: inout [Data], context: ScriptContext) throws {
         // Note how this makes the exact order of pubkey/signature evaluation
         // distinguishable by CHECKMULTISIG NOT if the STRICTENC flag is set.
         // See the script_(in)valid tests for details.
-        try checkPublicKey(pubKey , scriptVersion: context.script.version, scriptConfiguration: context.configuration)
+        try checkPublicKey(pubKey , scriptVersion: context.version, scriptConfiguration: context.configuration)
 
         // Check signature
         try checkSignature(sig, scriptConfiguration: context.configuration)
-        let ok = context.transaction.checkECDSASignature(extendedSignature: sig, publicKey: pubKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
+        let ok = context.transaction.checkECDSASignature(extendedSignature: sig, publicKey: pubKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.version)
 
         if ok {
             sigIndex += 1

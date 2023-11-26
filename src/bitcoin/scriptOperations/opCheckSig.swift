@@ -6,15 +6,15 @@ func opCheckSig(_ stack: inout [Data], context: ScriptContext) throws {
 
     let result: Bool
 
-    switch context.script.version {
+    switch context.version {
     case .base, .witnessV0:
-        let scriptCode = try context.script.version == .base ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
+        let scriptCode = try context.version == .base ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
 
-        try checkPublicKey(publicKey, scriptVersion: context.script.version, scriptConfiguration: context.configuration)
+        try checkPublicKey(publicKey, scriptVersion: context.version, scriptConfiguration: context.configuration)
 
         try checkSignature(sig, scriptConfiguration: context.configuration)
 
-        result = context.transaction.checkECDSASignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.script.version)
+        result = context.transaction.checkECDSASignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode, scriptVersion: context.version)
     case .witnessV1:
         guard let tapLeafHash = context.tapLeafHash, let keyVersion = context.keyVersion else {
             preconditionFailure()
