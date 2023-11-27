@@ -284,80 +284,6 @@ public struct Transaction: Equatable {
         }
     }
 
-    /// BIP341, BIP342
-    private func verifyTaproot(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
-
-        guard let witness = inputs[inputIndex].witness else { preconditionFailure() }
-        guard configuration.taproot else { return }
-
-        var stack = witness.elements
-        // Fail if the witness stack has 0 elements.
-        if stack.count == 0 { throw ScriptError.missingTaprootWitness }
-
-        let outputKey = witnessProgram // In this case it is the key (aka taproot output key q)
-
-        // this last element is called annex a and is removed from the witness stack
-        if witness.taprootAnnex != .none { stack.removeLast() }
-
-        // If there is exactly one element left in the witness stack, key path spending is used:
-        if stack.count == 1 {
-            // If the sig is 64 bytes long, return Verify(q, hashTapSighash(0x00 || SigMsg(0x00, 0)), sig)[20], where Verify is defined in BIP340.
-            // If the sig is 65 bytes long, return sig[64] ≠ 0x00[21] and Verify(q, hashTapSighash(0x00 || SigMsg(sig[64], 0)), sig[0:64]).
-            // Otherwise, fail[22].
-            guard checkSchnorrSignature(extendedSignature: stack[0], publicKey: outputKey, inputIndex: inputIndex, previousOutputs: previousOutputs) else {
-                throw ScriptError.invalidSchnorrSignature
-            }
-            return
-        }
-
-        // If there are at least two witness elements left, script path spending is used:
-        // The last stack element is called the control block c
-        let control = stack.removeLast()
-
-        // control block c, and must have length 33 + 32m, for a value of m that is an integer between 0 and 128, inclusive. Fail if it does not have such a length.
-        guard control.count >= 33 && (control.count - 33) % 32 == 0 && (control.count - 33) / 32 < 129 else {
-            throw ScriptError.invalidTapscriptControlBlock
-        }
-
-        // Call the second-to-last stack element s, the script.
-        // The script as defined in BIP341 (i.e., the penultimate witness stack element after removing the optional annex) is called the tapscript
-        let tapscriptData = stack.removeLast()
-
-        // Let p = c[1:33] and let P = lift_x(int(p)) where lift_x and [:] are defined as in BIP340. Fail if this point is not on the curve.
-        // q is referred to as taproot output key and p as taproot internal key.
-        let internalKey = control[1...32]
-
-        // Fail if this point is not on the curve.
-        guard validatePublicKey(internalKey) else { throw ScriptError.invalidTaprootPublicKey }
-
-        // Let v = c[0] & 0xfe and call it the leaf version
-        let leafVersion = control[0] & 0xfe
-
-        // Let k0 = hashTapLeaf(v || compact_size(size of s) || s); also call it the tapleaf hash.
-        let tapLeafHash = taggedHash(tag: "TapLeaf", payload: Data([leafVersion]) + tapscriptData.varLenData)
-
-        // Compute the Merkle root from the leaf and the provided path.
-        let merkleRoot = computeMerkleRoot(controlBlock: control, tapLeafHash: tapLeafHash)
-
-        // Verify that the output pubkey matches the tweaked internal pubkey, after correcting for parity.
-        let parity = (control[0] & 0x01) != 0
-        guard checkTapTweak(publicKey: internalKey, tweakedKey: outputKey, merkleRoot: merkleRoot, parity: parity) else {
-            throw ScriptError.invalidTaprootTweak
-        }
-
-        // BIP 342 Tapscript - https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki
-        // The leaf version is 0xc0 (i.e. the first byte of the last witness element after removing the optional annex is 0xc0 or 0xc1), marking it as a tapscript spend.
-        guard leafVersion == 0xc0 else {
-            if configuration.discourageUpgradableTaprootVersion {
-                throw ScriptError.disallowedTaprootVersion
-            }
-            return
-        }
-
-        let tapscript = Script(tapscriptData)
-        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash,version: .witnessV1, configuration: configuration)
-    }
-
     private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
         guard var stack = inputs[inputIndex].witness?.elements else { preconditionFailure() }
 
@@ -411,6 +337,80 @@ public struct Transaction: Equatable {
             // If the version byte is 0, but the witness program is neither 20 nor 32 bytes, the script must fail.
             throw ScriptError.witnessProgramWrongLength
         }
+    }
+
+    /// BIP341, BIP342
+    private func verifyTaproot(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+
+        guard let witness = inputs[inputIndex].witness else { preconditionFailure() }
+        guard configuration.taproot else { return }
+
+        var stack = witness.elements
+        // Fail if the witness stack has 0 elements.
+        if stack.count == 0 { throw ScriptError.missingTaprootWitness }
+
+        let outputKey = witnessProgram // In this case it is the key (aka taproot output key q)
+
+        // this last element is called annex a and is removed from the witness stack
+        if witness.taprootAnnex != .none { stack.removeLast() }
+
+        // If there is exactly one element left in the witness stack, key path spending is used:
+        if stack.count == 1 {
+            let (signature, sighashType) = try splitSchnorrSignature(stack[0])
+            var cache = SighashCache() // TODO: Hold on to cache.
+            let sighash = self.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: .none, sighashCache: &cache)
+            guard verifySchnorr(sig: signature, msg: sighash, publicKey: outputKey) else {
+                throw ScriptError.invalidSchnorrSignature
+            }
+            return
+        }
+
+        // If there are at least two witness elements left, script path spending is used:
+        // The last stack element is called the control block c
+        let control = stack.removeLast()
+
+        // control block c, and must have length 33 + 32m, for a value of m that is an integer between 0 and 128, inclusive. Fail if it does not have such a length.
+        guard control.count >= 33 && (control.count - 33) % 32 == 0 && (control.count - 33) / 32 < 129 else {
+            throw ScriptError.invalidTapscriptControlBlock
+        }
+
+        // Call the second-to-last stack element s, the script.
+        // The script as defined in BIP341 (i.e., the penultimate witness stack element after removing the optional annex) is called the tapscript
+        let tapscriptData = stack.removeLast()
+
+        // Let p = c[1:33] and let P = lift_x(int(p)) where lift_x and [:] are defined as in BIP340. Fail if this point is not on the curve.
+        // q is referred to as taproot output key and p as taproot internal key.
+        let internalKey = control[1...32]
+
+        // Fail if this point is not on the curve.
+        guard validatePublicKey(internalKey) else { throw ScriptError.invalidTaprootPublicKey }
+
+        // Let v = c[0] & 0xfe and call it the leaf version
+        let leafVersion = control[0] & 0xfe
+
+        // Let k0 = hashTapLeaf(v || compact_size(size of s) || s); also call it the tapleaf hash.
+        let tapLeafHash = taggedHash(tag: "TapLeaf", payload: Data([leafVersion]) + tapscriptData.varLenData)
+
+        // Compute the Merkle root from the leaf and the provided path.
+        let merkleRoot = computeMerkleRoot(controlBlock: control, tapLeafHash: tapLeafHash)
+
+        // Verify that the output pubkey matches the tweaked internal pubkey, after correcting for parity.
+        let parity = (control[0] & 0x01) != 0
+        guard checkTapTweak(publicKey: internalKey, tweakedKey: outputKey, merkleRoot: merkleRoot, parity: parity) else {
+            throw ScriptError.invalidTaprootTweak
+        }
+
+        // BIP 342 Tapscript - https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki
+        // The leaf version is 0xc0 (i.e. the first byte of the last witness element after removing the optional annex is 0xc0 or 0xc1), marking it as a tapscript spend.
+        guard leafVersion == 0xc0 else {
+            if configuration.discourageUpgradableTaprootVersion {
+                throw ScriptError.disallowedTaprootVersion
+            }
+            return
+        }
+
+        let tapscript = Script(tapscriptData)
+        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash,version: .witnessV1, configuration: configuration)
     }
 
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.
@@ -638,46 +638,6 @@ public struct Transaction: Equatable {
         if lockPair.0 >= blockHeight || lockPair.1 >= previousBlockMedianTimePast {
             throw TransactionError.futureLockTime
         }
-    }
-
-    func checkECDSASignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptVersion: ScriptVersion) -> Bool {
-        if extendedSignature.isEmpty {
-            return false
-        }
-        let signature = extendedSignature.dropLast()
-        let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
-        guard let sighashType = SighashType(sighashTypeData) else {
-            preconditionFailure()
-        }
-        let sighash = if scriptVersion == .base {
-            signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
-        } else if scriptVersion == .witnessV0 {
-            signatureHashSegwit(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
-        } else { preconditionFailure() }
-        let result = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
-        return result
-    }
-
-    func checkSchnorrSignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutputs: [Output], extFlag: UInt8 = 0, tapscriptExtension: TapscriptExtension? = .none) -> Bool {
-        // If the sig is 64 bytes long, return Verify(q, hashTapSighash(0x00 || SigMsg(0x00, 0)), sig), where Verify is defined in BIP340.
-        // If the sig is 65 bytes long, return sig[64] ≠ 0x00 and Verify(q, hashTapSighash(0x00 || SigMsg(sig[64], 0)), sig[0:64]).
-        // Otherwise, fail.
-        var sigTmp = extendedSignature
-        let sighashType: SighashType?
-        if sigTmp.count == 65, let rawValue = sigTmp.popLast(), let maybeHashType = SighashType(rawValue) {
-            sighashType = maybeHashType
-        } else if sigTmp.count == 64 {
-            sighashType = SighashType?.none
-        } else {
-            return false
-        }
-        let sig = sigTmp
-
-        let txCopy = self
-        var cache = SighashCache() // TODO: Hold on to cache.
-        let sighash = txCopy.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
-        let result = verifySchnorr(sig: sig, msg: sighash, publicKey: publicKey)
-        return result
     }
 
     /// Signature hash for legacy inputs.

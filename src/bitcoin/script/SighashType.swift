@@ -2,9 +2,9 @@ import Foundation
 
 public struct SighashType {
 
-    init?(_ data: Data) {
+    init(_ data: Data) {
         guard let value = data.first else {
-            return nil
+            preconditionFailure()
         }
         self.value = value
     }
