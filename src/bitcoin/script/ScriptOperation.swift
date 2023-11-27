@@ -279,7 +279,7 @@ public enum ScriptOperation: Equatable {
 
         switch(self) {
         case .zero: opConstant(0, stack: &stack)
-        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): opPushData(data: d, stack: &stack)
+        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): opPushBytes(data: d, stack: &stack)
         case .oneNegate: op1Negate(&stack)
         case .reserved(_): throw ScriptError.invalidScript
         case .success(_): opSuccess(context: &context)
