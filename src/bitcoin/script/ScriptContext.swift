@@ -5,6 +5,7 @@ struct ScriptContext {
     let transaction: Transaction
     let inputIndex: Int
     let previousOutputs: [Output]
+    let version: ScriptVersion
     let configuration: ScriptConfigurarion
     let script: Script
     var decodedOperations = [ScriptOperation]()
@@ -43,7 +44,7 @@ struct ScriptContext {
 
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`. Legacy scripts only.
     func getScriptCode(signatures: [Data]) throws -> Data {
-        precondition(script.version == .base)
+        precondition(version == .base)
         var scriptData = script.data
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)
@@ -52,7 +53,7 @@ struct ScriptContext {
         var scriptCode = Data()
         var programCounter2 = scriptData.startIndex
         while programCounter2 < scriptData.endIndex {
-            guard let operation = ScriptOperation(scriptData[programCounter2...], version: script.version) else {
+            guard let operation = ScriptOperation(scriptData[programCounter2...], version: version) else {
                 preconditionFailure()
                 // TODO: What happens to scriptCode if script cannot be fully decoded?
             }

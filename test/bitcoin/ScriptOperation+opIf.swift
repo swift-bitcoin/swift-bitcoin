@@ -163,24 +163,24 @@ final class OpIfTests: XCTestCase {
 
     func testMinimalif() {
         // True-ish value
-        var script = Script([.constant(2), .if, .constant(2), .else, .constant(3), .endIf], version: .witnessV0)
+        var script = Script([.constant(2), .if, .constant(2), .else, .constant(3), .endIf])
         var stack = [Data]()
-        XCTAssertThrowsError(try script.run(&stack))
+        XCTAssertThrowsError(try script.run(&stack, version: .witnessV0))
 
         // Falsish value
-        script = Script([.pushBytes(Data([0])), .if, .constant(2), .else, .constant(3), .endIf], version: .witnessV0)
+        script = Script([.pushBytes(Data([0])), .if, .constant(2), .else, .constant(3), .endIf])
         stack = []
-        XCTAssertThrowsError(try script.run(&stack))
+        XCTAssertThrowsError(try script.run(&stack, version: .witnessV0))
 
         // Falsish value not-if
-        script = Script([.pushBytes(Data([0])), .notIf, .constant(2), .else, .constant(3), .endIf], version: .witnessV0)
+        script = Script([.pushBytes(Data([0])), .notIf, .constant(2), .else, .constant(3), .endIf])
         stack = []
-        XCTAssertThrowsError(try script.run(&stack))
+        XCTAssertThrowsError(try script.run(&stack, version: .witnessV0))
 
         // true-ish value not-if
-        script = Script([.constant(2), .notIf, .constant(2), .else, .constant(3), .endIf], version: .witnessV0)
+        script = Script([.constant(2), .notIf, .constant(2), .else, .constant(3), .endIf])
         stack = []
-        XCTAssertThrowsError(try script.run(&stack))
+        XCTAssertThrowsError(try script.run(&stack, version: .witnessV0))
     }
 
     func testVerIf() {

@@ -30,11 +30,12 @@ func opCheckSigAdd(_ stack: inout [Data], context: ScriptContext) throws {
         // If the signature is not the empty vector, the signature is validated against the public key (see the next subsection). Validation failure in this case immediately terminates script execution with failure.
 
         // Tapscript semantics
-        let result = context.transaction.checkSchnorrSignature(extendedSignature: sig, publicKey: publicKey, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, extFlag: 1, tapscriptExtension: .init(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition))
-
-        if !result {
-            throw ScriptError.invalidScript
-        }
+        let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition)
+        let (signature, sighashType) = try splitSchnorrSignature(sig)
+        var cache = SighashCache() // TODO: Hold on to cache.
+        let sighash = context.transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
+        let result = verifySchnorr(sig: signature, msg: sighash, publicKey: publicKey)
+        if !result { throw ScriptError.invalidSchnorrSignature }
     }
     // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
 

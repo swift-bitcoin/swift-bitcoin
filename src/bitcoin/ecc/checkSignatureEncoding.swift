@@ -25,12 +25,12 @@ func checkSignatureEncoding(_ sig: Data) throws {
 
     // Minimum and maximum size constraints.
     if sig.count < 9 { throw ScriptError.invalidSignatureEncoding }
-    if sig.count > 73{ throw ScriptError.invalidSignatureEncoding }
+    if sig.count > 73 { throw ScriptError.invalidSignatureEncoding }
 
     let start = sig.startIndex
 
     // A signature is of type 0x30 (compound).
-    if sig[start] != 0x30{ throw ScriptError.invalidSignatureEncoding }
+    if sig[start] != 0x30 { throw ScriptError.invalidSignatureEncoding }
 
     // Make sure the length covers the entire signature.
     if sig[start + 1] != sig.count - 3 { throw ScriptError.invalidSignatureEncoding }
@@ -39,7 +39,7 @@ func checkSignatureEncoding(_ sig: Data) throws {
     let lenR = Int(sig[start + 3])
 
     // Make sure the length of the S element is still inside the signature.
-    if 5 + lenR >= sig.count{ throw ScriptError.invalidSignatureEncoding }
+    if 5 + lenR >= sig.count { throw ScriptError.invalidSignatureEncoding }
 
     // Extract the length of the S element.
     let lenS = Int(sig[start + 5 + lenR])
@@ -49,7 +49,7 @@ func checkSignatureEncoding(_ sig: Data) throws {
     if lenR + lenS + 7 != sig.count { throw ScriptError.invalidSignatureEncoding }
 
     // Check whether the R element is an integer.
-    if sig[start + 2] != 0x02{ throw ScriptError.invalidSignatureEncoding }
+    if sig[start + 2] != 0x02 { throw ScriptError.invalidSignatureEncoding }
 
     // Zero-length integers are not allowed for R.
     if lenR == 0 { throw ScriptError.invalidSignatureEncoding }

@@ -284,6 +284,61 @@ public struct Transaction: Equatable {
         }
     }
 
+    private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+        guard var stack = inputs[inputIndex].witness?.elements else { preconditionFailure() }
+
+        if witnessProgram.count == 20 {
+            // If the version byte is 0, and the witness program is 20 bytes: It is interpreted as a pay-to-witness-public-key-hash (P2WPKH) program.
+
+            // The witness must consist of exactly 2 items (≤ 520 bytes each). The first one a signature, and the second one a public key.
+            guard stack.count == 2, stack.allSatisfy({ $0.count <= 520 }) else {
+                throw ScriptError.witnessElementTooBig
+            }
+
+            // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
+            let witnessScript = Script([
+                .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
+            ])
+
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, version: .witnessV0, configuration: configuration)
+
+            // The verification must result in a single TRUE on the stack.
+            guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
+                throw ScriptError.falseReturned
+            }
+        } else if witnessProgram.count == 32 {
+            // If the version byte is 0, and the witness program is 32 bytes: It is interpreted as a pay-to-witness-script-hash (P2WSH) program.
+
+            // The witnessScript (≤ 10,000 bytes) is popped off the initial witness stack.
+            guard var stack = inputs[inputIndex].witness?.elements, let witnessScriptRaw = stack.popLast() else {
+                preconditionFailure()
+            }
+            if witnessScriptRaw.count > 10_000 {
+                throw ScriptError.witnessScriptTooBig
+            }
+
+            // SHA256 of the witnessScript must match the 32-byte witness program.
+            guard sha256(witnessScriptRaw) == witnessProgram else {
+                throw ScriptError.wrongWitnessScriptHash
+            }
+
+            // The witnessScript is deserialized, and executed after normal script evaluation with the remaining witness stack (≤ 520 bytes for each stack item).
+            guard stack.allSatisfy({ $0.count <= 520 }) else {
+                throw ScriptError.witnessElementTooBig
+            }
+            let witnessScript = Script(witnessScriptRaw)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, version: .witnessV0, configuration: configuration)
+
+            // The script must not fail, and result in exactly a single TRUE on the stack.
+            guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
+                throw ScriptError.falseReturned
+            }
+        } else {
+            // If the version byte is 0, but the witness program is neither 20 nor 32 bytes, the script must fail.
+            throw ScriptError.witnessProgramWrongLength
+        }
+    }
+
     /// BIP341, BIP342
     private func verifyTaproot(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
 
@@ -301,10 +356,10 @@ public struct Transaction: Equatable {
 
         // If there is exactly one element left in the witness stack, key path spending is used:
         if stack.count == 1 {
-            // If the sig is 64 bytes long, return Verify(q, hashTapSighash(0x00 || SigMsg(0x00, 0)), sig)[20], where Verify is defined in BIP340.
-            // If the sig is 65 bytes long, return sig[64] ≠ 0x00[21] and Verify(q, hashTapSighash(0x00 || SigMsg(sig[64], 0)), sig[0:64]).
-            // Otherwise, fail[22].
-            guard checkSchnorrSignature(extendedSignature: stack[0], publicKey: outputKey, inputIndex: inputIndex, previousOutputs: previousOutputs) else {
+            let (signature, sighashType) = try splitSchnorrSignature(stack[0])
+            var cache = SighashCache() // TODO: Hold on to cache.
+            let sighash = self.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: .none, sighashCache: &cache)
+            guard verifySchnorr(sig: signature, msg: sighash, publicKey: outputKey) else {
                 throw ScriptError.invalidSchnorrSignature
             }
             return
@@ -354,63 +409,8 @@ public struct Transaction: Equatable {
             return
         }
 
-        let tapscript = Script(tapscriptData, version: .witnessV1)
-        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, configuration: configuration)
-    }
-
-    private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
-        guard var stack = inputs[inputIndex].witness?.elements else { preconditionFailure() }
-
-        if witnessProgram.count == 20 {
-            // If the version byte is 0, and the witness program is 20 bytes: It is interpreted as a pay-to-witness-public-key-hash (P2WPKH) program.
-
-            // The witness must consist of exactly 2 items (≤ 520 bytes each). The first one a signature, and the second one a public key.
-            guard stack.count == 2, stack.allSatisfy({ $0.count <= 520 }) else {
-                throw ScriptError.witnessElementTooBig
-            }
-
-            // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
-            let witnessScript = Script([
-                .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
-            ], version: .witnessV0)
-
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
-
-            // The verification must result in a single TRUE on the stack.
-            guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
-                throw ScriptError.falseReturned
-            }
-        } else if witnessProgram.count == 32 {
-            // If the version byte is 0, and the witness program is 32 bytes: It is interpreted as a pay-to-witness-script-hash (P2WSH) program.
-
-            // The witnessScript (≤ 10,000 bytes) is popped off the initial witness stack.
-            guard var stack = inputs[inputIndex].witness?.elements, let witnessScriptRaw = stack.popLast() else {
-                preconditionFailure()
-            }
-            if witnessScriptRaw.count > 10_000 {
-                throw ScriptError.witnessScriptTooBig
-            }
-
-            // SHA256 of the witnessScript must match the 32-byte witness program.
-            guard sha256(witnessScriptRaw) == witnessProgram else {
-                throw ScriptError.wrongWitnessScriptHash
-            }
-
-            // The witnessScript is deserialized, and executed after normal script evaluation with the remaining witness stack (≤ 520 bytes for each stack item).
-            guard stack.allSatisfy({ $0.count <= 520 }) else {
-                throw ScriptError.witnessElementTooBig
-            }
-            let witnessScript = Script(witnessScriptRaw, version: .witnessV0)
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
-
-            // The script must not fail, and result in exactly a single TRUE on the stack.
-            guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
-                throw ScriptError.falseReturned
-            }
-        } else {
-            // If the version byte is 0, but the witness program is neither 20 nor 32 bytes, the script must fail.
-            throw ScriptError.witnessProgramWrongLength
-        }
+        let tapscript = Script(tapscriptData)
+        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash,version: .witnessV1, configuration: configuration)
     }
 
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.
@@ -638,46 +638,6 @@ public struct Transaction: Equatable {
         if lockPair.0 >= blockHeight || lockPair.1 >= previousBlockMedianTimePast {
             throw TransactionError.futureLockTime
         }
-    }
-
-    func checkECDSASignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutput: Output, scriptCode: Data, scriptVersion: ScriptVersion) -> Bool {
-        if extendedSignature.isEmpty {
-            return false
-        }
-        let signature = extendedSignature.dropLast()
-        let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
-        guard let sighashType = SighashType(sighashTypeData) else {
-            preconditionFailure()
-        }
-        let sighash = if scriptVersion == .base {
-            signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
-        } else if scriptVersion == .witnessV0 {
-            signatureHashSegwit(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
-        } else { preconditionFailure() }
-        let result = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
-        return result
-    }
-
-    func checkSchnorrSignature(extendedSignature: Data, publicKey: Data, inputIndex: Int, previousOutputs: [Output], extFlag: UInt8 = 0, tapscriptExtension: TapscriptExtension? = .none) -> Bool {
-        // If the sig is 64 bytes long, return Verify(q, hashTapSighash(0x00 || SigMsg(0x00, 0)), sig), where Verify is defined in BIP340.
-        // If the sig is 65 bytes long, return sig[64] ≠ 0x00 and Verify(q, hashTapSighash(0x00 || SigMsg(sig[64], 0)), sig[0:64]).
-        // Otherwise, fail.
-        var sigTmp = extendedSignature
-        let sighashType: SighashType?
-        if sigTmp.count == 65, let rawValue = sigTmp.popLast(), let maybeHashType = SighashType(rawValue) {
-            sighashType = maybeHashType
-        } else if sigTmp.count == 64 {
-            sighashType = SighashType?.none
-        } else {
-            return false
-        }
-        let sig = sigTmp
-
-        let txCopy = self
-        var cache = SighashCache() // TODO: Hold on to cache.
-        let sighash = txCopy.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
-        let result = verifySchnorr(sig: sig, msg: sighash, publicKey: publicKey)
-        return result
     }
 
     /// Signature hash for legacy inputs.

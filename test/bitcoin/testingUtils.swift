@@ -6,8 +6,8 @@ extension Transaction {
 }
 
 extension Script {
-    func run(_ stack: inout [Data]) throws {
-        try run(&stack, transaction: .empty, inputIndex: -1, previousOutputs: [], configuration: .standard)
+    func run(_ stack: inout [Data], version: ScriptVersion = .base) throws {
+        try run(&stack, transaction: .empty, inputIndex: -1, previousOutputs: [], version: version, configuration: .standard)
     }
 }
 
