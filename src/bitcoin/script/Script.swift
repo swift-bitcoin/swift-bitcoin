@@ -102,6 +102,10 @@ public struct Script: Equatable {
     /// Evaluates the script.
     public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, version: ScriptVersion = .base, configuration: ScriptConfigurarion) throws {
 
+        if (version == .base || version == .witnessV0) && size > Self.maxScriptSize {
+            throw ScriptError.scriptSizeLimitExceeded
+        }
+
         // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains. It is extended to also apply to the size of initial stack.
         if (version != .base && version != .witnessV0) && stack.count > Self.maxStackElements {
             throw ScriptError.initialStackLimitExceeded
@@ -153,6 +157,9 @@ public struct Script: Equatable {
             }
         }
     }
+
+    // Maximum script length in bytes
+    private static let maxScriptSize = 1000
 
     /// BIP342
     private static let maxStackElements = 1000

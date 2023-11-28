@@ -46,5 +46,6 @@ enum ScriptError: Error {
          stacksLimitExceeded,
          initialStackMaxElementSizeExceeded,
          stacksMaxElementSizeExceeded,
-         stackMaxElementSizeExceeded
+         stackMaxElementSizeExceeded,
+         scriptSizeLimitExceeded
 }
