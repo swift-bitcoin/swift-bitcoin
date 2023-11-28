@@ -28,8 +28,6 @@ enum ScriptError: Error {
          uncleanStack,
          wrongWitnessScriptHash,
          witnessProgramWrongLength,
-         witnessScriptTooBig,
-         witnessElementTooBig,
          disallowedWitnessVersion,
          nonConstantScript,
          signatureNotEmpty,

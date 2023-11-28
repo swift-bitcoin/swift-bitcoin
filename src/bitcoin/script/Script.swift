@@ -102,6 +102,7 @@ public struct Script: Equatable {
     /// Evaluates the script.
     public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, version: ScriptVersion = .base, configuration: ScriptConfigurarion) throws {
 
+        // BIP141
         if (version == .base || version == .witnessV0) && size > Self.maxScriptSize {
             throw ScriptError.scriptSizeLimitExceeded
         }
@@ -111,6 +112,7 @@ public struct Script: Equatable {
             throw ScriptError.initialStackLimitExceeded
         }
 
+        // BIP141: The witnessScript is deserialized, and executed after normal script evaluation with the remaining witness stack (≤ 520 bytes for each stack item).
         // BIP342: Stack element size limit The existing limit of maximum 520 bytes per stack element remains, both in the initial stack and in push opcodes.
         guard version == .base || stack.allSatisfy({ $0.count <= Self.maxStackElementSize }) else {
             throw ScriptError.initialStackMaxElementSizeExceeded
@@ -138,6 +140,7 @@ public struct Script: Equatable {
             // TODO: Check for `OP_SUCCESS` on a separate loop without really executing any operations. Honor configuration option to discourage unknown op success opcodes. See issue #81.
             if context.succeedUnconditionally { return }
 
+            // BIP141
             // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains.
             if version != .base && stack.count + context.altStack.count > Self.maxStackElements {
                 throw ScriptError.stacksLimitExceeded
@@ -171,10 +174,10 @@ public struct Script: Equatable {
     static let maxOperations = 201
 
     /// Maximum script length in bytes.
-    private static let maxScriptSize = 10_000
+    static let maxScriptSize = 10_000
 
     /// BIP342
-    private static let maxStackElements = 1000
+    private static let maxStackElements = 1_000
 
     /// BIP342
     static let maxStackElementSize = 520
