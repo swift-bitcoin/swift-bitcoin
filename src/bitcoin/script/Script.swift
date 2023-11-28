@@ -106,7 +106,7 @@ public struct Script: Equatable {
         while context.programCounter < data.count {
             let startIndex = data.startIndex + context.programCounter
             guard let operation = ScriptOperation(data[startIndex...], version: version) else {
-                throw ScriptError.invalidInstruction
+                throw ScriptError.unparsableOperation
             }
             context.decodedOperations.append(operation)
             try operation.execute(stack: &stack, context: &context)

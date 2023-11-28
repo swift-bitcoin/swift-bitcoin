@@ -6,7 +6,8 @@ enum ScriptError: Error {
          unparsableScript,
          nonPushOnlyScript,
          invalidStackOperation,
-         invalidInstruction,
+         unparsableOperation,
+         unknownOperation,
          disabledOperation,
          numberOverflow,
          nonMinimalBoolean,
@@ -32,7 +33,6 @@ enum ScriptError: Error {
          disallowedWitnessVersion,
          nonConstantScript,
          signatureNotEmpty,
-         //emptySignature,
          tapscriptCheckMultiSigDisabled,
          invalidSchnorrSignature,
          invalidSchnorrSignatureFormat,
@@ -40,5 +40,6 @@ enum ScriptError: Error {
          invalidTaprootPublicKey,
          invalidTaprootTweak,
          missingTaprootWitness,
-         disallowedTaprootVersion
+         disallowedTaprootVersion,
+         sigopBudgetExceeded
 }

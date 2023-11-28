@@ -1,7 +1,7 @@
 import Foundation
 
 /// The entire transaction's outputs, inputs, and script (from the most recently-executed `OP_CODESEPARATOR` to the end) are hashed. The signature used by `OP_CHECKSIG` must be a valid signature for this hash and public key. If it is, `1` is returned, `0` otherwise.
-func opCheckSig(_ stack: inout [Data], context: ScriptContext) throws {
+func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
     let (sig, publicKey) = try getBinaryParams(&stack)
 
     let result: Bool
@@ -26,6 +26,7 @@ func opCheckSig(_ stack: inout [Data], context: ScriptContext) throws {
             result = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
         }
     case .witnessV1:
+        if !sig.isEmpty { try context.checkSigopBudget() }
         guard let tapLeafHash = context.tapLeafHash, let keyVersion = context.keyVersion else { preconditionFailure() }
         // Tapscript semantics
         let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition)

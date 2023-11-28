@@ -356,8 +356,8 @@ public enum ScriptOperation: Equatable {
         case .hash160: try opHash160(&stack)
         case .hash256: try opHash256(&stack)
         case .codeSeparator: try opCodeSeparator(context: &context)
-        case .checkSig: try opCheckSig(&stack, context: context)
-        case .checkSigVerify: try opCheckSigVerify(&stack, context: context)
+        case .checkSig: try opCheckSig(&stack, context: &context)
+        case .checkSigVerify: try opCheckSigVerify(&stack, context: &context)
         case .checkMultiSig:
             guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSig(&stack, context: context)
@@ -372,8 +372,10 @@ public enum ScriptOperation: Equatable {
             guard context.configuration.checkSequenceVerify else { break }
             try opCheckSequenceVerify(&stack, context: context)
         case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
-        case .checkSigAdd: try opCheckSigAdd(&stack, context: context)
-        case .unknown(_): throw ScriptError.invalidScript
+        case .checkSigAdd:
+            guard context.version == .witnessV1 else { throw ScriptError.unknownOperation }
+            try opCheckSigAdd(&stack, context: &context)
+        case .unknown(_): throw ScriptError.unknownOperation
         case .pubKeyHash: throw ScriptError.disabledOperation
         case .pubKey:  throw ScriptError.disabledOperation
         case .invalidOpCode: throw ScriptError.disabledOperation
