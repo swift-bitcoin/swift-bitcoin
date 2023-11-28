@@ -290,9 +290,10 @@ public struct Transaction: Equatable {
         if witnessProgram.count == 20 {
             // If the version byte is 0, and the witness program is 20 bytes: It is interpreted as a pay-to-witness-public-key-hash (P2WPKH) program.
 
-            // The witness must consist of exactly 2 items (≤ 520 bytes each). The first one a signature, and the second one a public key.
-            guard stack.count == 2, stack.allSatisfy({ $0.count <= 520 }) else {
-                throw ScriptError.witnessElementTooBig
+            // BIP141: The witness must consist of exactly 2 items (≤ 520 bytes each). The first one a signature, and the second one a public key.
+            // The `≤ 520` part is checked by ``Script.run()``.
+            guard stack.count == 2 else {
+                throw ScriptError.initialStackLimitExceeded
             }
 
             // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
@@ -309,12 +310,13 @@ public struct Transaction: Equatable {
         } else if witnessProgram.count == 32 {
             // If the version byte is 0, and the witness program is 32 bytes: It is interpreted as a pay-to-witness-script-hash (P2WSH) program.
 
-            // The witnessScript (≤ 10,000 bytes) is popped off the initial witness stack.
+            // BIP141: The witnessScript (≤ 10,000 bytes) is popped off the initial witness stack.
             guard var stack = inputs[inputIndex].witness?.elements, let witnessScriptRaw = stack.popLast() else {
                 preconditionFailure()
             }
-            if witnessScriptRaw.count > 10_000 {
-                throw ScriptError.witnessScriptTooBig
+            // This check is repeated inside ``Script.run()``.
+            if witnessScriptRaw.count > Script.maxScriptSize {
+                throw ScriptError.scriptSizeLimitExceeded
             }
 
             // SHA256 of the witnessScript must match the 32-byte witness program.
@@ -322,10 +324,6 @@ public struct Transaction: Equatable {
                 throw ScriptError.wrongWitnessScriptHash
             }
 
-            // The witnessScript is deserialized, and executed after normal script evaluation with the remaining witness stack (≤ 520 bytes for each stack item).
-            guard stack.allSatisfy({ $0.count <= 520 }) else {
-                throw ScriptError.witnessElementTooBig
-            }
             let witnessScript = Script(witnessScriptRaw)
             try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, version: .witnessV0, configuration: configuration)
 

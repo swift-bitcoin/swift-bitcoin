@@ -31,6 +31,13 @@ public enum ScriptOperation: Equatable {
         }
     }
 
+    var isPush: Bool {
+        switch(self) {
+        case .zero, .oneNegate, .constant(_), .pushBytes(_), .pushData1(_), .pushData2(_), .pushData4(_): true
+        default: false
+        }
+    }
+
     var size: Int {
         operationPreconditions()
         let additionalSize: Int
@@ -279,7 +286,7 @@ public enum ScriptOperation: Equatable {
 
         switch(self) {
         case .zero: opConstant(0, stack: &stack)
-        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): opPushBytes(data: d, stack: &stack)
+        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): try opPushBytes(data: d, stack: &stack, context: context)
         case .oneNegate: op1Negate(&stack)
         case .reserved(_): throw ScriptError.invalidScript
         case .success(_): opSuccess(context: &context)
@@ -356,14 +363,14 @@ public enum ScriptOperation: Equatable {
         case .hash160: try opHash160(&stack)
         case .hash256: try opHash256(&stack)
         case .codeSeparator: try opCodeSeparator(context: &context)
-        case .checkSig: try opCheckSig(&stack, context: context)
-        case .checkSigVerify: try opCheckSigVerify(&stack, context: context)
+        case .checkSig: try opCheckSig(&stack, context: &context)
+        case .checkSigVerify: try opCheckSigVerify(&stack, context: &context)
         case .checkMultiSig:
             guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
-            try opCheckMultiSig(&stack, context: context)
+            try opCheckMultiSig(&stack, context: &context)
         case .checkMultiSigVerify:
             guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
-            try opCheckMultiSigVerify(&stack, context: context)
+            try opCheckMultiSigVerify(&stack, context: &context)
         case .noOp1: break
         case .checkLockTimeVerify:
             guard context.configuration.checkLockTimeVerify else { break }
@@ -372,8 +379,10 @@ public enum ScriptOperation: Equatable {
             guard context.configuration.checkSequenceVerify else { break }
             try opCheckSequenceVerify(&stack, context: context)
         case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
-        case .checkSigAdd: try opCheckSigAdd(&stack, context: context)
-        case .unknown(_): throw ScriptError.invalidScript
+        case .checkSigAdd:
+            guard context.version == .witnessV1 else { throw ScriptError.unknownOperation }
+            try opCheckSigAdd(&stack, context: &context)
+        case .unknown(_): throw ScriptError.unknownOperation
         case .pubKeyHash: throw ScriptError.disabledOperation
         case .pubKey:  throw ScriptError.disabledOperation
         case .invalidOpCode: throw ScriptError.disabledOperation

@@ -101,18 +101,50 @@ public struct Script: Equatable {
 
     /// Evaluates the script.
     public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, version: ScriptVersion = .base, configuration: ScriptConfigurarion) throws {
+
+        // BIP141
+        if (version == .base || version == .witnessV0) && size > Self.maxScriptSize {
+            throw ScriptError.scriptSizeLimitExceeded
+        }
+
+        // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains. It is extended to also apply to the size of initial stack.
+        if (version != .base && version != .witnessV0) && stack.count > Self.maxStackElements {
+            throw ScriptError.initialStackLimitExceeded
+        }
+
+        // BIP141: The witnessScript is deserialized, and executed after normal script evaluation with the remaining witness stack (≤ 520 bytes for each stack item).
+        // BIP342: Stack element size limit The existing limit of maximum 520 bytes per stack element remains, both in the initial stack and in push opcodes.
+        guard version == .base || stack.allSatisfy({ $0.count <= Self.maxStackElementSize }) else {
+            throw ScriptError.initialStackMaxElementSizeExceeded
+        }
+
         var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, version: version, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
 
         while context.programCounter < data.count {
             let startIndex = data.startIndex + context.programCounter
             guard let operation = ScriptOperation(data[startIndex...], version: version) else {
-                throw ScriptError.invalidInstruction
+                throw ScriptError.unparsableOperation
             }
             context.decodedOperations.append(operation)
+
+            if (version == .base || version == .witnessV0) && !operation.isPush && operation != .reserved(80) {
+                context.nonPushOperations += 1
+                guard context.nonPushOperations <= Self.maxOperations else {
+                    throw ScriptError.operationsLimitExceeded
+                }
+            }
+
             try operation.execute(stack: &stack, context: &context)
 
-            // BIP342: OP_SUCCESS
+            // BIP342: `OP_SUCCESS`
+            // TODO: Check for `OP_SUCCESS` on a separate loop without really executing any operations. Honor configuration option to discourage unknown op success opcodes. See issue #81.
             if context.succeedUnconditionally { return }
+
+            // BIP141
+            // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains.
+            if version != .base && stack.count + context.altStack.count > Self.maxStackElements {
+                throw ScriptError.stacksLimitExceeded
+            }
 
             context.programCounter += operation.size
         }
@@ -130,11 +162,23 @@ public struct Script: Equatable {
         guard let operations = getOperations() else {
             throw ScriptError.unparsableScript
         }
-        for op in operations {
-            switch op {
-            case .oneNegate, .zero, .constant(_), .pushBytes(_), .pushData1(_), .pushData2(_), .pushData4(_): break
-            default: throw ScriptError.nonPushOnlyScript
-            }
+        guard operations.allSatisfy(\.isPush) else {
+            throw ScriptError.nonPushOnlyScript
         }
     }
+
+    /// Maximum number of public keys per multisig.
+    static let maxMultiSigPublicKeys = 20
+
+    /// Maximum number of non-push operations per script.
+    static let maxOperations = 201
+
+    /// Maximum script length in bytes.
+    static let maxScriptSize = 10_000
+
+    /// BIP342
+    private static let maxStackElements = 1_000
+
+    /// BIP342
+    static let maxStackElementSize = 520
 }
