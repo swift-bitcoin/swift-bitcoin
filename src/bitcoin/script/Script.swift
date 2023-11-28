@@ -124,9 +124,18 @@ public struct Script: Equatable {
                 throw ScriptError.unparsableOperation
             }
             context.decodedOperations.append(operation)
+
+            if (version == .base || version == .witnessV0) && !operation.isPush && operation != .reserved(80) {
+                context.nonPushOperations += 1
+                guard context.nonPushOperations <= Self.maxOperations else {
+                    throw ScriptError.operationsLimitExceeded
+                }
+            }
+
             try operation.execute(stack: &stack, context: &context)
 
-            // BIP342: OP_SUCCESS
+            // BIP342: `OP_SUCCESS`
+            // TODO: Check for `OP_SUCCESS` on a separate loop without really executing any operations. Honor configuration option to discourage unknown op success opcodes. See issue #81.
             if context.succeedUnconditionally { return }
 
             // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains.
@@ -150,16 +159,19 @@ public struct Script: Equatable {
         guard let operations = getOperations() else {
             throw ScriptError.unparsableScript
         }
-        for op in operations {
-            switch op {
-            case .oneNegate, .zero, .constant(_), .pushBytes(_), .pushData1(_), .pushData2(_), .pushData4(_): break
-            default: throw ScriptError.nonPushOnlyScript
-            }
+        guard operations.allSatisfy(\.isPush) else {
+            throw ScriptError.nonPushOnlyScript
         }
     }
 
-    // Maximum script length in bytes
-    private static let maxScriptSize = 1000
+    /// Maximum number of public keys per multisig.
+    static let maxMultiSigPublicKeys = 20
+
+    /// Maximum number of non-push operations per script.
+    static let maxOperations = 201
+
+    /// Maximum script length in bytes.
+    private static let maxScriptSize = 10_000
 
     /// BIP342
     private static let maxStackElements = 1000

@@ -31,6 +31,13 @@ public enum ScriptOperation: Equatable {
         }
     }
 
+    var isPush: Bool {
+        switch(self) {
+        case .zero, .oneNegate, .constant(_), .pushBytes(_), .pushData1(_), .pushData2(_), .pushData4(_): true
+        default: false
+        }
+    }
+
     var size: Int {
         operationPreconditions()
         let additionalSize: Int
@@ -360,10 +367,10 @@ public enum ScriptOperation: Equatable {
         case .checkSigVerify: try opCheckSigVerify(&stack, context: &context)
         case .checkMultiSig:
             guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
-            try opCheckMultiSig(&stack, context: context)
+            try opCheckMultiSig(&stack, context: &context)
         case .checkMultiSigVerify:
             guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
-            try opCheckMultiSigVerify(&stack, context: context)
+            try opCheckMultiSigVerify(&stack, context: &context)
         case .noOp1: break
         case .checkLockTimeVerify:
             guard context.configuration.checkLockTimeVerify else { break }

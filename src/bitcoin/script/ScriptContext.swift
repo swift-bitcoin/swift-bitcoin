@@ -36,6 +36,7 @@ struct ScriptContext {
     var decodedOperations = [ScriptOperation]()
     var operationIndex = 0
     var programCounter = 0
+    var nonPushOperations = 0
 
     /// BIP342: Tapscript signature operations budget.
     /// Sigops limit The sigops in tapscripts do not count towards the block-wide limit of 80000 (weighted). Instead, there is a per-script sigops budget. The budget equals 50 + the total serialized size in bytes of the transaction input's witness (including the CompactSize prefix). Executing a signature opcode (OP_CHECKSIG, OP_CHECKSIGVERIFY, or OP_CHECKSIGADD) with a non-empty signature decrements the budget by 50. If that brings the budget below zero, the script fails immediately. Signature opcodes with unknown public key type and non-empty signature are also counted.
