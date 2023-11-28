@@ -41,5 +41,10 @@ enum ScriptError: Error {
          invalidTaprootTweak,
          missingTaprootWitness,
          disallowedTaprootVersion,
-         sigopBudgetExceeded
+         sigopBudgetExceeded,
+         initialStackLimitExceeded,
+         stacksLimitExceeded,
+         initialStackMaxElementSizeExceeded,
+         stacksMaxElementSizeExceeded,
+         stackMaxElementSizeExceeded
 }

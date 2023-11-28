@@ -2,7 +2,8 @@ import Foundation
 
 /// SCRIPT execution context.
 struct ScriptContext {
-    internal init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], version: ScriptVersion, configuration: ScriptConfigurarion, script: Script, decodedOperations: [ScriptOperation] = [ScriptOperation](), operationIndex: Int = 0, programCounter: Int = 0, sigopBudget: Int = 0, lastCodeSeparatorOffset: Int? = .none, altStack: [Data] = [], pendingIfOperations: [Bool?] = [Bool?](), pendingElseOperations: Int = 0, lastCodeSeparatorIndex: Int? = .none, succeedUnconditionally: Bool = false, tapLeafHash: Data? = nil) {
+
+    init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], version: ScriptVersion, configuration: ScriptConfigurarion, script: Script, decodedOperations: [ScriptOperation] = [ScriptOperation](), operationIndex: Int = 0, programCounter: Int = 0, sigopBudget: Int = 0, lastCodeSeparatorOffset: Int? = .none, altStack: [Data] = [], pendingIfOperations: [Bool?] = [Bool?](), pendingElseOperations: Int = 0, lastCodeSeparatorIndex: Int? = .none, succeedUnconditionally: Bool = false, tapLeafHash: Data? = nil) {
         self.transaction = transaction
         self.inputIndex = inputIndex
         self.previousOutputs = previousOutputs

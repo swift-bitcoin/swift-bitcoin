@@ -101,6 +101,17 @@ public struct Script: Equatable {
 
     /// Evaluates the script.
     public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, version: ScriptVersion = .base, configuration: ScriptConfigurarion) throws {
+
+        // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains. It is extended to also apply to the size of initial stack.
+        if (version != .base && version != .witnessV0) && stack.count > Self.maxStackElements {
+            throw ScriptError.initialStackLimitExceeded
+        }
+
+        // BIP342: Stack element size limit The existing limit of maximum 520 bytes per stack element remains, both in the initial stack and in push opcodes.
+        guard version == .base || stack.allSatisfy({ $0.count <= Self.maxStackElementSize }) else {
+            throw ScriptError.initialStackMaxElementSizeExceeded
+        }
+
         var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, version: version, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
 
         while context.programCounter < data.count {
@@ -113,6 +124,11 @@ public struct Script: Equatable {
 
             // BIP342: OP_SUCCESS
             if context.succeedUnconditionally { return }
+
+            // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains.
+            if version != .base && stack.count + context.altStack.count > Self.maxStackElements {
+                throw ScriptError.stacksLimitExceeded
+            }
 
             context.programCounter += operation.size
         }
@@ -137,4 +153,10 @@ public struct Script: Equatable {
             }
         }
     }
+
+    /// BIP342
+    private static let maxStackElements = 1000
+
+    /// BIP342
+    static let maxStackElementSize = 520
 }
