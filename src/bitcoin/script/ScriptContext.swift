@@ -3,16 +3,16 @@ import Foundation
 /// SCRIPT execution context.
 struct ScriptContext {
 
-    init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], version: ScriptVersion, configuration: ScriptConfigurarion, script: Script, tapLeafHash: Data?) {
+    init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], sigVersion: SigVersion, configuration: ScriptConfigurarion, script: Script, tapLeafHash: Data?) {
         self.transaction = transaction
         self.inputIndex = inputIndex
         self.previousOutputs = previousOutputs
-        self.version = version
+        self.sigVersion = sigVersion
         self.configuration = configuration
         self.script = script
         self.tapLeafHash = tapLeafHash
 
-        self.sigopBudget = if version == .witnessV1 {
+        self.sigopBudget = if sigVersion == .witnessV1 {
             if let witness = transaction.inputs[inputIndex].witness {
                 Script.sigopBudgetBase + witness.size
             } else { preconditionFailure() }
@@ -22,7 +22,7 @@ struct ScriptContext {
     let transaction: Transaction
     let inputIndex: Int
     let previousOutputs: [Output]
-    let version: ScriptVersion
+    let sigVersion: SigVersion
     let configuration: ScriptConfigurarion
     let script: Script
     var decodedOperations = [ScriptOperation]()
@@ -65,7 +65,7 @@ struct ScriptContext {
 
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`. Legacy scripts only.
     func getScriptCode(signatures: [Data]) throws -> Data {
-        precondition(version == .base)
+        precondition(sigVersion == .base)
         var scriptData = script.data
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)
@@ -74,7 +74,7 @@ struct ScriptContext {
         var scriptCode = Data()
         var programCounter2 = scriptData.startIndex
         while programCounter2 < scriptData.endIndex {
-            guard let operation = ScriptOperation(scriptData[programCounter2...], version: version) else {
+            guard let operation = ScriptOperation(scriptData[programCounter2...], sigVersion: sigVersion) else {
                 preconditionFailure()
                 // TODO: What happens to scriptCode if script cannot be fully decoded?
             }

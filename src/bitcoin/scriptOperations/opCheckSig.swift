@@ -6,11 +6,11 @@ func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
 
     let result: Bool
 
-    switch context.version {
+    switch context.sigVersion {
     case .base, .witnessV0:
-        let scriptCode = try context.version == .base ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
+        let scriptCode = try context.sigVersion == .base ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
 
-        try checkPublicKey(publicKey, scriptVersion: context.version, scriptConfiguration: context.configuration)
+        try checkPublicKey(publicKey, scriptVersion: context.sigVersion, scriptConfiguration: context.configuration)
 
         try checkSignature(sig, scriptConfiguration: context.configuration)
 
@@ -18,9 +18,9 @@ func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
             result = false
         } else {
             let (signature, sighashType) = splitECDSASignature(sig)
-            let sighash = if context.version == .base {
+            let sighash = if context.sigVersion == .base {
                 context.transaction.signatureHash(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
-            } else if context.version == .witnessV0 {
+            } else if context.sigVersion == .witnessV0 {
                 context.transaction.signatureHashSegwit(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
             } else { preconditionFailure() }
             result = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
