@@ -3,30 +3,22 @@ import Foundation
 /// SCRIPT execution context.
 struct ScriptContext {
 
-    init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], version: ScriptVersion, configuration: ScriptConfigurarion, script: Script, decodedOperations: [ScriptOperation] = [ScriptOperation](), operationIndex: Int = 0, programCounter: Int = 0, sigopBudget: Int = 0, lastCodeSeparatorOffset: Int? = .none, altStack: [Data] = [], pendingIfOperations: [Bool?] = [Bool?](), pendingElseOperations: Int = 0, lastCodeSeparatorIndex: Int? = .none, succeedUnconditionally: Bool = false, tapLeafHash: Data? = nil) {
+    init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], version: ScriptVersion, configuration: ScriptConfigurarion, script: Script, tapLeafHash: Data?) {
         self.transaction = transaction
         self.inputIndex = inputIndex
         self.previousOutputs = previousOutputs
         self.version = version
         self.configuration = configuration
         self.script = script
-        self.decodedOperations = decodedOperations
-        self.operationIndex = operationIndex
-        self.programCounter = programCounter
+        self.tapLeafHash = tapLeafHash
+
         self.sigopBudget = if version == .witnessV1 {
             if let witness = transaction.inputs[inputIndex].witness {
-                50 + witness.size
+                Script.sigopBudgetBase + witness.size
             } else { preconditionFailure() }
         } else { 0 }
-        self.lastCodeSeparatorOffset = lastCodeSeparatorOffset
-        self.altStack = altStack
-        self.pendingIfOperations = pendingIfOperations
-        self.pendingElseOperations = pendingElseOperations
-        self.lastCodeSeparatorIndex = lastCodeSeparatorIndex
-        self.succeedUnconditionally = succeedUnconditionally
-        self.tapLeafHash = tapLeafHash
     }
-    
+
     let transaction: Transaction
     let inputIndex: Int
     let previousOutputs: [Output]
@@ -40,11 +32,7 @@ struct ScriptContext {
 
     /// BIP342: Tapscript signature operations budget.
     /// Sigops limit The sigops in tapscripts do not count towards the block-wide limit of 80000 (weighted). Instead, there is a per-script sigops budget. The budget equals 50 + the total serialized size in bytes of the transaction input's witness (including the CompactSize prefix). Executing a signature opcode (OP_CHECKSIG, OP_CHECKSIGVERIFY, or OP_CHECKSIGADD) with a non-empty signature decrements the budget by 50. If that brings the budget below zero, the script fails immediately. Signature opcodes with unknown public key type and non-empty signature are also counted.
-    var sigopBudget = 0
-
-    var previousOutput: Output {
-        previousOutputs[inputIndex]
-    }
+    var sigopBudget: Int
 
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`.
     var lastCodeSeparatorOffset: Int? = .none
@@ -52,13 +40,16 @@ struct ScriptContext {
     /// Support for `OP_TOALTSTACK` and `OP_FROMALTSTACK`.
     var altStack: [Data] = []
 
+    var previousOutput: Output {
+        previousOutputs[inputIndex]
+    }
+
     /// Support for `OP_IF`, `OP_NOTIF`, `OP_ELSE` and `OP_ENDIF`.
     var pendingIfOperations = [Bool?]()
     var pendingElseOperations = 0
 
     /// BIP342
     var lastCodeSeparatorIndex: Int? = .none
-    private(set) var succeedUnconditionally = false
 
     /// BIP341
     let tapLeafHash: Data?
@@ -126,15 +117,8 @@ struct ScriptContext {
     }
 
     /// BIP342
-    mutating func setSucceedUnconditionally() {
-        if !succeedUnconditionally {
-            succeedUnconditionally.toggle()
-        }
-    }
-
-    /// BIP342
     mutating func checkSigopBudget() throws {
-        sigopBudget -= 50
+        sigopBudget -= Script.sigopBudgetDecrement
         if sigopBudget < 0 { throw ScriptError.sigopBudgetExceeded }
     }
 }

@@ -3,7 +3,7 @@ import Foundation
 /// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
 public struct ScriptConfigurarion {
 
-    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true) {
+    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true, discourageOpSuccess: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
         self.pushOnly = pushOnly
         self.lowS = lowS
@@ -21,6 +21,7 @@ public struct ScriptConfigurarion {
         self.discourageUpgradableWitnessProgram = discourageUpgradableWitnessProgram && self.witness
         self.taproot = taproot && self.witness
         self.discourageUpgradableTaprootVersion = discourageUpgradableTaprootVersion && self.taproot
+        self.discourageOpSuccess = discourageOpSuccess && self.taproot
     }
 
     /// BIP66 (consensus) and BIP62 rule 1 (policy)
@@ -81,6 +82,9 @@ public struct ScriptConfigurarion {
     /// Making unknown Taproot leaf versions non-standard.
     public let discourageUpgradableTaprootVersion: Bool
 
+    /// Making unknown `OP_SUCCESS` non-standard.
+    public let discourageOpSuccess: Bool
+
     /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
     public static let standard = ScriptConfigurarion()
 
@@ -103,6 +107,7 @@ public struct ScriptConfigurarion {
         nullFail: false,
         discourageUpgradableWitnessProgram: false,
         // taproot: true, // From chain start with 1 block excepted on mainnet
-        discourageUpgradableTaprootVersion: false
+        discourageUpgradableTaprootVersion: false,
+        discourageOpSuccess: false
     )
 }
