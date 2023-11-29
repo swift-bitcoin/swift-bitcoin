@@ -14,7 +14,7 @@ public struct Script: Equatable {
         self.data = operations.reduce(Data()) { $0 + $1.data }
     }
 
-    init?(prefixedData: Data, version: ScriptVersion = .base) {
+    init?(prefixedData: Data, sigVersion: SigVersion = .base) {
         guard let data = Data(varLenData: prefixedData) else {
             return nil
         }
@@ -22,9 +22,9 @@ public struct Script: Equatable {
     }
 
     /// Attempts to parse the script and return its assembly representation. Otherwise returns an empty string.
-    public func getAsm(version: ScriptVersion) -> String {
+    public func getAsm(sigVersion: SigVersion) -> String {
         // TODO: When error attempt to return partial decoding. Check how core does this.
-        getOperations(version: version)?.map(\.asm).joined(separator: " ") ?? ""
+        getOperations(sigVersion: sigVersion)?.map(\.asm).joined(separator: " ") ?? ""
     }
 
     public var size: Int {
@@ -35,11 +35,11 @@ public struct Script: Equatable {
         data.isEmpty
     }
 
-    public func getOperations(version: ScriptVersion = .base) -> [ScriptOperation]? {
+    public func getOperations(sigVersion: SigVersion = .base) -> [ScriptOperation]? {
         var data = data
         var operations = [ScriptOperation]()
         while data.count > 0 {
-            guard let operation = ScriptOperation(data, version: version) else {
+            guard let operation = ScriptOperation(data, sigVersion: sigVersion) else {
                 return nil
             }
             operations.append(operation)
@@ -100,32 +100,32 @@ public struct Script: Equatable {
     }
 
     /// Evaluates the script.
-    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, version: ScriptVersion = .base, configuration: ScriptConfigurarion) throws {
+    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, sigVersion: SigVersion = .base, configuration: ScriptConfigurarion) throws {
 
         // BIP141
-        if (version == .base || version == .witnessV0) && size > Self.maxScriptSize {
+        if (sigVersion == .base || sigVersion == .witnessV0) && size > Self.maxScriptSize {
             throw ScriptError.scriptSizeLimitExceeded
         }
 
         // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains. It is extended to also apply to the size of initial stack.
-        if (version != .base && version != .witnessV0) && stack.count > Self.maxStackElements {
+        if (sigVersion != .base && sigVersion != .witnessV0) && stack.count > Self.maxStackElements {
             throw ScriptError.initialStackLimitExceeded
         }
 
         // BIP141: The witnessScript is deserialized, and executed after normal script evaluation with the remaining witness stack (≤ 520 bytes for each stack item).
         // BIP342: Stack element size limit The existing limit of maximum 520 bytes per stack element remains, both in the initial stack and in push opcodes.
-        guard version == .base || stack.allSatisfy({ $0.count <= Self.maxStackElementSize }) else {
+        guard sigVersion == .base || stack.allSatisfy({ $0.count <= Self.maxStackElementSize }) else {
             throw ScriptError.initialStackMaxElementSizeExceeded
         }
 
-        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, version: version, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
+        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, sigVersion: sigVersion, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
 
         // BIP342: `OP_SUCCESS`
-        if version != .base && version != .witnessV0 {
+        if sigVersion != .base && sigVersion != .witnessV0 {
             var programCounter = 0
             while programCounter < data.count {
                 let offset = data.startIndex + context.programCounter
-                guard let operation = ScriptOperation(data[offset...], version: version) else {
+                guard let operation = ScriptOperation(data[offset...], sigVersion: sigVersion) else {
                     throw ScriptError.unparsableOperation
                 }
                 if case .success(_) = operation {
@@ -140,12 +140,12 @@ public struct Script: Equatable {
 
         while context.programCounter < data.count {
             let offset = data.startIndex + context.programCounter
-            guard let operation = ScriptOperation(data[offset...], version: version) else {
+            guard let operation = ScriptOperation(data[offset...], sigVersion: sigVersion) else {
                 throw ScriptError.unparsableOperation
             }
             context.decodedOperations.append(operation)
 
-            if (version == .base || version == .witnessV0) && !operation.isPush && operation != .reserved(80) {
+            if (sigVersion == .base || sigVersion == .witnessV0) && !operation.isPush && operation != .reserved(80) {
                 context.nonPushOperations += 1
                 guard context.nonPushOperations <= Self.maxOperations else {
                     throw ScriptError.operationsLimitExceeded
@@ -156,7 +156,7 @@ public struct Script: Equatable {
 
             // BIP141
             // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains.
-            if version != .base && stack.count + context.altStack.count > Self.maxStackElements {
+            if sigVersion != .base && stack.count + context.altStack.count > Self.maxStackElements {
                 throw ScriptError.stacksLimitExceeded
             }
 
@@ -167,8 +167,8 @@ public struct Script: Equatable {
         }
     }
 
-    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], version: ScriptVersion = .base, configuration: ScriptConfigurarion) throws {
-        try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, version: version, configuration: configuration)
+    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], sigVersion: SigVersion = .base, configuration: ScriptConfigurarion) throws {
+        try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, sigVersion: sigVersion, configuration: configuration)
     }
 
     // BIP62

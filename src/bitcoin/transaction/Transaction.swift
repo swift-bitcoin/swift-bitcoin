@@ -5,7 +5,7 @@ public struct Transaction: Equatable {
 
     // MARK: - Initializers
 
-    public init(version: Version, locktime: Locktime, inputs: [Input], outputs: [Output]) {
+    public init(version: TransactionVersion, locktime: Locktime, inputs: [Input], outputs: [Output]) {
         self.version = version
         self.locktime = locktime
         self.inputs = inputs
@@ -16,10 +16,10 @@ public struct Transaction: Equatable {
     /// BIP 144
     public init?(_ data: Data) {
         var data = data
-        guard let version = Version(data) else {
+        guard let version = TransactionVersion(data) else {
             return nil
         }
-        data = data.dropFirst(Version.size)
+        data = data.dropFirst(TransactionVersion.size)
 
         // BIP144 - Check for marker and segwit flag
         let maybeSegwitMarker = data[data.startIndex]
@@ -81,7 +81,7 @@ public struct Transaction: Equatable {
     // MARK: - Instance Properties
 
     /// The transaction's version.
-    public let version: Version
+    public let version: TransactionVersion
 
     /// Lock time value applied to this transaction. It represents the earliest time at which this transaction should be considered valid.
     public var locktime: Locktime
@@ -157,7 +157,7 @@ public struct Transaction: Equatable {
 
     /// BIP141: Base transaction size is the size of the transaction serialised with the witness data stripped.
     private var baseSize: Int {
-        Version.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + Locktime.size
+        TransactionVersion.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + Locktime.size
     }
 
     /// BIP141 / BIP144
@@ -301,7 +301,7 @@ public struct Transaction: Equatable {
                 .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
             ])
 
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, version: .witnessV0, configuration: configuration)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, sigVersion: .witnessV0, configuration: configuration)
 
             // The verification must result in a single TRUE on the stack.
             guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
@@ -325,7 +325,7 @@ public struct Transaction: Equatable {
             }
 
             let witnessScript = Script(witnessScriptRaw)
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, version: .witnessV0, configuration: configuration)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, sigVersion: .witnessV0, configuration: configuration)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
             guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
@@ -408,7 +408,7 @@ public struct Transaction: Equatable {
         }
 
         let tapscript = Script(tapscriptData)
-        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash,version: .witnessV1, configuration: configuration)
+        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, sigVersion: .witnessV1, configuration: configuration)
     }
 
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.

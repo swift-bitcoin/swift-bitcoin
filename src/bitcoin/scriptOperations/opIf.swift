@@ -9,7 +9,7 @@ func opIf(_ stack: inout [Data], isNotIf: Bool = false, context: inout ScriptCon
         return
     }
     let first = try getUnaryParam(&stack)
-    let condition = if context.version == .witnessV0 && context.configuration.minimalIf {
+    let condition = if context.sigVersion == .witnessV0 && context.configuration.minimalIf {
         try ScriptBoolean(minimalData: first)
     } else {
         ScriptBoolean(first)

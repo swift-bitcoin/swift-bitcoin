@@ -366,10 +366,10 @@ public enum ScriptOperation: Equatable {
         case .checkSig: try opCheckSig(&stack, context: &context)
         case .checkSigVerify: try opCheckSigVerify(&stack, context: &context)
         case .checkMultiSig:
-            guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
+            guard context.sigVersion == .base || context.sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSig(&stack, context: &context)
         case .checkMultiSigVerify:
-            guard context.version == .base || context.version == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
+            guard context.sigVersion == .base || context.sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSigVerify(&stack, context: &context)
         case .noOp1: break
         case .checkLockTimeVerify:
@@ -380,7 +380,7 @@ public enum ScriptOperation: Equatable {
             try opCheckSequenceVerify(&stack, context: context)
         case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
         case .checkSigAdd:
-            guard context.version == .witnessV1 else { throw ScriptError.unknownOperation }
+            guard context.sigVersion == .witnessV1 else { throw ScriptError.unknownOperation }
             try opCheckSigAdd(&stack, context: &context)
         case .unknown(_): throw ScriptError.unknownOperation
         case .pubKeyHash: throw ScriptError.disabledOperation
@@ -464,7 +464,7 @@ public enum ScriptOperation: Equatable {
         }
     }
 
-    init?(_ data: Data, version: ScriptVersion = .base) {
+    init?(_ data: Data, sigVersion: SigVersion = .base) {
         var data = data
         guard data.count > 0 else {
             return nil
@@ -481,7 +481,7 @@ public enum ScriptOperation: Equatable {
 
         case Self.reserved(80).opCode,
              Self.reserved(137).opCode ... Self.reserved(138).opCode:
-            self = if version == .base || version == .witnessV0 {
+            self = if sigVersion == .base || sigVersion == .witnessV0 {
                 .reserved(opCode)
             } else {
                 .success(opCode)
@@ -505,7 +505,7 @@ public enum ScriptOperation: Equatable {
 
         // OP_VER / OP_SUCCESS
         case Self.ver.opCode:
-            self = if version == .base || version == .witnessV0 {
+            self = if sigVersion == .base || sigVersion == .witnessV0 {
                 .ver
             } else {
                 .success(opCode)

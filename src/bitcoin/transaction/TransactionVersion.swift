@@ -1,7 +1,7 @@
 import Foundation
 
 /// The version of a ``Transaction``.
-public struct Version: Equatable, Comparable {
+public struct TransactionVersion: Equatable, Comparable {
 
     private init(_ versionValue: Int) {
         self.versionValue = versionValue
@@ -29,7 +29,7 @@ public struct Version: Equatable, Comparable {
         UInt32(versionValue)
     }
 
-    public static func < (lhs: Version, rhs: Version) -> Bool {
+    public static func < (lhs: TransactionVersion, rhs: TransactionVersion) -> Bool {
         lhs.versionValue < rhs.versionValue
     }
 

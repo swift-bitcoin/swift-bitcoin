@@ -16,7 +16,7 @@ func opCheckMultiSig(_ stack: inout [Data], context: inout ScriptContext) throws
         throw ScriptError.operationsLimitExceeded
     }
 
-    let scriptCode = try context.version == .base ? context.getScriptCode(signatures: sigs) : context.segwitScriptCode
+    let scriptCode = try context.sigVersion == .base ? context.getScriptCode(signatures: sigs) : context.segwitScriptCode
 
     var keysCount = publicKeys.count
     var sigsCount = sigs.count
@@ -30,7 +30,7 @@ func opCheckMultiSig(_ stack: inout [Data], context: inout ScriptContext) throws
         // Note how this makes the exact order of pubkey/signature evaluation
         // distinguishable by CHECKMULTISIG NOT if the STRICTENC flag is set.
         // See the script_(in)valid tests for details.
-        try checkPublicKey(publicKey, scriptVersion: context.version, scriptConfiguration: context.configuration)
+        try checkPublicKey(publicKey, scriptVersion: context.sigVersion, scriptConfiguration: context.configuration)
 
         // Check signature
         try checkSignature(sig, scriptConfiguration: context.configuration)
@@ -39,9 +39,9 @@ func opCheckMultiSig(_ stack: inout [Data], context: inout ScriptContext) throws
             ok = false
         } else {
             let (signature, sighashType) = splitECDSASignature(sig)
-            let sighash = if context.version == .base {
+            let sighash = if context.sigVersion == .base {
                 context.transaction.signatureHash(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
-            } else if context.version == .witnessV0 {
+            } else if context.sigVersion == .witnessV0 {
                 context.transaction.signatureHashSegwit(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
             } else { preconditionFailure() }
             ok = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)

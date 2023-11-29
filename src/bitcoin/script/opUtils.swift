@@ -84,7 +84,7 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
     }
 }
 
-func checkPublicKey(_ publicKey: Data, scriptVersion: ScriptVersion, scriptConfiguration: ScriptConfigurarion) throws {
+func checkPublicKey(_ publicKey: Data, scriptVersion: SigVersion, scriptConfiguration: ScriptConfigurarion) throws {
     if scriptConfiguration.strictEncoding  {
         try checkPublicKeyEncoding(publicKey)
     }
