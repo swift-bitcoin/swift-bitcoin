@@ -120,9 +120,27 @@ public struct Script: Equatable {
 
         var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, version: version, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
 
+        // BIP342: `OP_SUCCESS`
+        if version != .base && version != .witnessV0 {
+            var programCounter = 0
+            while programCounter < data.count {
+                let offset = data.startIndex + context.programCounter
+                guard let operation = ScriptOperation(data[offset...], version: version) else {
+                    throw ScriptError.unparsableOperation
+                }
+                if case .success(_) = operation {
+                    if configuration.discourageOpSuccess {
+                        throw ScriptError.disallowedTaprootVersion
+                    }
+                    return
+                }
+                programCounter += operation.size
+            }
+        }
+
         while context.programCounter < data.count {
-            let startIndex = data.startIndex + context.programCounter
-            guard let operation = ScriptOperation(data[startIndex...], version: version) else {
+            let offset = data.startIndex + context.programCounter
+            guard let operation = ScriptOperation(data[offset...], version: version) else {
                 throw ScriptError.unparsableOperation
             }
             context.decodedOperations.append(operation)
@@ -135,10 +153,6 @@ public struct Script: Equatable {
             }
 
             try operation.execute(stack: &stack, context: &context)
-
-            // BIP342: `OP_SUCCESS`
-            // TODO: Check for `OP_SUCCESS` on a separate loop without really executing any operations. Honor configuration option to discourage unknown op success opcodes. See issue #81.
-            if context.succeedUnconditionally { return }
 
             // BIP141
             // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains.
@@ -181,4 +195,6 @@ public struct Script: Equatable {
 
     /// BIP342
     static let maxStackElementSize = 520
+    static let sigopBudgetBase = 50
+    static let sigopBudgetDecrement = 50
 }

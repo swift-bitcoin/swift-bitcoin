@@ -36,7 +36,8 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 nullFail: includeFlags.contains("NULLFAIL"),
                 discourageUpgradableWitnessProgram: includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"),
                 taproot: includeFlags.contains("TAPROOT"),
-                discourageUpgradableTaprootVersion: true
+                discourageUpgradableTaprootVersion: true,
+                discourageOpSuccess: true
             )
             let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false)
             if let success = testCase.success {
