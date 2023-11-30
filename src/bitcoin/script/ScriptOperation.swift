@@ -256,7 +256,7 @@ public enum ScriptOperation: Equatable {
         case .checkMultiSigVerify: "OP_CHECKMULTISIGVERIFY"
         case .noOp1: "OP_NOP1"
         case .checkLockTimeVerify: "OP_CHECKLOCKTIMEVERIFY"
-        case .checkSequenceVerify: "OP_NOP3"
+        case .checkSequenceVerify: "OP_CHECKSEQUENCEVERIFY"
         case .noOp4: "OP_NOP4"
         case .noOp5: "OP_NOP5"
         case .noOp6: "OP_NOP6"
@@ -371,14 +371,14 @@ public enum ScriptOperation: Equatable {
         case .checkMultiSigVerify:
             guard context.sigVersion == .base || context.sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSigVerify(&stack, context: &context)
-        case .noOp1: break
+        case .noOp1: if context.configuration.discourageUpgradableNoOps { throw ScriptError.disallowedNoOp }
         case .checkLockTimeVerify:
             guard context.configuration.checkLockTimeVerify else { break }
             try opCheckLockTimeVerify(&stack, context: context)
         case .checkSequenceVerify:
             guard context.configuration.checkSequenceVerify else { break }
             try opCheckSequenceVerify(&stack, context: context)
-        case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: break
+        case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: if context.configuration.discourageUpgradableNoOps { throw ScriptError.disallowedNoOp }
         case .checkSigAdd:
             guard context.sigVersion == .witnessV1 else { throw ScriptError.unknownOperation }
             try opCheckSigAdd(&stack, context: &context)

@@ -51,5 +51,6 @@ enum ScriptError: Error {
          operationsLimitExceeded,
          maxPublicKeysExceeded,
          emptyPublicKey,
-         emptySchnorrSignature
+         emptySchnorrSignature,
+         disallowedNoOp
 }

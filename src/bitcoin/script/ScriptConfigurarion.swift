@@ -3,7 +3,7 @@ import Foundation
 /// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
 public struct ScriptConfigurarion {
 
-    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true, discourageOpSuccess: Bool = true, discourageUpgradablePublicKeyType: Bool = true) {
+    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true, discourageUpgradableNoOps: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true, discourageOpSuccess: Bool = true, discourageUpgradablePublicKeyType: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
         self.pushOnly = pushOnly
         self.lowS = lowS
@@ -13,6 +13,7 @@ public struct ScriptConfigurarion {
         self.payToScriptHash = payToScriptHash
         self.checkLockTimeVerify = checkLockTimeVerify
         self.checkSequenceVerify = checkSequenceVerify
+        self.discourageUpgradableNoOps = discourageUpgradableNoOps
         self.constantScriptCode = constantScriptCode
         self.witness = witness // TODO: Maybe add ` && payToScriptHash`?
         self.witnessCompressedPublicKey = witnessCompressedPublicKey && self.witness
@@ -59,6 +60,14 @@ public struct ScriptConfigurarion {
     /// BIP112: Evaluate `OP_CHECKSEQUENCEVERIFY`.
     public let checkSequenceVerify: Bool
 
+    /// Discourage use of NOPs reserved for upgrades (NOP1-10)
+    ///
+    /// Provided so that nodes can avoid accepting or mining transactions containing executed NOP's whose meaning may change after a soft-fork, thus rendering the script invalid; with this flag set executing discouraged NOPs fails the script.
+    /// This verification flag will never be a mandatory flag applied to scripts in a block.
+    /// NOPs that are not executed, e.g.  within an unexecuted IF ENDIF block, are *not* rejected.
+    /// NOPs that have associated forks to give them new meaning (CLTV, CSV) are not subject to this rule.
+    public let discourageUpgradableNoOps: Bool
+
     /// Making OP_CODESEPARATOR and FindAndDelete fail any non-segwit scripts
     public let constantScriptCode: Bool
 
@@ -103,7 +112,8 @@ public struct ScriptConfigurarion {
         strictEncoding: false,
         // payToScriptHash: true, // From chain start with 1 block excepted on mainnet
         // checkLockTimeVerify: true, // After DEPLOYMENT_CLTV (BIP65) buried deployment block (2st)
-        //checkSequenceVerify: true, // After DEPLOYMENT_CSV (BIP112) buried deployment block (3rd)
+        // checkSequenceVerify: true, // After DEPLOYMENT_CSV (BIP112) buried deployment block (3rd)
+        discourageUpgradableNoOps: false,
         constantScriptCode: false,
         // witness: true, // From chain start with 0 blocks excepted
         witnessCompressedPublicKey: false,

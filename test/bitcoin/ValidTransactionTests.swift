@@ -35,6 +35,7 @@ final class ValidTransactionTests: XCTestCase {
                 payToScriptHash: !excludeFlags.contains("P2SH"),
                 checkLockTimeVerify: !excludeFlags.contains("CHECKLOCKTIMEVERIFY"),
                 checkSequenceVerify: !excludeFlags.contains("CHECKSEQUENCEVERIFY"),
+                discourageUpgradableNoOps: true,
                 constantScriptCode: !excludeFlags.contains("CONST_SCRIPTCODE"),
                 witness: !excludeFlags.contains("WITNESS"),
                 witnessCompressedPublicKey: true,
