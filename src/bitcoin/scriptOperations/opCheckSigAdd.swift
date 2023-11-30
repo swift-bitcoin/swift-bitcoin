@@ -35,8 +35,14 @@ func opCheckSigAdd(_ stack: inout [Data], context: inout ScriptContext) throws {
         let sighash = context.transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
         let result = verifySchnorr(sig: signature, msg: sighash, publicKey: publicKey)
         if !result { throw ScriptError.invalidSchnorrSignature }
+    } else if publicKey.isEmpty {
+        throw ScriptError.emptyPublicKey
+    } else {
+        // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
+        if context.configuration.discourageUpgradablePublicKeyType {
+            throw ScriptError.disallowsPublicKeyType
+        }
     }
-    // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
 
     // If the script did not fail and terminate before this step, regardless of the public key type:
     if sig.isEmpty {
