@@ -41,6 +41,7 @@ final class InvalidTransactionTests: XCTestCase {
                 payToScriptHash: includeFlags.contains("P2SH"),
                 checkLockTimeVerify: includeFlags.contains("CHECKLOCKTIMEVERIFY"),
                 checkSequenceVerify: includeFlags.contains("CHECKSEQUENCEVERIFY"),
+                discourageUpgradableNoOps: false,
                 constantScriptCode: includeFlags.contains("CONST_SCRIPTCODE"),
                 witness: includeFlags.contains("WITNESS"),
                 witnessCompressedPublicKey: false,
@@ -56,7 +57,7 @@ final class InvalidTransactionTests: XCTestCase {
             XCTAssertFalse(result)
 
             if !includeFlags.isEmpty {
-                let configSuccess = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, taproot: false, discourageUpgradableTaprootVersion: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
+                let configSuccess = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, discourageUpgradableNoOps: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, taproot: false, discourageUpgradableTaprootVersion: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
                 let resultSuccess = tx.verifyScript(previousOutputs: previousOutputs, configuration: configSuccess)
                 XCTAssert(resultSuccess)
             }

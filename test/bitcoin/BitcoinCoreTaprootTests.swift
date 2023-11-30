@@ -29,6 +29,7 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 payToScriptHash: includeFlags.contains("P2SH"),
                 checkLockTimeVerify: includeFlags.contains("CHECKLOCKTIMEVERIFY"),
                 checkSequenceVerify: includeFlags.contains("CHECKSEQUENCEVERIFY"),
+                discourageUpgradableNoOps: true,
                 constantScriptCode: includeFlags.contains("CONST_SCRIPTCODE"),
                 witness: includeFlags.contains("WITNESS"),
                 witnessCompressedPublicKey: true,
@@ -40,7 +41,7 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 discourageOpSuccess: true,
                 discourageUpgradablePublicKeyType: true
             )
-            let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
+            let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, discourageUpgradableNoOps: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
             if let success = testCase.success {
                 tx.inputs[inputIndex].script = .init(Data(hex: success.scriptSig)!)
                 tx.inputs[inputIndex].witness = .init(success.witness.map { Data(hex: $0)! })
