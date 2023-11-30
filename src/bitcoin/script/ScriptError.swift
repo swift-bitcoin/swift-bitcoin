@@ -40,6 +40,7 @@ enum ScriptError: Error {
          missingTaprootWitness,
          disallowedTaprootVersion,
          disallowedOpSuccess,
+         disallowsPublicKeyType,
          sigopBudgetExceeded,
          initialStackLimitExceeded,
          stacksLimitExceeded,
@@ -48,5 +49,7 @@ enum ScriptError: Error {
          stackMaxElementSizeExceeded,
          scriptSizeLimitExceeded,
          operationsLimitExceeded,
-         maxPublicKeysExceeded
+         maxPublicKeysExceeded,
+         emptyPublicKey,
+         emptySchnorrSignature
 }

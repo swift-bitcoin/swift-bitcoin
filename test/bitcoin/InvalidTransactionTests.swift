@@ -49,13 +49,14 @@ final class InvalidTransactionTests: XCTestCase {
                 discourageUpgradableWitnessProgram: includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"),
                 taproot: false,
                 discourageUpgradableTaprootVersion: false,
-                discourageOpSuccess: false
+                discourageOpSuccess: false,
+                discourageUpgradablePublicKeyType: false
             )
             let result = tx.verifyScript(previousOutputs: previousOutputs, configuration: config)
             XCTAssertFalse(result)
 
             if !includeFlags.isEmpty {
-                let configSuccess = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, taproot: false, discourageUpgradableTaprootVersion: false, discourageOpSuccess: false)
+                let configSuccess = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, taproot: false, discourageUpgradableTaprootVersion: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
                 let resultSuccess = tx.verifyScript(previousOutputs: previousOutputs, configuration: configSuccess)
                 XCTAssert(resultSuccess)
             }

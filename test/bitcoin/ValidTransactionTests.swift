@@ -43,7 +43,8 @@ final class ValidTransactionTests: XCTestCase {
                 discourageUpgradableWitnessProgram:  !excludeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"),
                 taproot: true,
                 discourageUpgradableTaprootVersion: true,
-                discourageOpSuccess: true
+                discourageOpSuccess: true,
+                discourageUpgradablePublicKeyType: true
             )
             let result = tx.verifyScript(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)

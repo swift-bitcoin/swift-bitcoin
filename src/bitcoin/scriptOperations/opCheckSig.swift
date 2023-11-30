@@ -26,14 +26,42 @@ func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
             result = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
         }
     case .witnessV1:
-        if !sig.isEmpty { try context.checkSigopBudget() }
         guard let tapLeafHash = context.tapLeafHash, let keyVersion = context.keyVersion else { preconditionFailure() }
-        // Tapscript semantics
-        let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition)
-        let (signature, sighashType) = try splitSchnorrSignature(sig)
-        var cache = SighashCache() // TODO: Hold on to cache.
-        let sighash = context.transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
-        result = verifySchnorr(sig: signature, msg: sighash, publicKey: publicKey)
+
+        guard !publicKey.isEmpty else {
+            throw ScriptError.emptyPublicKey
+        }
+
+        if !sig.isEmpty { try context.checkSigopBudget() }
+
+        if publicKey.count == 32 {
+            // If the public key size is 32 bytes, it is considered to be a public key as described in BIP340:
+            if !sig.isEmpty {
+                // If the signature is not the empty vector, the signature is validated against the public key (see the next subsection).
+                // Tapscript semantics
+                let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition)
+                let (signature, sighashType) = try splitSchnorrSignature(sig)
+                var cache = SighashCache() // TODO: Hold on to cache.
+                let sighash = context.transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
+                result = verifySchnorr(sig: signature, msg: sighash, publicKey: publicKey)
+                // TODO: The following rule makes some test vectors fail. #96
+                // Validation failure in this case immediately terminates script execution with failure.
+                // guard result else { throw ScriptError.invalidSchnorrSignature }
+            } else {
+                result = true
+            }
+        } else {
+            if sig.isEmpty {
+                // The script execution fails when using empty signature with invalid public key.
+                throw ScriptError.emptySchnorrSignature
+            }
+            
+            // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
+            if context.configuration.discourageUpgradablePublicKeyType {
+                throw ScriptError.disallowsPublicKeyType
+            }
+            result = true
+        }
     }
 
     if !result && context.configuration.nullFail && !sig.isEmpty {

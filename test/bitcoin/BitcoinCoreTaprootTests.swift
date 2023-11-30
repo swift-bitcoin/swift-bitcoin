@@ -37,12 +37,14 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 discourageUpgradableWitnessProgram: includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"),
                 taproot: includeFlags.contains("TAPROOT"),
                 discourageUpgradableTaprootVersion: true,
-                discourageOpSuccess: true
+                discourageOpSuccess: true,
+                discourageUpgradablePublicKeyType: true
             )
-            let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false)
+            let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
             if let success = testCase.success {
                 tx.inputs[inputIndex].script = .init(Data(hex: success.scriptSig)!)
                 tx.inputs[inputIndex].witness = .init(success.witness.map { Data(hex: $0)! })
+                // TODO: Some test vectors fail when invalid signature causes throw. #96
                 XCTAssertNoThrow(try tx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: testCase.final ? config : allOff))
             }
             if let failure = testCase.failure, testCase.final {
