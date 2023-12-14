@@ -3,16 +3,15 @@ import Foundation
 /// SCRIPT execution context.
 struct ScriptContext {
 
-    init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], sigVersion: SigVersion, configuration: ScriptConfigurarion, script: Script, tapLeafHash: Data?) {
+    init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion, script: Script, tapLeafHash: Data?) {
         self.transaction = transaction
         self.inputIndex = inputIndex
         self.previousOutputs = previousOutputs
-        self.sigVersion = sigVersion
         self.configuration = configuration
         self.script = script
         self.tapLeafHash = tapLeafHash
 
-        self.sigopBudget = if sigVersion == .witnessV1 {
+        self.sigopBudget = if script.sigVersion == .witnessV1 {
             if let witness = transaction.inputs[inputIndex].witness {
                 Script.sigopBudgetBase + witness.size
             } else { preconditionFailure() }
@@ -22,11 +21,8 @@ struct ScriptContext {
     let transaction: Transaction
     let inputIndex: Int
     let previousOutputs: [Output]
-    let sigVersion: SigVersion
     let configuration: ScriptConfigurarion
     let script: Script
-    var decodedOperations = [ScriptOperation]()
-    var operationIndex = 0
     var programCounter = 0
     var nonPushOperations = 0
 
@@ -54,6 +50,8 @@ struct ScriptContext {
     /// BIP341
     let tapLeafHash: Data?
     let keyVersion: UInt8? = 0
+
+    var sigVersion: SigVersion { script.sigVersion }
 
     /// Support for `OP_IF`, `OP_NOTIF`, `OP_ELSE` and `OP_ENDIF`.
     var evaluateBranch: Bool {

@@ -1,17 +1,34 @@
 import Foundation
 
-/// A bitcoin script that hasn't been decoded yet. It may contain invalid operation codes and data as it's backed by a byte array.  For a representation of a ``Script`` that is backed by a list of valid operations  see ``ParsedScript``.
+/// A fully decoded bitcoin script and its associated signature version.
+///
+/// If there is a portion of the data that cannot be parsed it will be stored in ``Script:unparsable``.
 public struct Script: Equatable {
 
-    public static let empty = Self(Data())
-    private(set) public var data: Data
+    // MARK: - Initializers
 
-    public init(_ data: Data) {
-        self.data = data
+    public init(_ operations: [ScriptOperation], sigVersion: SigVersion = .base) {
+        self.sigVersion = sigVersion
+        self.operations = operations
+        self.unparsable = .init()
     }
 
-    public init(_ operations: [ScriptOperation]) {
-        self.data = operations.reduce(Data()) { $0 + $1.data }
+    /// Creates a script from raw data.
+    ///
+    /// The script will be fully parsed – if possble. Any unparsable data will be stored separately.
+    public init(_ data: Data, sigVersion: SigVersion = .base) {
+        var remainingData = data
+        var operations = [ScriptOperation]()
+        while remainingData.count > 0 {
+            guard let operation = ScriptOperation(remainingData, sigVersion: sigVersion) else {
+                break
+            }
+            operations.append(operation)
+            remainingData = remainingData.dropFirst(operation.size)
+        }
+        self.sigVersion = sigVersion
+        self.operations = operations
+        self.unparsable = remainingData
     }
 
     init?(prefixedData: Data, sigVersion: SigVersion = .base) {
@@ -21,47 +38,48 @@ public struct Script: Equatable {
         self.init(data)
     }
 
+    // MARK: - Instance Properties
+
+    /// The signature version of this script.
+    public let sigVersion: SigVersion
+
+    /// List of all decoded script operations.
+    public let operations: [ScriptOperation]
+
+    /// The portion of the original script data that could not be decoded into operations.
+    public let unparsable: Data
+
+    // MARK: - Computed Properties
+
     /// Attempts to parse the script and return its assembly representation. Otherwise returns an empty string.
-    public func getAsm(sigVersion: SigVersion) -> String {
-        // TODO: When error attempt to return partial decoding. Check how core does this.
-        getOperations(sigVersion: sigVersion)?.map(\.asm).joined(separator: " ") ?? ""
+    public var asm: String {
+        operations.map(\.asm).joined(separator: " ") + unparsable.hex
     }
 
-    public var size: Int {
-       data.count
+    /// Serialization of the script's operations into raw data. May include unparsable data.
+    var data: Data {
+        operations.reduce(Data()) { $0 + $1.data } + unparsable
     }
 
-    public var isEmpty: Bool {
-        data.isEmpty
+    var size: Int {
+        operations.reduce(0) { $0 + $1.size } + unparsable.count
     }
 
-    public func getOperations(sigVersion: SigVersion = .base) -> [ScriptOperation]? {
-        var data = data
-        var operations = [ScriptOperation]()
-        while data.count > 0 {
-            guard let operation = ScriptOperation(data, sigVersion: sigVersion) else {
-                return nil
-            }
-            operations.append(operation)
-            data = data.dropFirst(operation.size)
-        }
-        return operations
+    var isEmpty: Bool {
+        operations.isEmpty && unparsable.isEmpty
     }
 
-    public var serialized: Script { self }
-
-    public var prefixedData: Data {
+    var prefixedData: Data {
         data.varLenData
     }
 
-    public var prefixedSize: Int {
-        data.varLenSize
+    var prefixedSize: Int {
+        UInt64(size).varIntSize + size
     }
 
     // BIP16
     var isPayToScriptHash: Bool {
         if size == 23,
-           let operations = getOperations(),
            operations.count == 3,
            operations[0] == .hash160,
            case .pushBytes(_) = operations[1],
@@ -71,7 +89,6 @@ public struct Script: Equatable {
     /// BIP141
     var isSegwit: Bool {
         if size >= 3 && size <= 41,
-           let operations = getOperations(),
            operations.count == 2,
            case .pushBytes(_) = operations[1]
         {
@@ -84,7 +101,7 @@ public struct Script: Equatable {
     /// BIP141
     var witnessProgram: Data {
         precondition(isSegwit)
-        guard let operations = getOperations(), case let .pushBytes(data) = operations[1] else {
+        guard case let .pushBytes(data) = operations[1] else {
             preconditionFailure()
         }
         return data
@@ -93,14 +110,13 @@ public struct Script: Equatable {
     /// BIP141
     var witnessVersion: Int {
         precondition(isSegwit)
-        guard let operations = getOperations() else {
-            preconditionFailure()
-        }
         return if case let .constant(value) = operations[0] { Int(value) } else if operations[0] == .zero { 0 } else { preconditionFailure() }
     }
 
+    // MARK: - Instance Methods
+
     /// Evaluates the script.
-    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, sigVersion: SigVersion = .base, configuration: ScriptConfigurarion) throws {
+    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, configuration: ScriptConfigurarion) throws {
 
         // BIP141
         if (sigVersion == .base || sigVersion == .witnessV0) && size > Self.maxScriptSize {
@@ -118,33 +134,19 @@ public struct Script: Equatable {
             throw ScriptError.initialStackMaxElementSizeExceeded
         }
 
-        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, sigVersion: sigVersion, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
+        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
 
         // BIP342: `OP_SUCCESS`
-        if sigVersion != .base && sigVersion != .witnessV0 {
-            var programCounter = 0
-            while programCounter < data.count {
-                let offset = data.startIndex + context.programCounter
-                guard let operation = ScriptOperation(data[offset...], sigVersion: sigVersion) else {
-                    throw ScriptError.unparsableOperation
-                }
-                if case .success(_) = operation {
-                    if configuration.discourageOpSuccess {
-                        throw ScriptError.disallowedTaprootVersion
-                    }
-                    return
-                }
-                programCounter += operation.size
+        if sigVersion != .base && sigVersion != .witnessV0 &&
+           operations.contains(where: { if case .success(_) = $0 { true } else { false }}) {
+            if configuration.discourageOpSuccess {
+                throw ScriptError.disallowedTaprootVersion
             }
+            return // Do not run the script.
         }
 
-        while context.programCounter < data.count {
-            let offset = data.startIndex + context.programCounter
-            guard let operation = ScriptOperation(data[offset...], sigVersion: sigVersion) else {
-                throw ScriptError.unparsableOperation
-            }
-            context.decodedOperations.append(operation)
 
+        for operation in operations {
             if (sigVersion == .base || sigVersion == .witnessV0) && !operation.isPush && operation != .reserved(80) {
                 context.nonPushOperations += 1
                 guard context.nonPushOperations <= Self.maxOperations else {
@@ -163,23 +165,24 @@ public struct Script: Equatable {
             context.programCounter += operation.size
         }
         guard context.pendingIfOperations.isEmpty, context.pendingElseOperations == 0 else {
-            throw ScriptError.invalidScript
+            throw ScriptError.malformedIfElseEndIf
         }
     }
 
-    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], sigVersion: SigVersion = .base, configuration: ScriptConfigurarion) throws {
-        try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, sigVersion: sigVersion, configuration: configuration)
+    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+        try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, configuration: configuration)
     }
 
     // BIP62
     func checkPushOnly() throws {
-        guard let operations = getOperations() else {
-            throw ScriptError.unparsableScript
-        }
-        guard operations.allSatisfy(\.isPush) else {
+        guard operations.allSatisfy(\.isPush), unparsable.isEmpty else {
             throw ScriptError.nonPushOnlyScript
         }
     }
+
+    // MARK: - Type Properties
+
+    public static let empty = Self([])
 
     /// Maximum number of public keys per multisig.
     static let maxMultiSigPublicKeys = 20
@@ -191,10 +194,15 @@ public struct Script: Equatable {
     static let maxScriptSize = 10_000
 
     /// BIP342
-    private static let maxStackElements = 1_000
-
-    /// BIP342
     static let maxStackElementSize = 520
     static let sigopBudgetBase = 50
     static let sigopBudgetDecrement = 50
+
+    /// BIP342
+    private static let maxStackElements = 1_000
+
+    // MARK: - Type Methods
+
+    // No type methods yet.
+
 }

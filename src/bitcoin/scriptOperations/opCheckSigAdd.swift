@@ -13,12 +13,12 @@ func opCheckSigAdd(_ stack: inout [Data], context: inout ScriptContext) throws {
     var n = try ScriptNumber(nData)
     guard n.size <= 4 else {
         // - If n is larger than 4 bytes, the script MUST fail and terminate immediately.
-        throw ScriptError.invalidScript
+        throw ScriptError.invalidCheckSigAddArgument
     }
 
     if publicKey.isEmpty {
         // - If the public key size is zero, the script MUST fail and terminate immediately.
-        throw ScriptError.invalidScript
+        throw ScriptError.emptyPublicKey
     }
 
     if !sig.isEmpty { try context.checkSigopBudget() }

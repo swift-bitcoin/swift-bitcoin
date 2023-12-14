@@ -288,18 +288,18 @@ public enum ScriptOperation: Equatable {
         case .zero: opConstant(0, stack: &stack)
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): try opPushBytes(data: d, stack: &stack, context: context)
         case .oneNegate: op1Negate(&stack)
-        case .reserved(_): throw ScriptError.invalidScript
+        case .reserved(_): throw ScriptError.disabledOperation
         case .success(_): preconditionFailure()
         case .constant(let k): opConstant(k, stack: &stack)
         case .noOp: break
-        case .ver: throw ScriptError.invalidScript
+        case .ver: throw ScriptError.disabledOperation
         case .if: try opIf(&stack, context: &context)
         case .notIf: try opIf(&stack, isNotIf: true, context: &context)
-        case .verIf, .verNotIf: throw ScriptError.invalidScript
+        case .verIf, .verNotIf: throw ScriptError.disabledOperation
         case .else: try opElse(context: &context)
         case .endIf: try opEndIf(context: &context)
         case .verify: try opVerify(&stack)
-        case .return: throw ScriptError.invalidScript
+        case .return: throw ScriptError.disabledOperation
         case .toAltStack: try opToAltStack(&stack, context: &context)
         case .fromAltStack: try opFromAltStack(&stack, context: &context)
         case .twoDrop: try op2Drop(&stack)

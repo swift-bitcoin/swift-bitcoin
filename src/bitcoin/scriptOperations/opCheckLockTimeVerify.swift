@@ -22,7 +22,7 @@ func opCheckLockTimeVerify(_ stack: inout [Data], context: ScriptContext) throws
             throw ScriptError.lockTimeSecondsEarly
         }
     } else {
-        throw ScriptError.invalidScript
+        throw ScriptError.invalidLockTime
     }
 
     if context.transaction.inputs[context.inputIndex].sequence == .final { throw ScriptError.inputSequenceFinal }
