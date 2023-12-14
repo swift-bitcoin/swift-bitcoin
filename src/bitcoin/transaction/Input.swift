@@ -43,16 +43,16 @@ public struct Input: Equatable {
     // MARK: - Instance Properties
 
     /// A reference to a previously unspent output of a prior transaction.
-    public var outpoint: Outpoint
+    public let outpoint: Outpoint
 
     /// The sequence number for this input.
-    public var sequence: Sequence
+    public let sequence: Sequence
 
     /// The script that unlocks the output associated with this input.
-    public var script: Script
+    public let script: Script
 
     /// BIP141 - Segregated witness data associated with this input.
-    public var witness: Witness?
+    public let witness: Witness?
 
     /// Used by ``Transaction/data``.
     var data: Data {

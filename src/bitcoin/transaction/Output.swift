@@ -22,10 +22,10 @@ public struct Output: Equatable {
     }
 
     /// The amount in satoshis encumbered by this output.
-    public var value: Amount
+    public let value: Amount
 
     /// The script that locks this output.
-    public var script: Script
+    public let script: Script
 
     var data: Data {
         var ret = Data()

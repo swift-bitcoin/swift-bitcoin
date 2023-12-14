@@ -95,16 +95,13 @@ extension Data {
 
     init?(varLenData: Data) {
         var data = varLenData
-        guard let contentLen = data.varInt else {
-            return nil
-        }
+        guard let contentLen = data.varInt else { return nil }
         data = data.dropFirst(contentLen.varIntSize)
         self = data[..<(data.startIndex + Int(contentLen))]
     }
 
     var varLenData: Data {
-        let contentLenData = Data(varInt: UInt64(count))
-        return contentLenData + self
+        Data(varInt: UInt64(count)) + self
     }
 
     /// Memory size as variable length byte array (array prefixed with its element count as compact integer).

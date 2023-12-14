@@ -9,25 +9,25 @@ func opCheckSequenceVerify(_ stack: inout [Data], context: ScriptContext) throws
         first.count < 6,
         sequence64 >= 0,
         sequence64 <= Sequence.maxCSVArgument
-    else { throw ScriptError.invalidScript }
+    else { throw ScriptError.invalidSequenceArgument }
 
     let sequence = Sequence(sequence64)
     if sequence.isLocktimeDisabled { return }
 
-    if context.transaction.version == .v1 { throw ScriptError.invalidScript }
+    if context.transaction.version == .v1 { throw ScriptError.minimumTransactionVersionRequired }
 
     let txSequence = context.transaction.inputs[context.inputIndex].sequence
-    if txSequence.isLocktimeDisabled { throw ScriptError.invalidScript }
+    if txSequence.isLocktimeDisabled { throw ScriptError.sequenceLockTimeDisabled }
 
     if let locktimeBlocks = sequence.locktimeBlocks, let txLocktimeBlocks = txSequence.locktimeBlocks {
         if locktimeBlocks > txLocktimeBlocks {
-            throw ScriptError.invalidScript
+            throw ScriptError.sequenceHeightEarly
         }
     } else if let seconds = sequence.locktimeSeconds, let txSeconds = txSequence.locktimeSeconds {
         if seconds > txSeconds {
-            throw ScriptError.invalidScript
+            throw ScriptError.sequenceSecondsEarly
         }
     } else {
-        throw ScriptError.invalidScript
+        throw ScriptError.invalidSequence
     }
 }

@@ -13,10 +13,7 @@ final class BitcoinCoreTaprootTests: XCTestCase {
 
     func testVectors() {
         for testCase in coreTestAssets {
-            let unsigned = Transaction(Data(hex: testCase.tx)!)!
-            let previousOutputs = testCase.previousOutputs.map { Output(Data(hex: $0)!)! }
-            let inputIndex = testCase.inputIndex
-            var tx = unsigned
+
             var includeFlags = Set(testCase.flags.split(separator: ","))
             includeFlags.remove("NONE")
             let config = ScriptConfigurarion(
@@ -42,17 +39,37 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 discourageUpgradablePublicKeyType: true
             )
             let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, discourageUpgradableNoOps: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
+
+            let unsignedTx = Transaction(Data(hex: testCase.tx)!)!
+            let previousOutputs = testCase.previousOutputs.map { Output(Data(hex: $0)!)! }
+            let inputIndex = testCase.inputIndex
+            let input = unsignedTx.inputs[inputIndex]
             if let success = testCase.success {
-                tx.inputs[inputIndex].script = .init(Data(hex: success.scriptSig)!)
-                tx.inputs[inputIndex].witness = .init(success.witness.map { Data(hex: $0)! })
+                let successInput = Input(
+                    outpoint: input.outpoint,
+                    sequence: input.sequence,
+                    script: .init(Data(hex: success.scriptSig)!),
+                    witness: .init(success.witness.map { Data(hex: $0)! })
+
+                )
+                var successInputs = unsignedTx.inputs
+                successInputs[inputIndex] = successInput
+                let successTx = Transaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: successInputs, outputs: unsignedTx.outputs)
                 // TODO: Some test vectors fail when invalid signature causes throw. #96
-                XCTAssertNoThrow(try tx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: testCase.final ? config : allOff))
+                XCTAssertNoThrow(try successTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: testCase.final ? config : allOff))
             }
             if let failure = testCase.failure, testCase.final {
-                var failTx = unsigned
-                failTx.inputs[inputIndex].script = .init(Data(hex: failure.scriptSig)!)
-                failTx.inputs[inputIndex].witness = .init(failure.witness.map { Data(hex: $0)! })
-                XCTAssertThrowsError(try failTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: .standard))
+                let failureInput = Input(
+                    outpoint: input.outpoint,
+                    sequence: input.sequence,
+                    script: .init(Data(hex: failure.scriptSig)!),
+                    witness: .init(failure.witness.map { Data(hex: $0)! })
+
+                )
+                var failureInputs = unsignedTx.inputs
+                failureInputs[inputIndex] = failureInput
+                let failureTx = Transaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: failureInputs, outputs: unsignedTx.outputs)
+                XCTAssertThrowsError(try failureTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: .standard))
             }
         }
     }

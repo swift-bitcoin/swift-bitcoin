@@ -63,11 +63,10 @@ public struct Transaction: Equatable {
         // BIP144
         if isSegwit {
             for i in inputs.indices {
-                guard let witness = Witness(data) else {
-                    return nil
-                }
-                inputs[i].witness = witness
+                guard let witness = Witness(data) else { return nil }
                 data = data.dropFirst(witness.size)
+                let input = inputs[i]
+                inputs[i] = .init(outpoint: input.outpoint, sequence: input.sequence, script: input.script, witness: witness)
             }
         }
 
@@ -84,13 +83,15 @@ public struct Transaction: Equatable {
     public let version: TransactionVersion
 
     /// Lock time value applied to this transaction. It represents the earliest time at which this transaction should be considered valid.
-    public var locktime: Locktime
+    public let locktime: Locktime
 
     /// All of the inputs consumed by this transaction.
-    public var inputs: [Input]
+    public let inputs: [Input]
 
     /// The outputs created by this transaction.
-    public var outputs: [Output]
+    public let outputs: [Output]
+
+    // MARK: - Computed Properties
 
     /// Raw format byte serialization of this transaction. Supports updated serialization format specified in BIP144.
     /// BIP144
@@ -299,9 +300,9 @@ public struct Transaction: Equatable {
             // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
             let witnessScript = Script([
                 .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
-            ])
+            ], sigVersion: .witnessV0)
 
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, sigVersion: .witnessV0, configuration: configuration)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
 
             // The verification must result in a single TRUE on the stack.
             guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
@@ -324,8 +325,8 @@ public struct Transaction: Equatable {
                 throw ScriptError.wrongWitnessScriptHash
             }
 
-            let witnessScript = Script(witnessScriptRaw)
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, sigVersion: .witnessV0, configuration: configuration)
+            let witnessScript = Script(witnessScriptRaw, sigVersion: .witnessV0)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
             guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
@@ -407,8 +408,8 @@ public struct Transaction: Equatable {
             return
         }
 
-        let tapscript = Script(tapscriptData)
-        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, sigVersion: .witnessV1, configuration: configuration)
+        let tapscript = Script(tapscriptData, sigVersion: .witnessV1)
+        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, configuration: configuration)
     }
 
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.

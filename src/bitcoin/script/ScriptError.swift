@@ -2,7 +2,10 @@ import Foundation
 
 /// An error while executing a bitcoin script.
 enum ScriptError: Error {
-    case invalidScript,
+    case malformedIfElseEndIf,
+         missingStackArgument,
+         missingAltStackArgument,
+         missingMultiSigArgument,
          unparsableScript,
          nonPushOnlyScript,
          invalidStackOperation,
@@ -20,8 +23,12 @@ enum ScriptError: Error {
          invalidLockTimeArgument,
          lockTimeHeightEarly,
          lockTimeSecondsEarly,
+         invalidLockTime,
+         invalidSequenceArgument,
+         sequenceHeightEarly,
+         sequenceSecondsEarly,
+         invalidSequence,
          inputSequenceFinal,
-         missingStackArgument,
          scriptSigNotEmpty,
          falseReturned,
          scriptSigTooManyPushes,
@@ -52,5 +59,8 @@ enum ScriptError: Error {
          maxPublicKeysExceeded,
          emptyPublicKey,
          emptySchnorrSignature,
-         disallowedNoOp
+         disallowedNoOp,
+         invalidCheckSigAddArgument,
+         minimumTransactionVersionRequired,
+         sequenceLockTimeDisabled
 }

@@ -24,10 +24,10 @@ public struct Outpoint: Equatable, Hashable {
     }
 
     // The identifier for the transaction containing the referenced output.
-    public var transactionIdentifier: Data
+    public let transactionIdentifier: Data
 
     /// The index of an output in the referenced transaction.
-    public var outputIndex: Int
+    public let outputIndex: Int
 
     var data: Data {
         var ret = Data()

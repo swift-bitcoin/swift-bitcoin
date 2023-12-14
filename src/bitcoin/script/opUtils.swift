@@ -2,7 +2,7 @@ import Foundation
 
 func getUnaryParam(_ stack: inout [Data], keep: Bool = false) throws -> Data {
     guard let param = stack.last else {
-        throw ScriptError.invalidScript
+        throw ScriptError.missingStackArgument
     }
     if !keep { stack.removeLast() }
     return param
@@ -10,7 +10,7 @@ func getUnaryParam(_ stack: inout [Data], keep: Bool = false) throws -> Data {
 
 func getBinaryParams(_ stack: inout [Data]) throws -> (Data, Data) {
     guard stack.count > 1 else {
-        throw ScriptError.invalidScript
+        throw ScriptError.missingStackArgument
     }
     let second = stack.removeLast()
     let first = stack.removeLast()
@@ -19,7 +19,7 @@ func getBinaryParams(_ stack: inout [Data]) throws -> (Data, Data) {
 
 func getTernaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data) {
     guard stack.count > 2 else {
-        throw ScriptError.invalidScript
+        throw ScriptError.missingStackArgument
     }
     let third = stack.removeLast()
     let (first, second) = try getBinaryParams(&stack)
@@ -28,7 +28,7 @@ func getTernaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data) {
 
 func getQuaternaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data, Data) {
     guard stack.count > 3 else {
-        throw ScriptError.invalidScript
+        throw ScriptError.missingStackArgument
     }
     let fourth = stack.removeLast()
     let (first, second, third) = try getTernaryParams(&stack)
@@ -37,7 +37,7 @@ func getQuaternaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data, Dat
 
 func getSenaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data, Data, Data, Data) {
     guard stack.count > 5 else {
-        throw ScriptError.invalidScript
+        throw ScriptError.missingStackArgument
     }
     let sixth = stack.removeLast()
     let fifth = stack.removeLast()
@@ -47,7 +47,7 @@ func getSenaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data, Data, D
 
 func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigurarion) throws -> (Int, [Data], Int, [Data]) {
     guard stack.count > 4 else {
-        throw ScriptError.missingStackArgument
+        throw ScriptError.missingMultiSigArgument
     }
     let n = try ScriptNumber(stack.removeLast()).value
     let publicKeys = Array(stack[(stack.endIndex - n)...].reversed())
