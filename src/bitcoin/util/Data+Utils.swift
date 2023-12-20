@@ -17,7 +17,7 @@ extension Data {
     }
 }
 
-extension DataProtocol {
+public extension DataProtocol {
 
     /// Hexadecimal (Base-16) string representation of data.
     var hex: String {
