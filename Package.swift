@@ -12,9 +12,15 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.4.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0"),
-        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0")
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.3"),
     ],
     targets: [
+        .executableTarget(
+            name: "bitcoin-cli", dependencies: [
+                "Bitcoin",
+                .product(name: "ArgumentParser", package: "swift-argument-parser")],
+            path: "src/bitcoin-cli"),
         .target(
             name: "ECCHelper",
             dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")],
