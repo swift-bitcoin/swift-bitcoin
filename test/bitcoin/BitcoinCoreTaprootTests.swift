@@ -40,12 +40,12 @@ final class BitcoinCoreTaprootTests: XCTestCase {
             )
             let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, discourageUpgradableNoOps: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
 
-            let unsignedTx = Transaction(Data(hex: testCase.tx)!)!
-            let previousOutputs = testCase.previousOutputs.map { Output(Data(hex: $0)!)! }
+            let unsignedTx = BitcoinTransaction(Data(hex: testCase.tx)!)!
+            let previousOutputs = testCase.previousOutputs.map { TransactionOutput(Data(hex: $0)!)! }
             let inputIndex = testCase.inputIndex
             let input = unsignedTx.inputs[inputIndex]
             if let success = testCase.success {
-                let successInput = Input(
+                let successInput = TransationInput(
                     outpoint: input.outpoint,
                     sequence: input.sequence,
                     script: .init(Data(hex: success.scriptSig)!),
@@ -54,12 +54,12 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 )
                 var successInputs = unsignedTx.inputs
                 successInputs[inputIndex] = successInput
-                let successTx = Transaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: successInputs, outputs: unsignedTx.outputs)
+                let successTx = BitcoinTransaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: successInputs, outputs: unsignedTx.outputs)
                 // TODO: Some test vectors fail when invalid signature causes throw. #96
                 XCTAssertNoThrow(try successTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: testCase.final ? config : allOff))
             }
             if let failure = testCase.failure, testCase.final {
-                let failureInput = Input(
+                let failureInput = TransationInput(
                     outpoint: input.outpoint,
                     sequence: input.sequence,
                     script: .init(Data(hex: failure.scriptSig)!),
@@ -68,7 +68,7 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 )
                 var failureInputs = unsignedTx.inputs
                 failureInputs[inputIndex] = failureInput
-                let failureTx = Transaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: failureInputs, outputs: unsignedTx.outputs)
+                let failureTx = BitcoinTransaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: failureInputs, outputs: unsignedTx.outputs)
                 XCTAssertThrowsError(try failureTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: .standard))
             }
         }

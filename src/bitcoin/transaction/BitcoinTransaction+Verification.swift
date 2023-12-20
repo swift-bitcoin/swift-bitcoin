@@ -1,11 +1,11 @@
 import Foundation
 
 /// Transaction inputs/scripts verification.
-extension Transaction {
+extension BitcoinTransaction {
 
     // MARK: - Instance Methods
 
-    public func verifyScript(previousOutputs: [Output], configuration: ScriptConfigurarion = .standard) -> Bool {
+    public func verifyScript(previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion = .standard) -> Bool {
         for i in inputs.indices {
             do {
                 try verifyScript(inputIndex: i, previousOutputs: previousOutputs, configuration: configuration)
@@ -18,7 +18,7 @@ extension Transaction {
     }
 
     /// Initial simplified version of transaction verification that allows for script execution.
-    func verifyScript(inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+    func verifyScript(inputIndex: Int, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion) throws {
 
         precondition(previousOutputs.count == inputs.count)
 
@@ -65,7 +65,7 @@ extension Transaction {
                 stack = stackTmp
                 guard let data = stack.popLast() else { preconditionFailure() }
 
-                let redeemScript = Script(data)
+                let redeemScript = BitcoinScript(data)
 
                 // BIP141 - P2SH witness program
                 if redeemScript.isSegwit {
@@ -115,7 +115,7 @@ extension Transaction {
         }
     }
 
-    private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+    private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion) throws {
         guard var stack = inputs[inputIndex].witness?.elements else { preconditionFailure() }
 
         if witnessProgram.count == 20 {
@@ -128,7 +128,7 @@ extension Transaction {
             }
 
             // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
-            let witnessScript = Script([
+            let witnessScript = BitcoinScript([
                 .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
             ], sigVersion: .witnessV0)
 
@@ -146,7 +146,7 @@ extension Transaction {
                 preconditionFailure()
             }
             // This check is repeated inside ``Script.run()``.
-            if witnessScriptRaw.count > Script.maxScriptSize {
+            if witnessScriptRaw.count > BitcoinScript.maxScriptSize {
                 throw ScriptError.scriptSizeLimitExceeded
             }
 
@@ -155,7 +155,7 @@ extension Transaction {
                 throw ScriptError.wrongWitnessScriptHash
             }
 
-            let witnessScript = Script(witnessScriptRaw, sigVersion: .witnessV0)
+            let witnessScript = BitcoinScript(witnessScriptRaw, sigVersion: .witnessV0)
             try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
@@ -169,7 +169,7 @@ extension Transaction {
     }
 
     /// BIP341, BIP342
-    private func verifyTaproot(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+    private func verifyTaproot(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion) throws {
 
         guard let witness = inputs[inputIndex].witness else { preconditionFailure() }
         guard configuration.taproot else { return }
@@ -238,7 +238,7 @@ extension Transaction {
             return
         }
 
-        let tapscript = Script(tapscriptData, sigVersion: .witnessV1)
+        let tapscript = BitcoinScript(tapscriptData, sigVersion: .witnessV1)
         try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, configuration: configuration)
     }
 
@@ -249,7 +249,7 @@ extension Transaction {
     ///   - previousOutput: Previous unspent transaction output corresponding to the transaction input being signed/verified.
     ///   - scriptCode: The executed script. For Pay-to-Script-Hash outputs it should correspond to the redeem script.
     /// - Returns: A hash value for use while either signing or verifying a transaction input.
-    func signatureHash(sighashType: SighashType, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Data {
+    func signatureHash(sighashType: SighashType, inputIndex: Int, previousOutput: TransactionOutput, scriptCode: Data) -> Data {
         if sighashType.isSingle && inputIndex >= outputs.count {
             // Note: The transaction that uses SIGHASH_SINGLE type of signature should not have more inputs than outputs. However if it does (because of the pre-existing implementation), it shall not be rejected, but instead for every "illegal" input (meaning: an input that has an index bigger than the maximum output index) the node should still verify it, though assuming the hash of 0000000000000000000000000000000000000000000000000000000000000001
             //
@@ -263,7 +263,7 @@ extension Transaction {
 
     /// Aka sigMsg. See https://en.bitcoin.it/wiki/OP_CHECKSIG
     func signatureMessage(sighashType: SighashType, inputIndex: Int, scriptCode: Data) -> Data {
-        var newIns = [Input]()
+        var newIns = [TransationInput]()
         if sighashType.isAnyCanPay {
             // Procedure for Hashtype SIGHASH_ANYONECANPAY
             // The txCopy input vector is resized to a length of one.
@@ -281,7 +281,7 @@ extension Transaction {
                 ))
             }
         }
-        var newOuts: [Output]
+        var newOuts: [TransactionOutput]
         // Procedure for Hashtype SIGHASH_SINGLE
 
         if sighashType.isSingle {
@@ -297,7 +297,7 @@ extension Transaction {
                     newOuts.append(out)
                 } else if i < inputIndex {
                     // Value is "long -1" which means UInt64(bitPattern: -1) aka UInt64.max
-                    newOuts.append(.init(value: -1, script: Script.empty))
+                    newOuts.append(.init(value: -1, script: BitcoinScript.empty))
                 }
             }
         } else if sighashType.isNone {
@@ -305,7 +305,7 @@ extension Transaction {
         } else {
             newOuts = outputs
         }
-        let txCopy = Transaction(
+        let txCopy = BitcoinTransaction(
             version: version,
             locktime: locktime,
             inputs: newIns,
@@ -315,12 +315,12 @@ extension Transaction {
     }
 
     /// BIP143
-    func signatureHashSegwit(sighashType: SighashType, inputIndex: Int, previousOutput: Output, scriptCode: Data) -> Data {
+    func signatureHashSegwit(sighashType: SighashType, inputIndex: Int, previousOutput: TransactionOutput, scriptCode: Data) -> Data {
         hash256(signatureMessageSegwit(sighashType: sighashType, inputIndex: inputIndex, scriptCode: scriptCode, amount: previousOutput.value))
     }
 
     /// BIP143: SegWit v0 signature message (sigMsg).
-    func signatureMessageSegwit(sighashType: SighashType, inputIndex: Int, scriptCode: Data, amount: Amount) -> Data {
+    func signatureMessageSegwit(sighashType: SighashType, inputIndex: Int, scriptCode: Data, amount: BitcoinAmount) -> Data {
         //If the ANYONECANPAY flag is not set, hashPrevouts is the double SHA256 of the serialization of all input outpoints;
         // Otherwise, hashPrevouts is a uint256 of 0x0000......0000.
         var hashPrevouts: Data
@@ -366,13 +366,13 @@ extension Transaction {
     }
 
     /// BIP341
-    func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [Output], tapscriptExtension: TapscriptExtension? = .none) -> Data {
+    func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [TransactionOutput], tapscriptExtension: TapscriptExtension? = .none) -> Data {
         var cache = SighashCache()
         return signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
     }
 
     /// BIP341
-    func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [Output], tapscriptExtension: TapscriptExtension? = .none, sighashCache: inout SighashCache) -> Data {
+    func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [TransactionOutput], tapscriptExtension: TapscriptExtension? = .none, sighashCache: inout SighashCache) -> Data {
         var payload = signatureMessageSchnorr(sighashType: sighashType, extFlag: tapscriptExtension == .none ? 0 : 1, inputIndex: inputIndex, previousOutputs: previousOutputs, sighashCache: &sighashCache)
         if let tapscriptExtension {
             payload += tapscriptExtension.data
@@ -383,7 +383,7 @@ extension Transaction {
     /// BIP341: SegWit v1 (Schnorr / TapRoot) signature message (sigMsg). More at https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#common-signature-message .
     /// https://github.com/bitcoin/bitcoin/blob/58da1619be7ac13e686cb8bbfc2ab0f836eb3fa5/src/script/interpreter.cpp#L1477
     /// https://bitcoin.stackexchange.com/questions/115328/how-do-you-calculate-a-taproot-sighash
-    func signatureMessageSchnorr(sighashType: SighashType?, extFlag: UInt8 = 0, inputIndex: Int, previousOutputs: [Output], sighashCache: inout SighashCache) -> Data {
+    func signatureMessageSchnorr(sighashType: SighashType?, extFlag: UInt8 = 0, inputIndex: Int, previousOutputs: [TransactionOutput], sighashCache: inout SighashCache) -> Data {
 
         precondition(previousOutputs.count == inputs.count, "The corresponding (aligned) UTXO for each transaction input is required.")
         precondition(!sighashType.isSingle || inputIndex < outputs.count, "For single hash type, the selected input needs to have a matching output.")

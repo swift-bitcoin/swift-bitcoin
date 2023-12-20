@@ -1,31 +1,31 @@
 import Foundation
 
 /// The output of a ``Transaction``.
-public struct Output: Equatable {
+public struct TransactionOutput: Equatable {
 
-    public init(value: Amount, script: Script) {
+    public init(value: BitcoinAmount, script: BitcoinScript) {
         self.value = value
         self.script = script
     }
 
     init?(_ data: Data) {
-        guard data.count > MemoryLayout<Amount>.size else {
+        guard data.count > MemoryLayout<BitcoinAmount>.size else {
             return nil
         }
         var data = data
-        let value = data.withUnsafeBytes { $0.loadUnaligned(as: Amount.self) }
+        let value = data.withUnsafeBytes { $0.loadUnaligned(as: BitcoinAmount.self) }
         data = data.dropFirst(MemoryLayout.size(ofValue: value))
-        guard let script = Script(prefixedData: data) else {
+        guard let script = BitcoinScript(prefixedData: data) else {
             return nil
         }
         self.init(value: value, script: script)
     }
 
     /// The amount in satoshis encumbered by this output.
-    public let value: Amount
+    public let value: BitcoinAmount
 
     /// The script that locks this output.
-    public let script: Script
+    public let script: BitcoinScript
 
     var data: Data {
         var ret = Data()

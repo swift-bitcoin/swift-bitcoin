@@ -11,7 +11,7 @@ func opCheckLockTimeVerify(_ stack: inout [Data], context: ScriptContext) throws
         locktime64 <= UInt32.max
     else { throw ScriptError.invalidLockTimeArgument }
 
-    let locktime = Locktime(locktime64)
+    let locktime = TransactionLocktime(locktime64)
 
     if let blockHeight = locktime.blockHeight, let txBlockHeight = context.transaction.locktime.blockHeight {
         if blockHeight > txBlockHeight {

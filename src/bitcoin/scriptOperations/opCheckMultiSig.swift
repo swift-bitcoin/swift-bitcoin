@@ -7,12 +7,12 @@ func opCheckMultiSig(_ stack: inout [Data], context: inout ScriptContext) throws
     precondition(publicKeys.count == n)
     precondition(sigs.count == m)
 
-    guard n <= Script.maxMultiSigPublicKeys else {
+    guard n <= BitcoinScript.maxMultiSigPublicKeys else {
         throw ScriptError.maxPublicKeysExceeded
     }
 
     context.nonPushOperations += n
-    guard context.nonPushOperations <= Script.maxOperations else {
+    guard context.nonPushOperations <= BitcoinScript.maxOperations else {
         throw ScriptError.operationsLimitExceeded
     }
 

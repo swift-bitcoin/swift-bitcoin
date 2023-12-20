@@ -2,7 +2,7 @@ import Foundation
 
 /// BIP141
 /// Witness data associated with a particular ``Input``.
-public struct Witness: Equatable {
+public struct InputWitness: Equatable {
 
     public init(_ elements: [Data]) {
         self.elements = elements

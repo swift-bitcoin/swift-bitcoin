@@ -1,7 +1,7 @@
 import XCTest
 import Bitcoin
 
-fileprivate let coinbaseTx1 = Transaction(
+fileprivate let coinbaseTx1 = BitcoinTransaction(
     version: .v1,
     locktime: .init(0),
     inputs: [
@@ -24,7 +24,7 @@ fileprivate let coinbaseTx1 = Transaction(
         )
     ])
 
-fileprivate let coinbaseTx2 = Transaction(
+fileprivate let coinbaseTx2 = BitcoinTransaction(
     version: .v1,
     locktime: .init(0),
     inputs: [
@@ -40,14 +40,14 @@ fileprivate let coinbaseTx2 = Transaction(
     outputs: [
         .init(
             value: 5_000_000_000, // 50 BTC
-            script: Script([.constant(1)])
+            script: BitcoinScript([.constant(1)])
         )
     ])
 final class APITests: XCTestCase {
 
     func testTransactionRoundtrip() throws {
         let data = coinbaseTx1.data
-        guard let tx_ = Transaction(data) else {
+        guard let tx_ = BitcoinTransaction(data) else {
             XCTFail(); return
         }
         XCTAssertEqual(data, tx_.data)
@@ -58,14 +58,14 @@ final class APITests: XCTestCase {
             XCTFail(); return
         }
         // A coinbase transaction
-        let tx = Transaction(
+        let tx = BitcoinTransaction(
             version: .v1,
             locktime: .init(0),
             inputs: [
                 .init(
                     outpoint: outpoint,
                     sequence: .init(0),
-                    script: Script([.constant(1)])
+                    script: BitcoinScript([.constant(1)])
                 )
             ],
             outputs: [

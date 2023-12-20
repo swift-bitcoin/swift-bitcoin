@@ -3,7 +3,7 @@ import Foundation
 /// A fully decoded bitcoin script and its associated signature version.
 ///
 /// If there is a portion of the data that cannot be parsed it will be stored in ``Script:unparsable``.
-public struct Script: Equatable {
+public struct BitcoinScript: Equatable {
 
     // MARK: - Initializers
 
@@ -116,7 +116,7 @@ public struct Script: Equatable {
     // MARK: - Instance Methods
 
     /// Evaluates the script.
-    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], tapLeafHash: Data?, configuration: ScriptConfigurarion) throws {
+    public func run(_ stack: inout [Data], transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], tapLeafHash: Data?, configuration: ScriptConfigurarion) throws {
 
         // BIP141
         if (sigVersion == .base || sigVersion == .witnessV0) && size > Self.maxScriptSize {
@@ -169,7 +169,7 @@ public struct Script: Equatable {
         }
     }
 
-    public func run(_ stack: inout [Data], transaction: Transaction, inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion) throws {
+    public func run(_ stack: inout [Data], transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion) throws {
         try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, configuration: configuration)
     }
 

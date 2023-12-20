@@ -1,7 +1,7 @@
 import Foundation
 
 /// A single input of a ``Transaction``.
-public struct Input: Equatable {
+public struct TransationInput: Equatable {
 
     // MARK: - Initializers
 
@@ -11,7 +11,7 @@ public struct Input: Equatable {
     ///   - sequence: this input's sequence number.
     ///   - script: optional script to unlock the output.
     ///   - witness: optional witness data for this input. BIP141
-    public init(outpoint: Outpoint, sequence: Sequence, script: Script = .empty, /* BIP141 */ witness: Witness? = .none) {
+    public init(outpoint: TransactionOutpoint, sequence: InputSequence, script: BitcoinScript = .empty, /* BIP141 */ witness: InputWitness? = .none) {
         self.outpoint = outpoint
         self.sequence = sequence
         self.script = script
@@ -22,20 +22,20 @@ public struct Input: Equatable {
 
     init?(_ data: Data) {
         var offset = data.startIndex
-        guard let outpoint = Outpoint(data) else {
+        guard let outpoint = TransactionOutpoint(data) else {
             return nil
         }
-        offset += Outpoint.size
+        offset += TransactionOutpoint.size
 
-        guard let script = Script(prefixedData: data[offset...]) else {
+        guard let script = BitcoinScript(prefixedData: data[offset...]) else {
             return nil
         }
         offset += script.prefixedSize
 
-        guard let sequence = Sequence(data[offset...]) else {
+        guard let sequence = InputSequence(data[offset...]) else {
             return nil
         }
-        offset += Sequence.size
+        offset += InputSequence.size
 
         self.init(outpoint: outpoint, sequence: sequence, script: script)
     }
@@ -43,16 +43,16 @@ public struct Input: Equatable {
     // MARK: - Instance Properties
 
     /// A reference to a previously unspent output of a prior transaction.
-    public let outpoint: Outpoint
+    public let outpoint: TransactionOutpoint
 
     /// The sequence number for this input.
-    public let sequence: Sequence
+    public let sequence: InputSequence
 
     /// The script that unlocks the output associated with this input.
-    public let script: Script
+    public let script: BitcoinScript
 
     /// BIP141 - Segregated witness data associated with this input.
-    public let witness: Witness?
+    public let witness: InputWitness?
 
     /// Used by ``Transaction/data``.
     var data: Data {
@@ -65,6 +65,6 @@ public struct Input: Equatable {
 
     /// Used by ``Transaction/size``.
     var size: Int {
-        Outpoint.size + script.prefixedSize + Sequence.size
+        TransactionOutpoint.size + script.prefixedSize + InputSequence.size
     }
 }
