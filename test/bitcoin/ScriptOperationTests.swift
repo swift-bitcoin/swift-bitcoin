@@ -12,7 +12,7 @@ final class ScriptOperationTests: XCTestCase {
 
         for v in vectors {
             var stack = [Data].withConstants(v.0)
-            XCTAssertNoThrow(try Script(v.1).run(&stack))
+            XCTAssertNoThrow(try BitcoinScript(v.1).run(&stack))
             XCTAssertEqual(stack, .withConstants(v.2))
         }
 
@@ -34,7 +34,7 @@ final class ScriptOperationTests: XCTestCase {
 
         for v in vectors2 {
             var stack = v.0
-            XCTAssertNoThrow(try Script(v.1).run(&stack))
+            XCTAssertNoThrow(try BitcoinScript(v.1).run(&stack))
             XCTAssertEqual(stack, v.2)
         }
     }
@@ -62,7 +62,7 @@ final class ScriptOperationTests: XCTestCase {
 
         for v in vectors {
             var stack = v.0
-            XCTAssertNoThrow(try Script(v.1).run(&stack))
+            XCTAssertNoThrow(try BitcoinScript(v.1).run(&stack))
             XCTAssertEqual(stack, v.2)
         }
     }
@@ -115,7 +115,7 @@ final class ScriptOperationTests: XCTestCase {
 
         for v in vectors {
             var stack = [Data].withConstants(v.0)
-            XCTAssertNoThrow(try Script(v.1).run(&stack))
+            XCTAssertNoThrow(try BitcoinScript(v.1).run(&stack))
             XCTAssertEqual(stack, .withConstants(v.2))
         }
     }
@@ -205,7 +205,7 @@ final class ScriptOperationTests: XCTestCase {
 
         for v in vectors {
             var stack = [Data].withConstants(v.0)
-            XCTAssertNoThrow(try Script(v.1).run(&stack))
+            XCTAssertNoThrow(try BitcoinScript(v.1).run(&stack))
             XCTAssertEqual(stack, .withConstants(v.2))
         }
     }

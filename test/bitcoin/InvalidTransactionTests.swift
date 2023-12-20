@@ -15,12 +15,12 @@ final class InvalidTransactionTests: XCTestCase {
         for vector in testVectors {
             guard
                 let expectedTransactionData = Data(hex: vector.serializedTransaction),
-                let tx = Transaction(expectedTransactionData)
+                let tx = BitcoinTransaction(expectedTransactionData)
             else {
                 XCTFail(); continue
             }
             let previousOutputs = vector.previousOutputs.map { previousOutput in
-                Output(value: previousOutput.amount, script: Script(previousOutput.scriptOperations))
+                TransactionOutput(value: previousOutput.amount, script: BitcoinScript(previousOutput.scriptOperations))
             }
             var includeFlags = Set(vector.verifyFlags.split(separator: ","))
             includeFlags.remove("NONE")

@@ -25,7 +25,7 @@ final class TransactionTests: XCTestCase {
         for txInfo in TxInfoItems {
             guard
                 let expectedTransactionData = Data(hex: txInfo.hex),
-                let tx = Transaction(expectedTransactionData)
+                let tx = BitcoinTransaction(expectedTransactionData)
             else {
                 XCTFail(); return
             }
@@ -64,10 +64,10 @@ final class TransactionTests: XCTestCase {
                         XCTFail(); return
                     }
 
-                    let expectedOutpoint = Outpoint.coinbase
+                    let expectedOutpoint = TransactionOutpoint.coinbase
                     XCTAssertEqual(input.outpoint, expectedOutpoint)
 
-                    let expectedScript = Script(expectedCoinbase)
+                    let expectedScript = BitcoinScript(expectedCoinbase)
                     XCTAssertEqual(input.script, expectedScript)
 
                 } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig, let expectedScriptData = Data(hex: scriptSig.hex) {
@@ -77,12 +77,12 @@ final class TransactionTests: XCTestCase {
 
                     XCTAssertEqual(input.outpoint.transactionIdentifier, expectedTransaction)
                     XCTAssertEqual(input.outpoint.outputIndex, expectedOutput)
-                    let expectedScript = Script(expectedScriptData)
+                    let expectedScript = BitcoinScript(expectedScriptData)
                     XCTAssertEqual(input.script, expectedScript)
 
                     if let witness = vinData.txinwitness {
                         let expectedWitnessData = witness.compactMap { Data(hex: $0) }
-                        let expectedWitness = Witness(expectedWitnessData)
+                        let expectedWitness = InputWitness(expectedWitnessData)
                         XCTAssertEqual(input.witness, expectedWitness)
                     }
                 } else {
@@ -99,7 +99,7 @@ final class TransactionTests: XCTestCase {
                 guard let expectedScriptData = Data(hex: voutData.scriptPubKey.hex) else {
                     XCTFail(); return
                 }
-                let expectedScript = Script(expectedScriptData)
+                let expectedScript = BitcoinScript(expectedScriptData)
                 XCTAssertEqual(output.script, expectedScript)
             }
         }

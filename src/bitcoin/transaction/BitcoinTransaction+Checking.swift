@@ -1,11 +1,11 @@
 import Foundation
 
 /// Transaction checking.
-extension Transaction {
+extension BitcoinTransaction {
 
     // MARK: - Computed Properties
 
-    private var valueOut: Amount {
+    private var valueOut: BitcoinAmount {
         outputs.reduce(0) { $0 + $1.value }
     }
     
@@ -27,7 +27,7 @@ extension Transaction {
         }
 
         // Check for negative or overflow output values (see CVE-2010-5139)
-        var valueOut: Amount = 0
+        var valueOut: BitcoinAmount = 0
         for output in outputs {
             guard output.value >= 0 else {
                 throw TransactionError.negativeOutput
@@ -46,7 +46,7 @@ extension Transaction {
         // of a tx as spent, it does not check if the tx has duplicate inputs.
         // Failure to run this check will result in either a crash or an inflation bug, depending on the implementation of
         // the underlying coins database.
-        var outpoints = Set<Outpoint>()
+        var outpoints = Set<TransactionOutpoint>()
         for input in inputs {
             outpoints.insert(input.outpoint)
         }
@@ -59,7 +59,7 @@ extension Transaction {
         }
         if !isCoinbase {
             for input in inputs {
-                if input.outpoint == Outpoint.coinbase {
+                if input.outpoint == TransactionOutpoint.coinbase {
                     throw TransactionError.missingOutpoint
                 }
             }
@@ -67,7 +67,7 @@ extension Transaction {
     }
 
     /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``Transaction.check()``.
-    func checkInputs(coins: [Outpoint : Coin], spendHeight: Int) throws {
+    func checkInputs(coins: [TransactionOutpoint : UnspentOutput], spendHeight: Int) throws {
         // are the actual inputs available?
         if !isCoinbase {
             for outpoint in inputs.map(\.outpoint) {
@@ -77,7 +77,7 @@ extension Transaction {
             }
         }
 
-        var valueIn = Amount(0)
+        var valueIn = BitcoinAmount(0)
         for input in inputs {
             let outpoint = input.outpoint
             guard let coin = coins[outpoint] else {
@@ -129,7 +129,7 @@ extension Transaction {
     }
 
     /// BIP68 - Untested - Entrypoint 1.
-    func checkSequenceLocks(verifyLockTimeSequence: Bool, coins: [Outpoint : Coin], chainTip: Int, previousBlockMedianTimePast: Int) throws {
+    func checkSequenceLocks(verifyLockTimeSequence: Bool, coins: [TransactionOutpoint : UnspentOutput], chainTip: Int, previousBlockMedianTimePast: Int) throws {
         // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate
         // height based locks because when SequenceLocks() is called within
         // ConnectBlock(), the height of the block *being*

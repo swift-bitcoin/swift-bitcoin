@@ -1,10 +1,10 @@
 import Foundation
 
 /// A reference to a particular ``Output`` of a particular ``Transaction``.
-public struct Outpoint: Equatable, Hashable {
+public struct TransactionOutpoint: Equatable, Hashable {
 
     init(transaction: Data, output: Int) {
-        precondition(transaction.count == Transaction.identifierSize)
+        precondition(transaction.count == BitcoinTransaction.identifierSize)
         self.transactionIdentifier = transaction
         self.outputIndex = output
     }
@@ -14,8 +14,8 @@ public struct Outpoint: Equatable, Hashable {
             return nil
         }
         var offset = data.startIndex
-        let transaction = Data(data[offset ..< offset + Transaction.identifierSize].reversed())
-        offset += Transaction.identifierSize
+        let transaction = Data(data[offset ..< offset + BitcoinTransaction.identifierSize].reversed())
+        offset += BitcoinTransaction.identifierSize
         let outputData = data[offset ..< offset + MemoryLayout<UInt32>.size]
         let output = Int(outputData.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
@@ -37,9 +37,9 @@ public struct Outpoint: Equatable, Hashable {
     }
 
     public static let coinbase = Self(
-        transaction: .init(count: Transaction.identifierSize),
+        transaction: .init(count: BitcoinTransaction.identifierSize),
         output: 0xffffffff
     )
 
-    static let size = Transaction.identifierSize + MemoryLayout<UInt32>.size
+    static let size = BitcoinTransaction.identifierSize + MemoryLayout<UInt32>.size
 }

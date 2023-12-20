@@ -8,10 +8,10 @@ func opCheckSequenceVerify(_ stack: inout [Data], context: ScriptContext) throws
     guard
         first.count < 6,
         sequence64 >= 0,
-        sequence64 <= Sequence.maxCSVArgument
+        sequence64 <= InputSequence.maxCSVArgument
     else { throw ScriptError.invalidSequenceArgument }
 
-    let sequence = Sequence(sequence64)
+    let sequence = InputSequence(sequence64)
     if sequence.isLocktimeDisabled { return }
 
     if context.transaction.version == .v1 { throw ScriptError.minimumTransactionVersionRequired }

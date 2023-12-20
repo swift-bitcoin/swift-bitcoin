@@ -1,7 +1,7 @@
 import Foundation
 
 /// The sequence value of an ``Input``.
-public struct Sequence: Equatable {
+public struct InputSequence: Equatable {
 
     public init(_ sequenceValue: Int) {
         self.sequenceValue = sequenceValue

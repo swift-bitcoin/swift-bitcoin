@@ -1,11 +1,11 @@
 import Foundation
 
 /// A bitcoin transaction.
-public struct Transaction: Equatable {
+public struct BitcoinTransaction: Equatable {
 
     // MARK: - Initializers
 
-    public init(version: TransactionVersion, locktime: Locktime, inputs: [Input], outputs: [Output]) {
+    public init(version: TransactionVersion, locktime: TransactionLocktime, inputs: [TransationInput], outputs: [TransactionOutput]) {
         self.version = version
         self.locktime = locktime
         self.inputs = inputs
@@ -25,7 +25,7 @@ public struct Transaction: Equatable {
         let maybeSegwitMarker = data[data.startIndex]
         let maybeSegwitFlag = data[data.startIndex + 1]
         let isSegwit: Bool
-        if maybeSegwitMarker == Transaction.segwitMarker && maybeSegwitFlag == Transaction.segwitFlag {
+        if maybeSegwitMarker == BitcoinTransaction.segwitMarker && maybeSegwitFlag == BitcoinTransaction.segwitFlag {
             isSegwit = true
             data = data.dropFirst(2)
         } else {
@@ -37,9 +37,9 @@ public struct Transaction: Equatable {
         }
         data = data.dropFirst(inputsCount.varIntSize)
 
-        var inputs = [Input]()
+        var inputs = [TransationInput]()
         for _ in 0 ..< inputsCount {
-            guard let input = Input(data) else {
+            guard let input = TransationInput(data) else {
                 return nil
             }
             inputs.append(input)
@@ -51,9 +51,9 @@ public struct Transaction: Equatable {
         }
         data = data.dropFirst(outputsCount.varIntSize)
 
-        var outputs = [Output]()
+        var outputs = [TransactionOutput]()
         for _ in 0 ..< outputsCount {
-            guard let out = Output(data) else {
+            guard let out = TransactionOutput(data) else {
                 return nil
             }
             outputs.append(out)
@@ -63,17 +63,17 @@ public struct Transaction: Equatable {
         // BIP144
         if isSegwit {
             for i in inputs.indices {
-                guard let witness = Witness(data) else { return nil }
+                guard let witness = InputWitness(data) else { return nil }
                 data = data.dropFirst(witness.size)
                 let input = inputs[i]
                 inputs[i] = .init(outpoint: input.outpoint, sequence: input.sequence, script: input.script, witness: witness)
             }
         }
 
-        guard let locktime = Locktime(data) else {
+        guard let locktime = TransactionLocktime(data) else {
             return nil
         }
-        data = data.dropFirst(Locktime.size)
+        data = data.dropFirst(TransactionLocktime.size)
         self.init(version: version, locktime: locktime, inputs: inputs, outputs: outputs)
     }
 
@@ -83,13 +83,13 @@ public struct Transaction: Equatable {
     public let version: TransactionVersion
 
     /// Lock time value applied to this transaction. It represents the earliest time at which this transaction should be considered valid.
-    public let locktime: Locktime
+    public let locktime: TransactionLocktime
 
     /// All of the inputs consumed by this transaction.
-    public let inputs: [Input]
+    public let inputs: [TransationInput]
 
     /// The outputs created by this transaction.
-    public let outputs: [Output]
+    public let outputs: [TransactionOutput]
 
     // MARK: - Computed Properties
 
@@ -101,7 +101,7 @@ public struct Transaction: Equatable {
 
         // BIP144
         if hasWitness {
-            ret += Data([Transaction.segwitMarker, Transaction.segwitFlag])
+            ret += Data([BitcoinTransaction.segwitMarker, BitcoinTransaction.segwitFlag])
         }
         ret += Data(varInt: inputsUInt64)
         ret += inputs.reduce(Data()) { $0 + $1.data }
@@ -139,7 +139,7 @@ public struct Transaction: Equatable {
     public var virtualSize: Int { Int((Double(weight) / 4).rounded(.up)) }
 
     public var isCoinbase: Bool {
-        inputs.count == 1 && inputs[0].outpoint == Outpoint.coinbase
+        inputs.count == 1 && inputs[0].outpoint == TransactionOutpoint.coinbase
     }
 
     private var inputsUInt64: UInt64 { .init(inputs.count) }
@@ -158,12 +158,12 @@ public struct Transaction: Equatable {
 
     /// BIP141: Base transaction size is the size of the transaction serialised with the witness data stripped.
     private var baseSize: Int {
-        TransactionVersion.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + Locktime.size
+        TransactionVersion.size + inputsUInt64.varIntSize + inputs.reduce(0) { $0 + $1.size } + outputsUInt64.varIntSize + outputs.reduce(0) { $0 + $1.size } + TransactionLocktime.size
     }
 
     /// BIP141 / BIP144
     private var witnessSize: Int {
-        hasWitness ? (MemoryLayout.size(ofValue: Transaction.segwitMarker) + MemoryLayout.size(ofValue: Transaction.segwitFlag)) + inputs.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
+        hasWitness ? (MemoryLayout.size(ofValue: BitcoinTransaction.segwitMarker) + MemoryLayout.size(ofValue: BitcoinTransaction.segwitFlag)) + inputs.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
     }
 
     /// BIP141
@@ -172,7 +172,7 @@ public struct Transaction: Equatable {
     // MARK: - Instance Methods
 
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.
-    public func outpoint(for output: Int) -> Outpoint? {
+    public func outpoint(for output: Int) -> TransactionOutpoint? {
         guard output < outputs.count else {
             return .none
         }

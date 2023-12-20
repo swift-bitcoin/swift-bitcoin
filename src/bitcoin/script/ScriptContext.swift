@@ -3,7 +3,7 @@ import Foundation
 /// SCRIPT execution context.
 struct ScriptContext {
 
-    init(transaction: Transaction, inputIndex: Int, previousOutputs: [Output], configuration: ScriptConfigurarion, script: Script, tapLeafHash: Data?) {
+    init(transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion, script: BitcoinScript, tapLeafHash: Data?) {
         self.transaction = transaction
         self.inputIndex = inputIndex
         self.previousOutputs = previousOutputs
@@ -13,16 +13,16 @@ struct ScriptContext {
 
         self.sigopBudget = if script.sigVersion == .witnessV1 {
             if let witness = transaction.inputs[inputIndex].witness {
-                Script.sigopBudgetBase + witness.size
+                BitcoinScript.sigopBudgetBase + witness.size
             } else { preconditionFailure() }
         } else { 0 }
     }
 
-    let transaction: Transaction
+    let transaction: BitcoinTransaction
     let inputIndex: Int
-    let previousOutputs: [Output]
+    let previousOutputs: [TransactionOutput]
     let configuration: ScriptConfigurarion
-    let script: Script
+    let script: BitcoinScript
     var programCounter = 0
     var nonPushOperations = 0
 
@@ -36,7 +36,7 @@ struct ScriptContext {
     /// Support for `OP_TOALTSTACK` and `OP_FROMALTSTACK`.
     var altStack: [Data] = []
 
-    var previousOutput: Output {
+    var previousOutput: TransactionOutput {
         previousOutputs[inputIndex]
     }
 
@@ -116,7 +116,7 @@ struct ScriptContext {
 
     /// BIP342
     mutating func checkSigopBudget() throws {
-        sigopBudget -= Script.sigopBudgetDecrement
+        sigopBudget -= BitcoinScript.sigopBudgetDecrement
         if sigopBudget < 0 { throw ScriptError.sigopBudgetExceeded }
     }
 }
