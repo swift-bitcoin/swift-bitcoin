@@ -10,6 +10,7 @@ let package = Package(
             targets: ["Bitcoin"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.4.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
@@ -17,10 +18,10 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "bitcoin-cli", dependencies: [
+            name: "bcutil", dependencies: [
                 "Bitcoin",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")],
-            path: "src/bitcoin-cli"),
+            path: "src/bitcoin-utility"),
         .target(
             name: "ECCHelper",
             dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")],
@@ -29,6 +30,7 @@ let package = Package(
             name: "Bitcoin",
             dependencies: [
                 "ECCHelper",
+                "BigInt",
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
             ],
             path: "src/bitcoin"),

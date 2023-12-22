@@ -1,8 +1,19 @@
 import Foundation
 
-// - MARK: Hexadecimal encoding/decoding
+// MARK: - Serialization helper functions
 
+/// Helper functions for serialization.
 extension Data {
+
+    /// Serializes a value into raw bytes and appends the result.
+    mutating func addBytes<T>(of value: T) {
+        self.append(Swift.withUnsafeBytes(of: value) { Data($0) })
+    }
+}
+
+// MARK: - Hexadecimal encoding/decoding
+
+public extension Data {
 
     /// Create instance from string containing hex digits.
     init?(hex: String) {
@@ -25,7 +36,7 @@ public extension DataProtocol {
     }
 }
 
-// - MARK: Variable Integer (Compact Integer)
+// MARK: - Variable Integer (Compact Integer)
 
 extension Data {
 
@@ -89,7 +100,7 @@ extension UInt64 {
     }
 }
 
-// - MARK: Variable length array
+// MARK: - Variable length array
 
 extension Data {
 
