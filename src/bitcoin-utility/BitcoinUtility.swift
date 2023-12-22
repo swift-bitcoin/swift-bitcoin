@@ -1,6 +1,5 @@
 import ArgumentParser
 
-@main
 struct BitcoinUtility: AsyncParsableCommand {
     static var configuration = CommandConfiguration(
         commandName: "bcutil",
