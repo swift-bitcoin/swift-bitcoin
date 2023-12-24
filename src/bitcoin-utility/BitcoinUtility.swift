@@ -1,6 +1,6 @@
 import ArgumentParser
 
-struct BitcoinUtility: AsyncParsableCommand {
+struct BitcoinUtility: ParsableCommand {
     static var configuration = CommandConfiguration(
         commandName: "bcutil",
         abstract: "An all-purpose Bitcoin Utility.",

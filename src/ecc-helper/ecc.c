@@ -1,37 +1,9 @@
 #include "ecc.h"
 
-#include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 
-#include <secp256k1.h>
-
 secp256k1_context* secp256k1_context_sign = NULL;
-
-void cECCStart(void (*getRandBytes)(u_char*, const size_t)) {
-    assert(secp256k1_context_sign == NULL);
-
-    secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_NONE);
-    assert(ctx != NULL);
-
-    {
-        u_char* vseed32 = malloc(32);
-        getRandBytes(vseed32, 32);
-        int ret = secp256k1_context_randomize(ctx, vseed32);
-        assert(ret);
-    }
-
-    secp256k1_context_sign = ctx;
-}
-
-void cECCStop() {
-    secp256k1_context *ctx = secp256k1_context_sign;
-    secp256k1_context_sign = NULL;
-
-    if (ctx) {
-        secp256k1_context_destroy(ctx);
-    }
-}
 
 int createSecretKey(void (*getRandBytes)(u_char*, const size_t), u_char *secretKeyOut32, size_t* secretKeyLenOut) {
     u_char* secretKey32 = malloc(KEY_LEN);
