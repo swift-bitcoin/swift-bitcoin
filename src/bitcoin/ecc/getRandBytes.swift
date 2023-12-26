@@ -8,16 +8,15 @@ import Foundation
 /// - Parameter byteCount: The number of random bytes to generate.
 /// - Returns: The generated random sequence of bytes.
 ///
-public func getRandBytes(_ byteCount: Int) -> Data {
+public func getRandBytes(_ byteCount: Int) -> [UInt8] {
     var bytes = [UInt8](repeating: 0, count: byteCount)
     for i in bytes.indices {
         bytes[i] = .random(in: UInt8.min...UInt8.max)
     }
-    return Data(bytes)
+    return bytes
 }
 
 func getRandBytesExtern(_ bytesOut: UnsafeMutablePointer<UInt8>!, _ byteCount: Int) {
-    let byteCountInt = Int(byteCount)
-    let resultData = getRandBytes(byteCountInt)
-    resultData.copyBytes(to: bytesOut, from: 0 ..< byteCountInt)
+    let buffer = UnsafeMutableBufferPointer(start: bytesOut, count: byteCount)
+    getRandBytes(byteCount).copyBytes(to: buffer)
 }

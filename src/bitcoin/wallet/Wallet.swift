@@ -33,8 +33,6 @@ public enum Wallet {
     ///   - harden: Whether to apply hardened derivation (only for private keys).
     /// - Returns: The newly derived child extended private/public key.
     public static func deriveHDKey(isPrivate: Bool = true, key keyHex: String, index: Int, harden: Bool = false) throws -> String {
-        eccStart()
-        defer { eccStop() }
         guard let hdKey = HDExtendedKey(keyHex) else {
             throw WalletError.invalidExtendedKey
         }
@@ -51,8 +49,6 @@ public enum Wallet {
     /// - Parameter keyHex: The extended private key to neuter.
     /// - Returns: The corresponding extended public key.
     public static func neuterHDPrivateKey(key keyHex: String) throws -> String {
-        eccStart()
-        defer { eccStop() }
         guard let hdKey = HDExtendedKey(keyHex) else {
             throw WalletError.invalidExtendedKey
         }
