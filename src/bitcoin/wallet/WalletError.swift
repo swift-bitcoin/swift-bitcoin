@@ -14,4 +14,18 @@ public enum WalletError: Error {
 
     /// Hardened derivation cannot be applied to public keys.
     case attemptToDeriveHardenedPublicKey
+
+    /// Mnemonic word list language not supported.
+    case languageNotSupported
+
+    case invalidMnemonicOrPassphraseEncoding
+
+    /// Mnemonic contains an invalid word.
+    case mnemonicWordNotOnList
+
+    /// Mnemonic phrase needs to contain a valid number of words.
+    case mnemonicInvalidLength
+
+    /// Checksum calculated for nmemonic phrase does not match.
+    case invalidMnemonicChecksum
 }
