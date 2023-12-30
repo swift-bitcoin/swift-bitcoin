@@ -1,6 +1,6 @@
 import Foundation
 
-public enum WalletNetwork: String, RawRepresentable {
+public enum WalletNetwork: String {
     case main, test
 
     /// Base58-check version for encoding public keys into addresses.
