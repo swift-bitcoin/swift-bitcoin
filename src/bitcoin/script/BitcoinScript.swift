@@ -53,7 +53,7 @@ public struct BitcoinScript: Equatable {
 
     /// Attempts to parse the script and return its assembly representation. Otherwise returns an empty string.
     public var asm: String {
-        operations.map(\.asm).joined(separator: " ") + unparsable.hex
+        (operations.map(\.asm) + [unparsable.hex]).joined(separator: " ")
     }
 
     /// Serialization of the script's operations into raw data. May include unparsable data.

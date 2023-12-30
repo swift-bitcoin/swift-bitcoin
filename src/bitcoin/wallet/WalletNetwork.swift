@@ -1,7 +1,23 @@
 import Foundation
 
-enum WalletNetwork {
+public enum WalletNetwork: String {
     case main, test
+
+    /// Base58-check version for encoding public keys into addresses.
+    var base58Version: Int {
+        switch self {
+        case .main: 0x00
+        case .test: 0x6f // 111
+        }
+    }
+
+    /// BIP13: Base58-check version for encoding scripts into addresses.
+    var base58VersionScript: Int {
+        switch self {
+        case .main: 0x05
+        case .test: 0xc4 // 196
+        }
+    }
 
     /// Little-endian
     var hdKeyVersionPrivate: Int {

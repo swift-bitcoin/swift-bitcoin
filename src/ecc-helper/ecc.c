@@ -3,16 +3,6 @@
 #include <assert.h>
 #include <string.h>
 
-int createSecretKey(const secp256k1_context* ctx, void (*getRandBytes)(u_char*, const size_t), u_char *secretKeyOut32, size_t* secretKeyLenOut) {
-    u_char* secretKey32 = malloc(KEY_LEN);
-    do {
-        getRandBytes(secretKey32, KEY_LEN);
-    } while (!secp256k1_ec_seckey_verify(ctx, secretKey32));
-    memcpy(secretKeyOut32, secretKey32, KEY_LEN);
-    *secretKeyLenOut = KEY_LEN;
-    return 1;
-}
-
 int getPublicKey(const secp256k1_context* ctx, u_char *pubKeyOut, size_t* pubKeyLenOut, const u_char *secretKey32, const int compress) {
     assert(secp256k1_context_static != NULL);
     secp256k1_pubkey pubKey;

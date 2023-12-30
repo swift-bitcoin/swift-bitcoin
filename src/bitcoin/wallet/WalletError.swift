@@ -6,6 +6,9 @@ public enum WalletError: Error {
     /// The string contains a malformed hexadecimal representation.
     case invalidHexString
 
+    /// The encoding of the provided public key is not strictly compressed/uncompressed DER encoding.
+    case invalidPublicKey
+
     /// The extended key could not be decoded.
     case invalidExtendedKey
 
@@ -28,4 +31,10 @@ public enum WalletError: Error {
 
     /// Checksum calculated for nmemonic phrase does not match.
     case invalidMnemonicChecksum
+
+    /// Must be main or test.
+    case invalidNetwork
+
+    /// Script signature version needs to be either base, witness v0 or witness v1.
+    case invalidSigVersion
 }
