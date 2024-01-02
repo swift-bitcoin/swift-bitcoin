@@ -6,6 +6,87 @@ public indirect enum ScriptTree: Equatable {
     case leaf(Int, Data)
     case branch(Self, Self)
 
+    init(_ scripts: [Data], leafVersion v: Int) {
+        // TODO: Implement tapscript for any number of script leafs
+        precondition(!scripts.isEmpty && scripts.count <= 8)
+        self = switch scripts.count {
+        case 1:
+            ScriptTree.leaf(v, scripts[0])
+        case 2:
+            ScriptTree.branch(
+                .leaf(v, scripts[0]),
+                .leaf(v, scripts[1]))
+        case 3:
+            ScriptTree.branch(
+                .branch(
+                    .leaf(v, scripts[0]),
+                    .leaf(v, scripts[1])),
+                .leaf(v, scripts[2]))
+        case 4:
+            ScriptTree.branch(
+                .branch(
+                    .leaf(v, scripts[0]),
+                    .leaf(v, scripts[1])),
+                .branch(
+                    .leaf(v, scripts[2]),
+                    .leaf(v, scripts[3])))
+        case 5:
+            ScriptTree.branch(
+                .branch(
+                    .branch(
+                        .leaf(v, scripts[0]),
+                        .leaf(v, scripts[1])),
+                    .branch(
+                        .leaf(v, scripts[2]),
+                        .leaf(v, scripts[3]))),
+                .leaf(v, scripts[4]))
+        case 6:
+            ScriptTree.branch(
+                .branch(
+                    .branch(
+                        .leaf(v, scripts[0]),
+                        .leaf(v, scripts[1])),
+                    .branch(
+                        .leaf(v, scripts[2]),
+                        .leaf(v, scripts[3]))),
+                .branch(
+                    .leaf(v, scripts[4]),
+                    .leaf(v, scripts[5])))
+        case 7:
+            ScriptTree.branch(
+                .branch(
+                    .branch(
+                        .leaf(v, scripts[0]),
+                        .leaf(v, scripts[1])),
+                    .branch(
+                        .leaf(v, scripts[2]),
+                        .leaf(v, scripts[3]))),
+                .branch(
+                    .branch(
+                        .leaf(v, scripts[4]),
+                        .leaf(v, scripts[5])),
+                    .leaf(v, scripts[6])))
+        case 8:
+            ScriptTree.branch(
+                .branch(
+                    .branch(
+                        .leaf(v, scripts[0]),
+                        .leaf(v, scripts[1])),
+                    .branch(
+                        .leaf(v, scripts[2]),
+                        .leaf(v, scripts[3]))),
+                .branch(
+                    .branch(
+                        .leaf(v, scripts[4]),
+                        .leaf(v, scripts[5])),
+                    .branch(
+                        .leaf(v, scripts[6]),
+                        .leaf(v, scripts[7]))))
+        default:
+            preconditionFailure()
+        }
+    }
+
     /// Calculates the merkle root as well as some additional tree info for generating control blocks.
     func calcMerkleRoot() -> ([(ScriptTree, Data)], Data) {
         switch self {

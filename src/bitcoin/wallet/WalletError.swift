@@ -37,4 +37,10 @@ public enum WalletError: Error {
 
     /// Script signature version needs to be either base, witness v0 or witness v1.
     case invalidSigVersion
+
+    /// A public key is required for generating tapscript addresses.
+    case publicKeyRequired
+
+    /// A limited amount of tapscript leaves is enforced.
+    case tooManyTapscriptLeaves
 }

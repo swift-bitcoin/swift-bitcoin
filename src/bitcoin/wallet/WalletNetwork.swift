@@ -3,6 +3,16 @@ import Foundation
 public enum WalletNetwork: String {
     case main, test
 
+    /// Bech32 human readable part (prefix).
+    var bech32HRP: String {
+        switch self {
+        case .main: "bc"
+        case .test: "tb"
+        // TODO: figure regetest out
+        // case .regtest: "bcrt"
+        }
+    }
+
     /// Base58-check version for encoding public keys into addresses.
     var base58Version: Int {
         switch self {
