@@ -218,18 +218,17 @@ final class BIP341Tests: XCTestCase {
             let (tweakedPubkey, _) = createTapTweak(publicKey: testCase.given.internalPubkey, merkleRoot: merkleRoot)
             let scriptPubKey = BitcoinScript([.constant(1), .pushBytes(tweakedPubkey)]).data
 
-            // TODO: BIP350
-            /* guard let bip350Address = try? SegwitAddrCoder(bech32m: true).encode(hrp: "bc", version: 1, program: tweakedPubkey) else {
-             XCTFail()
-             return
-             }*/
+            // BIP350
+            guard let bip350Address = try? SegwitAddrCoder.encode(hrp: WalletNetwork.main.bech32HRP, version: 1, program: tweakedPubkey) else {
+                XCTFail(); return
+            }
 
             XCTAssertEqual(leafHashes, testCase.intermediary.leafHashes)
             XCTAssertEqual(merkleRoot, testCase.intermediary.merkleRoot)
             XCTAssertEqual(tweak, testCase.intermediary.tweak)
             XCTAssertEqual(tweakedPubkey, testCase.intermediary.tweakedPubkey)
             XCTAssertEqual(scriptPubKey, testCase.expected.scriptPubKey)
-            // XCTAssertEqual(bip350Address, testCase.expected.bip350Address)
+            XCTAssertEqual(bip350Address, testCase.expected.bip350Address)
             XCTAssertEqual(controlBlocks, testCase.expected.scriptPathControlBlocks)
 
         }

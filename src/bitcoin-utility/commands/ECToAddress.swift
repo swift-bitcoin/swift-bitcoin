@@ -9,6 +9,9 @@ struct ECToAddress: ParsableCommand {
         abstract: "Creates an address from the provided public key."
     )
 
+    @Option(name: .shortAndLong, help: "The signature version which determines the address type.")
+    var sigVersion = SigVersion.base
+
     @Option(name: .shortAndLong, help: "The network for which the produced address will be valid..")
     var network = WalletNetwork.main
 
@@ -16,6 +19,6 @@ struct ECToAddress: ParsableCommand {
     var publicKey: String
 
     mutating func run() throws {
-        print(try Wallet.getAddress(publicKey: publicKey, network: network))
+        print(try Wallet.getAddress(publicKey: publicKey, sigVersion: sigVersion, network: network))
     }
 }
