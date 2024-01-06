@@ -3,14 +3,6 @@ import XCTest
 
 final class InvalidTransactionTests: XCTestCase {
 
-    override class func setUp() {
-        eccStart()
-    }
-
-    override class func tearDown() {
-        eccStop()
-    }
-
     func testInvalidTransactions() throws {
         for vector in testVectors {
             guard

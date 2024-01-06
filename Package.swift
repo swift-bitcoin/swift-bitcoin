@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "swift-bitcoin",
-    platforms: [.macOS(.v14), .iOS(.v17)],
+    platforms: [.macOS(.v14), .iOS(.v17), .macCatalyst(.v17), .tvOS(.v17), .watchOS(.v10)],
     products: [
         .library(
             name: "Bitcoin",
@@ -15,12 +15,26 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.3"),
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0-alpha.1"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.62.0")
     ],
     targets: [
         .executableTarget(
+            name: "bcnode", dependencies: [
+                "Bitcoin",
+                "JSONRPC",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio")],
+            path: "src/bitcoin-node"),
+        .executableTarget(
             name: "bcutil", dependencies: [
                 "Bitcoin",
-                .product(name: "ArgumentParser", package: "swift-argument-parser")],
+                "JSONRPC",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio")],
             path: "src/bitcoin-utility"),
         .target(
             name: "ECCHelper",
@@ -34,6 +48,13 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
             ],
             path: "src/bitcoin"),
+        .target(
+            name: "JSONRPC",
+            dependencies: [
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOFoundationCompat", package: "swift-nio")
+            ],
+            path: "src/json-rpc"),
         .testTarget(
             name: "BitcoinTests",
             dependencies: ["Bitcoin"],

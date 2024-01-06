@@ -3,14 +3,6 @@ import XCTest
 
 final class BitcoinCoreTaprootTests: XCTestCase {
 
-    override class func setUp() {
-        eccStart()
-    }
-
-    override class func tearDown() {
-        eccStop()
-    }
-
     func testVectors() {
         for testCase in coreTestAssets {
 
