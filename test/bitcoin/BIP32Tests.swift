@@ -4,14 +4,6 @@ import Bitcoin
 /// [BIP32 Test Vectors ](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#test-vectors)
 final class BIP32Tests: XCTestCase {
 
-    override class func setUp() {
-        eccStart()
-    }
-
-    override class func tearDown() {
-        eccStop()
-    }
-
     /// Test vector 1
     func testVector1() throws {
 

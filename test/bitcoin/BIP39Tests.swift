@@ -3,14 +3,6 @@ import Bitcoin
 
 final class BIP39Tests: XCTestCase {
 
-    override class func setUp() {
-        eccStart()
-    }
-
-    override class func tearDown() {
-        eccStop()
-    }
-
     func testAll() throws {
         let passphrase = "TREZOR"
         for language in ["en", "es", "jp", "zh", "zh-Hant"] {

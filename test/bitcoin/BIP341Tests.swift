@@ -6,14 +6,6 @@ import XCTest
 /// Validation test vectors used in the Bitcoin Core unit [test framework](https://github.com/bitcoin/bitcoin/blob/3820090bd619ac85ab35eff376c03136fe4a9f04/src/test/script_tests.cpp#L1718) can be found [here](https://raw.githubusercontent.com/bitcoin-core/qa-assets/main/unit_test_data/script_assets_test.json).
 final class BIP341Tests: XCTestCase {
 
-    override class func setUp() {
-        eccStart()
-    }
-
-    override class func tearDown() {
-        eccStop()
-    }
-
     func testScriptPubKey() {
         let scriptPubKeyTestVector = [
             (

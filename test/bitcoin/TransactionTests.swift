@@ -3,14 +3,6 @@ import Bitcoin
 
 final class TransactionTests: XCTestCase {
 
-    override class func setUp() {
-        eccStart()
-    }
-
-    override class func tearDown() {
-        eccStop()
-    }
-
     func testDeserialization() throws {
         guard let url = Bundle.module.url(forResource: "mainnet-transactions", withExtension: "json", subdirectory: "data/transactions") else {
             XCTFail(); return
