@@ -2,6 +2,7 @@ import ServiceLifecycle
 import NIOCore
 import NIOPosix
 import JSONRPC
+import BitcoinP2P
 
 actor RPCService: Service {
 
@@ -12,14 +13,18 @@ actor RPCService: Service {
         var overallTotalConnections = 0
     }
 
-    init(port: Int, eventLoopGroup: EventLoopGroup) {
+    init(port: Int, eventLoopGroup: EventLoopGroup, p2pService: P2PService, p2pClientService0: P2PClientService) {
         self.port = port
         self.eventLoopGroup = eventLoopGroup
+        self.p2pService = p2pService
+        self.p2pClientService0 = p2pClientService0
     }
 
     let port: Int // Configuration
     private(set) var status = Status()
     private let eventLoopGroup: EventLoopGroup
+    private let p2pService: P2PService
+    private let p2pClientService0: P2PClientService
     private var serviceGroup: ServiceGroup?
 
     func setServiceGroup(_ serviceGroup: ServiceGroup) {
@@ -99,13 +104,45 @@ actor RPCService: Service {
         for try await request in inbound.cancelOnGracefulShutdown() {
             switch request.method {
             case "status":
+                let p2pStatus = await p2pService.status
+                let p2pClientStatus = await p2pClientService0.status
                 try await outbound.write(.init(id: request.id, result: .string("""
                     RPC server status:
                     \(status)
+
+                    P2P server status:
+                    \(p2pStatus)
+
+                    P2P client 0 status:
+                    \(p2pClientStatus)
                 """) as JSONObject))
             case "stop":
                 try await outbound.write(.init(id: request.id, result: .string("Stopping…") as JSONObject))
                 await serviceGroup?.triggerGracefulShutdown()
+            case "start-p2p":
+                if case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(port) = first {
+                    try await outbound.write(.init(id: request.id, result: .string("Staring P2P server on port \(port)…") as JSONObject))
+                    await p2pService.start(port: port)
+                } else {
+                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("Port (integer) is required."))))
+                }
+            case "stop-p2p":
+                try await outbound.write(.init(id: request.id, result: .string("Stopping P2P server…") as JSONObject))
+                await p2pService.stop()
+            case "connect":
+                if case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(port) = first {
+                    try await outbound.write(.init(id: request.id, result: .string("Connecting to peer @\(port)…") as JSONObject))
+                    await p2pClientService0.connect(port)
+                } else {
+                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("Port (integer) is required."))))
+                }
+            case "disconnect":
+                if case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(port) = first {
+                    try await outbound.write(.init(id: request.id, result: .string("Disconnecting from peer @\(port)…") as RPCObject))
+                    await p2pClientService0.disconnect()
+                } else {
+                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("Port (integer) is required."))))
+                }
             default: break
             }
         }

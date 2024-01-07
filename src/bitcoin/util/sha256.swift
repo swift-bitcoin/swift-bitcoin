@@ -8,6 +8,6 @@ import CryptoKit
 import Crypto
 #endif
 
-func sha256(_ data: Data) -> Data {
+public func sha256(_ data: Data) -> Data {
     Data(SHA256.hash(data: data))
 }
