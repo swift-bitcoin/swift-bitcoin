@@ -102,7 +102,7 @@ extension UInt64 {
 
 // MARK: - Variable length array
 
-extension Data {
+public extension Data {
 
     init?(varLenData: Data) {
         var data = varLenData

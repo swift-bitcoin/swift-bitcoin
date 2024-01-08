@@ -22,6 +22,7 @@ let package = Package(
         .executableTarget(
             name: "bcnode", dependencies: [
                 "Bitcoin",
+                "BitcoinP2P",
                 "JSONRPC",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
@@ -48,6 +49,16 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
             ],
             path: "src/bitcoin"),
+        .target(
+            name: "BitcoinP2P",
+            dependencies: [
+                "Bitcoin",
+                "JSONRPC",
+                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio")
+            ],
+            path: "src/bitcoin-p2p"),
         .target(
             name: "JSONRPC",
             dependencies: [
