@@ -1,5 +1,5 @@
 import Foundation
-import Network
+import NIOCore
 import Bitcoin
 
 public struct Version: Equatable {
@@ -82,7 +82,7 @@ public struct Version: Equatable {
         self.receiverServices = receiverServices
         remainingData = remainingData.dropFirst(Services.size)
 
-        guard let receiverAddress = IPv6Address(remainingData[..<remainingData.startIndex.advanced(by: 16)]) else { return nil }
+        let receiverAddress = IPv6Address(remainingData[..<remainingData.startIndex.advanced(by: 16)])
         self.receiverAddress = receiverAddress
         remainingData = remainingData.dropFirst(16)
 
@@ -97,7 +97,7 @@ public struct Version: Equatable {
         self.transmitterServices = transmitterServices
         remainingData = remainingData.dropFirst(Services.size)
 
-        guard let transmitterAddress = IPv6Address(remainingData[..<remainingData.startIndex.advanced(by: 16)]) else { return nil }
+        let transmitterAddress = IPv6Address(remainingData[..<remainingData.startIndex.advanced(by: 16)])
         self.transmitterAddress = transmitterAddress
         remainingData = remainingData.dropFirst(16)
 
