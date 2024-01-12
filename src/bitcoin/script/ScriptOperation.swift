@@ -605,4 +605,19 @@ public enum ScriptOperation: Equatable {
         default: preconditionFailure()
         }
     }
+
+    public static func encodeMinimally(_ value: Int) -> ScriptOperation {
+        switch value {
+        case -1:
+            return .oneNegate
+        case 0:
+            return .zero
+        case 1...16:
+            return .constant(UInt8(value))
+        default:
+            var data = Data()
+            data.addBytes(of: value)
+            return .pushBytes(data)
+        }
+    }
 }

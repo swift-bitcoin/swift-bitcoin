@@ -11,7 +11,7 @@ public struct TransactionVersion: Equatable, Comparable {
         guard data.count >= Self.size else {
             return nil
         }
-        let rawValue = data.withUnsafeBytes { $0.load(as: UInt32.self) }
+        let rawValue = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
         self.init(rawValue)
     }
 

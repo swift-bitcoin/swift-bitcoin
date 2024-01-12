@@ -1,15 +1,14 @@
 import Foundation
 
 public enum WalletNetwork: String {
-    case main, test
+    case main, test, regtest
 
     /// Bech32 human readable part (prefix).
     var bech32HRP: String {
         switch self {
         case .main: "bc"
         case .test: "tb"
-        // TODO: figure regetest out
-        // case .regtest: "bcrt"
+        case .regtest: "bcrt"
         }
     }
 
@@ -17,7 +16,7 @@ public enum WalletNetwork: String {
     var base58Version: Int {
         switch self {
         case .main: 0x00
-        case .test: 0x6f // 111
+        case .test,.regtest: 0x6f // 111
         }
     }
 
@@ -25,7 +24,15 @@ public enum WalletNetwork: String {
     var base58VersionScript: Int {
         switch self {
         case .main: 0x05
-        case .test: 0xc4 // 196
+        case .test, .regtest: 0xc4 // 196
+        }
+    }
+
+    /// For use when encoding/decoding secret keys.
+    var base58VersionPrivate: Int {
+        switch self {
+        case .main: 0x80 // 128
+        case .test,.regtest: 0xef // 239
         }
     }
 
@@ -33,7 +40,7 @@ public enum WalletNetwork: String {
     var hdKeyVersionPrivate: Int {
         switch self {
         case .main: Self.mainHDKeyVersionPrivate
-        case .test: Self.testHDKeyVersionPrivate
+        case .test, .regtest: Self.testHDKeyVersionPrivate
         }
     }
 
@@ -41,7 +48,7 @@ public enum WalletNetwork: String {
     var hdKeyVersionPublic: Int {
         switch self {
         case .main: Self.mainHDKeyVersionPublic
-        case .test: Self.testHDKeyVersionPublic
+        case .test, .regtest: Self.testHDKeyVersionPublic
         }
     }
 

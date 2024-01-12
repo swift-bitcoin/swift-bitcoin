@@ -5,9 +5,29 @@ import Foundation
 /// Helper functions for serialization.
 extension Data {
 
-    /// Serializes a value into raw bytes and appends the result.
-    mutating func addBytes<T>(of value: T) {
-        self.append(Swift.withUnsafeBytes(of: value) { Data($0) })
+    /// Appends the value's binary contents.
+    /// - Parameter value: The value whose bytes will be copied.
+    /// - Returns: The number of bytes added (discardable).
+    @discardableResult
+    mutating func addBytes<T>(of value: T) -> Int {
+        Swift.withUnsafeBytes(of: value) {
+            self.append(contentsOf: $0)
+        }
+        return MemoryLayout.size(ofValue: value)
+    }
+
+    @discardableResult
+    /// Replaces bytes at `offset` with the binary contents of `value`.
+    /// - Parameters:
+    ///   - value: The source value whose bytes will be copied.
+    ///   - offset: The destination position at which the source bytes will be copied.
+    /// - Returns: An discardable offset right after the copied bytes to use when calling this method repeteadly.
+    mutating func addBytes<T>(of value: T, at offset: Int) -> Self.Index {
+        let count = MemoryLayout.size(ofValue: value)
+        let startIndex = startIndex + offset
+        precondition(self[startIndex...].count >= count)
+        Swift.withUnsafePointer(to: value) { replaceSubrange(startIndex..<startIndex + count, with: $0, count: count) }
+        return startIndex + count
     }
 }
 

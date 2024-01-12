@@ -5,7 +5,7 @@ public struct BitcoinTransaction: Equatable {
 
     // MARK: - Initializers
 
-    public init(version: TransactionVersion, locktime: TransactionLocktime, inputs: [TransationInput], outputs: [TransactionOutput]) {
+    public init(version: TransactionVersion, locktime: TransactionLocktime = .disabled, inputs: [TransationInput], outputs: [TransactionOutput]) {
         self.version = version
         self.locktime = locktime
         self.inputs = inputs
