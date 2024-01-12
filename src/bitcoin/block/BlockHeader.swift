@@ -10,7 +10,7 @@ public struct BlockHeader: Equatable {
 
         // Reset date's nanoseconds
         var calendar = Calendar(identifier: .iso8601)
-        calendar.timeZone = .gmt
+        calendar.timeZone = .init(secondsFromGMT: 0)!
         guard let time = calendar.date(bySetting: .nanosecond, value: 0, of: time) else { preconditionFailure() }
         self.time = time
 
