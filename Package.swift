@@ -42,11 +42,17 @@ let package = Package(
             dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")],
             path: "src/ecc-helper"),
         .target(
-            name: "Bitcoin",
+            name: "CryptoUtils",
             dependencies: [
                 "ECCHelper",
-                "BigInt",
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
+            ],
+            path: "src/crypto-utils"),
+        .target(
+            name: "Bitcoin",
+            dependencies: [
+                "CryptoUtils",
+                "BigInt"
             ],
             path: "src/bitcoin"),
         .target(

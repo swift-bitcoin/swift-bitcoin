@@ -1,4 +1,5 @@
 import XCTest
+import CryptoUtils
 @testable import Bitcoin
 
 /// https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#test-vectors
@@ -198,16 +199,21 @@ final class BIP341Tests: XCTestCase {
                     let (leaf, _) = $0
                     return leaf.leafHash
                 }
-                controlBlocks = treeInfo.map {
-                    computeControlBlock(internalPublicKey: testCase.given.internalPubkey, leafInfo: $0, merkleRoot: merkleRoot)
+
+                controlBlocks = treeInfo.map { leafInfo in
+                    let (scriptLeaf, path) = leafInfo
+                    guard case .leaf(let leafVersion, _) = scriptLeaf else {
+                        preconditionFailure()
+                    }
+                    return computeControlBlock(internalKey: testCase.given.internalPubkey, merkleRoot: merkleRoot, leafVersion: leafVersion, path: path)
                 }
             } else {
                 merkleRoot = .none
                 leafHashes = []
                 controlBlocks = []
             }
-            let tweak = computeTapTweakHash(xOnlyPublicKey: testCase.given.internalPubkey, merkleRoot: merkleRoot)
-            let (tweakedPubkey, _) = createTapTweak(publicKey: testCase.given.internalPubkey, merkleRoot: merkleRoot)
+            let tweak = computeTapTweakHash(internalKey: testCase.given.internalPubkey, merkleRoot: merkleRoot)
+            let (tweakedPubkey, _) = createTapTweak(internalKey: testCase.given.internalPubkey, merkleRoot: merkleRoot)
             let scriptPubKey = BitcoinScript([.constant(1), .pushBytes(tweakedPubkey)]).data
 
             // BIP350
@@ -459,10 +465,10 @@ final class BIP341Tests: XCTestCase {
             let internalPublicKey = getInternalKey(secretKey: secretKey)
             XCTAssertEqual(internalPublicKey, expectedInternalPublicKey)
 
-            let tweak = computeTapTweakHash(xOnlyPublicKey: internalPublicKey, merkleRoot: merkleRoot)
+            let tweak = computeTapTweakHash(internalKey: internalPublicKey, merkleRoot: merkleRoot)
             XCTAssertEqual(tweak, expectedTweak)
 
-            let tweakedSecretKey = createSecretKeyTapTweak(secretKey: secretKey, merkleRoot: merkleRoot)
+            let tweakedSecretKey = createTapTweak(secretKey: secretKey, merkleRoot: merkleRoot)
             XCTAssertEqual(tweakedSecretKey, expectedTweakedSecretKey)
 
             let sigMsg = tx.signatureMessageSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: utxosSpent, sighashCache: &cache)

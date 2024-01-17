@@ -1,4 +1,5 @@
 import Foundation
+import CryptoUtils
 
 func getUnaryParam(_ stack: inout [Data], keep: Bool = false) throws -> Data {
     guard let param = stack.last else {
@@ -72,8 +73,8 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
     if scriptConfiguration.strictDER || scriptConfiguration.lowS || scriptConfiguration.strictEncoding {
         try checkSignatureEncoding(extendedSignature)
     }
-    if scriptConfiguration.lowS  {
-        try checkSignatureLowS(extendedSignature)
+    if scriptConfiguration.lowS && !isSignatureLowS(extendedSignature) {
+        throw ScriptError.nonLowSSignature
     }
     if scriptConfiguration.strictEncoding  {
         let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)

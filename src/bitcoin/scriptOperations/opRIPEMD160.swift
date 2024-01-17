@@ -1,4 +1,5 @@
 import Foundation
+import CryptoUtils
 
 /// The input is hashed using RIPEMD-160.
 func opRIPEMD160(_ stack: inout [Data]) throws {

@@ -8,6 +8,6 @@ import CryptoKit
 import Crypto
 #endif
 
-func sha1(_ data: Data) -> Data {
+public func sha1(_ data: Data) -> Data {
     Data(Insecure.SHA1.hash(data: data))
 }

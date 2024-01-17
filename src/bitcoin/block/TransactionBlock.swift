@@ -1,4 +1,5 @@
 import Foundation
+import CryptoUtils
 
 /// A block of transactions.
 public struct TransactionBlock: Equatable {

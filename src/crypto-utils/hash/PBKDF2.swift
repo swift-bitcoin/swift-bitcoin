@@ -16,13 +16,15 @@ import ucrt
 import WASILibc
 #endif
 
-enum PBKDF2Error: Error {
+public enum PBKDF2Error: Error {
     case invalidInput
     case derivedKeyTooLong
 }
 
+public typealias PBKDF2SHA512 = PBKDF2<SHA512>
+
 /// https://www.ietf.org/rfc/rfc2898.txt
-struct PBKDF2<H: HashFunction> {
+public struct PBKDF2<H: HashFunction> {
 
     /// S
     private let salt: Data
@@ -43,7 +45,7 @@ struct PBKDF2<H: HashFunction> {
     ///   - salt: The salt.
     ///   - iterations: Iteration count, a positive integer.
     ///   - keyLength: Intended length of derived key.
-    init(password: Data, salt: Data, iterations: Int = 4096, keyLength: Int? = .none) throws {
+    public init(password: Data, salt: Data, iterations: Int = 4096, keyLength: Int? = .none) throws {
         precondition(iterations > 0)
 
         guard iterations > 0 && !salt.isEmpty else {

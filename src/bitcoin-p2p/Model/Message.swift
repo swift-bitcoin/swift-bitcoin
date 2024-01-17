@@ -1,5 +1,6 @@
 import Foundation
 import Bitcoin
+import CryptoUtils
 
 public struct Message: Equatable {
 
