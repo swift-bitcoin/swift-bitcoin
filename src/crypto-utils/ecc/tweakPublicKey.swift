@@ -2,7 +2,7 @@ import Foundation
 import LibSECP256k1
 
 /// BIP32: Used to derive public keys.
-func tweakPublicKey(_ keyData: Data, tweak: Data) -> Data {
+public func tweakPublicKey(_ keyData: Data, tweak: Data) -> Data {
     var keyBytes = [UInt8](keyData)
     var tweakBytes = [UInt8](tweak)
 

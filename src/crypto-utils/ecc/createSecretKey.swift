@@ -1,5 +1,4 @@
 import Foundation
-import ECCHelper
 import LibSECP256k1
 
 public func createSecretKey() -> Data {

@@ -1,4 +1,5 @@
 import XCTest
+import CryptoUtils
 @testable import Bitcoin
 
 func insecureRand256() -> Data {
@@ -19,9 +20,9 @@ final class BIP340Tests: XCTestCase {
             ("C90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9", "DD308AFEC5777E13121FA72B9CC1B7CC0139715309B086C960E18FD969774EB8", "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906", "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9D0A508B75C", "5831AAEED7B44BB74E5EAB94BA9D4294C49BCF2A60728D8B4C200F50DD313C1BAB745879A5AD954A72C45A91C3A51D3C7ADEA98D82F8481E0E1E03674A6F3FB7"),
             ("0B432B2677937381AEF05BB02A66ECD012773062CF3FA2549E44F58ED2401710", "25D1DFF95105F5253C4022F628A996AD3A0D95FBF21D468A1B33F8C160D8F517", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", "7EB0509757E246F19449885651611CB965ECC1A187DD51B64FDA1EDC9637D5EC97582B9CB13DB3933705B32BA982AF5AF25FD78881EBB32771FC5922EFC66EA3")
         ]
-        for (secretKeyHex, publicKeyHex, aux, msg, sig) in signVectors {
+        for (secretKeyHex, internalKeyHex, aux, msg, sig) in signVectors {
             let secretKey = Data(hex: secretKeyHex)!
-            let publicKey = Data(hex: publicKeyHex)!
+            let internalKey = Data(hex: internalKeyHex)!
             let auxData = Data(hex: aux)!
             let msgData = Data(hex: msg)!
             let sigData = Data(hex: sig)!
@@ -29,7 +30,7 @@ final class BIP340Tests: XCTestCase {
             let newSignature = signSchnorr(msg: msgData, secretKey: secretKey, merkleRoot: .none, skipTweak: true, aux: auxData)
             XCTAssertEqual(newSignature, sigData)
             // Verify those sigs for good measure.
-            XCTAssert(verifySchnorr(sig: newSignature, msg: msgData, publicKey: publicKey))
+            XCTAssert(verifySchnorr(sig: newSignature, msg: msgData, publicKey: internalKey))
 
             // Do 10 iterations where we sign with a random Merkle root to tweak,
             // and compare against the resulting tweaked keys, with random aux.
@@ -37,11 +38,11 @@ final class BIP340Tests: XCTestCase {
             for i in 0 ..< 10 {
                 let merkleRoot: Data? = i == 0 ? .none : insecureRand256()
                 let auxRnd = insecureRand256()
-                let (tweakedKey: tweakedKey, parity: parity) = createTapTweak(publicKey: publicKey, merkleRoot: merkleRoot)
-                XCTAssert(checkTapTweak(publicKey: publicKey, tweakedKey: tweakedKey, merkleRoot: merkleRoot, parity: parity))
+                let (outputKey: outputKey, parity: parity) = createTapTweak(internalKey: internalKey, merkleRoot: merkleRoot)
+                XCTAssert(checkTapTweak(internalKey: internalKey, outputKey: outputKey, merkleRoot: merkleRoot, parity: parity))
 
                 let altSignature = signSchnorr(msg: msgData, secretKey: secretKey, merkleRoot: merkleRoot, aux: auxRnd)
-                let verificationResult = verifySchnorr(sig: altSignature, msg: msgData, publicKey: tweakedKey)
+                let verificationResult = verifySchnorr(sig: altSignature, msg: msgData, publicKey: outputKey)
                 XCTAssert(verificationResult)
 
             }

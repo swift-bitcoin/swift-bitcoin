@@ -1,4 +1,5 @@
 import Foundation
+import CryptoUtils
 
 /// The input is hashed twice with SHA-256.
 func opHash256(_ stack: inout [Data]) throws {

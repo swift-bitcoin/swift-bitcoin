@@ -1,4 +1,5 @@
 import Foundation
+import CryptoUtils
 
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
 struct HDExtendedKey {

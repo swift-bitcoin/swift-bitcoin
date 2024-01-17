@@ -1,4 +1,5 @@
 import Foundation
+import CryptoUtils
 
 /// Transaction inputs/scripts verification.
 extension BitcoinTransaction {
@@ -212,7 +213,7 @@ extension BitcoinTransaction {
         let internalKey = control[1...32]
 
         // Fail if this point is not on the curve.
-        guard validatePublicKey(internalKey) else { throw ScriptError.invalidTaprootPublicKey }
+        guard validateInternalKey(internalKey) else { throw ScriptError.invalidTaprootPublicKey }
 
         // Let v = c[0] & 0xfe and call it the leaf version
         let leafVersion = control[0] & 0xfe
@@ -225,7 +226,7 @@ extension BitcoinTransaction {
 
         // Verify that the output pubkey matches the tweaked internal pubkey, after correcting for parity.
         let parity = (control[0] & 0x01) != 0
-        guard checkTapTweak(publicKey: internalKey, tweakedKey: outputKey, merkleRoot: merkleRoot, parity: parity) else {
+        guard checkTapTweak(internalKey: internalKey, outputKey: outputKey, merkleRoot: merkleRoot, parity: parity) else {
             throw ScriptError.invalidTaprootTweak
         }
 

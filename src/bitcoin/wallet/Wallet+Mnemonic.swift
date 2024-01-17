@@ -1,10 +1,5 @@
 import Foundation
-
-#if canImport(CryptoKit)
-import CryptoKit
-#elseif canImport(Crypto)
-import Crypto
-#endif
+import CryptoUtils
 
 fileprivate let bitsPerByte = UInt8.bitWidth
 fileprivate let bitsPerMnemonicWord = 11
@@ -67,7 +62,7 @@ extension Wallet {
             throw WalletError.invalidMnemonicOrPassphraseEncoding
         }
         do {
-            let keyDerivation = try PBKDF2<SHA512>(password: password, salt: salt, iterations: 2048, keyLength: 64)
+            let keyDerivation = try PBKDF2SHA512(password: password, salt: salt, iterations: 2048, keyLength: 64)
             return Data(try keyDerivation.calculate()).hex
         } catch _ as PBKDF2Error {
             throw WalletError.invalidMnemonicOrPassphraseEncoding

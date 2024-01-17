@@ -1,9 +1,8 @@
 import Foundation
-import ECCHelper
 import LibSECP256k1
 
 /// BIP32: Used to derive private keys.
-func tweakSecretKey(_ keyData: Data, tweak: Data) -> Data {
+public func tweakSecretKey(_ keyData: Data, tweak: Data) -> Data {
     guard let eccSigningContext else {
         preconditionFailure()
     }

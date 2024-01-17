@@ -1,7 +1,7 @@
 import Foundation
 
 /// RIPE Message Digest 160 Swift implementation. Reference implementation [here](https://github.com/MiclausCorp/ripemd160-Swift/)
-struct RIPEMD160 {
+public struct RIPEMD160 {
     // MARK: - Internal Variables
     /// Message Digest buffer
     private var MDbuffer: (UInt32, UInt32, UInt32, UInt32, UInt32)
@@ -14,7 +14,7 @@ struct RIPEMD160 {
 
     // MARK: - Public Functions
     /// Initialize a new instance of `RIPEMD160`
-    init() {
+    public init() {
         MDbuffer = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0)
         buffer = Data()
         count = 0
@@ -373,7 +373,7 @@ extension RIPEMD160 {
     /// Compute hash from `Data`
     /// - Parameter message: Input bytes
     /// - Returns: Hash digest
-    static func hash(_ message: Data) -> Data {
+    public static func hash(_ message: Data) -> Data {
         var md = RIPEMD160()
         md.update(data: message)
         return md.finalize()

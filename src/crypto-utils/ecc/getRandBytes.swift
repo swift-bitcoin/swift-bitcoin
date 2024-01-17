@@ -1,6 +1,5 @@
 import Foundation
 
-
 /// Generates the specified number of random bytes.
 ///
 /// Because it ultimately relies on `Swift/SystemRandomNumberGenerator` which in turn uses a cryptographically secure algorithm whenever possible, this function too can be considered safe on Apple Platforms, Linux, BSD and Windows.
@@ -14,9 +13,4 @@ public func getRandBytes(_ byteCount: Int) -> [UInt8] {
         bytes[i] = .random(in: UInt8.min...UInt8.max)
     }
     return bytes
-}
-
-func getRandBytesExtern(_ bytesOut: UnsafeMutablePointer<UInt8>!, _ byteCount: Int) {
-    let buffer = UnsafeMutableBufferPointer(start: bytesOut, count: byteCount)
-    getRandBytes(byteCount).copyBytes(to: buffer)
 }
