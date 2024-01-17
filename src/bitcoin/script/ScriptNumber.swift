@@ -26,6 +26,25 @@ struct ScriptNumber: Equatable {
         self.value = value
     }
 
+    private var isNegative: Bool {
+        value.signum() == -1
+    }
+
+    mutating func add(_ b: ScriptNumber) throws {
+        let newValue = value + b.value
+        if newValue.magnitude > Self.maxValue {
+            throw ScriptError.numberOverflow
+        }
+        value = newValue
+    }
+
+    mutating func negate() {
+        value = -value
+    }
+}
+
+extension ScriptNumber {
+
     init(_ data: Data, extendedLength: Bool = false) throws {
         // TODO: optionally enforce MINIMALDATA (no leading zero bytes unless next previous byte is max)
         if data.isEmpty {
@@ -79,22 +98,6 @@ struct ScriptNumber: Equatable {
             return data
         }
         preconditionFailure()
-    }
-
-    private var isNegative: Bool {
-        value.signum() == -1
-    }
-
-    mutating func add(_ b: ScriptNumber) throws {
-        let newValue = value + b.value
-        if newValue.magnitude > Self.maxValue {
-            throw ScriptError.numberOverflow
-        }
-        value = newValue
-    }
-
-    mutating func negate() {
-        value = -value
     }
 
     var size: Int {

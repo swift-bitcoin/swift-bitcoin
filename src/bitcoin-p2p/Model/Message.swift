@@ -54,16 +54,17 @@ public struct Message: Equatable {
     }
 
     public var data: Data {
-        var data = Data(capacity: size)
-        data += network.data
         let commandData = command.data(using: .ascii)!
-        data += commandData
         let commandPaddingData = Data(repeating: 0, count: Self.commandSize - commandData.count)
-        data += commandPaddingData
-        data.addBytes(of: UInt32(payloadSize))
-        data.addBytes(of: checksum)
-        data += payload
-        return data
+
+        var ret = Data(count: size)
+        var offset = ret.addData(network.data)
+        offset = ret.addData(commandData, at: offset)
+        offset = ret.addData(commandPaddingData, at: offset)
+        offset = ret.addBytes(UInt32(payloadSize), at: offset)
+        offset = ret.addBytes(checksum, at: offset)
+        ret.addData(payload, at: offset)
+        return ret
     }
 
     public var isChecksumOk: Bool {
@@ -93,8 +94,7 @@ public enum Network: UInt32 {
     case main = 0xD9B4BEF9, regtest = 0xDAB5BFFA
 
     var data: Data {
-        var magic = rawValue
-        return Data(bytes: &magic, count: MemoryLayout.size(ofValue: magic))
+        Data(value: rawValue)
     }
 
     static let size = MemoryLayout<RawValue>.size

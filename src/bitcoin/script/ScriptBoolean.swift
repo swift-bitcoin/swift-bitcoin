@@ -12,6 +12,13 @@ struct ScriptBoolean: Equatable {
         self.value = value
     }
 
+    func and(_ b: ScriptBoolean) -> ScriptBoolean {
+        Self(value && b.value)
+    }
+}
+
+extension ScriptBoolean {
+
     init(_ data: Data) {
         let firstNonZeroIndex = data.firstIndex { $0 != 0 }
         if firstNonZeroIndex == data.endIndex - 1, let last = data.last, last == 0x80 {
@@ -39,9 +46,5 @@ struct ScriptBoolean: Equatable {
 
     var size: Int {
         value ? 1 : 0
-    }
-
-    func and(_ b: ScriptBoolean) -> ScriptBoolean {
-        Self(value && b.value)
     }
 }

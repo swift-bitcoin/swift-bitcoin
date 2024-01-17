@@ -7,14 +7,6 @@ public struct TransactionLocktime: Equatable {
         self.locktimeValue = locktimeValue
     }
 
-    init?(_ data: Data) {
-        guard data.count >= Self.size else {
-            return nil
-        }
-        let value32 = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        self.init(Int(value32))
-    }
-
     /// The numeric lock time value.
     public let locktimeValue: Int
 
@@ -32,14 +24,9 @@ public struct TransactionLocktime: Equatable {
         return locktimeValue
     }
 
-    var data: Data {
-        withUnsafeBytes(of: rawValue) { Data($0) }
-    }
-
     var rawValue: UInt32 { UInt32(locktimeValue) }
 
     public static let disabled = Self(0)
     public static let maxBlock = Self(minClock.locktimeValue - 1)
     public static let minClock = Self(500_000_000)
-    static let size = MemoryLayout<UInt32>.size
 }

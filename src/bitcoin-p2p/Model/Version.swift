@@ -42,21 +42,21 @@ public struct Version: Equatable {
     }
 
     public var data: Data {
-        var data = Data(capacity: size)
-        data.addBytes(of: versionIdentifier.rawValue)
-        data.addBytes(of: services.rawValue)
-        data.addBytes(of: Int64(timestamp.timeIntervalSince1970))
-        data.addBytes(of: receiverServices.rawValue)
-        data.append(receiverAddress.rawValue)
-        data.addBytes(of: UInt16(receiverPort).bigEndian)
-        data.addBytes(of: transmitterServices.rawValue)
-        data.append(transmitterAddress.rawValue)
-        data.addBytes(of: UInt16(transmitterPort).bigEndian)
-        data.addBytes(of: nonce)
-        data.append(userAgentData.varLenData)
-        data.addBytes(of: Int32(startHeight))
-        data.addBytes(of: relay)
-        return data
+        var ret = Data(count: size)
+        var offset = ret.addBytes(versionIdentifier.rawValue)
+        offset = ret.addBytes(services.rawValue, at: offset)
+        offset = ret.addBytes(Int64(timestamp.timeIntervalSince1970), at: offset)
+        offset = ret.addBytes(receiverServices.rawValue, at: offset)
+        offset = ret.addData(receiverAddress.rawValue, at: offset)
+        offset = ret.addBytes(UInt16(receiverPort).bigEndian, at: offset)
+        offset = ret.addBytes(transmitterServices.rawValue, at: offset)
+        offset = ret.addData(transmitterAddress.rawValue, at: offset)
+        offset = ret.addBytes(UInt16(transmitterPort).bigEndian, at: offset)
+        offset = ret.addBytes(nonce, at: offset)
+        offset = ret.addData(userAgentData.varLenData, at: offset)
+        offset = ret.addBytes(Int32(startHeight), at: offset)
+        offset = ret.addBytes(relay, at: offset)
+        return ret
     }
 
     public init?(_ data: Data) {
@@ -135,12 +135,6 @@ public struct Version: Equatable {
         }
         self.relay = relay
         remainingData = remainingData.dropFirst(MemoryLayout<Bool>.size)
-    }
-}
-
-extension Data {
-    mutating func addBytes<T>(of value: T) {
-        self.append(Swift.withUnsafeBytes(of: value) { Data($0) })
     }
 }
 

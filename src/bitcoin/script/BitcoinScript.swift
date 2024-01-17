@@ -13,31 +13,6 @@ public struct BitcoinScript: Equatable {
         self.unparsable = .init()
     }
 
-    /// Creates a script from raw data.
-    ///
-    /// The script will be fully parsed – if possble. Any unparsable data will be stored separately.
-    public init(_ data: Data, sigVersion: SigVersion = .base) {
-        var remainingData = data
-        var operations = [ScriptOperation]()
-        while remainingData.count > 0 {
-            guard let operation = ScriptOperation(remainingData, sigVersion: sigVersion) else {
-                break
-            }
-            operations.append(operation)
-            remainingData = remainingData.dropFirst(operation.size)
-        }
-        self.sigVersion = sigVersion
-        self.operations = operations
-        self.unparsable = remainingData
-    }
-
-    init?(prefixedData: Data, sigVersion: SigVersion = .base) {
-        guard let data = Data(varLenData: prefixedData) else {
-            return nil
-        }
-        self.init(data)
-    }
-
     // MARK: - Instance Properties
 
     /// The signature version of this script.
@@ -56,25 +31,8 @@ public struct BitcoinScript: Equatable {
         (operations.map(\.asm) + [unparsable.hex]).joined(separator: " ")
     }
 
-    /// Serialization of the script's operations into raw data. May include unparsable data.
-    var data: Data {
-        operations.reduce(Data()) { $0 + $1.data } + unparsable
-    }
-
-    var size: Int {
-        operations.reduce(0) { $0 + $1.size } + unparsable.count
-    }
-
     var isEmpty: Bool {
         operations.isEmpty && unparsable.isEmpty
-    }
-
-    var prefixedData: Data {
-        data.varLenData
-    }
-
-    var prefixedSize: Int {
-        UInt64(size).varIntSize + size
     }
 
     // BIP16

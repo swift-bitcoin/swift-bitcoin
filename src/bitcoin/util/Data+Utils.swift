@@ -5,29 +5,40 @@ import Foundation
 /// Helper functions for serialization.
 extension Data {
 
-    /// Appends the value's binary contents.
-    /// - Parameter value: The value whose bytes will be copied.
-    /// - Returns: The number of bytes added (discardable).
-    @discardableResult
-    mutating func addBytes<T>(of value: T) -> Int {
-        Swift.withUnsafeBytes(of: value) {
-            self.append(contentsOf: $0)
-        }
-        return MemoryLayout.size(ofValue: value)
+    public init<T>(value: T) {
+        self.init(count: MemoryLayout.size(ofValue: value))
+        addBytes(value)
     }
 
-    @discardableResult
+    /// Appends the value's binary contents.
+    /// - Parameter value: The value whose bytes will be copied.
+    public mutating func appendBytes<T>(_ value: T) {
+        Swift.withUnsafeBytes(of: value) {
+            append(contentsOf: $0)
+        }
+    }
+
     /// Replaces bytes at `offset` with the binary contents of `value`.
     /// - Parameters:
     ///   - value: The source value whose bytes will be copied.
     ///   - offset: The destination position at which the source bytes will be copied.
     /// - Returns: An discardable offset right after the copied bytes to use when calling this method repeteadly.
-    mutating func addBytes<T>(of value: T, at offset: Int) -> Self.Index {
+    @discardableResult
+    public mutating func addBytes<T>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
+        let offset = offset ?? startIndex
         let count = MemoryLayout.size(ofValue: value)
-        let startIndex = startIndex + offset
-        precondition(self[startIndex...].count >= count)
-        Swift.withUnsafePointer(to: value) { replaceSubrange(startIndex..<startIndex + count, with: $0, count: count) }
-        return startIndex + count
+        precondition(self[offset...].count >= count)
+        Swift.withUnsafePointer(to: value) { replaceSubrange(offset ..< offset.advanced(by: count), with: $0, count: count) }
+        return offset.advanced(by: count)
+    }
+
+    @discardableResult
+    public mutating func addData<T: DataProtocol>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
+        let offset = offset ?? startIndex
+        let count = value.count
+        precondition(self[offset...].count >= count)
+        replaceSubrange(offset ..< offset.advanced(by: count), with: value)
+        return offset.advanced(by: count)
     }
 }
 

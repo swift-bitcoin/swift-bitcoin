@@ -7,14 +7,6 @@ public struct InputSequence: Equatable {
         self.sequenceValue = sequenceValue
     }
 
-    init?(_ data: Data) {
-        guard data.count >= Self.size else {
-            return nil
-        }
-        let rawValue = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        self.init(Int(rawValue))
-    }
-
     public init?(locktimeBlocks blocks: Int) {
         guard blocks >= Self.zeroLocktimeBlocks.sequenceValue && blocks <= Self.locktimeMask else {
             return nil
@@ -54,10 +46,6 @@ public struct InputSequence: Equatable {
         return (sequenceValue & Self.locktimeMask) << Self.granularity
     }
 
-    var data: Data {
-        withUnsafeBytes(of: rawValue) { Data($0) }
-    }
-
     var rawValue: UInt32 { UInt32(sequenceValue) }
 
     public static let initial = Self(0)
@@ -72,7 +60,6 @@ public struct InputSequence: Equatable {
     /// BIP112
     static let maxCSVArgument = 0x0180000000 // 3 << 31
 
-    static let size = MemoryLayout<UInt32>.size
     private static let locktimeMask = 0xffff
     private static let locktimeClockFlag = 0x400000 // 1 << 22
     private static let locktimeDisableFlag = 0x80000000 // 1 << 31
