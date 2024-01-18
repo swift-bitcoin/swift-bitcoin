@@ -2,5 +2,4 @@
 xcuserdata/
 /.build
 /.gitconfig/user
-/.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 /src/bitcoin-disabled/

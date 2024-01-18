@@ -1,5 +1,5 @@
 import Foundation
-import CryptoUtils
+import BitcoinCrypto
 
 /// Transaction inputs/scripts verification.
 extension BitcoinTransaction {

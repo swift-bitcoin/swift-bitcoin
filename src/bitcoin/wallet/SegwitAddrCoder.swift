@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// Segregated Witness Address encoder/decoder
 enum SegwitAddrCoder {

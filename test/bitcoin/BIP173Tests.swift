@@ -1,5 +1,6 @@
 import XCTest
 @testable import Bitcoin
+import BitcoinCrypto
 
 fileprivate typealias InvalidChecksum = (bech32: String, error: Bech32.DecodingError)
 fileprivate typealias ValidAddressData = (address: String, script: [UInt8])

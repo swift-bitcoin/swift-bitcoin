@@ -1,5 +1,5 @@
 import Foundation
-import CryptoUtils
+import BitcoinCrypto
 
 /// The input is hashed using SHA-1.
 func opSHA1(_ stack: inout [Data]) throws {

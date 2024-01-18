@@ -1,5 +1,5 @@
 import Foundation
-import CryptoUtils
+import BitcoinCrypto
 
 func getUnaryParam(_ stack: inout [Data], keep: Bool = false) throws -> Data {
     guard let param = stack.last else {
@@ -71,7 +71,9 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
     if extendedSignature.isEmpty { return }
     if scriptConfiguration.strictDER || scriptConfiguration.lowS || scriptConfiguration.strictEncoding {
-        try checkSignatureEncoding(extendedSignature)
+        guard checkSignatureEncoding(extendedSignature) else {
+            throw ScriptError.invalidSignatureEncoding
+        }
     }
     if scriptConfiguration.lowS && !isSignatureLowS(extendedSignature) {
         throw ScriptError.nonLowSSignature
@@ -89,11 +91,15 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
 
 func checkPublicKey(_ publicKey: Data, scriptVersion: SigVersion, scriptConfiguration: ScriptConfigurarion) throws {
     if scriptConfiguration.strictEncoding  {
-        try checkPublicKeyEncoding(publicKey)
+        guard checkPublicKeyEncoding(publicKey) else {
+            throw ScriptError.invalidPublicKeyEncoding
+        }
     }
     // Only compressed keys are accepted in segwit
     if scriptVersion == .witnessV0 && scriptConfiguration.witnessCompressedPublicKey {
-        try checkCompressedPublicKeyEncoding(publicKey)
+        guard checkCompressedPublicKeyEncoding(publicKey) else {
+            throw ScriptError.invalidPublicKeyEncoding
+        }
     }
 }
 
