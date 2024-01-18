@@ -35,7 +35,7 @@ extension Wallet {
         switch sigVersion {
         case .base:
             var data = Data()
-            data.addBytes(of: UInt8(network.base58VersionScript))
+            data.appendBytes(UInt8(network.base58VersionScript))
             data.append(hash160(scripts[0]))
             return Base58.base58CheckEncode(data)
         case .witnessV0:

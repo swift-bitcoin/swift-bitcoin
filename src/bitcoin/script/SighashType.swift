@@ -2,27 +2,12 @@ import Foundation
 
 public struct SighashType {
 
-    init(_ data: Data) {
-        guard let value = data.first else {
-            preconditionFailure()
-        }
-        self.value = value
-    }
-
     init?(_ value: UInt8) {
         self.value = value
         if !isDefined { return nil }
     }
 
     let value: UInt8
-
-    var data: Data {
-        withUnsafeBytes(of: value) { Data($0) }
-    }
-
-    var data32: Data {
-        withUnsafeBytes(of: UInt32(value)) { Data($0) }
-    }
 
     var isAll: Bool {
         value & Self.maskAnyCanPay == Self.sighashAll
@@ -93,11 +78,30 @@ extension Optional where Wrapped == SighashType {
         }
         return assumed.isAnyCanPay
     }
+}
+
+extension SighashType {
+
+    init?(_ data: Data) {
+        guard let value = data.first else { return nil }
+        self.value = value
+    }
+
+    var data: Data {
+        Data(value: value)
+    }
+
+    var data32: Data {
+        Data(value: UInt32(value))
+    }
+}
+
+extension Optional where Wrapped == SighashType {
 
     var data: Data {
         if case let .some(wrapped) = self {
             return wrapped.data
         }
-        return withUnsafeBytes(of: UInt8(0)) { Data($0) }
+        return Data([0x00])
     }
 }

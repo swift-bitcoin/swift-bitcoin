@@ -28,72 +28,6 @@ struct HDExtendedKey {
         self.init(data)
     }
 
-    init?(_ data: Data) {
-        guard data.count == 78 else { return nil }
-
-        var remainingData = data
-        let version = remainingData.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        }.byteSwapped // Convert to little-endian
-
-        guard let network = WalletNetwork.fromHDKeyVersion(version) else {
-            return nil
-        }
-
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt32>.size)
-
-        let depth = remainingData.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt8.self)
-        }
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt8>.size)
-
-        let fingerprint = remainingData.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        }
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt32>.size)
-
-        let keyIndex = remainingData.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        }.byteSwapped // Convert to little-endian
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt32>.size)
-
-        let chaincode = remainingData[..<remainingData.startIndex.advanced(by: 32)]
-        remainingData = remainingData.dropFirst(32)
-
-        let isPrivate = version == network.hdKeyVersionPrivate
-
-        let key = if isPrivate {
-            remainingData[remainingData.startIndex.advanced(by: 1)..<remainingData.startIndex.advanced(by: 33)]
-        } else {
-            remainingData[..<remainingData.startIndex.advanced(by: 33)]
-        }
-        remainingData = remainingData.dropFirst(33)
-        self.init(network: network, isPrivate: isPrivate, key: key, chaincode: chaincode, fingerprint: Int(fingerprint), depth: Int(depth), keyIndex: Int(keyIndex))
-    }
-
-    var versionData: Data {
-        var data = Data()
-        let version = if isPrivate {
-            network.hdKeyVersionPrivate
-        } else {
-            network.hdKeyVersionPublic
-        }
-        data.addBytes(of: UInt32(version).bigEndian)
-        return data
-    }
-
-    var data: Data {
-        var data = Data()
-        data.append(versionData)
-        data.addBytes(of: UInt8(depth))
-        data.addBytes(of: UInt32(fingerprint))
-        data.addBytes(of: UInt32(keyIndex).bigEndian)
-        data.append(chaincode)
-        if isPrivate { data.append(contentsOf: [0]) }
-        data.append(key)
-        return data
-    }
-
     var serialized: String {
         Base58.base58CheckEncode(data)
     }
@@ -121,14 +55,14 @@ struct HDExtendedKey {
         if keyIndex >> 31 == 0 {
             // Unhardened derivation
             var publicKeyData = isPrivate ? publicKey : key
-            publicKeyData.addBytes(of: UInt32(keyIndex).bigEndian)
+            publicKeyData.appendBytes(UInt32(keyIndex).bigEndian)
             hmacResult = hmacSHA512(chaincode, data: publicKeyData)
         } else {
             // Hardened derivation
             precondition(isPrivate)
             var privateKeyData = Data([0x00])
             privateKeyData.append(key)
-            privateKeyData.addBytes(of: UInt32(keyIndex).bigEndian)
+            privateKeyData.appendBytes(UInt32(keyIndex).bigEndian)
             hmacResult = hmacSHA512(chaincode, data: privateKeyData)
         }
 
@@ -149,4 +83,78 @@ struct HDExtendedKey {
         let publicKey = getPublicKey(secretKey: key)
         return .init(isPrivate: false, key: publicKey, chaincode: chaincode, fingerprint: fingerprint, depth: depth, keyIndex: keyIndex)
     }
+}
+
+extension HDExtendedKey {
+
+    init?(_ data: Data) {
+        guard data.count == Self.size else { return nil }
+
+        var data = data
+        let version = data.withUnsafeBytes {
+            $0.loadUnaligned(as: UInt32.self)
+        }.byteSwapped // Convert to little-endian
+
+        guard let network = WalletNetwork.fromHDKeyVersion(version) else {
+            return nil
+        }
+
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
+
+        let depth = data.withUnsafeBytes {
+            $0.loadUnaligned(as: UInt8.self)
+        }
+        data = data.dropFirst(MemoryLayout<UInt8>.size)
+
+        let fingerprint = data.withUnsafeBytes {
+            $0.loadUnaligned(as: UInt32.self)
+        }
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
+
+        let keyIndex = data.withUnsafeBytes {
+            $0.loadUnaligned(as: UInt32.self)
+        }.byteSwapped // Convert to little-endian
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
+
+        let chaincode = data[..<data.startIndex.advanced(by: 32)]
+        data = data.dropFirst(32)
+
+        let isPrivate = version == network.hdKeyVersionPrivate
+
+        let key = if isPrivate {
+            data[data.startIndex.advanced(by: 1)..<data.startIndex.advanced(by: 33)]
+        } else {
+            data[..<data.startIndex.advanced(by: 33)]
+        }
+        data = data.dropFirst(33)
+        self.init(network: network, isPrivate: isPrivate, key: key, chaincode: chaincode, fingerprint: Int(fingerprint), depth: Int(depth), keyIndex: Int(keyIndex))
+    }
+
+    var versionData: Data {
+        var ret = Data(count: Self.versionSize)
+        let version = if isPrivate {
+            network.hdKeyVersionPrivate
+        } else {
+            network.hdKeyVersionPublic
+        }
+        ret.addBytes(UInt32(version).bigEndian)
+        return ret
+    }
+
+    var data: Data {
+        var ret = Data(count: Self.size)
+        var offset = ret.addData(versionData)
+        offset = ret.addBytes(UInt8(depth), at: offset)
+        offset = ret.addBytes(UInt32(fingerprint), at: offset)
+        offset = ret.addBytes(UInt32(keyIndex).bigEndian, at: offset)
+        offset = ret.addData(chaincode, at: offset)
+        if isPrivate {
+            offset = ret.addData([0], at: offset)
+        }
+        ret.addData(key, at: offset)
+        return ret
+    }
+
+    static let versionSize = MemoryLayout<UInt32>.size
+    static let size = 78
 }

@@ -7,23 +7,11 @@ public struct TransactionVersion: Equatable, Comparable {
         self.versionValue = versionValue
     }
 
-    init?(_ data: Data) {
-        guard data.count >= Self.size else {
-            return nil
-        }
-        let rawValue = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        self.init(rawValue)
-    }
-
-    private init(_ rawValue: UInt32) {
+    init(_ rawValue: UInt32) {
         self.init(Int(rawValue))
     }
 
     public let versionValue: Int
-
-    var data: Data {
-        withUnsafeBytes(of: rawValue) { Data($0) }
-    }
 
     var rawValue: UInt32 {
         UInt32(versionValue)
@@ -38,6 +26,4 @@ public struct TransactionVersion: Equatable, Comparable {
 
     /// BIP68 - Transaction version 2.
     public static let v2 = Self(2)
-
-    static let size = MemoryLayout<UInt32>.size
 }
