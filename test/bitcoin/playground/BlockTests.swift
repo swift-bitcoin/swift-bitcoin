@@ -1,6 +1,6 @@
 import XCTest
 import Bitcoin
-import CryptoUtils
+import BitcoinCrypto
 
 fileprivate let blockSubsidy = 50 * 100_000_000
 

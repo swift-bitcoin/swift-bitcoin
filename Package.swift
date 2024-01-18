@@ -42,23 +42,24 @@ let package = Package(
             dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")],
             path: "src/ecc-helper"),
         .target(
-            name: "CryptoUtils",
+            name: "BitcoinCrypto",
             dependencies: [
                 "ECCHelper",
+                "BigInt",
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
             ],
-            path: "src/crypto-utils"),
+            path: "src/bitcoin-crypto"),
         .target(
             name: "Bitcoin",
             dependencies: [
-                "CryptoUtils",
-                "BigInt"
+                "BitcoinCrypto"
             ],
             path: "src/bitcoin"),
         .target(
             name: "BitcoinP2P",
             dependencies: [
                 "Bitcoin",
+                "BitcoinCrypto",
                 "JSONRPC",
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 .product(name: "NIOCore", package: "swift-nio"),

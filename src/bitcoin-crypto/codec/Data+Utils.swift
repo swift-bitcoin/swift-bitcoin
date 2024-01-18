@@ -3,16 +3,16 @@ import Foundation
 // MARK: - Serialization helper functions
 
 /// Helper functions for serialization.
-extension Data {
+public extension Data {
 
-    public init<T>(value: T) {
+    init<T>(value: T) {
         self.init(count: MemoryLayout.size(ofValue: value))
         addBytes(value)
     }
 
     /// Appends the value's binary contents.
     /// - Parameter value: The value whose bytes will be copied.
-    public mutating func appendBytes<T>(_ value: T) {
+    mutating func appendBytes<T>(_ value: T) {
         Swift.withUnsafeBytes(of: value) {
             append(contentsOf: $0)
         }
@@ -24,7 +24,7 @@ extension Data {
     ///   - offset: The destination position at which the source bytes will be copied.
     /// - Returns: An discardable offset right after the copied bytes to use when calling this method repeteadly.
     @discardableResult
-    public mutating func addBytes<T>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
+    mutating func addBytes<T>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
         let offset = offset ?? startIndex
         let count = MemoryLayout.size(ofValue: value)
         precondition(self[offset...].count >= count)
@@ -33,7 +33,7 @@ extension Data {
     }
 
     @discardableResult
-    public mutating func addData<T: DataProtocol>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
+    mutating func addData<T: DataProtocol>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
         let offset = offset ?? startIndex
         let count = value.count
         precondition(self[offset...].count >= count)
@@ -69,7 +69,7 @@ public extension DataProtocol {
 
 // MARK: - Variable Integer (Compact Integer)
 
-extension Data {
+public extension Data {
 
     /// Converts a 64-bit integer into its compact integer representation – i.e. variable length data.
     init(varInt value: UInt64) {
@@ -113,7 +113,7 @@ extension Data {
     }
 }
 
-extension UInt64 {
+public extension UInt64 {
 
     var varIntSize: Int {
         switch self {
@@ -152,7 +152,7 @@ public extension Data {
     }
 }
 
-extension Array where Element == Data {
+public extension Array where Element == Data {
 
     /// Memory size as multiple variable length arrays.
     var varLenSize: Int {

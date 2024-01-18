@@ -1,5 +1,5 @@
 import Foundation
-import CryptoUtils
+import BitcoinCrypto
 
 /// A bitcoin transaction.
 public struct BitcoinTransaction: Equatable {

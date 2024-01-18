@@ -1,5 +1,5 @@
 import XCTest
-import CryptoUtils
+import BitcoinCrypto
 @testable import Bitcoin
 
 func insecureRand256() -> Data {

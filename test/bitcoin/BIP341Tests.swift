@@ -1,5 +1,5 @@
 import XCTest
-import CryptoUtils
+import BitcoinCrypto
 @testable import Bitcoin
 
 /// https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#test-vectors

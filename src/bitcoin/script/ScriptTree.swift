@@ -1,5 +1,5 @@
 import Foundation
-import CryptoUtils
+import BitcoinCrypto
 
 public indirect enum ScriptTree: Equatable {
     // Int is the leaf_version. Its value should be 0xc0 (or 0xc1) for BIP342.
@@ -128,6 +128,6 @@ public indirect enum ScriptTree: Equatable {
 
     public func getOutputKey(secretKey: Data) -> Data {
         let (_, merkleRoot) = calcMerkleRoot()
-        return CryptoUtils.getOutputKey(secretKey: secretKey, merkleRoot: merkleRoot)
+        return BitcoinCrypto.getOutputKey(secretKey: secretKey, merkleRoot: merkleRoot)
     }
 }

@@ -1,6 +1,6 @@
 import ArgumentParser
 import Bitcoin
-import CryptoUtils
+import BitcoinCrypto
 import Foundation
 
 /// Generates a new secret key suitable for ECDSA signing.

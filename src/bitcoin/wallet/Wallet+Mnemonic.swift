@@ -1,5 +1,5 @@
 import Foundation
-import CryptoUtils
+import BitcoinCrypto
 
 fileprivate let bitsPerByte = UInt8.bitWidth
 fileprivate let bitsPerMnemonicWord = 11

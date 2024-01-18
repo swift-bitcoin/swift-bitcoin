@@ -1,5 +1,5 @@
 import Foundation
-import CryptoUtils
+import BitcoinCrypto
 
 /// Namespase for common wallet operations. From seed to derivation paths.
 public enum Wallet { }
@@ -9,7 +9,7 @@ extension Wallet {
     /// Generates a new secret key suitable for ECDSA signing.
     /// - Returns: The secret key in hex format.
     public static func createSecretKey() -> String {
-        CryptoUtils.createSecretKey().hex
+        BitcoinCrypto.createSecretKey().hex
     }
     
     /// Computes the public key corresponding to the provided secret key.
@@ -26,7 +26,7 @@ extension Wallet {
     /// - Parameter secretKey: The secret key data.
     /// - Returns: The public key in hex format.
     public static func getPublicKey(secretKey: Data) -> Data {
-        CryptoUtils.getPublicKey(secretKey: secretKey, compress: true)
+        BitcoinCrypto.getPublicKey(secretKey: secretKey, compress: true)
     }
 
     /// Creates an address from the provided public key.
@@ -43,9 +43,7 @@ extension Wallet {
     }
 
     public static func getAddress(publicKey: Data, sigVersion: SigVersion = .base, network: WalletNetwork = .main) throws -> String {
-        do {
-            try checkPublicKeyEncoding(publicKey)
-        } catch {
+        guard checkPublicKeyEncoding(publicKey) else {
             throw WalletError.invalidPublicKey
         }
         switch sigVersion {
