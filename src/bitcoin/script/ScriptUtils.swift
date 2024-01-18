@@ -78,7 +78,9 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
     }
     if scriptConfiguration.strictEncoding  {
         let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
-        let sighashType = SighashType(sighashTypeData)
+        guard let sighashType = SighashType(sighashTypeData) else {
+            preconditionFailure()
+        }
         guard sighashType.isDefined else {
             throw ScriptError.undefinedSighashType
         }
@@ -99,7 +101,9 @@ func splitECDSASignature(_ extendedSignature: Data) -> (Data, SighashType) {
     precondition(!extendedSignature.isEmpty)
     let signature = extendedSignature.dropLast()
     let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
-    let sighashType = SighashType(sighashTypeData)
+    guard let sighashType = SighashType(sighashTypeData) else {
+        preconditionFailure()
+    }
     return (signature, sighashType)
 }
 

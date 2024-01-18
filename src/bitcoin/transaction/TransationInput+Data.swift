@@ -3,21 +3,14 @@ import Foundation
 extension TransationInput {
 
     init?(_ data: Data) {
-        var offset = data.startIndex
-        guard let outpoint = TransactionOutpoint(data) else {
-            return nil
-        }
-        offset += TransactionOutpoint.size
+        var data = data
+        guard let outpoint = TransactionOutpoint(data) else { return nil }
+        data = data.dropFirst(TransactionOutpoint.size)
 
-        guard let script = BitcoinScript(prefixedData: data[offset...]) else {
-            return nil
-        }
-        offset += script.prefixedSize
+        guard let script = BitcoinScript(prefixedData: data) else { return nil }
+        data = data.dropFirst(script.prefixedSize)
 
-        guard let sequence = InputSequence(data[offset...]) else {
-            return nil
-        }
-        offset += InputSequence.size
+        guard let sequence = InputSequence(data) else { return nil }
 
         self.init(outpoint: outpoint, sequence: sequence, script: script)
     }

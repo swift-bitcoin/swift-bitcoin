@@ -82,10 +82,8 @@ extension Optional where Wrapped == SighashType {
 
 extension SighashType {
 
-    init(_ data: Data) {
-        guard let value = data.first else {
-            preconditionFailure()
-        }
+    init?(_ data: Data) {
+        guard let value = data.first else { return nil }
         self.value = value
     }
 

@@ -62,79 +62,79 @@ public struct Version: Equatable {
     public init?(_ data: Data) {
         guard data.count >= 85 else { return nil }
 
-        var remainingData = data
-        guard let versionIdentifier = VersionIdentifier(remainingData) else { return nil }
+        var data = data
+        guard let versionIdentifier = VersionIdentifier(data) else { return nil }
         self.versionIdentifier = versionIdentifier
-        remainingData = remainingData.dropFirst(VersionIdentifier.size)
+        data = data.dropFirst(VersionIdentifier.size)
 
-        guard let services = Services(remainingData) else { return nil }
+        guard let services = Services(data) else { return nil }
         self.services = services
-        remainingData = remainingData.dropFirst(Services.size)
+        data = data.dropFirst(Services.size)
 
-        guard remainingData.count >= MemoryLayout<Int64>.size else { return nil }
-        let timestamp = remainingData.withUnsafeBytes {
+        guard data.count >= MemoryLayout<Int64>.size else { return nil }
+        let timestamp = data.withUnsafeBytes {
             $0.loadUnaligned(as: Int64.self)
         }
         self.timestamp = Date(timeIntervalSince1970: TimeInterval(timestamp))
-        remainingData = remainingData.dropFirst(MemoryLayout<Int64>.size)
+        data = data.dropFirst(MemoryLayout<Int64>.size)
 
-        guard let receiverServices = Services(remainingData) else { return nil }
+        guard let receiverServices = Services(data) else { return nil }
         self.receiverServices = receiverServices
-        remainingData = remainingData.dropFirst(Services.size)
+        data = data.dropFirst(Services.size)
 
-        let receiverAddress = IPv6Address(remainingData[..<remainingData.startIndex.advanced(by: 16)])
+        let receiverAddress = IPv6Address(data[..<data.startIndex.advanced(by: 16)])
         self.receiverAddress = receiverAddress
-        remainingData = remainingData.dropFirst(16)
+        data = data.dropFirst(16)
 
-        guard remainingData.count >= MemoryLayout<UInt16>.size else { return nil }
-        let reveiverPort = remainingData.withUnsafeBytes {
+        guard data.count >= MemoryLayout<UInt16>.size else { return nil }
+        let reveiverPort = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt16.self)
         }
         self.receiverPort = Int(reveiverPort.byteSwapped) // bigEndian -> littleEndian
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt16>.size)
+        data = data.dropFirst(MemoryLayout<UInt16>.size)
 
-        guard let transmitterServices = Services(remainingData) else { return nil }
+        guard let transmitterServices = Services(data) else { return nil }
         self.transmitterServices = transmitterServices
-        remainingData = remainingData.dropFirst(Services.size)
+        data = data.dropFirst(Services.size)
 
-        let transmitterAddress = IPv6Address(remainingData[..<remainingData.startIndex.advanced(by: 16)])
+        let transmitterAddress = IPv6Address(data[..<data.startIndex.advanced(by: 16)])
         self.transmitterAddress = transmitterAddress
-        remainingData = remainingData.dropFirst(16)
+        data = data.dropFirst(16)
 
-        guard remainingData.count >= MemoryLayout<UInt16>.size else { return nil }
-        let transmitterPort = remainingData.withUnsafeBytes {
+        guard data.count >= MemoryLayout<UInt16>.size else { return nil }
+        let transmitterPort = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt16.self)
         }
         self.transmitterPort = Int(transmitterPort.byteSwapped)
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt16>.size)
+        data = data.dropFirst(MemoryLayout<UInt16>.size)
 
-        guard remainingData.count >= MemoryLayout<UInt64>.size else { return nil }
-        let nonce = remainingData.withUnsafeBytes {
+        guard data.count >= MemoryLayout<UInt64>.size else { return nil }
+        let nonce = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt64.self)
         }
         self.nonce = nonce
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt64>.size)
+        data = data.dropFirst(MemoryLayout<UInt64>.size)
 
-        guard let userAgentData = Data(varLenData: remainingData) else {
+        guard let userAgentData = Data(varLenData: data) else {
             return nil
         }
         let userAgent = String(decoding: userAgentData, as: Unicode.ASCII.self)
         self.userAgent = userAgent
-        remainingData = remainingData.dropFirst(userAgentData.varLenSize)
+        data = data.dropFirst(userAgentData.varLenSize)
 
-        guard remainingData.count >= MemoryLayout<Int32>.size else { return nil }
-        let startHeight = remainingData.withUnsafeBytes {
+        guard data.count >= MemoryLayout<Int32>.size else { return nil }
+        let startHeight = data.withUnsafeBytes {
             $0.loadUnaligned(as: Int32.self)
         }
         self.startHeight = Int(startHeight)
-        remainingData = remainingData.dropFirst(MemoryLayout<Int32>.size)
+        data = data.dropFirst(MemoryLayout<Int32>.size)
 
-        guard remainingData.count >= MemoryLayout<Bool>.size else { return nil }
-        let relay = remainingData.withUnsafeBytes {
+        guard data.count >= MemoryLayout<Bool>.size else { return nil }
+        let relay = data.withUnsafeBytes {
             $0.loadUnaligned(as: Bool.self)
         }
         self.relay = relay
-        remainingData = remainingData.dropFirst(MemoryLayout<Bool>.size)
+        data = data.dropFirst(MemoryLayout<Bool>.size)
     }
 }
 

@@ -90,8 +90,8 @@ extension HDExtendedKey {
     init?(_ data: Data) {
         guard data.count == Self.size else { return nil }
 
-        var remainingData = data
-        let version = remainingData.withUnsafeBytes {
+        var data = data
+        let version = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }.byteSwapped // Convert to little-endian
 
@@ -99,34 +99,34 @@ extension HDExtendedKey {
             return nil
         }
 
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt32>.size)
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
 
-        let depth = remainingData.withUnsafeBytes {
+        let depth = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt8.self)
         }
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt8>.size)
+        data = data.dropFirst(MemoryLayout<UInt8>.size)
 
-        let fingerprint = remainingData.withUnsafeBytes {
+        let fingerprint = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt32>.size)
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
 
-        let keyIndex = remainingData.withUnsafeBytes {
+        let keyIndex = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }.byteSwapped // Convert to little-endian
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt32>.size)
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
 
-        let chaincode = remainingData[..<remainingData.startIndex.advanced(by: 32)]
-        remainingData = remainingData.dropFirst(32)
+        let chaincode = data[..<data.startIndex.advanced(by: 32)]
+        data = data.dropFirst(32)
 
         let isPrivate = version == network.hdKeyVersionPrivate
 
         let key = if isPrivate {
-            remainingData[remainingData.startIndex.advanced(by: 1)..<remainingData.startIndex.advanced(by: 33)]
+            data[data.startIndex.advanced(by: 1)..<data.startIndex.advanced(by: 33)]
         } else {
-            remainingData[..<remainingData.startIndex.advanced(by: 33)]
+            data[..<data.startIndex.advanced(by: 33)]
         }
-        remainingData = remainingData.dropFirst(33)
+        data = data.dropFirst(33)
         self.init(network: network, isPrivate: isPrivate, key: key, chaincode: chaincode, fingerprint: Int(fingerprint), depth: Int(depth), keyIndex: Int(keyIndex))
     }
 

@@ -17,30 +17,30 @@ public struct Message: Equatable {
 
     public init?(_ data: Data) {
         guard data.count >= Self.baseSize else { return nil }
-        var remainingData = data
-        guard let network = Network(remainingData) else { return nil }
+        var data = data
+        guard let network = Network(data) else { return nil }
         self.network = network
-        remainingData = remainingData.dropFirst(Network.size)
-        let commandDataUntrimmed = remainingData[remainingData.startIndex ..< remainingData.startIndex.advanced(by: Self.commandSize)]
+        data = data.dropFirst(Network.size)
+        let commandDataUntrimmed = data[data.startIndex ..< data.startIndex.advanced(by: Self.commandSize)]
         let commandData = commandDataUntrimmed.reversed().trimmingPrefix(while: { $0 == 0x00 }).reversed()
         self.command = String(decoding: commandData, as: Unicode.ASCII.self)
-        remainingData = remainingData.dropFirst(commandDataUntrimmed.count)
+        data = data.dropFirst(commandDataUntrimmed.count)
 
-        guard remainingData.count >= MemoryLayout<UInt32>.size else { return nil }
-        let payloadSize = Int(remainingData.withUnsafeBytes {
+        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
+        let payloadSize = Int(data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         })
         self.payloadSize = payloadSize
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt32>.size)
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
 
-        guard remainingData.count >= MemoryLayout<UInt32>.size else { return nil }
-        self.checksum = remainingData.withUnsafeBytes {
+        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
+        self.checksum = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }
-        remainingData = remainingData.dropFirst(MemoryLayout<UInt32>.size)
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
 
-        guard remainingData.count >= payloadSize else { return nil }
-        self.payload = Data(remainingData[..<remainingData.startIndex.advanced(by: payloadSize)])
+        guard data.count >= payloadSize else { return nil }
+        self.payload = Data(data[..<data.startIndex.advanced(by: payloadSize)])
     }
 
     public let network: Network

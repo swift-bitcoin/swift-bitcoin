@@ -6,18 +6,18 @@ extension BitcoinScript {
     ///
     /// The script will be fully parsed – if possble. Any unparsable data will be stored separately.
     public init(_ data: Data, sigVersion: SigVersion = .base) {
-        var remainingData = data
+        var data = data
         var operations = [ScriptOperation]()
-        while remainingData.count > 0 {
-            guard let operation = ScriptOperation(remainingData, sigVersion: sigVersion) else {
+        while data.count > 0 {
+            guard let operation = ScriptOperation(data, sigVersion: sigVersion) else {
                 break
             }
             operations.append(operation)
-            remainingData = remainingData.dropFirst(operation.size)
+            data = data.dropFirst(operation.size)
         }
         self.sigVersion = sigVersion
         self.operations = operations
-        self.unparsable = remainingData
+        self.unparsable = data
     }
 
     init?(prefixedData: Data, sigVersion: SigVersion = .base) {

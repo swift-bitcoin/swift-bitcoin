@@ -3,16 +3,13 @@ import Foundation
 extension TransactionOutpoint {
 
     init?(_ data: Data) {
-        guard data.count >= Self.size else {
-            return nil
-        }
-        var offset = data.startIndex
-        let transaction = Data(data[offset ..< offset + BitcoinTransaction.identifierSize].reversed())
-        offset += BitcoinTransaction.identifierSize
-        let outputData = data[offset ..< offset + MemoryLayout<UInt32>.size]
-        let output = Int(outputData.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        })
+        guard data.count >= Self.size else { return nil }
+
+        var data = data
+        let transaction = Data(data[..<data.startIndex.advanced(by: BitcoinTransaction.identifierSize)].reversed())
+        data = data.dropFirst(BitcoinTransaction.identifierSize)
+
+        let output = Int(data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) })
         self.init(transaction: transaction, output: output)
     }
 
