@@ -1,9 +1,7 @@
 import Foundation
 
 /// Returns the larger of a and b.
-func opMax(_ stack: inout [Data]) throws {
-    let (first, second) = try getBinaryParams(&stack)
-    let a = try ScriptNumber(first)
-    let b = try ScriptNumber(second)
+func opMax(_ stack: inout [Data], context: inout ScriptContext) throws {
+    let (a, b) = try getBinaryNumericParams(&stack, context: &context)
     stack.append((a.value > b.value ? a : b).data)
 }

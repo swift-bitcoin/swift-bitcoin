@@ -1,9 +1,8 @@
 import Foundation
 
 /// The item n back in the stack is moved to the top.
-func opRoll(_ stack: inout [Data]) throws {
-    let first = try getUnaryParam(&stack)
-    let n = try ScriptNumber(first).value
+func opRoll(_ stack: inout [Data], context: inout ScriptContext) throws {
+    let n = try getUnaryNumericParam(&stack, context: &context).value
     guard n >= 0 && n < stack.count else {
         throw ScriptError.invalidStackOperation
     }

@@ -10,7 +10,8 @@ final class BitcoinCoreTaprootTests: XCTestCase {
             includeFlags.remove("NONE")
             let config = ScriptConfigurarion(
                 strictDER: includeFlags.contains("DERSIG"),
-                pushOnly:  includeFlags.contains("SIGPUSHONLY"),
+                pushOnly: includeFlags.contains("SIGPUSHONLY"),
+                minimalData: includeFlags.contains("MINIMALDATA"),
                 lowS: includeFlags.contains("LOW_S"),
                 cleanStack: includeFlags.contains("CLEANSTACK"),
                 nullDummy: includeFlags.contains("NULLDUMMY"),
@@ -30,7 +31,7 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 discourageOpSuccess: true,
                 discourageUpgradablePublicKeyType: true
             )
-            let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, discourageUpgradableNoOps: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
+            let allOff = ScriptConfigurarion.init(strictDER: false, pushOnly: false, minimalData: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, discourageUpgradableNoOps: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
 
             let unsignedTx = BitcoinTransaction(Data(hex: testCase.tx)!)!
             let previousOutputs = testCase.previousOutputs.map { TransactionOutput(Data(hex: $0)!)! }

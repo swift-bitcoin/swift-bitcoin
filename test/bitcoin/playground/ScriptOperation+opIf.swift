@@ -198,16 +198,13 @@ final class OpIfTests: XCTestCase {
     }
 
     func testOpSuccess() {
-        // TODO: When tapscript is implemented…
-        // ```
-        // var script = ParsedScript([.constant(1), .if, .constant(2), .else, .success(80)])
-        // var stack = [Data]()
-        // XCTAssertNoThrow(try script.run(&stack))
-        //
-        // script = ParsedScript([.constant(1), .if, .success(80), .else, .constant(2), .endIf])
-        // stack = []
-        // XCTAssertNoThrow(try script.run(&stack))
-        // ```
+        var script = BitcoinScript([.constant(1), .if, .constant(2), .else, .success(80)], sigVersion: .witnessV1)
+        var stack = [Data]()
+        XCTAssertNoThrow(try script.runV1(&stack))
+
+        script = BitcoinScript([.constant(1), .if, .success(80), .else, .constant(2), .endIf], sigVersion: .witnessV1)
+        stack = []
+        XCTAssertNoThrow(try script.runV1(&stack))
     }
 
     func testIfMalformed() {

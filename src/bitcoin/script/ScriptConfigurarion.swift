@@ -3,9 +3,10 @@ import Foundation
 /// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
 public struct ScriptConfigurarion {
 
-    public init(strictDER: Bool = true, pushOnly: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true, discourageUpgradableNoOps: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true, discourageOpSuccess: Bool = true, discourageUpgradablePublicKeyType: Bool = true) {
+    public init(strictDER: Bool = true, pushOnly: Bool = true, minimalData: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true, discourageUpgradableNoOps: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true, discourageOpSuccess: Bool = true, discourageUpgradablePublicKeyType: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
         self.pushOnly = pushOnly
+        self.minimalData = minimalData
         self.lowS = lowS
         self.cleanStack = cleanStack && payToScriptHash
         self.nullDummy = nullDummy
@@ -33,6 +34,12 @@ public struct ScriptConfigurarion {
     /// BIP62 rule 2
     /// Using a non-push operator in the scriptSig causes script failure.
     public let pushOnly: Bool
+
+    /// BIP62 rule 3-4
+    /// Require minimal encodings for all push operations (`OP_0`…`OP_16`, `OP_1NEGATE` where possible, direct  pushes up to 75 bytes, `OP_PUSHDATA` up to 255 bytes, `OP_PUSHDATA2` for anything larger).
+    /// Evaluating any other push causes the script to fail (BIP62 rule 3).
+    /// In addition, whenever a stack element is interpreted as a number, it must be of minimal length (BIP62 rule 4).
+    public let minimalData: Bool
 
     /// BIP62 rule 5
     /// Passing a non-strict-DER signature or one with S > order/2 to a checksig operation causes script failure.
@@ -106,6 +113,7 @@ public struct ScriptConfigurarion {
     public static let mandatory = ScriptConfigurarion(
         // strictDER: true, // After DEPLOYMENT_DERSIG (BIP66) buried deployment block (1st)
         pushOnly: false,
+        minimalData: false,
         lowS: false,
         cleanStack: false,
         // nullDummy: false, // After DEPLOYMENT_SEGWIT (BIP147) buried deployment block (3rd)

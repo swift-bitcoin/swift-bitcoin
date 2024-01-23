@@ -1,12 +1,27 @@
 import Foundation
 import BitcoinCrypto
 
+func getUnaryNumericParam(_ stack: inout [Data], context: inout ScriptContext) throws -> ScriptNumber {
+    let first = try getUnaryParam(&stack)
+    let minimal = context.configuration.minimalData
+    let a = try ScriptNumber(first, minimal: minimal)
+    return a
+}
+
 func getUnaryParam(_ stack: inout [Data], keep: Bool = false) throws -> Data {
     guard let param = stack.last else {
         throw ScriptError.missingStackArgument
     }
     if !keep { stack.removeLast() }
     return param
+}
+
+func getBinaryNumericParams(_ stack: inout [Data], context: inout ScriptContext) throws -> (ScriptNumber, ScriptNumber) {
+    let (first, second) = try getBinaryParams(&stack)
+    let minimal = context.configuration.minimalData
+    let a = try ScriptNumber(first, minimal: minimal)
+    let b = try ScriptNumber(second, minimal: minimal)
+    return (a, b)
 }
 
 func getBinaryParams(_ stack: inout [Data]) throws -> (Data, Data) {
@@ -16,6 +31,15 @@ func getBinaryParams(_ stack: inout [Data]) throws -> (Data, Data) {
     let second = stack.removeLast()
     let first = stack.removeLast()
     return (first, second)
+}
+
+func getTernaryNumericParams(_ stack: inout [Data], context: inout ScriptContext) throws -> (ScriptNumber, ScriptNumber, ScriptNumber) {
+    let (first, second, third) = try getTernaryParams(&stack)
+    let minimal = context.configuration.minimalData
+    let a = try ScriptNumber(first, minimal: minimal)
+    let b = try ScriptNumber(second, minimal: minimal)
+    let c = try ScriptNumber(third, minimal: minimal)
+    return (a, b, c)
 }
 
 func getTernaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data) {
@@ -50,10 +74,10 @@ func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigur
     guard stack.count > 4 else {
         throw ScriptError.missingMultiSigArgument
     }
-    let n = try ScriptNumber(stack.removeLast()).value
+    let n = try ScriptNumber(stack.removeLast(), minimal: configuration.minimalData).value
     let publicKeys = Array(stack[(stack.endIndex - n)...].reversed())
     stack.removeLast(n)
-    let m = try ScriptNumber(stack.removeLast()).value
+    let m = try ScriptNumber(stack.removeLast(), minimal: configuration.minimalData).value
     let sigs = Array(stack[(stack.endIndex - m)...].reversed())
     stack.removeLast(m)
     guard stack.count > 0 else {

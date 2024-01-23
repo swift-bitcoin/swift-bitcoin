@@ -3,7 +3,7 @@ import Foundation
 /// [BIP65](https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki)
 func opCheckLockTimeVerify(_ stack: inout [Data], context: ScriptContext) throws {
     let first = try getUnaryParam(&stack, keep: true)
-    let locktime64 = try ScriptNumber(first, extendedLength: true).value
+    let locktime64 = try ScriptNumber(first, extendedLength: true, minimal: context.configuration.minimalData).value
 
     guard
         first.count < 6,

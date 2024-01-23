@@ -45,18 +45,17 @@ public enum ScriptOperation: Equatable {
 
     func operationPreconditions() {
         switch(self) {
-        case .pushBytes(_):
-            // TODO: Make precondition a script error when MINIMALDATA is enforced
-            // precondition(d.count > 0 && d.count <= 75)
+        case .pushBytes(let d):
+            precondition(d.count > 0 && d.count <= 75)
             break
-        case .pushData1(_):
-            // precondition(d.count > 75 && d.count <= UInt8.max)
+        case .pushData1(let d):
+            precondition(d.count >= 0 && d.count <= UInt8.max)
             break
-        case .pushData2(_):
-            // precondition(d.count > UInt8.max && d.count <= UInt16.max)
+        case .pushData2(let d):
+            precondition(d.count >= 0 && d.count <= UInt16.max)
             break
-        case .pushData4(_):
-            // precondition(d.count > UInt16.max && d.count <= UInt32.max)
+        case .pushData4(let d):
+            precondition(d.count >= 0 && d.count <= UInt32.max)
             break
         case .reserved(let k):
             precondition(k == 80 || (k >= 137 && k <= 138))
@@ -74,6 +73,28 @@ public enum ScriptOperation: Equatable {
         switch(self) {
         case .zero, .oneNegate, .constant(_), .pushBytes(_), .pushData1(_), .pushData2(_), .pushData4(_): true
         default: false
+        }
+    }
+
+    var isMinimalPush: Bool {
+        switch(self) {
+        case .pushBytes(let data):
+            if data.count == 1 {
+                if data[0] >= 1 && data[0] <= 16 {
+                    return false
+                }
+                if data == ScriptNumber.negativeOne.data {
+                    return false
+                }
+                return true
+            }
+            return true
+        case .pushData1(let data):
+            return data.count > 75
+        case .pushData2(let data):
+            return data.count > UInt8.max
+        default:
+            return true
         }
     }
 
@@ -307,7 +328,11 @@ public enum ScriptOperation: Equatable {
 
         switch(self) {
         case .zero: opConstant(0, stack: &stack)
-        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): try opPushBytes(data: d, stack: &stack, context: context)
+        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
+            guard !context.configuration.minimalData || isMinimalPush else {
+                throw ScriptError.nonMinimalPush
+            }
+            try opPushBytes(data: d, stack: &stack, context: context)
         case .oneNegate: op1Negate(&stack)
         case .reserved(_): throw ScriptError.disabledOperation
         case .success(_): preconditionFailure()
@@ -335,8 +360,8 @@ public enum ScriptOperation: Equatable {
         case .dup: try opDup(&stack)
         case .nip: try opNip(&stack)
         case .over: try opOver(&stack)
-        case .pick: try opPick(&stack)
-        case .roll: try opRoll(&stack)
+        case .pick: try opPick(&stack, context: &context)
+        case .roll: try opRoll(&stack, context: &context)
         case .rot: try opRot(&stack)
         case .swap: try opSwap(&stack)
         case .tuck: try opTuck(&stack)
@@ -351,33 +376,33 @@ public enum ScriptOperation: Equatable {
         case .xor: throw ScriptError.disabledOperation
         case .equal: try opEqual(&stack)
         case .equalVerify: try opEqualVerify(&stack)
-        case .oneAdd:  try op1Add(&stack)
-        case .oneSub:  try op1Sub(&stack)
+        case .oneAdd: try op1Add(&stack, context: &context)
+        case .oneSub:  try op1Sub(&stack, context: &context)
         case .twoMul: throw ScriptError.disabledOperation
         case .twoDiv: throw ScriptError.disabledOperation
-        case .negate: try opNegate(&stack)
-        case .abs: try opAbs(&stack)
-        case .not: try opNot(&stack)
-        case .zeroNotEqual: try op0NotEqual(&stack)
-        case .add: try opAdd(&stack)
-        case .sub: try opSub(&stack)
+        case .negate: try opNegate(&stack, context: &context)
+        case .abs: try opAbs(&stack, context: &context)
+        case .not: try opNot(&stack, context: &context)
+        case .zeroNotEqual: try op0NotEqual(&stack, context: &context)
+        case .add: try opAdd(&stack, context: &context)
+        case .sub: try opSub(&stack, context: &context)
         case .mul: throw ScriptError.disabledOperation
         case .div: throw ScriptError.disabledOperation
         case .mod: throw ScriptError.disabledOperation
         case .lShift: throw ScriptError.disabledOperation
         case .rShift: throw ScriptError.disabledOperation
-        case .boolAnd: try opBoolAnd(&stack)
-        case .boolOr: try opBoolOr(&stack)
-        case .numEqual: try opNumEqual(&stack)
-        case .numEqualVerify: try opNumEqualVerify(&stack)
-        case .numNotEqual: try opNumNotEqual(&stack)
-        case .lessThan: try opLessThan(&stack)
-        case .greaterThan: try opGreaterThan(&stack)
-        case .lessThanOrEqual: try opLessThanOrEqual(&stack)
-        case .greaterThanOrEqual: try opGreaterThanOrEqual(&stack)
-        case .min: try opMin(&stack)
-        case .max: try opMax(&stack)
-        case .within: try opWithin(&stack)
+        case .boolAnd: try opBoolAnd(&stack, context: &context)
+        case .boolOr: try opBoolOr(&stack, context: &context)
+        case .numEqual: try opNumEqual(&stack, context: &context)
+        case .numEqualVerify: try opNumEqualVerify(&stack, context: &context)
+        case .numNotEqual: try opNumNotEqual(&stack, context: &context)
+        case .lessThan: try opLessThan(&stack, context: &context)
+        case .greaterThan: try opGreaterThan(&stack, context: &context)
+        case .lessThanOrEqual: try opLessThanOrEqual(&stack, context: &context)
+        case .greaterThanOrEqual: try opGreaterThanOrEqual(&stack, context: &context)
+        case .min: try opMin(&stack, context: &context)
+        case .max: try opMax(&stack, context: &context)
+        case .within: try opWithin(&stack, context: &context)
         case .ripemd160: try opRIPEMD160(&stack)
         case .sha1: try opSHA1(&stack)
         case .sha256: try opSHA256(&stack)
