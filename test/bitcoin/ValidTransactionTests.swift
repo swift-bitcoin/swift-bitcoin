@@ -19,7 +19,8 @@ final class ValidTransactionTests: XCTestCase {
             excludeFlags.remove("NONE")
             let config = ScriptConfigurarion(
                 strictDER: !excludeFlags.contains("DERSIG"),
-                pushOnly:  !excludeFlags.contains("SIGPUSHONLY"),
+                pushOnly: !excludeFlags.contains("SIGPUSHONLY"),
+                minimalData: !excludeFlags.contains("MINIMALDATA"),
                 lowS: !excludeFlags.contains("LOW_S"),
                 cleanStack: !excludeFlags.contains("CLEANSTACK"),
                 nullDummy: !excludeFlags.contains("NULLDUMMY"),
@@ -41,7 +42,7 @@ final class ValidTransactionTests: XCTestCase {
             )
             let result = tx.verifyScript(previousOutputs: previousOutputs, configuration: config)
             XCTAssert(result)
-            if !excludeFlags.isEmpty && !excludeFlags.contains("MINIMALDATA") {
+            if !excludeFlags.isEmpty {
                  let failure = tx.verifyScript(previousOutputs: previousOutputs, configuration: .standard)
                  XCTAssertFalse(failure)
             }

@@ -151,4 +151,159 @@ final class ScriptNumberTests: XCTestCase {
         dataBack = b.data
         XCTAssertEqual(dataBack, zeroData)
     }
+
+    func testMinimalData() throws {
+        var number: ScriptNumber = .negativeOne
+
+        let zero = Data([])
+        XCTAssertNoThrow(number = try ScriptNumber(zero))
+        XCTAssertEqual(number, .zero)
+        XCTAssertNoThrow(number = try ScriptNumber(zero, minimal: true))
+        XCTAssertEqual(number, .zero)
+
+        let explicitZero = Data([0b00000000])
+        XCTAssertNoThrow(number = try ScriptNumber(explicitZero))
+        XCTAssertEqual(number, .zero)
+        do {
+            _ = try ScriptNumber(explicitZero, minimal: true)
+        } catch ScriptError.zeroPaddedNumber {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let zeroPaddedZero = Data([0b00000000, 0b00000000])
+        XCTAssertNoThrow(number = try ScriptNumber(zeroPaddedZero))
+        XCTAssertEqual(number, .zero)
+        do {
+            _ = try ScriptNumber(zeroPaddedZero, minimal: true)
+        } catch ScriptError.zeroPaddedNumber {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let doublePaddedZero = Data([0b00000000, 0b00000000, 0b00000000])
+        XCTAssertNoThrow(number = try ScriptNumber(doublePaddedZero))
+        XCTAssertEqual(number, .zero)
+        do {
+            _ = try ScriptNumber(doublePaddedZero, minimal: true)
+        } catch ScriptError.zeroPaddedNumber {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let negativeZero = Data([0b10000000])
+        XCTAssertNoThrow(number = try ScriptNumber(negativeZero))
+        XCTAssertEqual(number, .zero)
+        do {
+            _ = try ScriptNumber(negativeZero, minimal: true)
+        } catch ScriptError.negativeZero {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let negativeZeroPadded = Data([0b00000000, 0b10000000]) // Little endian
+        XCTAssertNoThrow(number = try ScriptNumber(negativeZeroPadded))
+        XCTAssertEqual(number, .zero)
+        do {
+            _ = try ScriptNumber(negativeZeroPadded, minimal: true)
+        } catch ScriptError.negativeZero {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let negativeZeroDoublePadded = Data([0b00000000, 0b00000000, 0b10000000])
+        XCTAssertNoThrow(number = try ScriptNumber(negativeZeroDoublePadded))
+        XCTAssertEqual(number, .zero)
+        do {
+            _ = try ScriptNumber(negativeZeroDoublePadded, minimal: true)
+        } catch ScriptError.negativeZero {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let negativeOne = Data([0b10000001])
+        XCTAssertNoThrow(number = try ScriptNumber(negativeOne))
+        XCTAssertEqual(number, .negativeOne)
+        XCTAssertNoThrow(number = try ScriptNumber(negativeOne, minimal: true))
+        XCTAssertEqual(number, .negativeOne)
+
+        let negativeOnePadded = Data([0b00000001, 0b10000000])
+        XCTAssertNoThrow(number = try ScriptNumber(negativeOnePadded))
+        XCTAssertEqual(number, .negativeOne)
+        do {
+            _ = try ScriptNumber(negativeOnePadded, minimal: true)
+        } catch ScriptError.zeroPaddedNumber {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let negativeOneDoublePadded = Data([0b00000001, 0b00000000, 0b10000000])
+        XCTAssertNoThrow(number = try ScriptNumber(negativeOneDoublePadded))
+        XCTAssertEqual(number, .negativeOne)
+        do {
+            _ = try ScriptNumber(negativeOneDoublePadded, minimal: true)
+        } catch ScriptError.zeroPaddedNumber {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let minus127 = Data([0b11111111])
+        XCTAssertNoThrow(number = try ScriptNumber(minus127))
+        XCTAssertEqual(number.value, -127)
+        XCTAssertNoThrow(number = try ScriptNumber(minus127, minimal: true))
+        XCTAssertEqual(number.value, -127)
+
+        let possitive255 = Data([0b11111111, 0b00000000])
+        XCTAssertNoThrow(number = try ScriptNumber(possitive255))
+        XCTAssertEqual(number.value, 255)
+        XCTAssertNoThrow(number = try ScriptNumber(possitive255, minimal: true))
+        XCTAssertEqual(number.value, 255)
+
+        let possitive255Padded = Data([0b11111111, 0b00000000, 0b00000000])
+        XCTAssertNoThrow(number = try ScriptNumber(possitive255Padded))
+        XCTAssertEqual(number.value, 255)
+        do {
+            _ = try ScriptNumber(possitive255Padded, minimal: true)
+        } catch ScriptError.zeroPaddedNumber {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let maxBytesPadded = Data([0b00000000, 0b00000000, 0b00000000, 0b01000000, 0b00000000])
+        XCTAssertNoThrow(number = try ScriptNumber(maxBytesPadded, extendedLength: true))
+        XCTAssertEqual(number.value, 0x40000000)
+        do {
+            _ = try ScriptNumber(maxBytesPadded, extendedLength: true, minimal: true)
+        } catch ScriptError.zeroPaddedNumber {
+            // Expected
+        } catch {
+            // Wrong error
+            XCTFail()
+        }
+
+        let maxBytesPaddingOk = Data([0b00000000, 0b00000000, 0b00000000, 0b10000000, 0b00000000])
+        XCTAssertNoThrow(number = try ScriptNumber(maxBytesPaddingOk, extendedLength: true))
+        XCTAssertEqual(number.value, 0x80000000)
+        XCTAssertNoThrow(number = try ScriptNumber(maxBytesPaddingOk, extendedLength: true, minimal: true))
+        XCTAssertEqual(number.value, 0x80000000)
+
+    }
 }

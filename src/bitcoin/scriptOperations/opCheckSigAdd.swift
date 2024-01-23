@@ -11,7 +11,7 @@ func opCheckSigAdd(_ stack: inout [Data], context: inout ScriptContext) throws {
     // If fewer than 3 elements are on the stack, the script MUST fail and terminate immediately.
     let (sig, nData, publicKey) = try getTernaryParams(&stack)
 
-    var n = try ScriptNumber(nData)
+    var n = try ScriptNumber(nData, minimal: context.configuration.minimalData)
     guard n.size <= 4 else {
         // - If n is larger than 4 bytes, the script MUST fail and terminate immediately.
         throw ScriptError.invalidCheckSigAddArgument

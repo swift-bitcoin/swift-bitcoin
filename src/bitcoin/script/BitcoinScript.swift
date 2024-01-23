@@ -98,7 +98,7 @@ public struct BitcoinScript: Equatable {
         if sigVersion != .base && sigVersion != .witnessV0 &&
            operations.contains(where: { if case .success(_) = $0 { true } else { false }}) {
             if configuration.discourageOpSuccess {
-                throw ScriptError.disallowedTaprootVersion
+                throw ScriptError.disallowedOpSuccess
             }
             return // Do not run the script.
         }
@@ -119,7 +119,6 @@ public struct BitcoinScript: Equatable {
             if sigVersion != .base && stack.count + context.altStack.count > Self.maxStackElements {
                 throw ScriptError.stacksLimitExceeded
             }
-
             context.programCounter += operation.size
         }
         guard context.pendingIfOperations.isEmpty, context.pendingElseOperations == 0 else {

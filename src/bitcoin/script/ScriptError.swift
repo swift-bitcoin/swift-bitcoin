@@ -13,6 +13,9 @@ enum ScriptError: Error {
          unknownOperation,
          disabledOperation,
          numberOverflow,
+         negativeZero, /// BIP62 rule 4
+         zeroPaddedNumber, /// BIP62 rule 4
+         nonMinimalPush, /// BIP62 rule 3
          nonMinimalBoolean,
          nonLowSSignature,
          invalidPublicKeyEncoding,
