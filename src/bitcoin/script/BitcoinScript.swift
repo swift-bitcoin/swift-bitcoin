@@ -120,6 +120,7 @@ public struct BitcoinScript: Equatable {
                 throw ScriptError.stacksLimitExceeded
             }
             context.programCounter += operation.size
+            context.operationIndex += 1
         }
         guard context.pendingIfOperations.isEmpty, context.pendingElseOperations == 0 else {
             throw ScriptError.malformedIfElseEndIf

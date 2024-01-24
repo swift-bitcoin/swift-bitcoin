@@ -48,7 +48,6 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 var successInputs = unsignedTx.inputs
                 successInputs[inputIndex] = successInput
                 let successTx = BitcoinTransaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: successInputs, outputs: unsignedTx.outputs)
-                // TODO: Some test vectors fail when invalid signature causes throw. #96
                 XCTAssertNoThrow(try successTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: testCase.final ? config : allOff))
             }
             if let failure = testCase.failure, testCase.final {
@@ -439,6 +438,7 @@ fileprivate let coreTestAssets: [TestVector] = [
         flags: "P2SH,DERSIG,CHECKLOCKTIMEVERIFY,CHECKSEQUENCEVERIFY,WITNESS,NULLDUMMY",
         final: true,
         comment: "inactive/scriptpath_valid"),
+
     .init(
         tx: "0100000001605621a03382cb6c03729f48733fb2863b7b80c7baf63619ce8ab7ed18bc67973801000000a540c16001bac5e900000000001600142abae6d7aea25cac845b2db5562441061d6a5470a8c8fd2e",
         previousOutputs: ["7258be010000000017a9144a9229fac481adcd524a871660a35fc42d8a2abe87"], inputIndex: 0,
@@ -447,6 +447,7 @@ fileprivate let coreTestAssets: [TestVector] = [
             witness: ["5d9fa8ea5af817e0e750a5472bf3169d5460936edf8c431d0f9a46cd672663edb923c5034adc38d7e9727cfa3f9d3a989d779d320053b5ba005cc8ac22088446"]),
         flags: "P2SH,DERSIG,CHECKLOCKTIMEVERIFY,CHECKSEQUENCEVERIFY,WITNESS,NULLDUMMY,TAPROOT",
         comment: "applic/keypath"),
+
     .init(
         tx: "8543a0730179d67f673182ff2d7efc475d8bc79f42bd5d194880beec76d43cc360b93231b36e010000008de7fdae01c2db1d00000000001600144b2160303fccb7d0670992b0811ce3d03963f67fac487235",
         previousOutputs: ["396ca5010000000022512066c31cf2af5274258a6bbf06cd454ab719926fe2aba78e7ff2f5a6cb364e674a"], inputIndex: 0,

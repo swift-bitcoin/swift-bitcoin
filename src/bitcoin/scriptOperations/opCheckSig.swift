@@ -45,9 +45,8 @@ func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
                 var cache = SighashCache() // TODO: Hold on to cache.
                 let sighash = context.transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
                 result = verifySchnorr(sig: signature, msg: sighash, publicKey: publicKey)
-                // TODO: The following rule makes some test vectors fail. #96
                 // Validation failure in this case immediately terminates script execution with failure.
-                // guard result else { throw ScriptError.invalidSchnorrSignature }
+                guard result else { throw ScriptError.invalidSchnorrSignature }
             } else {
                 result = true
             }

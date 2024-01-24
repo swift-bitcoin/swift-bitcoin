@@ -24,6 +24,7 @@ struct ScriptContext {
     let configuration: ScriptConfigurarion
     let script: BitcoinScript
     var programCounter = 0
+    var operationIndex = 0
     var nonPushOperations = 0
 
     /// BIP342: Tapscript signature operations budget.
@@ -52,6 +53,10 @@ struct ScriptContext {
     let keyVersion: UInt8? = 0
 
     var sigVersion: SigVersion { script.sigVersion }
+
+    var currentOp: ScriptOperation {
+        script.operations[operationIndex]
+    }
 
     /// Support for `OP_IF`, `OP_NOTIF`, `OP_ELSE` and `OP_ENDIF`.
     var evaluateBranch: Bool {

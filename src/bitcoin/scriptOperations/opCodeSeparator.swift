@@ -7,4 +7,5 @@ func opCodeSeparator(context: inout ScriptContext) throws {
     }
     guard context.evaluateBranch else { return }
     context.lastCodeSeparatorOffset = context.programCounter
+    context.lastCodeSeparatorIndex = context.operationIndex
 }
