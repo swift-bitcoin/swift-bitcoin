@@ -328,11 +328,7 @@ public enum ScriptOperation: Equatable {
 
         switch(self) {
         case .zero: opConstant(0, stack: &stack)
-        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
-            guard !context.configuration.minimalData || isMinimalPush else {
-                throw ScriptError.nonMinimalPush
-            }
-            try opPushBytes(data: d, stack: &stack, context: context)
+        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): try opPushBytes(data: d, stack: &stack, context: context)
         case .oneNegate: op1Negate(&stack)
         case .reserved(_): throw ScriptError.disabledOperation
         case .success(_): preconditionFailure()
