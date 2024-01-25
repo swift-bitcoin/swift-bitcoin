@@ -1,6 +1,7 @@
 import Foundation
 import LibSECP256k1
 
+/// Requires global signing context to be initialized.
 public func createSecretKey() -> Data {
     guard let eccSigningContext else { preconditionFailure() }
     var secretKey: [UInt8]
