@@ -101,7 +101,7 @@ final class BIP32Tests: XCTestCase {
         expectedXprv = "xprv9wSp6B7kry3Vj9m1zSnLvN3xH8RdsPP1Mh7fAaR7aRLcQMKTR2vidYEeEg2mUCTAwCd6vnxVrcjfy2kRgVsFawNzmjuHc2YmYRmagcEPdU9"
         let xprvM0h27h = try Wallet.deriveHDKey(key: xprvM0, index: 2147483647, harden: true)
         XCTAssertEqual(xprvM0h27h, expectedXprv)
-        var xpubM0h27h = try Wallet.neuterHDPrivateKey(key: xprvM0h27h)
+        let xpubM0h27h = try Wallet.neuterHDPrivateKey(key: xprvM0h27h)
         XCTAssertEqual(xpubM0h27h, expectedXpub)
 
         // Chain m/0/2147483647h/1
@@ -119,7 +119,7 @@ final class BIP32Tests: XCTestCase {
         expectedXprv = "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc"
         let xprvM0h27h126h = try Wallet.deriveHDKey(key: xprvM0h27h1, index: 2147483646, harden: true)
         XCTAssertEqual(xprvM0h27h126h, expectedXprv)
-        var xpubM0h27h126h = try Wallet.neuterHDPrivateKey(key: xprvM0h27h126h)
+        let xpubM0h27h126h = try Wallet.neuterHDPrivateKey(key: xprvM0h27h126h)
         XCTAssertEqual(xpubM0h27h126h, expectedXpub)
 
         // Chain m/0/2147483647h/1/2147483646h/2
@@ -189,58 +189,186 @@ final class BIP32Tests: XCTestCase {
         XCTAssertEqual(xpubM0h1h, expectedXpub)
     }
 
-    /// Test vector 5 - **NOT YET PASSING** see #143
+    /// Test vector 5
     /// These vectors test that invalid extended keys are recognized as invalid.
     func testVector5() throws {
-        // TODO: Enable actual checks after #143
-        var invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6LBpB85b3D2yc8sfvZU521AAwdZafEz7mnzBBsz4wKY5fTtTQBm"
-        var hdKey = HDExtendedKey(invalidKey)
-        // (pubkey version / prvkey mismatch)
 
-        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGTQQD3dC4H2D5GBj7vWvSQaaBv5cxi9gafk7NF3pnBju6dwKvH"
-        hdKey = HDExtendedKey(invalidKey)
+        // (pubkey version / prvkey mismatch)
+        var invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6LBpB85b3D2yc8sfvZU521AAwdZafEz7mnzBBsz4wKY5fTtTQBm"
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidPublicKeyEncoding {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (prvkey version / pubkey mismatch)
-        invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Txnt3siSujt9RCVYsx4qHZGc62TG4McvMGcAUjeuwZdduYEvFn"
-        hdKey = HDExtendedKey(invalidKey)
+        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGTQQD3dC4H2D5GBj7vWvSQaaBv5cxi9gafk7NF3pnBju6dwKvH"
+        _ = try? HDExtendedKey(invalidKey)
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidPrivateKeyLength {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (invalid pubkey prefix 04)
-        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGpWnsj83BHtEy5Zt8CcDr1UiRXuWCmTQLxEK9vbz5gPstX92JQ"
-        hdKey = HDExtendedKey(invalidKey)
+        invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Txnt3siSujt9RCVYsx4qHZGc62TG4McvMGcAUjeuwZdduYEvFn"
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidPublicKeyEncoding {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (invalid prvkey prefix 04)
-        invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6N8ZMMXctdiCjxTNq964yKkwrkBJJwpzZS4HS2fxvyYUA4q2Xe4"
-        hdKey = HDExtendedKey(invalidKey)
+        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGpWnsj83BHtEy5Zt8CcDr1UiRXuWCmTQLxEK9vbz5gPstX92JQ"
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidPrivateKeyLength {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (invalid pubkey prefix 01)
-        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD9y5gkZ6Eq3Rjuahrv17fEQ3Qen6J"
-        hdKey = HDExtendedKey(invalidKey)
+        invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6N8ZMMXctdiCjxTNq964yKkwrkBJJwpzZS4HS2fxvyYUA4q2Xe4"
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidPublicKeyEncoding {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (invalid prvkey prefix 01)
+        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD9y5gkZ6Eq3Rjuahrv17fEQ3Qen6J"
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidPrivateKeyLength {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
+        // (zero depth with non-zero parent fingerprint)
         invalidKey = "xprv9s2SPatNQ9Vc6GTbVMFPFo7jsaZySyzk7L8n2uqKXJen3KUmvQNTuLh3fhZMBoG3G4ZW1N2kZuHEPY53qmbZzCHshoQnNf4GvELZfqTUrcv"
-        hdKey = HDExtendedKey(invalidKey)
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.zeroDepthNonZeroFingerprint {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (zero depth with non-zero parent fingerprint)
         invalidKey = "xpub661no6RGEX3uJkY4bNnPcw4URcQTrSibUZ4NqJEw5eBkv7ovTwgiT91XX27VbEXGENhYRCf7hyEbWrR3FewATdCEebj6znwMfQkhRYHRLpJ"
-        hdKey = HDExtendedKey(invalidKey)
-        // (zero depth with non-zero parent fingerprint)
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.zeroDepthNonZeroFingerprint {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
+        // (zero depth with non-zero index)
         invalidKey = "xprv9s21ZrQH4r4TsiLvyLXqM9P7k1K3EYhA1kkD6xuquB5i39AU8KF42acDyL3qsDbU9NmZn6MsGSUYZEsuoePmjzsB3eFKSUEh3Gu1N3cqVUN"
-        hdKey = HDExtendedKey(invalidKey)
+        _ = try? HDExtendedKey(invalidKey)
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.zeroDepthNonZeroIndex {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (zero depth with non-zero index)
         invalidKey = "xpub661MyMwAuDcm6CRQ5N4qiHKrJ39Xe1R1NyfouMKTTWcguwVcfrZJaNvhpebzGerh7gucBvzEQWRugZDuDXjNDRmXzSZe4c7mnTK97pTvGS8"
-        hdKey = HDExtendedKey(invalidKey)
-        // (zero depth with non-zero index)
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.zeroDepthNonZeroIndex {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
+        // (unknown extended key version)
         invalidKey = "DMwo58pR1QLEFihHiXPVykYB6fJmsTeHvyTp7hRThAtCX8CvYzgPcn8XnmdfHGMQzT7ayAmfo4z3gY5KfbrZWZ6St24UVf2Qgo6oujFktLHdHY4"
-        hdKey = HDExtendedKey(invalidKey)
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.unknownNetwork {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (unknown extended key version)
         invalidKey = "DMwo58pR1QLEFihHiXPVykYB6fJmsTeHvyTp7hRThAtCX8CvYzgPcn8XnmdfHPmHJiEDXkTiJTVV9rHEBUem2mwVbbNfvT2MTcAqj3nesx8uBf9"
-        hdKey = HDExtendedKey(invalidKey)
-        // (unknown extended key version)
-        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzF93Y5wvzdUayhgkkFoicQZcP3y52uPPxFnfoLZB21Teqt1VvEHx"
-        hdKey = HDExtendedKey(invalidKey)
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.unknownNetwork {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (private key 0 not in 1..n-1)
-        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD5SDKr24z3aiUvKr9bJpdrcLg1y3G"
-        hdKey = HDExtendedKey(invalidKey)
+        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzF93Y5wvzdUayhgkkFoicQZcP3y52uPPxFnfoLZB21Teqt1VvEHx"
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidSecretKey {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (private key n not in 1..n-1)
-        invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Q5JXayek4PRsn35jii4veMimro1xefsM58PgBMrvdYre8QyULY"
-        hdKey = HDExtendedKey(invalidKey)
+        invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD5SDKr24z3aiUvKr9bJpdrcLg1y3G"
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidSecretKey {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
         // (invalid pubkey 020000000000000000000000000000000000000000000000000000000000000007)
+        invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Q5JXayek4PRsn35jii4veMimro1xefsM58PgBMrvdYre8QyULY"
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidPublicKey {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
+
+        // GBxrMPHL (invalid checksum)
         invalidKey = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yu"
-        hdKey = HDExtendedKey(invalidKey)
-        //GBxrMPHL (invalid checksum)
+        do {
+            _ = try HDExtendedKey(invalidKey)
+            XCTFail() // Previous call should have thrown
+        } catch HDExtendedKeyError.invalidEncoding {
+            // Ok, expected
+        } catch {
+            XCTFail() // Wrong error
+        }
     }
 }
