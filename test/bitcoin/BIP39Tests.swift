@@ -5,7 +5,7 @@ final class BIP39Tests: XCTestCase {
 
     func testAll() throws {
         let passphrase = "TREZOR"
-        for language in ["en", "es", "jp", "zh", "zh-Hant"] {
+        for language in ["cs", "fr", "it", "ko", "pt", "en", "es", "jp", "zh", "zh-Hant"] {
             for testCase in testVector[language]! {
                 let entropy = testCase[0]
                 let expectedMnemonic = testCase[1]
@@ -23,6 +23,736 @@ final class BIP39Tests: XCTestCase {
 }
 
 let testVector: [String: [[String]]] = [
+    "cs": [
+        [
+            "00000000000000000000000000000000",
+            "abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace agrese",
+            "872501bed75c98fbf943a67907bf394995f337e9adfa23687282d1135c262421715a0bcccfe2d3f5f8b72c8e2fa12a7a7267f8047b744557f4a9d49d11ccc75f",
+            "xprv9s21ZrQH143K3rnjkVvSaFkwgg1J2tnUAeqv8SCEWTWdLVZiJsjM6Z5ieeUnrR1Ws6sDb8Guqp43CXVRmPooUs2cjwefSXh3EyXx2vmzZ96"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "obrazec znak uznat zubovina zeman skupina zrcadlo vzchopit obrazec znak uznat zubr",
+            "68e1bd31ed5f20c9ab108c03b524e85209b0b27af80cb5d48fa71d03dbb528b73c2349bb8576f9b68825272984061594f520e54605a4898ba61c433d06bf5de7",
+            "xprv9s21ZrQH143K4JXKqKovjKKSb7zgQcgbuKNNjaWyYBjjdny1SyXiPbjzSNUR6uLmNmPJ1NcWzeHDLqmopeTTbZ3DbPobsm4pbDrNrqhEDbK"
+        ],
+        [
+            "80808080808080808080808080808080",
+            "obvinit bageta doma amputace bidlo jedle arogance butik obvinit bageta doma akce",
+            "067089f8edbbb8bc8ab6d0f3e29f250d136955745797a20b63fd4372627c51c4576ebd5fb6c6d4825d21f448cc24b342ce3b0117fedf41369cb5a6be77494aa7",
+            "xprv9s21ZrQH143K4YKjBNHoBtUM2qhAvjVvXsBZJGAhogbqhBbgTvjRjPSgC5ShPUeGRCRTdRMYLZ7wWxRWwcvgQm9xX7b5udk9p5yfiekNMQK"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffff",
+            "zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zticha",
+            "04d0a733d43c640a4492b670a9549c60a358a681891cc2337a01a3c8288cd2941b7e057dbcf2dffd1e614cf5fcc9d38d9228fbd3ea5ceb508b8aacac5f35ccd9",
+            "xprv9s21ZrQH143K3pcHonm1bGBQvbLf6Ty3c7HKCyzFr4C4DnvLPaT1JUUJ4MxkWyNhPpCjVsLMJEndqUocNxhqZ3UfFwxAsn7zajkE7n3yXYq"
+        ],
+        [
+            "000000000000000000000000000000000000000000000000",
+            "abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace balonek",
+            "b5eb0b74cb5f2c616e7136182597ab61dd94594d22f15ce6c94e04eb7336a56d3e445ec1279c1f04b861de5f7c6b2fc95227db53be4996de3ba87d6d76b09098",
+            "xprv9s21ZrQH143K2Edeaippdsom8CKbdVxcorYqTexQoxhdci7pVuv6K1yFYnGunPP3d6oKyE3ax354UgfNUu6Kes1hvjvJcoyHfyjxwbjhFqM"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "obrazec znak uznat zubovina zeman skupina zrcadlo vzchopit obrazec znak uznat zubovina zeman skupina zrcadlo vzchopit obrazec zmije",
+            "93ff13dee31715a6568609df3f7ea295d58728a65611ea03620d2105a0efbbaa39d8b6541b3b5a57a25dbdfd5006f0c58779a7ed196e25a1a97d1442e3f080fa",
+            "xprv9s21ZrQH143K3SW9C3X4jc47HaXuDHjRvpCDxoo7PgTpMG5EZoFkDCkCzhs2yMvaUQidKKXBDChe2ns524iFEbrJFqNCPFvR1bjyRmq5rxj"
+        ],
+        [
+            "808080808080808080808080808080808080808080808080",
+            "obvinit bageta doma amputace bidlo jedle arogance butik obvinit bageta doma amputace bidlo jedle arogance butik obvinit bezinka",
+            "1843be39a115dad287e10d256d2e9bb81244cefda2b7ead8a762f53033512abc7b6db26e2ebe8053fb82e313c24bcf62ae84ba4aa2900ca0fcdcb1affc38887a",
+            "xprv9s21ZrQH143K3uYc2wzd6UfPLXqfQKsYJVyWL2HeCZ1YKhqd3jt5y4w9bfLTf4bAqvD3NbJ8ifa6vbTvHL2t87wsgi22RXd8c8Moknbzdcc"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffff",
+            "zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zlehka",
+            "43b7d9b1b25d046f8a89fb57ba10bed11b5273574bb820eb01cc0733a421f1c98ceb2db42d299e7e96aa2c58435e916821bc9d505525b3b5448ecd4c97babe0b",
+            "xprv9s21ZrQH143K3LM3GwVcGcoMnK9UmQKxTaq1GiX1HsG5u76FmfUi5cTcH97WSXxVNLgURJCgL8RT1qDNsiQ9Sw1DDVAhiu4h4xMz6mtFDzL"
+        ],
+        [
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace abdikace branka",
+            "dd2a9f662649585707dadc6e8b2df2c0e0e2691d53bacea2212aff4063ab4fdc79b703a7ce6744da31cd2ee12e56b9ee0f430a238b892fa660ed0ce879f2c472",
+            "xprv9s21ZrQH143K3RHkXA6CEXUxT6nXGMM1zKuxgGQBD6k9gErraXywHoiqx4syweAftp5SCU7XSoFz5T3RbPs3HNZtZFa5JcR9ZD5TUmV15tB"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "obrazec znak uznat zubovina zeman skupina zrcadlo vzchopit obrazec znak uznat zubovina zeman skupina zrcadlo vzchopit obrazec znak uznat zubovina zeman skupina zrcadlo veskrze",
+            "f4e4e2d8817cbb3925d6a0e8a2a466dbe1353a5885ec203030722607b8b5f229c71066c18681fda4291d0e323e4f6ba099b5b7efff442adfa14124fd07147fa8",
+            "xprv9s21ZrQH143K4bgmXSbkNXn4ntJoQWUwRscM7yiZjzHbBFc5nMmgMeVcVJS6ZqXcWaTp6Phy8PAji336TDSNmiSWK7cmuzCSxkobg11RTN2"
+        ],
+        [
+            "8080808080808080808080808080808080808080808080808080808080808080",
+            "obvinit bageta doma amputace bidlo jedle arogance butik obvinit bageta doma amputace bidlo jedle arogance butik obvinit bageta doma amputace bidlo jedle arogance cihla",
+            "bb8b82baced0db7764e102d1d1f68035269e84ec6c1ed0e09b2a31094330967aff9e1a490a407fef736fb8719c60bfb8cb0be9b27fce97c3b619409c195e2f1d",
+            "xprv9s21ZrQH143K2aufrtmAWe6Ppto9BA4jSHu3XmKbMemyWEJ37Zfwxie44JJi8pXDxfjkSv8LxdKKs9rmV1R9SxCfAtcttf6g2JK3mRwPyzM"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zvyk zavolat",
+            "3991e1ccc78af78d58cae577b786f7c950e1f23311d0c5f6d51b884d6142a6b4fc91a227c895313bf3d35731682678653101f51546717d60438d54dead32f834",
+            "xprv9s21ZrQH143K26BAmMqZUKy3rpA3bYvGiip1tjQ2gnLwKrm9zucVU6n5PSJ9FLWeW1JjQJyZJ52QAV3HtevGNQ3BnTh91mAWgaacd6UenQ7"
+        ],
+        [
+            "9e885d952ad362caeb4efe34a8e91bd2",
+            "pokoj jogurt malovat kroupa holub malvice rachot uznat hnout kasa karamel potupa",
+            "f3922b8086d559436ba2d04bc2aae4174e6504d7d4d451f7282d0b41a1b8cc958b45a896985e0b9316ad09c62f7d62dac85bc3d3e2e2423bcad3336412fd33f8",
+            "xprv9s21ZrQH143K3gt3UuAosyvKpAmRpGfWuM19LVhrpWshTnv8o9Z2SPx7PxfgPQSZtm7U34cWo2NUrUtWCtXLhKDFZxg9pjM9KRde9dLwsZC"
+        ],
+        [
+            "6610b25967cdcca9d59875f5cb50b0ea75433311869e930b",
+            "masakr odtok pijavice tajga upravit krmelec krvinka buditel zavinit lakomec flirt traktor kresba plevel kapitola tlupa paseka ladnost",
+            "8c7c2b7767caa63139099cc5faf955cc582abc43494fc0f94b1f490ddfb7c221df55b663711755602c1354862c1da7a1241d17888f1be6f4ba7f58634758ea0b",
+            "xprv9s21ZrQH143K4TFHpb3sbWvTgFjmH2b2r6TAWi1L9UxyL2hBXQeDwVgQmR7CG3agahDGRPWJZDWZjcAYwEGjRzycaRzTmbmxjaJxujKScF1"
+        ],
+        [
+            "68a79eaca2324873eacc50cb9c6eca8cc68ea5d936f98787c60c7ebc74e6ce7c",
+            "migrace iluze pukavec kaktus drogerie hrobka pukavec onehdy suchar veterina rorejs cukr mihule koza makovice uvozovka oklika inzerce odhadce zprudka spousta namluvit hrobka obsluha",
+            "4b315b6c57139dfd19187b6029ad8b2fc6165dd97a43e59c4606a11deb192b25df5ad4e8fc3b4c2da9b9e80eae48946d769bc7bc95786f93b934bbc842cb8002",
+            "xprv9s21ZrQH143K2ro2PraMEHNWQX4w969ZUPVBZFY8pViiRNPhsRjFbj2exS12cg2YCa6kkYUCSJBhuHCicMAGqj1ZtSvKYXLjaErhCBve7XT"
+        ],
+        [
+            "c0ba5a8e914111210f2bd131f3d5e08d",
+            "sledovat ticho potkan dotaz carevna pahorek ihned nikterak hematom pokrok neochota cvik",
+            "ce64d48ded9f32127bc7ef66c829e32b576927ffa1f323f0020f58c3256fdeb5ee2ec7bc257bb492e4fa1ae1e7f41b8affd9f68a2143e2d54e443e54d866e6e0",
+            "xprv9s21ZrQH143K24d38NZ3eGjiZ5cuqmVJjsC2piMq6ZPSsEfgPf6F9XZJvfsExo6M2P5NCgdaUYgeLchyBw8sAWkH8joq4yMeNF1i12zXWWN"
+        ],
+        [
+            "6d9be1ee6ebd27a258115aad99b7317b9c8d28b6d76431c3",
+            "most uvolnit novota usmrtit terapie tehdy litovat filozof radon svrab surovina zdivo stanice pejsek ukrojit vymizet helma decibel",
+            "8efd8d7625a41d02e53b8f363678acb389136ee9b19512381417e7f3295cc5bea28a7feeadf29ed8c2bd617e67feee3c736bed06f29ed3538777d58187458955",
+            "xprv9s21ZrQH143K3Vd6GfvEYmC1ut3Z9uKS5weiaKT77zoz4uc4MaJMnQWsXYFLK2wp3DiARFbUyEv8yLqAirLmWMDmsXFhPioprwBiqQbTPb7"
+        ],
+        [
+            "9f6a2878b2520799a44ef18bc7df394e7061a224d2c33cd015b157d746869863",
+            "poloha koruna dobytek makak domluvit svatba paluba utahovat orlice jakost sypat podvod barva technika pastelka kurt ikona obvod mokro recept napnout kabel lord nasadit",
+            "e69afd8c8b83713ce327570ca2dd9d588dd1f266fde95d7848059fdcec016e8f9f587a8fcbdbd061ecd9a5e1e90f51f9453af914df7d8e9b5758f91a1963a413",
+            "xprv9s21ZrQH143K2zXve6cknQXePKGSMLedfyGDpgQZ5oNB7YKgyJqjXoZeQ4qj1vd2HZpnF77g1nqihMeAi7wnYd3c3hrgczNAadCKdetb2tf"
+        ],
+        [
+            "23db8160a31d3e0dca3688ed941adbf3",
+            "drak uniforma kuna kapka tmel bedna evoluce technika vypustit popadat rychlost vodstvo",
+            "cb409aa4d44356187fc1f0777afc3f0057bad31090e589e1a8a13911a0604e9ebe976bbbd1633b3320049e58ae4939591150f1b84fc552975d4c7b5774efd20f",
+            "xprv9s21ZrQH143K3S5abSGNCkH4QWovuVGtqjrufboCgkqDvPGUtnUgPFNqXwVyWMD45MmwRFDYUe7Ny89sqvCqxPMWtq2CDa14t1CYxLjefgT"
+        ],
+        [
+            "8197a4a47f0425faeaa69deebc05ca29c0a5b5cc76ceacc0",
+            "ochladit silnice exkurze zrnitost jiskra zprudka pstruh tlukot vytasit valoun najisto kralovat bobek uklidnit helma ubytovna pysk andulka",
+            "a295037a0335fc58e639e1eb4ad8c6679386cc0b6696c6c0947b9d4420083740c02a3c7e429c698b3650c5d370b87427ff094e17a18778d917cf5fa274c89b23",
+            "xprv9s21ZrQH143K3se5sFVgT6vXcaaKoaHse8ATQJAgDHVBfdwAT2BDgm5YoEPJKR7NN7o5ukvzfKvjZ16NsLG6qngxkRfQRKuSsqyFmcyjpf9"
+        ],
+        [
+            "066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad",
+            "bavlna mozaika ofsajd kukla obliba kormidlo monarcha batoh chmura mdloba makovice obilnice popel pohnutka duchovno panika neuron okupant rukavice kouzlo stehno badatel sklenice rozchod",
+            "a3314b5d32a47a746f1605029ef41e446e589ec3879b8509a93779bdb5df018c102dc93d3925b1bc04badc7b7e78ed3c79f05485a289d3a8f4731282f4b65f2e",
+            "xprv9s21ZrQH143K2NiewxC1w9akTDfjsfRQ7yyv42HTukKMZ2qqx9zRrq4YYoHUnEeSR9kVa8hY8vHzCYhPxzK8VF4vKJhQNAjGpn94j9r7nEi"
+        ],
+        [
+            "f30f8c1da665478f49b001d94c5fc452",
+            "zajet nutrie beton kobyla kriket sranda elektron abeceda uboze lump vzorek potvora",
+            "a5fe5fd9fc7a02f2753029978da50e8c1af2a773977ecfda7147c184374376fc1780d4c2516d23eb1559e9cf46cc6f60d30418ba05fc789295adc483f26641ea",
+            "xprv9s21ZrQH143K3Pg1Wcq1fLNYrSSbfioYAiYMqkY4bEN9JrUFnJNLsK2Z7b7stHtJae53w7GD7rrDjJ56CCMNYJzwpdC54pSFkCGV3VYwGbY"
+        ],
+        [
+            "c10ec20dc3cd9f652c7fac2f1230f7a3c828389a14392f05",
+            "slezina navzdory odjinud oklika ucho ropucha rohovka zavalit graf panenka invalida katedra odebrat deska metoda ohryzek graf flotila",
+            "73716db54d10471971852df2bda795452cfe9b38aaef918da7a2216a3b4249d76b4627b603a03537e5dc2152e54c709acba85d361f4978733af4b7366b13a61c",
+            "xprv9s21ZrQH143K2YLLxKi6GZjifUEoqww1zAAUd26JY5T54Z6HgEip3hkFKUfAAeVqEmZrdoHoahhm71MvBwkMTZALYrJtZfe4eLqMyZE1op1"
+        ],
+        [
+            "f585c11aec520db57dd353c69554b21a89b20fb0650966fa0a9d6f74fd989d8f",
+            "zavalit genetika kapusta tvrdost dopad ujmout zdobit mistr splav ptactvo fosfor hoch pocit beztak slon poplach mazivo tancovat pravda uvalit konkurs surovina nazvat vypadat",
+            "dba03d22ab6f6963abff6d9f9433a6aa733490dab58b39e3eef635c9f4fd6ad8242c3eecc4db0f26a447af06a089d935b3225e36615a07babdf2177ea3fd1670",
+            "xprv9s21ZrQH143K29UvdRPWan6npJHgHs7bmiduFR6qWzf5z7gFuqqcR7XoHpSBamvgTn1Qzy3JqMSuyxJEnFN5s2s9mbMna7WAiKheLFAA4x4"
+        ]
+    ],
+    "fr": [
+        [
+            "00000000000000000000000000000000",
+            "abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abeille",
+            "3bf3366c40256d7e2fca716fddf8673425c7c7e444af290ee1edf1bbf095e6e78a7190253f3e46f1e2069345d4b05ac17b242faa225c0a3e4d268976744e0698",
+            "xprv9s21ZrQH143K4ZsEXSdGmcpsqn4YxjPgHqa4DFvMRmD4oTkiFuYia3srKewVsU75LN4jP6PeXPYFWYpgP8B74tQjwG1GoQ9T8eJxGDjzibF"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "implorer visage sonnette voyage véloce pourpre volaille tribunal implorer visage sonnette voyelle",
+            "ab9180b7dfdde74e5cf8781e5692e2c0b55afa8bc1987fa8e14e3fb83c88b195c53e9f939f8febc33d2958f5fcd8add57843cb318d8886130ef9c9879c826357",
+            "xprv9s21ZrQH143K3MCzhsD85FFZ2d8vDN2QdRTN63gbU3qHjZxn7utU1kwYGR5bxQkssS1Tji4Tuw8vpTzDWogXxhbWYDKuZveeRBe5wiNsuFJ"
+        ],
+        [
+            "80808080808080808080808080808080",
+            "indexer acompte bolide abrasif agréable dédale abusif appuyer indexer acompte bolide abolir",
+            "0c1ece83a464688d74744723d609e30e191d05ab8c082cf34bb2405bc4363dbcf6a9f83707b577d230728b3943920f876ec844e86dd0d117152c23802d25be3f",
+            "xprv9s21ZrQH143K36u4b8J8pxUwCCnciUPZF3JjZsq5mPCDEpNWA1j4DnYDJ53NV7b6cmNTM6Je6DG11hJw8Fq1HXKEasrpxDC8WqaEsD5BPGq"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffff",
+            "zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie voter",
+            "7d2f168ce71ba3e40e74baf47a072a94e49973c0dbdb33a62b3a285ab167c704a85d6ce0d15cc6a4dd3bf1311334ee0d290ae7d20115863d5f5633b8dfacf2d4",
+            "xprv9s21ZrQH143K2AsqW9AAdu5C4zUaV45MgyzBQAYbEKtKusR83UzLwCZdqDwqJ59ebNryoNuVA5pEiY1eBYqr64UGkwZGezwaceCqxPWia7M"
+        ],
+        [
+            "000000000000000000000000000000000000000000000000",
+            "abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser adéquat",
+            "93d81d146eccb7c624cc25daa4cd52736d64bdc0fe020940157e73c108a87ee34d94d7e9554e02ea0f9a7ea5574426220bae7c4959c197a6c9e2318cb252683c",
+            "xprv9s21ZrQH143K2iCVwUFixFL9fh5f6XrcBfaLgRzozbBgzj3dTo7fBTn4EsQ8ERgq9hTPxFf2hgE57vJDfEGKwsegQFoo2mEM6HEgFavJkQU"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "implorer visage sonnette voyage véloce pourpre volaille tribunal implorer visage sonnette voyage véloce pourpre volaille tribunal implorer vinaigre",
+            "dcf42783150cdb92672c9ea7d13f145401661f10b89bfb012a803ca7713e97181ee28ac327a982060a7f8aaa6e8c649ca2c5b83c24458393fe41739ced31d987",
+            "xprv9s21ZrQH143K2Lq1fbvL5nedyALbSBmmm4EbcVduaPFArtunM6azzNy96pcKbLvVBQcFFDa3Agp54eMhCBH5Ehtbxitv525n2SrhYvALPiD"
+        ],
+        [
+            "808080808080808080808080808080808080808080808080",
+            "indexer acompte bolide abrasif agréable dédale abusif appuyer indexer acompte bolide abrasif agréable dédale abusif appuyer indexer agencer",
+            "b039606212ccadb0d05c7a0c08605c5137028d0253d26b9ad6ee113f9595700d9834b2eec8b224975a6d9585d7ad39e962036edcf07d5b125b0fc225d519982f",
+            "xprv9s21ZrQH143K3m5hJrQxzUdU4bDDvLSisrf1Cv5HQNCEzbUokwaVa8X1huTY2JaTPJug14EbopY3gtdfWjmVoo4CHLzuwjf5Jhdjgaqsh9n"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffff",
+            "zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie viande",
+            "e12d20a535ef5e9e2f87e05b5261bdb51451e052fe484feb87543f5cb7a8822c4aa0152492be1259fba00a28c1e95518a90f0645bdd0eb822516d37ac881f7e0",
+            "xprv9s21ZrQH143K2woSZYBmSoRYygWNGUUrkLiy2i4FmReSqyc568kb1siagkBpHFj6MzLbfuh8TaWKDckfnfphrYyKTAG2rk5y4sGv4fjn5gD"
+        ],
+        [
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser anaphore",
+            "0f3eec3279b55f3cacdbf1aef705a086078d7eb8048e402202572e7038e9487e39104b4794e88a42192af030a176b034fa36ca6641fb8128fd23c30806b96c23",
+            "xprv9s21ZrQH143K4UeephsshHgatV7uj2D2DotKpGrWx6ShwxPdRxXtyQWxnadSvjT8Df7UDxmRuiFJa92evePgqwgJSG5pY8VPJ8hNiyGHr1C"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "implorer visage sonnette voyage véloce pourpre volaille tribunal implorer visage sonnette voyage véloce pourpre volaille tribunal implorer visage sonnette voyage véloce pourpre volaille studieux",
+            "8f12b35fe92a7586dfbdab9721a91300d0dbe3185d0943021667e62fd5a643e0cf2443e544738c5234009aa50faac0dbb123ac847c31dc25d875c56fe39c6186",
+            "xprv9s21ZrQH143K43qySSryByKtU1Df5foSz6kDEHUsR524HZJzxnKrrU3wTdeSvHVvpitC8nAb2kdeVWGREu22KaiaMF3YjEZQdb7htpY6CXP"
+        ],
+        [
+            "8080808080808080808080808080808080808080808080808080808080808080",
+            "indexer acompte bolide abrasif agréable dédale abusif appuyer indexer acompte bolide abrasif agréable dédale abusif appuyer indexer acompte bolide abrasif agréable dédale abusif axiome",
+            "53ab1d10dc8de3a80171b5f00495a3b49e2c5afd486f8111b1afd0ad24f43eb0aab4acab1d4c51126beea32405947924c237157b29dca69fcf64eb635708895f",
+            "xprv9s21ZrQH143K31JiBbFJEViuVwAuWSD5X8PKzS4d2PoSCxHpBXpicCEMKndL8TURUZ2zeoA4vDGkECeJS9wMhrRcmW6ATmPmmwC3ziuBRdP"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie zoologie valable",
+            "b5e96f552ba44ec827c1bc5ef362e8cea68dd6f36f2c8640aeb171cf9b66198fbdf155fdbcf7dc505431068f972a92442f33cda0065afc1e9a7f5f7097ea6c6a",
+            "xprv9s21ZrQH143K2umcmDhRrUZ8wsZ7ACj6rvFCEuDK1coHWpo1RwYPvy3dpWmvPjstSMm9fm3igm9gjsAesjqAU6Tnejizy919FSmyofhRTyS"
+        ],
+        [
+            "9e885d952ad362caeb4efe34a8e91bd2",
+            "monument dépenser féroce entasser comédie ferveur optique sonnette codifier discuter dioxyde nerveux",
+            "d322acd69a849cce8719674eeb7cd76520de01ea35210012a44a5dcc19faf285202c3fb3c749a46d338ad54ddd398029ee308ee352a89f65180dbd3ff750dd50",
+            "xprv9s21ZrQH143K4RswQfcyMEjx6Kc5tEBR43MNp7XJH5mWushqBryZTc97VNPNVfRop62sGwu7Tg3vsd559P1G8h6M2N9j1Zj1vVn1919uvmb"
+        ],
+        [
+            "6610b25967cdcca9d59875f5cb50b0ea75433311869e930b",
+            "fiasco ivoire mardi révulsif signal enlever envahir anormal vaisseau essayer céleste sagesse engager mener différer ruisseau lutter esprit",
+            "3c0c90b30e1a8bd7aafda95f92fb09bae64988e2431d6c3896c8502f76203652f0db1d4640417d8d3f00ea4de59f1719513f1c01145eb8ee4b0fd73d4c4f706a",
+            "xprv9s21ZrQH143K3eSdUPkhpFZamFuu35iaZqRwFWijYkE54fvUKoSNBHkXetNx56yvcJSFoeHT9y4AFuWTcFFzezPuk6D6LqnNscjFnvdGYDt"
+        ],
+        [
+            "68a79eaca2324873eacc50cb9c6eca8cc68ea5d936f98787c60c7ebc74e6ce7c",
+            "flatteur cultiver oisillon destrier brusque crainte oisillon labourer remède substrat parfumer banquier flèche enclave fémur sombre jongler damier insigne voguer rasage gomme crainte incendie",
+            "7363c9fd3127cb683ad39697f3a7282a06f1fd1ab1ceae8e2e0d7ab2766f3b8fb29162bf46e0d6a4917a0085b763f7f6f36adfdde742b6aa4ff1973149b5d239",
+            "xprv9s21ZrQH143K3YEnEhMfv1Mwoc91DekvEqXxL85fFtRKtfFk3Jsqu72bUd35jHsTA7aBShvTmhhBrHhqGZ1uVg7RTwzTpnarDUoGU8ZXQ9D"
+        ],
+        [
+            "c0ba5a8e914111210f2bd131f3d5e08d",
+            "prélude routine négation brasier arlequin logique cuivre hiberner cirque moqueur halte barque",
+            "c46b545d5e7398d0b5344ecbcc20769fb0fbf674848eef1591725a1113f5bed0edf6d78925798cf87994157f43bd9d0eb5e6f3de7959e2e88f6a586e7499b79a",
+            "xprv9s21ZrQH143K4U7WubDzyDun3RrpuVsFECM9u9tNxjhJhZFCJL5DJvGhKkUAbmmhqpwUV7UvgPPG2QFoDq7jYY6Neb6MnQmQYTo3RF57ZXS"
+        ],
+        [
+            "6d9be1ee6ebd27a258115aad99b7317b9c8d28b6d76431c3",
+            "froid soluble horde sinistre rouge rocheux exiler causer orbite résineux renfort vaste récolter maison serrure tonique cirer bélier",
+            "93856e02d3ab2e6738958350f2a96a18183c0c02aa7cf50e4e6877b1d4f9eb4be1806b034e4a4a271390b7b6ba6b4209f5e293840e93a41a2ecb16ad47936c03",
+            "xprv9s21ZrQH143K2wjyyXXC3Cra6k8WJ3CPEWc1EgwEyUNjLAxGVoegrni9eMik71k4L6wWxLtqcwgD9TzKLLiaSddwLFp4F6hJ4LuDBWqVJcq"
+        ],
+        [
+            "9f6a2878b2520799a44ef18bc7df394e7061a224d2c33cd015b157d746869863",
+            "mouche embryon bison femme bondir renvoi louer social largeur déborder rétablir miracle adresse rivière machine époque culminer indice frégate ouvrage gourmand déposer exulter grappin",
+            "08cd47b905df56e3bfbca6d1ddb7ee7ae75d45f6e5928d337bacf34754d392c7225c611136148e130dc516cdc7ade8e8a95ba62ccfdac01a107875ce3e2cefd2",
+            "xprv9s21ZrQH143K3BFxuNuyFSUgQQ3f4tv6HLktHoVxvMfBKVBow3i9GqeTF9oBbG87rZBX79QTCQqgPbn3ywWc8G4ZiUdhdY3xDAciXLtE9aJ"
+        ],
+        [
+            "23db8160a31d3e0dca3688ed941adbf3",
+            "brochure sextuple épisode digérer ruser affecter cantine rivière torse muscle permuter talisman",
+            "8e4635efc7352a6fa18723aff498fa297c1ed1997c0f3e77a11e65155b25934cf90e74ac66d207175507887068a5c85d24b825d06a31ce75651fc9893e509869",
+            "xprv9s21ZrQH143K2CpRxCahnStujg79zUscDimXKHemoY4A1Kep85cPai2e8wJ4Y5R4uhrG76merXXjSuukqjVrzJMBPsGC8apQqHymDsBPf9e"
+        ],
+        [
+            "8197a4a47f0425faeaa69deebc05ca29c0a5b5cc76ceacc0",
+            "informer poivre capable volcan dénicher voguer offenser ruiner tragique sortir glace enduire allouer serein cirer semaine opportun abriter",
+            "ed4ed89acf10eb53fd67c9f81f4e8cbe39dafe42c27e942e67559a825c6083d3373a3e98215c37318f0f28c13546895e76a080521222f6d70a9528a582dcdcef",
+            "xprv9s21ZrQH143K3N7dvQS9PoT9BemrTHWfp4qzUPT7hbGdZ5uMn6RgMwKerbmrrAqjrMGUskpGJaaorTXnbgtidgEbboJVjH18qDMkLFPf36V"
+        ],
+        [
+            "066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad",
+            "adverbe fuite jaune épaule imbiber éluder frémir adulte attentif filou fémur idylle muséum mobile bureau loyal hélium jugement péplum encadrer rédiger acier posséder pavillon",
+            "81ecca7ce712963df79d6611d2510e9fa31d307557a5eeea9513a9a940c2531472fec2c6988b70f649b8a3416f8f90f5c9c8f0ac4897f4a5a1304c651226f330",
+            "xprv9s21ZrQH143K2ZnKtKjoyhEcsuEzLEzq5oC8sGegz59C3vf4T8VjvRN2UQQsHw2ndFj1UMNo1uuVtxKzjmNLvVAd2SURTgkVXKykFc1S8jG"
+        ],
+        [
+            "f30f8c1da665478f49b001d94c5fc452",
+            "ultrason hublot agacer éclore englober ravin caféine abandon séduire farfelu tropical nettoyer",
+            "2efa119637c044ba28eb610178d7de49dabed93fc16f5af675aa661b731567ed3ad7aeb36a04adfbfb694bbd065f6f840ab80369ec3c253ca122deb208ef9f7d",
+            "xprv9s21ZrQH143K4NWbtgfxvJK1Us782vFXDdb2bTK839KWEUZFnQTXXt85hAHXML9xkKyuiaiKgD1n6ytUZdgT8hirdn4SQ4DR4T4MPiNQz3K"
+        ],
+        [
+            "c10ec20dc3cd9f652c7fac2f1230f7a3c828389a14392f05",
+            "prétexte grogner instinct jongler sembler paresse papier vaillant chenille louve cynique dissiper inoculer besogne flairer jeunesse chenille cellule",
+            "887a87c38340befd47d650b73849907b5892a0db26e17ab55601e4e789ae1d0dd4bc3e7fcae0fae25c3e0d3315456fe8a5d84944d2b799cb63fb9544fbd0e568",
+            "xprv9s21ZrQH143K4G36f6wnN8JWRYHdbvANd8fF6c1pjb6T11LKxw3Xch5iacc9vyGQDcf51GrF7kknKumq5csscAByQiC1gaY7vFygMghGtJ4"
+        ],
+        [
+            "f585c11aec520db57dd353c69554b21a89b20fb0650966fa0a9d6f74fd989d8f",
+            "vaillant chance dimanche sécable bonus séparer vecteur forcer raideur officier censurer cohésion meuble agiter prison mutation filière rincer novice solitude élargir renfort gronder tornade",
+            "e59bf24814adb55cfc2399e03d94e81df4a906ca5e75f36f2e297623ffc418b8202e9b1444e0e97234e2d55e194d45f89491dc9533a1c799fbb86c5838cc3454",
+            "xprv9s21ZrQH143K2gBerhfhuxyfCEXGiLW3sxY1scEJUtvroAtxPqqatzqTzDmkgxDsL7C7MMbBk1ZKBXHpYiJziBM2VFbTbA3G1qjDkTt8PU5"
+        ]
+    ],
+    "it": [
+        [
+            "00000000000000000000000000000000",
+            "abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abete",
+            "d2ae4bbd4efc4aba345b66dc2bfa4ea280d85810945ba4e100707694d5731c5a42ac0d0308ba9ad176966879328f1aa014fbcbeb46d671d9475c38254bf1eeb7",
+            "xprv9s21ZrQH143K3ZxfinfrsmnuKNwdvRtypJ1TEs8JuE6MEmAMDwsSZApCyBFopme4iR7RnRt9XKFprfLKs9vooFuFK6h2a2hzHuXTmE9md1a"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "mimosa vita sussurro zinco vero saltare zattera ulisse mimosa vita sussurro zircone",
+            "f8c609647319a50116e9b7d1a0ec5535c6d08d6c958911fd2c8b2dfd55a61e63e9c6c60c22b5c3aec725acb41980e63cb3ed75fb80648092dee1bbbeab476a6d",
+            "xprv9s21ZrQH143K3yxi91AAWZvT8797G7kL34h3453QNFSiQybwss1gmx2zYCmbg4tiZdYSEsd7arPWYd5MQh28VBvcEqvXSBRu1zYajyJnzFD"
+        ],
+        [
+            "80808080808080808080808080808080",
+            "misurare afoso bravura accadere alogeno dottore acrilico arazzo misurare afoso bravura abisso",
+            "4025269bc4f7550bbc3c61592944946b0d4ac855a5e4582bf86069cc0c9429455cc40d84ba215ed1cec28e27ffc88460c38b9c4e8c486ae878d7c85e95b222bf",
+            "xprv9s21ZrQH143K4Hh5BqryXtMu7QLbJC7yDh9kscJ4h3PuxA382w6YyjMMkiFVyfmdYFwfP8sVWR1eLygHmczccbzH7pTGXbeqAy54fNVA13M"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffff",
+            "zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zerbino",
+            "24182cf43f956410b5def9df90e3db0d6f3199c2ebd26e7ddef888ee3bece9101d132e449bb9e1c23dd9ccc6131d2f649c021ee591e88cef8d17cb434ef69efb",
+            "xprv9s21ZrQH143K2hiPzq8SzzER9TQDFYpnYbfg1hE8wUYwcb7JNRyM4aDB14WfoUghRrBKFGffUx5YsTZvPbdCbuVMJG7egUZVsRTJCviSror"
+        ],
+        [
+            "000000000000000000000000000000000000000000000000",
+            "abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco agitare",
+            "2161a4b869f98778b6321714e2502adb11ea120c12163b46fa34e36442ad1981b911a2f9ec82b497e7cd206fa7af2f21a94bb6e4a90159965854784e1558658b",
+            "xprv9s21ZrQH143K48ZSAvHY5BjAyPXxL3pREwQPZ9DxPagzRuK8f5TcKnDr3z2MSjB58uC871CjjjsNTaUa9BxEzEwraQutT42co4mfFGusE2B"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "mimosa vita sussurro zinco vero saltare zattera ulisse mimosa vita sussurro zinco vero saltare zattera ulisse mimosa virulento",
+            "d9a6205a985fde8c2337f6cc6acf77a93d6ec7dc792551c01400f5d9aaa86aa943416c99fe60be141ca27ab333d9f96648b40b266d6b2d6a6e5b07c8939568be",
+            "xprv9s21ZrQH143K2wPR9TuAQcWLNSM8X9oRjUCC3GN6aGevV1zfm8cwi2JtrzS21GzAaqd2MJDszoka7xiduQrDc666Wk27qYhUTagEfr4E218"
+        ],
+        [
+            "808080808080808080808080808080808080808080808080",
+            "misurare afoso bravura accadere alogeno dottore acrilico arazzo misurare afoso bravura accadere alogeno dottore acrilico arazzo misurare allievo",
+            "cfb1f800cd5a0f7a8cffb12231fc61739f5f87c963ead5e205dd48221c3417eb1173d3209d9a8ffc4f00ab291bc22c1480b4a0a4fdeef9a1f3916d0ccbed5591",
+            "xprv9s21ZrQH143K2EQGrM2arQhKSEhd4DwraP86UrUKsVcLvM2NujY9rPJK78rGUCD4Z3AG8tz8brxcSaDQYDw18jZz8FuT1H6ZdwFyUQVERus"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffff",
+            "zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa vile",
+            "05a43b9c258f6e83f4073fe4a66d6309e94610fe12dd5d598f4725e4e85ff1fde5ff5b1e61b40e09a481a98953f9dc818342172a460e5e6d17d9ab14874447e2",
+            "xprv9s21ZrQH143K39Y9dY1q4sf3Bv7dkFfDasdSbWUKNx7GCsMp1JTo8KFDRq5TNkGr1wQYm3QZaALpFhcHWhPV67oVZQFMRFu51yVxeL9KDMF"
+        ],
+        [
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco abaco angelo",
+            "84055239f41c182bbfe6ede6db2e8bc4a97cf86746643b7ea6910c71d67bb2a678a97ecd378cfbf59e30db720b1cfde0faaee73afd3c5deef2188e307d04442c",
+            "xprv9s21ZrQH143K2b5TRb8ReAEzasjVej3ttSzyy5YRu91SdQKP4XUZtgeUipuJx6YoArxkiRSBU5eP2wu6dmgLhgBQJ8Bx5UXmwFudc423DdN"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "mimosa vita sussurro zinco vero saltare zattera ulisse mimosa vita sussurro zinco vero saltare zattera ulisse mimosa vita sussurro zinco vero saltare zattera tarpare",
+            "f0e226efcd929216020a9e8f879f06b146d28fecd2856bd401a62ecc0ece8bc6ea717e3f9df523a6a00bd4ca8965e0498d63e779e3156dbf174ebac74ad7be31",
+            "xprv9s21ZrQH143K2dys2Z5k2tZoxJuBENLaf3cTEpb7JUeXDp9i63vbPMqVNqHqx5bGJ5tdNug3JFWJCC4amzYLoFRi3YS55MiHnnUN6w1V57h"
+        ],
+        [
+            "8080808080808080808080808080808080808080808080808080808080808080",
+            "misurare afoso bravura accadere alogeno dottore acrilico arazzo misurare afoso bravura accadere alogeno dottore acrilico arazzo misurare afoso bravura accadere alogeno dottore acrilico baco",
+            "ef549c1e44a7b183031b41f9f692795406de605e43ecc628911a38d7c92f392660c48313a08cf1a055a420d4a8c6b12bef7ff354c903303bc3a5dc12948ff5be",
+            "xprv9s21ZrQH143K2mWU418GviWbPrYTveuukEHsYJRn8aUxV5PrE4XacaDX74amiRkH3m3Qmnz7YPRRXkF33z5472Trb39RksWRmcJitkT5uJx"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa zuppa vedetta",
+            "5089f33aee7852d86a01e8afbfdc8a0ad5af51538e62e3f007d098fa4fc9817ddc990fa87b7235273798e2df52228b62738df923bc2d711fed9cc0558b3ebfec",
+            "xprv9s21ZrQH143K2VqjZNjnyCMUrTw6XhLt2BsaPVpHD8MKpKq5mq9S5SLyMSv58y7nCofNGZSgQQpky6aujCURjVuAM9jCcN6xjzbeRQYYACi"
+        ],
+        [
+            "9e885d952ad362caeb4efe34a8e91bd2",
+            "pesista educare imballo formica curvo imbevuto raddoppio sussurro croce eppure epilogo poligono",
+            "4ffd8b7879c0c6d7eee14682a26465d6429b8b921d6ea3299fb8a448d84d19b47ead5b23fd14449539cbd358abd19a23560dbd8c4bf6c153d98ea0fce7f474de",
+            "xprv9s21ZrQH143K2bsiFmYu4jzf5fjcHrrEarDgY3NYhmUEU5bxz3eS3NwS924WYnioF6rf6Fij6XQdmCNjcCJwqdFJ1AKKLMxa4obLnbdFgA6"
+        ],
+        [
+            "6610b25967cdcca9d59875f5cb50b0ea75433311869e930b",
+            "immolato mummia oviparo sigla stirpe fonetico fosso appetito vasca galoppo cigno solubile foderato pargolo enduro sociale ormeggio galateo",
+            "188305ae9b45e400f6a3ad839061265f36e6050118283b85a3ea842aae1cca29c808978b3b0e297dbd794b74916fc43da57172e90c9fdab930638863c3472522",
+            "xprv9s21ZrQH143K4RNJpMYxxAuHtA77jzNEAjh3MznXe6FejAGGUPHTDUFL3z6LB1FioxHnMirHNcHyV4QVsXs8rZACW8YSJcNo3Wqjg7dNoUC"
+        ],
+        [
+            "68a79eaca2324873eacc50cb9c6eca8cc68ea5d936f98787c60c7ebc74e6ce7c",
+            "infatti dire pudica elica camola deposito pudica nobile servire taverna restauro baritono inflitto flacone ilare suonare nastrare dito montato vulcano scrutinio lisca deposito mirtillo",
+            "093ef04fe24f1c45148f3d4d9a54fb033638011507418cd7cbd91a8fa12157e1cbd9d095b2a660db26e8d674cbf6033a384954fdeadcd7c20cbbd3da46d90f1a",
+            "xprv9s21ZrQH143K2ZBg22DZJyspAmZcVMa1efjpsz89Hmcsu7dPZ39sH5RCCNr2kBRNFQUUmcwsNUTyZ6UGk7zjZKgCdXrmxg8gJ7FBCEeE5Au"
+        ],
+        [
+            "c0ba5a8e914111210f2bd131f3d5e08d",
+            "sarto smottato podismo burlone aria omissione dipolo marmo coricato peso malto basso",
+            "d9e2a2e18ca8173859b0030186941149f630483cc9fcf3b189e5752d4f8b7dce2b285008f52ff1301dd2e2a673a4c76f8ffec9f8617fd577173b90c6af95631f",
+            "xprv9s21ZrQH143K2FR5gEkuFMhmYGVyUKiSrZspfn52HonhhbvwWrn5fL7aST1yxtAfd8cQSyWVGH9TamV4SPvyKRZbSV2U7ZTurX1Zoe86ngE"
+        ],
+        [
+            "6d9be1ee6ebd27a258115aad99b7317b9c8d28b6d76431c3",
+            "italia sultano meccanico strappo smeraldo sipario gommone chimera raffica sforzato sfamato vendemmia segnalato oscurare staffa trio cordata benda",
+            "c40130a2db00d82c2dfb127c768724c522cbf7f47b464061198c65e9bf4e3879262dd112cb7a526bf4450785e9f7f7e7511f05985d9104d9e75e1baf038c91e6",
+            "xprv9s21ZrQH143K3QTUdUYC375Cvtyea83NqatsgA5z3BMp95Fbd7QfQRvzqgjuCMU9zhSgiVtAYuDoR1GK9gQRP8juxnFR2Hd4v3mNgfMySGq"
+        ],
+        [
+            "9f6a2878b2520799a44ef18bc7df394e7061a224d2c33cd015b157d746869863",
+            "piacere feudo bisonte ignorato brevetto sfida onorevole stufo nulla docente sfuso perbene albo sinusoide orologio fulmine diradare mitezza iride rata londra egoismo gravoso luce",
+            "e384b6486328949618978c6d2607df3e7a9db9acc94ab24183aa4e7c1af0107ecbcee2dcead27d7f20acaa427d3d6eeac620ff24ae4ac2ba3b6ef01585418f25",
+            "xprv9s21ZrQH143K32TYshJvJnEHVnwukKyvaQauzBPx42JYyGT1FfyUvjT5iEfYuaETkYiAUJE434hs5Qkh7FRSqK7kwy5GwjsfS4S5txFKwbL"
+        ],
+        [
+            "23db8160a31d3e0dca3688ed941adbf3",
+            "calmo statuto fucsia energia sodale aliante cedibile sinusoide trovare pila rinnovo tiro",
+            "5d5faba1d0db08a9f0cdb602e571a9b73565707429d2482e4fcde5a9bac1728b053c65853199fbdba73716bcb8da0616820fc817a309c99607dc56dddb34c344",
+            "xprv9s21ZrQH143K2h5d8kmFvaQT4xHzXrAVwmwAMyF1p7jBg2QoE8RGGFWe1NyqcNPhy18CJ6UKcvHTXkijihhLE18yrpec1DxggywYDVWGiUo"
+        ],
+        [
+            "8197a4a47f0425faeaa69deebc05ca29c0a5b5cc76ceacc0",
+            "modulo rubizzo cefalo zavorra economia vulcano prudente soccorso tuta svedese limitare fluente amico srotolato cordata sportivo querela accusato",
+            "7f7bd54b8bf5c99a949d3ddc1d4baeec78e503f14ddd20500e307be89e940e5ead97530c014c33053a9b0c942094ea1bad649b2d23d6288dea8fcfe2e3a83c52",
+            "xprv9s21ZrQH143K4AwqRHE1Swki4WW3ok7NF5cCs57wYAEhcaDhw9oVh1xwSbCeofP9GMZkTmZo6kSjj5Xh36tuuPebZhDBQRcgRnzLaSgrpL7"
+        ],
+        [
+            "066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad",
+            "alcolico lacrima muto frigo michele fessura irrigato alce ateismo incendio ilare metallo pilifero pergamena canotto opposto manovra nemmeno rimorchio fisico selettivo aforisma sabotato riciclato",
+            "197457046ab546a171b247c54bb8392aa2ee2d40f07831019776745f17aee46fe9f1611f86f9d7f0cbcacc03ce696082fc13529ba0cab0d57f76934383be0f3c",
+            "xprv9s21ZrQH143K416VC54NFDGXsQeXLSAf2JaUD8jQR4SDqAFq2S3BdcSRW66avfcoRK5FsPPCuBKaShrskgoGchxdAeBzVMPFHrJkCwAWgiE"
+        ],
+        [
+            "f30f8c1da665478f49b001d94c5fc452",
+            "utopia melodia allegro evoluto folata scuola carisma abbaglio spillato guanto unificato pollice",
+            "53c4c5de8a16381908e397fcb8ce5dcd8c90911d9b538afe83862468816889768d94d040bd249f4eb25d915b05b31addfa0b06d89fe15f521fbf3c8545bbb434",
+            "xprv9s21ZrQH143K3u8cCFUJiaxUCKdGZ9Z2u76hUbKNMoCy51gq982aahsMbN5ArmhR1VHFJSMKLsFLkTsSX2gwjrEfj31QsDqCh3nE6FmcV4e"
+        ],
+        [
+            "c10ec20dc3cd9f652c7fac2f1230f7a3c828389a14392f05",
+            "satira lusinga mordere nastrare sposo responso replica varcato colza opinione distanza erario monetario bici india narice colza cilindro",
+            "5c8c80b1e440dad220a295b282fad7e8a44bfee5210d853fd52d26e8a006787ac7bf4b0a4f81d029e2ae9cdf71814f193bbb23e4b3e149d2f99b03e2417b39a0",
+            "xprv9s21ZrQH143K2gMABxA98Be2P18eaj1zxU5qV6sCiMT42cuvLQ3dM2VBnEAvpFwWEDtDcbSkteNAF8nUuCyBETqpAeKmqV6niTPFEECGcLx"
+        ],
+        [
+            "f585c11aec520db57dd353c69554b21a89b20fb0650966fa0a9d6f74fd989d8f",
+            "varcato codice enzima spessore brillante squillo vento insieme scoprire prugna circa cruciale peccato allusivo savio pilota inarcare simulato precluso sugo fegato sfamato lusso trono",
+            "e89b83bd1a5fa859922e0045acc84cd04edeb4bf6b5352d197fbed50af0938b17bca7ab9beb8c882d0e0a67597d9e14e88c10e63b824e9206d2848fbb8a55b64",
+            "xprv9s21ZrQH143K42yTQvEavGhekzrzpxHY1nspnh5qcgThCuNVAyJPWRMeznMV9FnChg5f7k51DBMawNZKWTFCLy2az1CnyGgCJ2Jk5PGb6Qv"
+        ]
+    ],
+    "ko": [
+        [
+            "00000000000000000000000000000000",
+            "가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가능",
+            "a253d07f616223e337b6fa257632a2cc37e1ba36ff0bc7cf5a943366fa1b9ef02d6aa0333da51c17902951634b8aa81b6692a194b07f4f8c542335d73c96aad3",
+            "xprv9s21ZrQH143K2EgqD4YCzE4rJ8rojXAMzqftKGS7694ApSkSoLgheNMawZYv2sArwHhLq4AaJfV6WWtGLjFWdFBT47wsjnq9v6iMXojWZ1V"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "실장 활동 큰절 흔적 형제 제대로 훈련 한글 실장 활동 큰절 흔히",
+            "e6995bf885f5c64932ca28bbb00bc100a6b89cb6edc987bb05f05f99ae7caf78329029c189834c1cca938000bcf08423da011558a60cf3d90c9035eaaf241b9e",
+            "xprv9s21ZrQH143K3CgBqqMtQxnP4VvSCjaTs2GfqHadwo4ddmKkvzasAHRwAsSDqjvJQu8jmAdEgBrLkVYhHdyZKWkZbyfuwPQG84PrWjEuCLQ"
+        ],
+        [
+            "80808080808080808080808080808080",
+            "실현 감소 기법 가상 걱정 무슨 가족 공간 실현 감소 기법 가득",
+            "1bb52039a6cc288cf806740836002abce493724edac3d3b9458e3581427df76414b422171ef115d823a01c6b39fa68bd0fed20bf5e64dec008fcb22e4b7f26bb",
+            "xprv9s21ZrQH143K3v6uaDUdZX7Cr8uC3hCE6gJ1MiGsnmRojRtUN6Y8nBiWVfMUc1skLwuUb3NshkJSdCuFew5G2y6YTDCRsSWNxYsJgZCpRxL"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffff",
+            "힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 흑백",
+            "b6eb986d6aaf7d0cd0eae2a667ff8bde68c8780fb5a728cf500e29119ce99c9b079a4217836879c1e73b8a85422a85b564d819699a4310a1d007b5be24c24b6d",
+            "xprv9s21ZrQH143K2P5vpGbzebpVw9pZzmHHyuoTFDAFCR5UTVwQPdkuKPJB5fP4a6YgAT6seAuv9uGsMcnoyVFkVxoKZxQgB1SXjy89nHvvSHx"
+        ],
+        [
+            "000000000000000000000000000000000000000000000000",
+            "가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 강도",
+            "f40a8db48df9a7fdd73a7b3ceb45f668e4eff098f275a0a5cd739d31572c90aa92bc08b9043d0adf059a945e47e2fdbc26c89dcc15b3893a2a705e4539523ae3",
+            "xprv9s21ZrQH143K4FQh3Y65u7oFeQhimhg8fjRV12vp7kYxB1EnjiBVFY1B7AdjQgLcfzK8qLjaZKFq4gfPC5pQtFtDnHi6Y988Skm2oRr758w"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "실장 활동 큰절 흔적 형제 제대로 훈련 한글 실장 활동 큰절 흔적 형제 제대로 훈련 한글 실장 환갑",
+            "3162bc17e0f2f01ee571022444d2c5fbddf6a68dedfe734c319fb574592e9c0328f6526116b3b0b025b23391781d0bef8f43bc8ddc2b054b9f52e1fd6a88e3d2",
+            "xprv9s21ZrQH143K2cE8CZ9tqfnmvNZcEJpwnyRRcsqDPokupVqx1hecEjQF2zrM6amGPiDiEKGZdNWrps6DdEcP83UABBjV7yJSkAFUWcP1FDF"
+        ],
+        [
+            "808080808080808080808080808080808080808080808080",
+            "실현 감소 기법 가상 걱정 무슨 가족 공간 실현 감소 기법 가상 걱정 무슨 가족 공간 실현 거액",
+            "9fa92e4524e0f7412935b2deea23593c0955f9679d3285e3b955f5cdd2a659ee005ee99bd385f63d82cbdb54a3849229fc9a700e198b65a1452b511884b543eb",
+            "xprv9s21ZrQH143K2XL77upQ6FjJr8a9oDGHakG1HQozxUzHJ1aVbv6JLPuX2nXdbopUnxBoKgVBHiZphPg4Krqm1xxUm6YPcZg9NeAiqT1MAcK"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffff",
+            "힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 화살",
+            "2543a88c8a31570dc9ee868a7b153f7f2e42700778bae7a3aba7017357e708b5cea97e0d9753c9226abc90b83c76ae369d74515ac64102c51a5fd0f809cf8b92",
+            "xprv9s21ZrQH143K3AK2RE2fUZyLssNUUJPyAYjXGDGE7Ysq8hTx7MG43NG7KDALxx6TaVjXCmxFwB2wZnNtSBM2asDYC4YcDMEc9sbCyPPYjdo"
+        ],
+        [
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 가격 계단",
+            "edb71011bc0c227103ba8a769cc36ba609e5407a771727fc0c8cba1b5a44d21ab9163d9deaa37427ccc579864e21f08d0fdd3a53a6be258d3c73b898a01ce2b2",
+            "xprv9s21ZrQH143K2vZcddzTch42FzN5kcvsdtyMNR6QfEgZy1JEor4wzwFKj4JGq8kJEyC4zMQHhN7Q9mhRZJdYceTALfwxmpUAD6AtSzU3n7L"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "실장 활동 큰절 흔적 형제 제대로 훈련 한글 실장 활동 큰절 흔적 형제 제대로 훈련 한글 실장 활동 큰절 흔적 형제 제대로 훈련 통로",
+            "dbd640cc9d3e99939bb0fc4473738571e314c29468f01fa85f57e296cf6e8e269d6e32434e46aaa63384930cae83728623195a932a48ccb71a9ea247720d9371",
+            "xprv9s21ZrQH143K38C9hPGqNHuxsvKmNVwY2gRiRjjbzuBNme4PgfyLzkhYEt4fGm73xs6c9QDh2GxxkntMiFyeDsMDPkLDa9TkubnWZFCsJP9"
+        ],
+        [
+            "8080808080808080808080808080808080808080808080808080808080808080",
+            "실현 감소 기법 가상 걱정 무슨 가족 공간 실현 감소 기법 가상 걱정 무슨 가족 공간 실현 감소 기법 가상 걱정 무슨 가족 구속",
+            "9a0ec04a48287ae628d61428f921de5f40fc1035f21883798e05c36f9705b2525a00ebd6bb89fcae9b8af8e9861d0083de331199d6b85b24cff598609a49b305",
+            "xprv9s21ZrQH143K3PRHhckbBdnb1HMFJWXd2oPh4sXWWP8iMrH5fkxKnDucKqdWFv895Z7BRWKmbHj5gRvB6QddHeMUrk7wzSRzf7ZqkkVCipS"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 힘껏 허용",
+            "340bd57209e54e8bde6ca750147933f7e44995047da87b61f64f70f26f289a377e25a65f5efb11f9e651917ec9866d54846516ae0fba956f5f536422bb47d91c",
+            "xprv9s21ZrQH143K4Cr2Z2NiQPe5Xz6W92ZCE6SpW5NVmfvjtJgJUAG6WwkQ4iZ1AyfbUDb3yoiQsdoGHSSXNEMtAX3xPdtD38n5JeD8Lx7XNR9"
+        ],
+        [
+            "9e885d952ad362caeb4efe34a8e91bd2",
+            "원고 물질 생일 부산 마요네즈 생활 일찍 큰절 동화책 반성 반드시 의식",
+            "8d148c7f8ed529d7a88fe2bc8bff574b56406f9928ab5426df793f4d3a5121c7c6974c856ad20f66ecf04fbecd3bc025912b3e41d500f1e5be896505e01d08d6",
+            "xprv9s21ZrQH143K3t9XU9hQ1sEMc3LTT3MZ4Ar51RchXDvo5sjxDF7bFNaLfz7DttnvUqKAThXzv99QKccqpLQB6DdgR3NJV58AixcCdbw6ZTu"
+        ],
+        [
+            "6610b25967cdcca9d59875f5cb50b0ea75433311869e930b",
+            "서비스 알코올 오로지 착각 카운터 부근 부정 고양이 허락 비디오 단맛 체온 본인 완전 바람 철학 영하 비닐",
+            "3b67b06a2386240f75abe8f7905fd0fdb4cc2baa88c090eb9bca3cf144e6e33bbf3dd9085addfa52cd0ff9f2f9cd63ca69e7e77ce903ace942ec7f5b451148a2",
+            "xprv9s21ZrQH143K315xG5w3u3mrnhSMVsNVdKmA9VZVXeV3fAcLX94k4N9oDEgSAxsMi3RhACEKFfgWkFex6T1uHSjSeHPxnnVF7muEAVNycgE"
+        ],
+        [
+            "68a79eaca2324873eacc50cb9c6eca8cc68ea5d936f98787c60c7ebc74e6ce7c",
+            "설렁탕 모범 일곱 민간 낙엽 매스컴 일곱 언어 지진 통장 잠시 국제 설문 복도 생방송 큰딸 약수 목소리 아직 횡단보도 중독 수필 매스컴 실컷",
+            "06b321dd10cd2d0dec17212163c5d31f5ebda67027c0159380348d31ec5c5e7914ec75a44d4e225bbe5ce3db967e2f1ae2c9d463a638951b3e16d75ecb92cb17",
+            "xprv9s21ZrQH143K4TY4YjtQLxBPerqUshALn696njp6gNVkBTYWWZ5jrQPZRuqxiMoJ6RjQpVgVZFqKBRsWnGcci6UNgPdHbRBuVn93aKdCD1n"
+        ],
+        [
+            "c0ba5a8e914111210f2bd131f3d5e08d",
+            "제주도 처음 의견 김밥 공부 연출 모델 시장 대합실 원래 시금치 군인",
+            "5e68ec0b343b62e221ede6dd5d6f33dcf8b5b4f4925ce6a30f49b17182ed0a40f7c7f3248463843f1999dd671a2e9c2abf4e5443a4e88f2bbf10b79524cab827",
+            "xprv9s21ZrQH143K4B4gzTqVD1szP9igPch2u3xqQZ2gBsYe4u9kunYh5smSB3Md8EXktwjWafLwMasGuLPiSGXPCwNTgdcEPBsgtq6MiGMscje"
+        ],
+        [
+            "6d9be1ee6ebd27a258115aad99b7317b9c8d28b6d76431c3",
+            "소음 큰길 식당 커튼 책임 창구 사흘 다양성 일행 질병 진급 혈액 증가 예산 치약 하룻밤 대한민국 그날",
+            "c8a07b4a163c3cf4ef400a96bdb7edc012dacb957326de185e66f7804e912c02329ab07520ef05dba38b2b3f6ded8a8691e1b17a38658aaddaed7ca95ff1588b",
+            "xprv9s21ZrQH143K2h4eVKk7zbdHmjz5U5poyBbddPTS38xb7rjA9NMdUjYC3Dy2X7top1kVw51cFuJ2UHmFU3WGAzb5Hz4imvuz3ZKWy2R7gAP"
+        ],
+        [
+            "9f6a2878b2520799a44ef18bc7df394e7061a224d2c33cd015b157d746869863",
+            "월급 보너스 금고 생물 기분 진리 열매 콘서트 에어컨 몸무게 집중 우체국 강제 창고 영혼 분필 모든 심리 소나기 자랑 순서 미디어 삼십 술집",
+            "683d1f6324fa54a4c4efa9b0573fae573ebc1c8b373890eb9b1e6f760f586126af2a3a39e0494f653ce6dbb954353023c304dd42d80aa939eb5a31acaaa3a60b",
+            "xprv9s21ZrQH143K48a2XvjEnkvM3ry54SZdbERB51GvtK6S5hbSwV5SbBkqa2KNW7b3gwY7hC2JMgiNMD45aMhABCDvXUoZTvrq6typLaUAz6k"
+        ],
+        [
+            "23db8160a31d3e0dca3688ed941adbf3",
+            "나들이 침대 분야 바이러스 첫날 개선 논문 창고 하필 윗사람 저고리 팩스",
+            "f767f63c4febb5c832890f6129d0c3721555de40c28ac11093d23447f507b98f134cfef190cf0f12f1e41278fae5334f460c24c69cadc9aacc5d98efb3903f06",
+            "xprv9s21ZrQH143K3K9kkX6aq8Tmqp5RjoDwbrEbqStVfNmSWBofcYA3wYA2MQsDsTZjkfkeu7gz9yJB4foKXE1mveXDf48vdA7L5mPZfC8aYdW"
+        ],
+        [
+            "8197a4a47f0425faeaa69deebc05ca29c0a5b5cc76ceacc0",
+            "씨름 정도 놀이 훨씬 물결 횡단보도 인천 철저히 학비 킬로 수염 본격적 결심 취업 대한민국 출연 일정 가운데",
+            "739584c55ab1c8053a44ca3fb50237e066590c92043cf3f45748768df65778bb79175d511543d96112f0a0e7960df081f74e6e477b953a1681cb5331de8abc3e",
+            "xprv9s21ZrQH143K3XQJtWHu2YWz62N1SFBLpbweVNpCUoeFEWdukPL2rXvQ7HoDBwPWCnBc5otLQnHomemkmZ19m49YjQTqZY6uvjbDQaWpS5B"
+        ],
+        [
+            "066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad",
+            "개구리 속담 액수 북한 실내 병아리 소망 같이 관찰 선물 생방송 신용 유난히 운반 남대문 열차 시설 양주 재판 보편적 증세 감기 정오 장미",
+            "068f3943d3b3ba61b74e7900d936fcf4d73fc74852bc011e7405213edebed9f1d6b9a25db10c3ad5552b779225321a36304c757d0479e8b591655d0188961120",
+            "xprv9s21ZrQH143K4ameDhGSneS8UaxoYBfQ547c6eDEBvDJJ2cqzFHCCfqcoybLTVreVRjQo6SUDKzoHeNtR9bCQY2qF3iWCJTheeDYTUSGdTs"
+        ],
+        [
+            "f30f8c1da665478f49b001d94c5fc452",
+            "해결 식초 거실 백성 볼펜 중세 냄새 가끔 출근 상인 한번 의심",
+            "5f7125457857a8870d1ace1eb0f87479385d08ab8827998f57cb0cab5289d31a360310cdffaf4e8d1202a13fd8bba2ed9bc240a59b6d486d418647c55c7bca44",
+            "xprv9s21ZrQH143K2fhpmAA6AkCVJWY7je61aLnS882ga5H3cMuoSp4G4SCzg47MRUjVFQYVytFdSu3M1hYyhW3xkuGqxnUXx1K6jFTg4C5gmst"
+        ],
+        [
+            "c10ec20dc3cd9f652c7fac2f1230f7a3c828389a14392f05",
+            "제한 스위치 아프리카 약수 출입 잠수함 잔디 향상 당장 열정 목록 반장 아시아 그토록 선풍기 약간 당장 단순",
+            "8c6f94c633c8752381e7bb207083025d7cef6c448695393fc21553e1ac269991a3ace1a2562a6129bdc34494c7a6c01d19f600da9af985eb001d71d2fb9e1480",
+            "xprv9s21ZrQH143K2b5dBGtut1we5Wz9S2L2XAXfj6xftmT2omNHimaPwbTWszDvwSLfpjpQCjXKfqW827u8a4ADhCQEnTiiFj4dtbc2DZJRucn"
+        ],
+        [
+            "f585c11aec520db57dd353c69554b21a89b20fb0650966fa0a9d6f74fd989d8f",
+            "향상 담배 박수 추측 기술 충분히 협력 성적 줄무늬 인체 단위 딸아이 왼손 거짓 조깅 유명 석사 참석 이야기 크림 변동 진급 스케이트 하지만",
+            "0ecef71bd6f0948d9186c2786086a00f7140a00d37c836d01567077aac0dbc69f62189c02a9138dcc79a74dbb676b74aad4959fdbbf1d06a7798385f8eec97b0",
+            "xprv9s21ZrQH143K3zjSpKnVTgqBrJfMK5iZXLrGb5Z4zcWKo9URusFq4n7YjnLR3RCqD8Mytzk4qjHnk52PfdQUHCCJUnKnZxqhMXGGVVe1NXZ"
+        ]
+    ],
+    "pt": [
+        [
+            "00000000000000000000000000000000",
+            "abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abater",
+            "ab9742b024a1e8bd241b76f8b3a157e9d442da60277bc8f36b8b23afe163de79414fb49fd1a8dd26f4ea7f0dc965c760b3b80727557bdca61e1f0b0f069952f2",
+            "xprv9s21ZrQH143K4ayH97er9xirrbGL9hEywmMfh1LdQjwtrsnrvENN7c2yKs82HypXo4GAMt4wpnna9doa1FDFYXQTSFReWDY4XAf4imN5m6s"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "imitador vinheta sogro xerife veleiro pomar volumoso tratador imitador vinheta sogro xingar",
+            "298d1614ff06ae803709f5be5331135cb74e6cc77fa09e07a3e887c2e370401f9a73a409dadf58b5a5197b27ffb3fa5dd528aad9a1a8750d7669ce950ee60c2c",
+            "xprv9s21ZrQH143K3H4uYufypQuRqf28rLoZpLTwjpeCiPBpcZtJpupYd2oS39oGnrHd7fPAgU5d8bfTpYd97MShp4f9fBGj5K1F9NqgZFpmbVj"
+        ],
+        [
+            "80808080808080808080808080808080",
+            "inalador acirrar barulho abotoar afivelar coruja abutre amostra inalador acirrar barulho abduzir",
+            "800fd4e7691fbc3ceed246c211a38949c3607fe269a35829e40ca9d3e26515a4ebd64d8bfe9b66b49543fe9dab78bde7cb7102968ce669f55293bcc02e26ba0e",
+            "xprv9s21ZrQH143K2qEuVaHnXDY1HbcQ9nMyNoi5tgGyFxfYXVxHipQ9hcmS2QitJxsNFatCZk4EYoyyNdWamAjJiMLhuimpjiWHPvJCw28EMSr"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffff",
+            "zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido xeque",
+            "7fb404372815ea28ef97a64249acd71a293ea0437b3dac8f7e193a10f3584e2055753cc8d6f025229f65e61318fc4e10d4017bd3cc3496f535eca3247d26acd6",
+            "xprv9s21ZrQH143K3tfxkHq74PSrq4HqTjs5sHHxBpjoP26GnJ5Q8w7tEn5kmPESuqN5TQb9Lu4LysqMAcXHWNsr3DKSnvuu3vx6sK7V6Hhv2iD"
+        ],
+        [
+            "000000000000000000000000000000000000000000000000",
+            "abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate acumular",
+            "81c66b6789e8b91c169335be4436fd9736ca9c06425acd09b0525e1d6836383130f7f7d31378aaef8b7109503972f40d42f6c6b9f99765827bea762515d3404d",
+            "xprv9s21ZrQH143K4LsdmZ3NinpZHGbQ6n7aQr5uV8Rv7Fq8yNPdAzsyrezon8NZ3ZCzode5jS2PXzN1C68amwDmp2bgAEF4jDG7NUbdRYCjR8r"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "imitador vinheta sogro xerife veleiro pomar volumoso tratador imitador vinheta sogro xerife veleiro pomar volumoso tratador imitador viga",
+            "17040704dd985478b7d0666c7078201e3cd7d1fd1aca0d7d47c98a91ec7845500c611d987339a1d4c12bc506feb7c486eef0aa8ce679b1d184db5ca40fe8ef67",
+            "xprv9s21ZrQH143K3XAGBJxF36qFzxkFaSEsNjqKvCtT3s7WfzgMBRcv8G9K2CRGXXhLYPWKSipBrd9dyLSRuTzQWbAJkhghki7Nn13QfHqCSBq"
+        ],
+        [
+            "808080808080808080808080808080808080808080808080",
+            "inalador acirrar barulho abotoar afivelar coruja abutre amostra inalador acirrar barulho abotoar afivelar coruja abutre amostra inalador afastar",
+            "0f637bf3a487c26fb73f6a464f62ef1f6ca73a6ae083e220374c82881bf4ed2dafd874956ce368c4441e6269759c5864197e87421fbcdb7f6d63df17b4f7df81",
+            "xprv9s21ZrQH143K25VJsZdwtDCmzZ5C2LkJyNDKrHiFfHHBEmtvn77g7qrBRGHTum98TqU7sWCGFZ8vjtcPVAfgGcV51vi2BrPR66KC7wNxb3z"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffff",
+            "zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido viaduto",
+            "042e40dacea1df76335445c37171e5c0fde334236abe1b5d69378548875d157968dfff5889641f16690dca9baa4d9e5fbf56e3aaf0765144ba96b819f37fd0ae",
+            "xprv9s21ZrQH143K3xAXH3i9VReyK3HSyzSmN11DXikYFTA3senE3iWDCdYTFXL9JkBM7CeCS31NBBHNu2tH5T1iDWCBEu1TeWLfELH4CaGAiRR"
+        ],
+        [
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate abacate alinhar",
+            "8fe67c9f53a30f75513830e18f6bd0950354297a4977393fae3577363393e679cc13452bcfc9460b28a913ab8de9efc55f5901d1ba77e5eec791afd967768607",
+            "xprv9s21ZrQH143K3UVmtSkznKJCHUGjkjoHkUd6dxdfo91K8sdpEVmzjyRMB3Sf2WC7WKzmZLw2cfJ43LAEENq2v1gASK4TmMUTkbWVoJaZLge"
+        ],
+        [
+            "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+            "imitador vinheta sogro xerife veleiro pomar volumoso tratador imitador vinheta sogro xerife veleiro pomar volumoso tratador imitador vinheta sogro xerife veleiro pomar volumoso sucata",
+            "feac9ad4e1a4a4399a7d57fe47bf64b404a7588eca1025abfa299365f7a75639317e2c89a94812db33405aa0213846bfd6d53dfd02743e2cf3b6984eb9fcf19f",
+            "xprv9s21ZrQH143K2Syz6ZuTcKmPtPee4Xn5HMEnuZcNZ1s7hJdgjRLFJ8f4d8DnoBBTUchCBjBnjubsz3wum7zbhdp5h9hm4g6DVDo2LaHGJ2a"
+        ],
+        [
+            "8080808080808080808080808080808080808080808080808080808080808080",
+            "inalador acirrar barulho abotoar afivelar coruja abutre amostra inalador acirrar barulho abotoar afivelar coruja abutre amostra inalador acirrar barulho abotoar afivelar coruja abutre asilado",
+            "32c8feae6a0bee33166468a770cb28459727e10f4f5ffef64977d5ef52a68ec51d832751a10c025058612ab256052cdfa9d8c5c87560de0453efe5a7d4597771",
+            "xprv9s21ZrQH143K4XMzpdgrkDGxnU31ezynvtw3iBEfRB8sriHpEwyu2Gb65ao9YLcTTWTyxNh2g2AdtYmZ4wpTaAxLpJBzWY7jAvG1HyotoEt"
+        ],
+        [
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido zumbido validade",
+            "739a6edd208d09e28fa97f8e8709aaf185e173125b1b427c04d1539173c88b78e81610a759e14f97a2038dcdc2c466a072788e3d7c88cc9bf36b96cb29510e77",
+            "xprv9s21ZrQH143K45qUnDL5tCHKGpht6amXS4d278iTXWRJXthNTufwnbnvr6rU8kd4Nb5s9aBWdYFtfcdGkg4GdL91jRhGRtP8mZbjtTvpGsy"
+        ],
+        [
+            "9e885d952ad362caeb4efe34a8e91bd2",
+            "mexicano crosta farpa empolgar chatice fartura olaria sogro centeio defesa dedal multar",
+            "1f0397e6d2aaf8d6867d648e9bc27b12a4ee1b61a47fb63c6676c153c472d708f02344ac56fd1a8e135e18cce4eef711e7e88529bd6c54b90715e9b3d9fb8467",
+            "xprv9s21ZrQH143K2ynvNymKuhxopGpKrkH5skB2FqBYXP3N4goobBbXfYS8Vqhr6QAZQqxxr5caCjvSC3P3itpqqbntU9jTmmEdoM1E8Z5f1GU"
+        ],
+        [
+            "6610b25967cdcca9d59875f5cb50b0ea75433311869e930b",
+            "fazenda invasor magreza repolho separado emenda enchente amassar valente enxerto cachorro roteiro eliminar marinho deboche rodovia locutor envolver",
+            "1335d5a679638f63a494f1b71f6c6c448ccb0384167f3ef3ad07456f0b70f13b8f6097c1315186543a09325ca3581f329cdb66674d0f97c4474950e3aef3b9e9",
+            "xprv9s21ZrQH143K4MHxCTSXTFPDppSnKcW22kjYEg7NMCcHEobe5G337nzsfnuud8asiYwnyMQMG9WkAwPW78E1otspYE4T5t2AU2cArUhhQGg"
+        ],
+        [
+            "68a79eaca2324873eacc50cb9c6eca8cc68ea5d936f98787c60c7ebc74e6ce7c",
+            "filho comentar obrigado cunhado biologia clone obrigado julgador rebolar sufixo pacote atingir filtrar edital fardado siri janta conhecer inibido vogal quiosque genoma clone impor",
+            "ca0462775b11a28cb36c497a36da8e46c1ab618facf7640b42fd4974085e1d682a6ca660560a3b72dc602ff56e4027b53a8ffb691a96e4c827ef4e6d665565bf",
+            "xprv9s21ZrQH143K4B1eibfqLNQbrVycyNgNCgQvDFtBLDYbEPtVXRBn44GPmw8fasfeCrV5tc8BFhzSnbg3pHdafof5rrXHm4XUK6EBrpoZni5"
+        ],
+        [
+            "c0ba5a8e914111210f2bd131f3d5e08d",
+            "pote ringue muda benzer andaime levitar comando guloso carreira micro grilo atracar",
+            "556b77fc49cd57f7c9c92fafedac1c8341598666721b874db50da261c7cded491c22ecd3235e508822507212698f645bb198f0bb1aecd50d22339e77619a765e",
+            "xprv9s21ZrQH143K2NhKv3Pg9xyGsPMDwukoomCFE74Fk4w4K6pe8hetKjNrSWEmzPSr482zkiZ73aE5wTYY8jvLN4Wruv83p6mmxnxkF7qkUBM"
+        ],
+        [
+            "6d9be1ee6ebd27a258115aad99b7317b9c8d28b6d76431c3",
+            "frieza sirene hibernar setembro rigidez retalho exagero cabana oliveira refugiar recrutar vazar ramal lousa segmento tocha carpete autoria",
+            "3059ded790eac1a5bb614c2a88989a4b5d7d4db20acc95f2a9eee1a5889012fa2b7ad2c0b0c5b81abe94d3e4c6c58265058fb257bb051552fe5f82fc45389132",
+            "xprv9s21ZrQH143K2EN6vqxgJ2XMXNZx6GWcdcFXajpxqDfWvsrYFETHVWUEZr34sP49GinmReyfUgpakD6xT99vcV7yiAvPnf8BbEJ2PsWf8EH"
+        ],
+        [
+            "9f6a2878b2520799a44ef18bc7df394e7061a224d2c33cd015b157d746869863",
+            "mimado drible baioneta fantoche bastante redonda ligeiro simpatia lamber copeiro reitor mensagem adeus resumir lombo enraizar combinar inapto fosco orfanato gincana cubano exibir global",
+            "f26d817eb6474c6ac3358737afd31a4b4be74ba268cb7dd0bab44f959c9b4be5ef7d65245bd0da8f21694bf380e3e4a9fe7f82777b4d59a8c738fc460b0c3210",
+            "xprv9s21ZrQH143K4QArHuoZ7djwjgsdKRekuqKqFEBZbYpAQJU2a1mDMm4z8iG28oBs2kAEaGQDPjLu3kiNz3BV5Lio26Zt1z5KzEBxtSJGtCR"
+        ],
+        [
+            "23db8160a31d3e0dca3688ed941adbf3",
+            "bifocal semanal enlatar debulhar roedor adquirir branco resumir tora modular patrono tangente",
+            "fccd6ccf9cad7af20eaaba21e9f4fbb149907c41b5e000ce398e8956c15a5436e04091402d4851c4cc8cccf9e8a90dc8219f3104698d1022064538c6303dcdef",
+            "xprv9s21ZrQH143K25Rf7o8uUBtDjSZkJ4S2Cspm3JN9USxBAXmmUYvw9n7W3qsxbkkptFhejjufMUtKx5QhCMG8Z6RjT58F9kVrRGKMQhatmtb"
+        ],
+        [
+            "8197a4a47f0425faeaa69deebc05ca29c0a5b5cc76ceacc0",
+            "indeciso pires braveza vontade criada vogal nutrir rodeio toxina soletrar gelo elaborar ajudar sediado carpete sarjeta oficina abreviar",
+            "c22c6e716250a3b98b0f342f77d4f1fe9a4eab81304fbcc9eb9f9852db769b4164daf2aecf72e6d9879713768628780d0b9900ece13c75aa1f433d48ea5c9839",
+            "xprv9s21ZrQH143K4UsyxJK2nxQFmMtrqR5QUuHaK1KiZkp1LZKMqPuUCCe3xqVWDycrKjDSctxm2sPQ72MBM3yZx6tX7Jvemccncy4nw3HEjFb"
+        ],
+        [
+            "066dca1a2bb7e8a1db2832148ce9933eea0f3ac9548d793112d9a95c9407efad",
+            "adjetivo fugir irritado engenho iluminar dourado fralda aditivo aprovar ferrugem fardado ignorado moeda mesada bisneto linda guache jejum pastel ecologia rapel acionado pneu palmada",
+            "6fc110cbcad37d6a43aadf52643ca9172f51c6fac45bf0a17e60e0fc24b5d1cffc73dd0606c427ef789f9e96c1d05af88a806005a21a4f2f93a5e41ab19fd7d6",
+            "xprv9s21ZrQH143K2VBbZdEtqReQrWkiSUvySRGbPbyP9sm8vHAWDwXc1GwsBHc8LQU82gydYVQ2YCDGZKKzKPX8SaWCf2jrQRC7hVAgb2GYZuD"
+        ],
+        [
+            "f30f8c1da665478f49b001d94c5fc452",
+            "turbo hoje aeronave diagrama embargo rachar bochecha abaixo sanidade extinto tridente mundial",
+            "d666e6f21c3f8934aa38e45db96ee64eb490156655c2be5d4da4359fc9b11cf9ffda5802ef0eedcc154fb790c41f50ec0cb40b4236972538d8a6e27e54115706",
+            "xprv9s21ZrQH143K4CtpNWJhUqGJ7sMBw5MfYzKSNUmFABS3NwoqGtdAXUMyci5F11H9Vbx3kbiEqjDPMvTj84nMVZM9PF7u8ouNEruefbPFc9G"
+        ],
+        [
+            "c10ec20dc3cd9f652c7fac2f1230f7a3c828389a14392f05",
+            "povoar gorjeta injetar janta saturar paciente ovelha vaidoso cancelar limpador confuso degelo inflamar avisar ficheiro italiano cancelar cacique",
+            "cb72a39ca9d39c4283398a9995754bdff1785ccc0d96f842d748f4fe904f9dc9a963b7e89ca8070154edbc7d1efc90e1554ac4dc34646c38d6950ffaabeee350",
+            "xprv9s21ZrQH143K2GgN5EwWK5f6MXbTAvTvN4uiu5pZSgb4MxBAy8VTabQfb7Dc3kp1VmEuKTWJbUtM2Hu8KpFUKWPm48ubQ5JHUHg5PeLwz2m"
+        ],
+        [
+            "f585c11aec520db57dd353c69554b21a89b20fb0650966fa0a9d6f74fd989d8f",
+            "vaidoso calota decote sambar batida seda vazio flora queda nuvem cadeado certeiro matinal afetivo praxe moinho feno resgatar nervoso sintonia dobrador recrutar gorro tonel",
+            "8c6d156ba11fbc606a92071e7230fda2446333510ef5f9bed4712b2d737ab43d2e06c4fb3929dfd072ccc8b9003c6bfa62d5b8fcf04396508c54215357f6f8cf",
+            "xprv9s21ZrQH143K3fnoXd9pUHy7b6hH79o9bMW45Zc9486jaN1KKJVZrm1XosHw3sduFw58ADzqLZR1TvaB7enqXZoB8hyptgcijczutBxqKNB"
+        ]
+    ],
     "en": [
         [
             "00000000000000000000000000000000",
