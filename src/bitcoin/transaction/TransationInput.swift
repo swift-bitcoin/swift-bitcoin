@@ -1,16 +1,16 @@
 import Foundation
 
-/// A single input of a ``Transaction``.
+/// A single input belonging to a ``BitcoinTransaction``.
 public struct TransationInput: Equatable {
 
     // MARK: - Initializers
 
     /// Constructs a transaction input.
     /// - Parameters:
-    ///   - outpoint: the output that this input is spending.
-    ///   - sequence: this input's sequence number.
-    ///   - script: optional script to unlock the output.
-    ///   - witness: optional witness data for this input. BIP141
+    ///   - outpoint: The output that this input is spending.
+    ///   - sequence: This input's sequence number.
+    ///   - script: Optional script to unlock the referenced output.
+    ///   - witness: Optional witness data for this input. See BIP141 for more information.
     public init(outpoint: TransactionOutpoint, sequence: InputSequence, script: BitcoinScript = .empty, /* BIP141 */ witness: InputWitness? = .none) {
         self.outpoint = outpoint
         self.sequence = sequence

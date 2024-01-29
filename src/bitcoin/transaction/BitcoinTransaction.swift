@@ -1,11 +1,25 @@
 import Foundation
 import BitcoinCrypto
 
-/// A bitcoin transaction.
+/// A Bitcoin transaction.
+///
+/// A Bitcoin transaction spends a number of coins into new unspent outputs. The newly created coins become potential inputs to subsequent transactions.
+///
+/// Only in the case of coinbase transactions outputs can be created without spending existing coins. The combined value of such transaction comes from the block's aggregated fees and subsidy.
+///
+/// A lock time can also be specified for a transaction which prevents it from being processed until a given block or time has passed.
+///
+/// Version 2 transactions allows for relative lock times based on age of spent outputs.
 public struct BitcoinTransaction: Equatable {
 
     // MARK: - Initializers
-
+    
+    /// Creates a transaction from its inputs and outputs.
+    /// - Parameters:
+    ///   - version: Defaults fo version 1. Version 2 can be specified to unlock per input relative lock times.
+    ///   - locktime: The absolute lock time by which this transaction will be able to be mined. It can be specified as a block height or a calendar date. Disabled by default.
+    ///   - inputs: The coins this transaction will be spending.
+    ///   - outputs: The new coins this transaction will create.
     public init(version: TransactionVersion, locktime: TransactionLocktime = .disabled, inputs: [TransationInput], outputs: [TransactionOutput]) {
         self.version = version
         self.locktime = locktime
@@ -21,10 +35,10 @@ public struct BitcoinTransaction: Equatable {
     /// Lock time value applied to this transaction. It represents the earliest time at which this transaction should be considered valid.
     public let locktime: TransactionLocktime
 
-    /// All of the inputs consumed by this transaction.
+    /// All of the inputs consumed (coins spent) by this transaction.
     public let inputs: [TransationInput]
 
-    /// The outputs created by this transaction.
+    /// The new outputs to be created by this transaction.
     public let outputs: [TransactionOutput]
 
     // MARK: - Computed Properties
@@ -51,7 +65,7 @@ public struct BitcoinTransaction: Equatable {
 
     // MARK: - Instance Methods
 
-    /// Creates an outpoint from a particular output in this transaction to be used when creating an ``Input`` instance.
+    /// Creates an outpoint from a particular output in this transaction to be used when creating an ``TransationInput`` instance.
     public func outpoint(for output: Int) -> TransactionOutpoint? {
         guard output < outputs.count else {
             return .none
