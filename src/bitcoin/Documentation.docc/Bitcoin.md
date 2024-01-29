@@ -1,16 +1,25 @@
-# ``Bitcoin``
+# Swift Bitcoin
 
-Full-featured Bitcoin implementation with a Swift-native API.
+Pure-Swift implementation of core Bitcoin Protocol features.
 
 ## Overview
 
-_Swift Bitcoin_ let's you access the full Bitcoin feature set including block validation, transaction signing/verification, etc.
+_Swift Bitcoin_ provides accesss to many protocol features primarily through three main interfaces:
 
-It supports the most recent BIPs (Bitcoin Improvement Proposals) and can be used to safely interact with the main Bitcoin network.
+- `Bitcoin` Swift Library module.
+- `bcutil` Command-Line Interface tool.
+- `bcnode` service daemon.
+
+The library and executables cover Bitcoin's main areas of funcionality:
+
+- Transactions and scripting
+- Wallet and key pairs
+- Peer-to-Peer Transport
+- RPC Interface
 
 ## Topics
 
 ### Essentials
 
 - <doc:GettingStarted>
-- ``Transaction``
+- ``BitcoinTransaction``

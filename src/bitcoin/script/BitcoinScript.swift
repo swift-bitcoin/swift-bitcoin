@@ -1,12 +1,16 @@
 import Foundation
 
-/// A fully decoded bitcoin script and its associated signature version.
+/// A fully decoded Bitcoin script and its associated signature version.
 ///
-/// If there is a portion of the data that cannot be parsed it will be stored in ``Script:unparsable``.
+/// If there is a portion of the data that cannot be parsed it will be stored in ``BitcoinScript/unparsable``.
 public struct BitcoinScript: Equatable {
 
     // MARK: - Initializers
-
+    
+    /// Creates a script from a list of operations.
+    /// - Parameters:
+    ///   - operations: A sequence of script operations.
+    ///   - sigVersion: The signature version to be assumed by this script.
     public init(_ operations: [ScriptOperation], sigVersion: SigVersion = .base) {
         self.sigVersion = sigVersion
         self.operations = operations
