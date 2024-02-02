@@ -18,8 +18,12 @@ public struct TransactionBlock: Equatable {
 
     // MARK: - Computed Properties
 
+    public var hash: Data {
+        hash256(header.data)
+    }
+
     public var identifier: Data {
-        Data(hash256(header.data).reversed())
+        Data(hash.reversed())
     }
 
     // MARK: - Instance Methods

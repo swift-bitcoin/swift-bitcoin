@@ -2,10 +2,13 @@ import Foundation
 import LibSECP256k1
 
 /// Requires global signing context to be initialized.
-func signECDSA(message messageData: Data, secretKey secretKeyData: Data, grind: Bool = true) -> Data {
+public func signECDSA(message messageData: Data, secretKey secretKeyData: Data, grind: Bool = true) -> Data {
+
+    precondition(secretKeyData.count == secretKeySize)
+    precondition(messageData.count == messageHashSize)
+
     guard let eccSigningContext else { preconditionFailure() }
 
-    let signatureSize = 72
     let msg = [UInt8](messageData)
     let secretKey = [UInt8](secretKeyData)
 
@@ -29,8 +32,8 @@ func signECDSA(message messageData: Data, secretKey secretKeyData: Data, grind: 
         preconditionFailure()
     }
 
-    // TODO: If this fails it means we need to resize (shrink) sigBytes to the serialization size.
-    precondition(sigBytesCount == sigBytes.count)
+    // Resize (shrink) if necessary
+    let signature = Data(sigBytes[sigBytes.startIndex ..< sigBytes.startIndex.advanced(by: sigBytesCount)])
 
     // Additional verification step to prevent using a potentially corrupted signature
     var pk = secp256k1_pubkey()
@@ -42,7 +45,7 @@ func signECDSA(message messageData: Data, secretKey secretKeyData: Data, grind: 
         preconditionFailure()
     }
 
-    return Data(sigBytes)
+    return signature
 }
 
 // Check that the sig has a low R value and will be less than 71 bytes

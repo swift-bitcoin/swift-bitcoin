@@ -1,51 +1,23 @@
 import XCTest
-import Bitcoin
+@testable import Bitcoin  // @testable for Script.data
 import BitcoinCrypto
-
-fileprivate let blockSubsidy = 50 * 100_000_000
 
 final class BlockTests: XCTestCase {
 
-    /// Tests the creation of the genesis block and genesis coinbase transaction.
-    func testGenesisBlock() throws {
-        // TODO: Incorporate genesis block logic into `Bitcoin.TransactionBlock`.
+    let service = BitcoinService()
 
+    /// Tests the creation of the genesis block and genesis coinbase transaction.
+    func testGenesisBlock() async throws {
         let expectedGenesisTxHash = "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"
         let expectedBlockData = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4adae5494dffff7f20020000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000"
         let expectedBlockHash = "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
 
-        let satoshiPublicKey = "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"
-        let genesisMessage = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
-        let genesisTimestamp = 1296688602
+        await service.createGenesisBlock(blockTime: .init(timeIntervalSince1970: 1296688602))
 
-        let genesisTx = BitcoinTransaction(version: .v1,
-                                           inputs: [.init(
-                                            outpoint: .coinbase,
-                                            sequence: .final,
-                                            script: .init([
-                                                .pushBytes(Data([0xff, 0xff, 0x00, 0x1d])),
-                                                .pushBytes(Data([0x04])),
-                                                .pushBytes(genesisMessage.data(using: .ascii)!)
-                                            ]))],
-                                           outputs: [
-                                            .init(value: blockSubsidy,
-                                                  script: .init([
-                                                    .pushBytes(.init(hex: satoshiPublicKey)!),
-                                                    .checkSig]))
-                                           ]
-        )
+        let genesisBlock = await service.genesisBlock
+        let genesisTx = genesisBlock.transactions[0]
+
         XCTAssertEqual(genesisTx.identifier.hex, expectedGenesisTxHash)
-
-        let genesisBlock = TransactionBlock(
-            header: .init(
-                version: 1,
-                previous: Data(repeating: 0, count: 32),
-                merkleRoot: genesisTx.identifier,
-                time: .init(timeIntervalSince1970: TimeInterval(genesisTimestamp)),
-                target: 0x207fffff,
-                nonce: 2
-            ),
-            transactions: [genesisTx])
 
         let genesisBlockData = genesisBlock.data
         XCTAssertEqual(genesisBlockData.hex, expectedBlockData)
@@ -58,7 +30,7 @@ final class BlockTests: XCTestCase {
     }
 
     /// Tests one empty block right after the genesis block at height 1. Includes checks for the coinbase transaction.
-    func testBlock1() throws {
+    func testBlock1() async throws {
         // TODO: Incorporate coinbase transaction and block generation logic into `Bitcoin.TransactionBlock`.
 
         // The following was performed on a new regtest with only the genesis block.
@@ -75,7 +47,7 @@ final class BlockTests: XCTestCase {
         // blockHash = `bitcoin-cli generatetoaddress 1 $address`
         // [ 647024ae6cf6ba659ba4c5c5aeeafe5877926f1da798e4e80ed2b79058cbf7be ]
         //
-        // bitcoin-cli getblock $blockHash
+        // bitcoin-cli   $blockHash
         // {
         //   "height": 1,
         //   "versionHex": "20000000",
@@ -139,11 +111,6 @@ final class BlockTests: XCTestCase {
         //   ]
         // }
 
-        // AKA block hash
-        let genesisBlockIdentifier = Data(hex: "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")!
-
-        let destinationPublicKeyHash = "25337bc59613aa8717459c5f7e6bf29479ddd0ed"
-
         let expectedBlockData = Data(hex: "0000002006226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910fbec765a1f75eb654fb485e81df36df6d7edfbb81a8e448bdb9dc30cb9b2d757259919e65ffff7f200200000001020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff025100ffffffff0200f2052a010000001976a91425337bc59613aa8717459c5f7e6bf29479ddd0ed88ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000")!
         guard let expectedBlock = TransactionBlock(expectedBlockData) else { XCTFail(); return }
 
@@ -156,47 +123,17 @@ final class BlockTests: XCTestCase {
         guard let expectedCoinbaseTx = BitcoinTransaction(expectedCoinbaseTxData) else { XCTFail(); return }
         XCTAssertEqual(expectedCoinbaseTx.data, expectedCoinbaseTxData)
 
-        // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
-        let expectedWitnessCommitmentHash = "e2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9"
-        let witnessReservedValue = Data(repeating: 0, count: 32)
-        let coinbaseTxIdentifier = Data(repeating: 0, count: 32)
+        await service.createGenesisBlock(blockTime: .init(timeIntervalSince1970: 1296688602))
 
-        let witnessCommitmentHeader = Data([0xaa, 0x21, 0xa9, 0xed])
-        let witnessRootHash = coinbaseTxIdentifier // Merkle root
-        let witnessCommitmentHash = hash256(witnessRootHash + witnessReservedValue)
+        await service.generateTo("miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5", blockTime: .init(timeIntervalSince1970: 1704890713))
 
-        XCTAssertEqual(witnessCommitmentHash.hex, expectedWitnessCommitmentHash)
-        let witnessCommitmentScript = BitcoinScript([
-            .return,
-            .pushBytes(witnessCommitmentHeader + witnessCommitmentHash),
-        ])
+        let block = await service.blockchain[1]
+        let coinbaseTx = block.transactions[0]
+        let expectedWitnessCommitmentHash = "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9"
 
-        let blockHeight = 1
-        let coinbaseTx = BitcoinTransaction(version: .v2, inputs: [
-            .init(outpoint: .coinbase, sequence: .final, script: .init([.encodeMinimally(blockHeight), .zero]), witness: .init([witnessReservedValue]))
-        ], outputs: [
-            .init(value: blockSubsidy, script: .init([
-                .dup,
-                .hash160,
-                .pushBytes(.init(hex: destinationPublicKeyHash)!),
-                .equalVerify,
-                .checkSig
-            ])),
-            .init(value: 0, script: witnessCommitmentScript)
-        ])
+        XCTAssertEqual(coinbaseTx.outputs[1].script.data.hex, expectedWitnessCommitmentHash)
         XCTAssertEqual(coinbaseTx, expectedCoinbaseTx)
         XCTAssertEqual(coinbaseTx.data, expectedCoinbaseTxData)
-
-        let block = TransactionBlock(
-            header: .init(
-                version: 0x20000000,
-                previous: genesisBlockIdentifier,
-                merkleRoot: coinbaseTx.identifier,
-                time: .init(timeIntervalSince1970: 1704890713),
-                target: 0x207fffff,
-                nonce: 2
-            ),
-            transactions: [coinbaseTx])
         XCTAssertEqual(block, expectedBlock)
         XCTAssertEqual(block.data, expectedBlockData)
         XCTAssertEqual(block.identifier.hex, expectedBlockHash)
