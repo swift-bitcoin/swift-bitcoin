@@ -1,5 +1,6 @@
 import ArgumentParser
 import Bitcoin
+import BitcoinCrypto
 import Foundation
 
 /// Computes the public key corresponding to the provided secret key.
@@ -14,5 +15,6 @@ struct ECToPublic: ParsableCommand {
 
     mutating func run() throws {
         print(try Wallet.getPublicKey(secretKey: secretKey))
+        destroyECCSigningContext()
     }
 }

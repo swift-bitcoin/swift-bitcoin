@@ -43,4 +43,19 @@ public enum WalletError: Error {
 
     /// A limited amount of tapscript leaves is enforced.
     case tooManyTapscriptLeaves
+
+    /// The  address could not be decoded.
+    case invalidAddress
+
+    /// The signature could not be decoded as Base64.
+    case invalidSignatureEncoding
+
+    /// The message could not be decoded as UTF-8.
+    case invalidMessageEncoding
+
+    /// The secret key could not be decoded as WIF.
+    case invalidSecretKeyEncoding
+
+    /// The secret key is not valid.
+    case invalidSecretKey
 }
