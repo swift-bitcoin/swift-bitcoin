@@ -96,7 +96,7 @@ final class BitcoinServiceTests: XCTestCase {
         let genesisDate = genesisBlock.header.time
         var date = genesisDate
         var calendar = Calendar(identifier: .iso8601)
-        calendar.timeZone = .gmt
+        calendar.timeZone = .init(secondsFromGMT: 0)! // .gmt not available on linux
 
         for i in 1...15 {
             let minutes = if i < 5 { 4 } else if i < 10 { 2 } else { 4 }
