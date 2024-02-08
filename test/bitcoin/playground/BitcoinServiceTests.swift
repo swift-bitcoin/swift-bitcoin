@@ -62,22 +62,22 @@ final class BitcoinServiceTests: XCTestCase {
         XCTAssertEqual(lastBlock.transactions[1], signedTransaction)
     }
 
-    func testDifficulty() async throws {
+    func testDifficultyTarget() async throws {
         let difficultyBits = 0x207fffff
         let powLimitBE = Data(hex: "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")! // Regtest
         let powLimitLE = Data(powLimitBE.reversed())
-        let powLimitUInt256 = Arithmetic256.fromData(powLimitLE)
-        XCTAssertEqual(Arithmetic256.toData(powLimitUInt256), powLimitLE)
-        let powLimitCompact = Arithmetic256.toCompact(powLimitUInt256)
+        let powLimitTarget = DifficultyTarget(powLimitLE)
+        XCTAssertEqual(powLimitTarget.data, powLimitLE)
+        let powLimitCompact = powLimitTarget.toCompact()
         XCTAssertEqual(powLimitCompact, difficultyBits)
 
         var neg: Bool = true
         var over: Bool = true
-        let powLimitUInt256_ = Arithmetic256.fromCompact(powLimitCompact, negative: &neg, overflow: &over)
-        if Arithmetic256.isZero(powLimitUInt256_) || neg || over {
+        let powLimitTarget_ = DifficultyTarget(compact: powLimitCompact, negative: &neg, overflow: &over)
+        if powLimitTarget_.isZero || neg || over {
             XCTFail(); return
         }
-        let powLimitLE_ = Arithmetic256.toData(powLimitUInt256_)
+        let powLimitLE_ = powLimitTarget_.data
         XCTAssertEqual(powLimitLE_.reversed().hex, "7fffff0000000000000000000000000000000000000000000000000000000000")
     }
 
@@ -87,7 +87,10 @@ final class BitcoinServiceTests: XCTestCase {
             powTargetTimespan: 1 * 1 * 10 * 60, // 12 minutes
             powTargetSpacing: 2 * 60, // 2 minutes
             powAllowMinDifficultyBlocks: true,
-            powNoRetargeting: false
+            powNoRetargeting: false,
+            genesisBlockTime: 1296688602,
+            genesisBlockNonce: 2,
+            genesisBlockTarget: 0x207fffff
         ))
         await service.createGenesisBlock()
         let genesisBlock = await service.genesisBlock
@@ -104,7 +107,7 @@ final class BitcoinServiceTests: XCTestCase {
             await service.generateTo("miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5", blockTime: date)
             let block = await service.blockchain.last!
             let expectedTarget = if (1...4).contains(i) {
-                0x207fffff // 0x7fffff0000000000000000000000000000000000000000000000000000000000 (Arithmetic256.toData(Arithmetic256.fromCompact(block.header.target)).reversed().hex)
+                0x207fffff // 0x7fffff0000000000000000000000000000000000000000000000000000000000 DifficultyTarget(compact: block.header.target).data.reversed().hex
             } else if (5...9).contains(i) {
                 0x1f6d386d // 0x006d386d00000000000000000000000000000000000000000000000000000000
             } else if (10...14).contains(i) {
@@ -113,6 +116,30 @@ final class BitcoinServiceTests: XCTestCase {
                 0x1f1e9351 // 0x001e935100000000000000000000000000000000000000000000000000000000
             }
             XCTAssertEqual(block.header.target, expectedTarget)
+        }
+    }
+
+    func testDifficulty() async throws {
+        let cases = [
+            // very_low_target
+            (0x1f111111, 0.000001),
+            // low_target
+            (0x1ef88f6f, 0.000016),
+            // mid_target
+            (0x1df88f6f, 0.004023),
+            // high_target
+            (0x1cf88f6f, 1.029916),
+            // very_high_target
+            (0x12345678, 5913134931067755359633408.0)
+        ]
+        for (compact, expected) in cases {
+            var negative = true
+            var overflow = true
+            let target = DifficultyTarget(compact: compact, negative: &negative, overflow: &overflow)
+            XCTAssertFalse(target.isZero)
+            XCTAssertFalse(overflow)
+            XCTAssertEqual(target.toCompact(negative: negative), compact)
+            XCTAssertEqual(DifficultyTarget.getDifficulty(compact), expected, accuracy: 0.00001)
         }
     }
 }
