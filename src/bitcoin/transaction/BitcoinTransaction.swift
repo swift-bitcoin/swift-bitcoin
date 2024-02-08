@@ -86,5 +86,56 @@ public struct BitcoinTransaction: Equatable {
 
     // MARK: - Type Methods
 
-    // No type methods yet.
+    static func makeGenesisTransaction(consensusParameters: ConsensusParameters) -> Self {
+
+        let satoshiPublicKey = "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"
+        let genesisMessage = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
+
+        let genesisTx = BitcoinTransaction(
+            version: .v1,
+            inputs: [.init(
+                outpoint: .coinbase,
+                sequence: .final,
+                script: .init([
+                    .pushBytes(Data([0xff, 0xff, 0x00, 0x1d])),
+                    .pushBytes(Data([0x04])),
+                    .pushBytes(genesisMessage.data(using: .ascii)!)
+                ]))],
+            outputs: [
+                .init(value: consensusParameters.blockSubsidy,
+                      script: .init([
+                        .pushBytes(.init(hex: satoshiPublicKey)!),
+                        .checkSig]))
+            ])
+
+        return genesisTx
+    }
+
+    static func makeCoinbaseTransaction(blockHeight: Int, destinationPublicKeyHash: Data, witnessMerkleRoot: Data, consensusParameters: ConsensusParameters) -> Self {
+        // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
+        let witnessReservedValue = Data(count: 32)
+
+        let witnessCommitmentHeader = Data([0xaa, 0x21, 0xa9, 0xed])
+        let witnessRootHash = witnessMerkleRoot
+        let witnessCommitmentHash = hash256(witnessRootHash + witnessReservedValue)
+
+        let witnessCommitmentScript = BitcoinScript([
+            .return,
+            .pushBytes(witnessCommitmentHeader + witnessCommitmentHash),
+        ])
+
+        let coinbaseTx = BitcoinTransaction(version: .v2, inputs: [
+            .init(outpoint: .coinbase, sequence: .final, script: .init([.encodeMinimally(blockHeight), .zero]), witness: .init([witnessReservedValue]))
+        ], outputs: [
+            .init(value: consensusParameters.blockSubsidy, script: .init([
+                .dup,
+                .hash160,
+                .pushBytes(destinationPublicKeyHash),
+                .equalVerify,
+                .checkSig
+            ])),
+            .init(value: 0, script: witnessCommitmentScript)
+        ])
+        return coinbaseTx
+    }
 }
