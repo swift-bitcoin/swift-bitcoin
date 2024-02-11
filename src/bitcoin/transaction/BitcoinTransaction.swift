@@ -20,7 +20,7 @@ public struct BitcoinTransaction: Equatable {
     ///   - locktime: The absolute lock time by which this transaction will be able to be mined. It can be specified as a block height or a calendar date. Disabled by default.
     ///   - inputs: The coins this transaction will be spending.
     ///   - outputs: The new coins this transaction will create.
-    public init(version: TransactionVersion, locktime: TransactionLocktime = .disabled, inputs: [TransationInput], outputs: [TransactionOutput]) {
+    public init(version: TransactionVersion = .v1, locktime: TransactionLocktime = .disabled, inputs: [TransationInput], outputs: [TransactionOutput]) {
         self.version = version
         self.locktime = locktime
         self.inputs = inputs
