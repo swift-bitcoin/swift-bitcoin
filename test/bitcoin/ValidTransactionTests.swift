@@ -81,8 +81,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(1),
-                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
-                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .pushBytes(.init([0x04, 0xcc, 0x71, 0xeb, 0x30, 0xd6, 0x53, 0xc0, 0xc3, 0x16, 0x39, 0x90, 0xc4, 0x7b, 0x97, 0x6f, 0x3f, 0xb3, 0xf3, 0x7c, 0xcc, 0xdc, 0xbe, 0xdb, 0x16, 0x9a, 0x1d, 0xfe, 0xf5, 0x8b, 0xbf, 0xbf, 0xaf, 0xf7, 0xd8, 0xa4, 0x73, 0xe7, 0xe2, 0xe6, 0xd3, 0x17, 0xb8, 0x7b, 0xaf, 0xe8, 0xbd, 0xe9, 0x7e, 0x3c, 0xf8, 0xf0, 0x65, 0xde, 0xc0, 0x22, 0xb5, 0x1d, 0x11, 0xfc, 0xdd, 0x0d, 0x34, 0x8a, 0xc4])),
+                    .pushBytes(.init([0x04, 0x61, 0xcb, 0xdc, 0xc5, 0x40, 0x9f, 0xb4, 0xb4, 0xd4, 0x2b, 0x51, 0xd3, 0x33, 0x81, 0x35, 0x4d, 0x80, 0xe5, 0x50, 0x07, 0x8c, 0xb5, 0x32, 0xa3, 0x4b, 0xfa, 0x2f, 0xcf, 0xde, 0xb7, 0xd7, 0x65, 0x19, 0xae, 0xcc, 0x62, 0x77, 0x0f, 0x5b, 0x0e, 0x4e, 0xf8, 0x55, 0x19, 0x46, 0xd8, 0xa5, 0x40, 0x91, 0x1a, 0xbe, 0x3e, 0x78, 0x54, 0xa2, 0x6f, 0x39, 0xf5, 0x8b, 0x25, 0xc1, 0x53, 0x42, 0xaf])),
                     .constant(2),
                     .checkMultiSig
                 ]
@@ -103,8 +103,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(1),
-                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
-                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .pushBytes(.init([0x04, 0xcc, 0x71, 0xeb, 0x30, 0xd6, 0x53, 0xc0, 0xc3, 0x16, 0x39, 0x90, 0xc4, 0x7b, 0x97, 0x6f, 0x3f, 0xb3, 0xf3, 0x7c, 0xcc, 0xdc, 0xbe, 0xdb, 0x16, 0x9a, 0x1d, 0xfe, 0xf5, 0x8b, 0xbf, 0xbf, 0xaf, 0xf7, 0xd8, 0xa4, 0x73, 0xe7, 0xe2, 0xe6, 0xd3, 0x17, 0xb8, 0x7b, 0xaf, 0xe8, 0xbd, 0xe9, 0x7e, 0x3c, 0xf8, 0xf0, 0x65, 0xde, 0xc0, 0x22, 0xb5, 0x1d, 0x11, 0xfc, 0xdd, 0x0d, 0x34, 0x8a, 0xc4])),
+                    .pushBytes(.init([0x04, 0x61, 0xcb, 0xdc, 0xc5, 0x40, 0x9f, 0xb4, 0xb4, 0xd4, 0x2b, 0x51, 0xd3, 0x33, 0x81, 0x35, 0x4d, 0x80, 0xe5, 0x50, 0x07, 0x8c, 0xb5, 0x32, 0xa3, 0x4b, 0xfa, 0x2f, 0xcf, 0xde, 0xb7, 0xd7, 0x65, 0x19, 0xae, 0xcc, 0x62, 0x77, 0x0f, 0x5b, 0x0e, 0x4e, 0xf8, 0x55, 0x19, 0x46, 0xd8, 0xa5, 0x40, 0x91, 0x1a, 0xbe, 0x3e, 0x78, 0x54, 0xa2, 0x6f, 0x39, 0xf5, 0x8b, 0x25, 0xc1, 0x53, 0x42, 0xaf])),
                     .constant(2),
                     .checkMultiSig
                 ]
@@ -124,8 +124,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(1),
-                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
-                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .pushBytes(.init([0x04, 0xcc, 0x71, 0xeb, 0x30, 0xd6, 0x53, 0xc0, 0xc3, 0x16, 0x39, 0x90, 0xc4, 0x7b, 0x97, 0x6f, 0x3f, 0xb3, 0xf3, 0x7c, 0xcc, 0xdc, 0xbe, 0xdb, 0x16, 0x9a, 0x1d, 0xfe, 0xf5, 0x8b, 0xbf, 0xbf, 0xaf, 0xf7, 0xd8, 0xa4, 0x73, 0xe7, 0xe2, 0xe6, 0xd3, 0x17, 0xb8, 0x7b, 0xaf, 0xe8, 0xbd, 0xe9, 0x7e, 0x3c, 0xf8, 0xf0, 0x65, 0xde, 0xc0, 0x22, 0xb5, 0x1d, 0x11, 0xfc, 0xdd, 0x0d, 0x34, 0x8a, 0xc4])),
+                    .pushBytes(.init([0x04, 0x61, 0xcb, 0xdc, 0xc5, 0x40, 0x9f, 0xb4, 0xb4, 0xd4, 0x2b, 0x51, 0xd3, 0x33, 0x81, 0x35, 0x4d, 0x80, 0xe5, 0x50, 0x07, 0x8c, 0xb5, 0x32, 0xa3, 0x4b, 0xfa, 0x2f, 0xcf, 0xde, 0xb7, 0xd7, 0x65, 0x19, 0xae, 0xcc, 0x62, 0x77, 0x0f, 0x5b, 0x0e, 0x4e, 0xf8, 0x55, 0x19, 0x46, 0xd8, 0xa5, 0x40, 0x91, 0x1a, 0xbe, 0x3e, 0x78, 0x54, 0xa2, 0x6f, 0x39, 0xf5, 0x8b, 0x25, 0xc1, 0x53, 0x42, 0xaf])),
                     .constant(2),
                     .checkMultiSig
                 ]
@@ -144,8 +144,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(1),
-                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
-                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .pushBytes(.init([0x04, 0xcc, 0x71, 0xeb, 0x30, 0xd6, 0x53, 0xc0, 0xc3, 0x16, 0x39, 0x90, 0xc4, 0x7b, 0x97, 0x6f, 0x3f, 0xb3, 0xf3, 0x7c, 0xcc, 0xdc, 0xbe, 0xdb, 0x16, 0x9a, 0x1d, 0xfe, 0xf5, 0x8b, 0xbf, 0xbf, 0xaf, 0xf7, 0xd8, 0xa4, 0x73, 0xe7, 0xe2, 0xe6, 0xd3, 0x17, 0xb8, 0x7b, 0xaf, 0xe8, 0xbd, 0xe9, 0x7e, 0x3c, 0xf8, 0xf0, 0x65, 0xde, 0xc0, 0x22, 0xb5, 0x1d, 0x11, 0xfc, 0xdd, 0x0d, 0x34, 0x8a, 0xc4])),
+                    .pushBytes(.init([0x04, 0x61, 0xcb, 0xdc, 0xc5, 0x40, 0x9f, 0xb4, 0xb4, 0xd4, 0x2b, 0x51, 0xd3, 0x33, 0x81, 0x35, 0x4d, 0x80, 0xe5, 0x50, 0x07, 0x8c, 0xb5, 0x32, 0xa3, 0x4b, 0xfa, 0x2f, 0xcf, 0xde, 0xb7, 0xd7, 0x65, 0x19, 0xae, 0xcc, 0x62, 0x77, 0x0f, 0x5b, 0x0e, 0x4e, 0xf8, 0x55, 0x19, 0x46, 0xd8, 0xa5, 0x40, 0x91, 0x1a, 0xbe, 0x3e, 0x78, 0x54, 0xa2, 0x6f, 0x39, 0xf5, 0x8b, 0x25, 0xc1, 0x53, 0x42, 0xaf])),
                     .constant(2),
                     .checkMultiSig
                 ]
@@ -164,8 +164,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(1),
-                    .pushBytes(.init(hex: "04cc71eb30d653c0c3163990c47b976f3fb3f37cccdcbedb169a1dfef58bbfbfaff7d8a473e7e2e6d317b87bafe8bde97e3cf8f065dec022b51d11fcdd0d348ac4")!),
-                    .pushBytes(.init(hex: "0461cbdcc5409fb4b4d42b51d33381354d80e550078cb532a34bfa2fcfdeb7d76519aecc62770f5b0e4ef8551946d8a540911abe3e7854a26f39f58b25c15342af")!),
+                    .pushBytes(.init([0x04, 0xcc, 0x71, 0xeb, 0x30, 0xd6, 0x53, 0xc0, 0xc3, 0x16, 0x39, 0x90, 0xc4, 0x7b, 0x97, 0x6f, 0x3f, 0xb3, 0xf3, 0x7c, 0xcc, 0xdc, 0xbe, 0xdb, 0x16, 0x9a, 0x1d, 0xfe, 0xf5, 0x8b, 0xbf, 0xbf, 0xaf, 0xf7, 0xd8, 0xa4, 0x73, 0xe7, 0xe2, 0xe6, 0xd3, 0x17, 0xb8, 0x7b, 0xaf, 0xe8, 0xbd, 0xe9, 0x7e, 0x3c, 0xf8, 0xf0, 0x65, 0xde, 0xc0, 0x22, 0xb5, 0x1d, 0x11, 0xfc, 0xdd, 0x0d, 0x34, 0x8a, 0xc4])),
+                    .pushBytes(.init([0x04, 0x61, 0xcb, 0xdc, 0xc5, 0x40, 0x9f, 0xb4, 0xb4, 0xd4, 0x2b, 0x51, 0xd3, 0x33, 0x81, 0x35, 0x4d, 0x80, 0xe5, 0x50, 0x07, 0x8c, 0xb5, 0x32, 0xa3, 0x4b, 0xfa, 0x2f, 0xcf, 0xde, 0xb7, 0xd7, 0x65, 0x19, 0xae, 0xcc, 0x62, 0x77, 0x0f, 0x5b, 0x0e, 0x4e, 0xf8, 0x55, 0x19, 0x46, 0xd8, 0xa5, 0x40, 0x91, 0x1a, 0xbe, 0x3e, 0x78, 0x54, 0xa2, 0x6f, 0x39, 0xf5, 0x8b, 0x25, 0xc1, 0x53, 0x42, 0xaf])),
                     .constant(2),
                     .checkMultiSig
                 ]
@@ -186,7 +186,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "dc44b1164188067c3a32d4780f5996fa14a4f2d9")!),
+                    .pushBytes(.init([0xdc, 0x44, 0xb1, 0x16, 0x41, 0x88, 0x06, 0x7c, 0x3a, 0x32, 0xd4, 0x78, 0x0f, 0x59, 0x96, 0xfa, 0x14, 0xa4, 0xf2, 0xd9])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -206,7 +206,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
+                    .pushBytes(.init([0x5b, 0x64, 0x62, 0x47, 0x54, 0x54, 0x71, 0x0f, 0x3c, 0x22, 0xf5, 0xfd, 0xf0, 0xb4, 0x07, 0x04, 0xc9, 0x2f, 0x25, 0xc3])),
                     .equalVerify,
                     .checkSigVerify,
                     .constant(1)
@@ -227,11 +227,11 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "5b6462475454710f3c22f5fdf0b40704c92f25c3")!),
+                    .pushBytes(.init([0x5b, 0x64, 0x62, 0x47, 0x54, 0x54, 0x71, 0x0f, 0x3c, 0x22, 0xf5, 0xfd, 0xf0, 0xb4, 0x07, 0x04, 0xc9, 0x2f, 0x25, 0xc3])),
                     .equalVerify,
                     .checkSigVerify,
                     .constant(1),
-                    .pushBytes(.init(hex: "3044022067288ea50aa799543a536ff9306f8e1cba05b9c6b10951175b924f96732555ed022026d7b5265f38d21541519e4a1e55044d5b9e17e15cdbaf29ae3792e99e883e7a01")!)
+                    .pushBytes(.init([0x30, 0x44, 0x02, 0x20, 0x67, 0x28, 0x8e, 0xa5, 0x0a, 0xa7, 0x99, 0x54, 0x3a, 0x53, 0x6f, 0xf9, 0x30, 0x6f, 0x8e, 0x1c, 0xba, 0x05, 0xb9, 0xc6, 0xb1, 0x09, 0x51, 0x17, 0x5b, 0x92, 0x4f, 0x96, 0x73, 0x25, 0x55, 0xed, 0x02, 0x20, 0x26, 0xd7, 0xb5, 0x26, 0x5f, 0x38, 0xd2, 0x15, 0x41, 0x51, 0x9e, 0x4a, 0x1e, 0x55, 0x04, 0x4d, 0x5b, 0x9e, 0x17, 0xe1, 0x5c, 0xdb, 0xaf, 0x29, 0xae, 0x37, 0x92, 0xe9, 0x9e, 0x88, 0x3e, 0x7a, 0x01]))
                 ]
             )
         ],
@@ -250,7 +250,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "bef80ecf3a44500fda1bc92176e442891662aed2")!),
+                    .pushBytes(.init([0xbe, 0xf8, 0x0e, 0xcf, 0x3a, 0x44, 0x50, 0x0f, 0xda, 0x1b, 0xc9, 0x21, 0x76, 0xe4, 0x42, 0x89, 0x16, 0x62, 0xae, 0xd2])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -262,7 +262,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "bef80ecf3a44500fda1bc92176e442891662aed2")!),
+                    .pushBytes(.init([0xbe, 0xf8, 0x0e, 0xcf, 0x3a, 0x44, 0x50, 0x0f, 0xda, 0x1b, 0xc9, 0x21, 0x76, 0xe4, 0x42, 0x89, 0x16, 0x62, 0xae, 0xd2])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -292,7 +292,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "e52b482f2faa8ecbf0db344f93c84ac908557f33")!),
+                    .pushBytes(.init([0xe5, 0x2b, 0x48, 0x2f, 0x2f, 0xaa, 0x8e, 0xcb, 0xf0, 0xdb, 0x34, 0x4f, 0x93, 0xc8, 0x4a, 0xc9, 0x08, 0x55, 0x7f, 0x33])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -312,7 +312,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "383fb81cb0a3fc724b5e08cf8bbd404336d711f6")!),
+                    .pushBytes(.init([0x38, 0x3f, 0xb8, 0x1c, 0xb0, 0xa3, 0xfc, 0x72, 0x4b, 0x5e, 0x08, 0xcf, 0x8b, 0xbd, 0x40, 0x43, 0x36, 0xd7, 0x11, 0xf6])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -324,7 +324,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "275ec2a233e5b23d43fa19e7bf9beb0cb3996117")!),
+                    .pushBytes(.init([0x27, 0x5e, 0xc2, 0xa2, 0x33, 0xe5, 0xb2, 0x3d, 0x43, 0xfa, 0x19, 0xe7, 0xbf, 0x9b, 0xeb, 0x0c, 0xb3, 0x99, 0x61, 0x17])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -336,7 +336,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "34fea2c5a75414fd945273ae2d029ce1f28dafcf")!),
+                    .pushBytes(.init([0x34, 0xfe, 0xa2, 0xc5, 0xa7, 0x54, 0x14, 0xfd, 0x94, 0x52, 0x73, 0xae, 0x2d, 0x02, 0x9c, 0xe1, 0xf2, 0x8d, 0xaf, 0xcf])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -355,7 +355,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "8febbed40483661de6958d957412f82deed8e2f7")!),
+                    .pushBytes(.init([0x8f, 0xeb, 0xbe, 0xd4, 0x04, 0x83, 0x66, 0x1d, 0xe6, 0x95, 0x8d, 0x95, 0x74, 0x12, 0xf8, 0x2d, 0xee, 0xd8, 0xe2, 0xf7])),
                     .equal
                 ]
             )
@@ -375,7 +375,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "32afac281462b822adbec5094b8d4d337dd5bd6a")!),
+                    .pushBytes(.init([0x32, 0xaf, 0xac, 0x28, 0x14, 0x62, 0xb8, 0x22, 0xad, 0xbe, 0xc5, 0x09, 0x4b, 0x8d, 0x4d, 0x33, 0x7d, 0xd5, 0xbd, 0x6a])),
                     .equal
                 ]
             )
@@ -393,7 +393,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "b558cbf4930954aa6a344363a15668d7477ae716")!),
+                    .pushBytes(.init([0xb5, 0x58, 0xcb, 0xf4, 0x93, 0x09, 0x54, 0xaa, 0x6a, 0x34, 0x43, 0x63, 0xa1, 0x56, 0x68, 0xd7, 0x47, 0x7a, 0xe7, 0x16])),
                     .equal
                 ]
             )
@@ -444,7 +444,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "035e7f0d4d0841bcd56c39337ed086b1a633ee770c1ffdd94ac552a95ac2ce0efc")!),
+                    .pushBytes(.init([0x03, 0x5e, 0x7f, 0x0d, 0x4d, 0x08, 0x41, 0xbc, 0xd5, 0x6c, 0x39, 0x33, 0x7e, 0xd0, 0x86, 0xb1, 0xa6, 0x33, 0xee, 0x77, 0x0c, 0x1f, 0xfd, 0xd9, 0x4a, 0xc5, 0x52, 0xa9, 0x5a, 0xc2, 0xce, 0x0e, 0xfc])),
                     .checkSig
                 ]
             ),
@@ -453,7 +453,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "035e7f0d4d0841bcd56c39337ed086b1a633ee770c1ffdd94ac552a95ac2ce0efc")!),
+                    .pushBytes(.init([0x03, 0x5e, 0x7f, 0x0d, 0x4d, 0x08, 0x41, 0xbc, 0xd5, 0x6c, 0x39, 0x33, 0x7e, 0xd0, 0x86, 0xb1, 0xa6, 0x33, 0xee, 0x77, 0x0c, 0x1f, 0xfd, 0xd9, 0x4a, 0xc5, 0x52, 0xa9, 0x5a, 0xc2, 0xce, 0x0e, 0xfc])),
                     .checkSig
                 ]
             )
@@ -470,7 +470,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "035e7f0d4d0841bcd56c39337ed086b1a633ee770c1ffdd94ac552a95ac2ce0efc")!),
+                    .pushBytes(.init([0x03, 0x5e, 0x7f, 0x0d, 0x4d, 0x08, 0x41, 0xbc, 0xd5, 0x6c, 0x39, 0x33, 0x7e, 0xd0, 0x86, 0xb1, 0xa6, 0x33, 0xee, 0x77, 0x0c, 0x1f, 0xfd, 0xd9, 0x4a, 0xc5, 0x52, 0xa9, 0x5a, 0xc2, 0xce, 0x0e, 0xfc])),
                     .checkSig
                 ]
             ),
@@ -479,7 +479,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "035e7f0d4d0841bcd56c39337ed086b1a633ee770c1ffdd94ac552a95ac2ce0efc")!),
+                    .pushBytes(.init([0x03, 0x5e, 0x7f, 0x0d, 0x4d, 0x08, 0x41, 0xbc, 0xd5, 0x6c, 0x39, 0x33, 0x7e, 0xd0, 0x86, 0xb1, 0xa6, 0x33, 0xee, 0x77, 0x0c, 0x1f, 0xfd, 0xd9, 0x4a, 0xc5, 0x52, 0xa9, 0x5a, 0xc2, 0xce, 0x0e, 0xfc])),
                     .checkSig
                 ]
             )
@@ -498,7 +498,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "dcf72c4fd02f5a987cf9b02f2fabfcac3341a87d")!),
+                    .pushBytes(.init([0xdc, 0xf7, 0x2c, 0x4f, 0xd0, 0x2f, 0x5a, 0x98, 0x7c, 0xf9, 0xb0, 0x2f, 0x2f, 0xab, 0xfc, 0xac, 0x33, 0x41, 0xa8, 0x7d])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -510,7 +510,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "dcf72c4fd02f5a987cf9b02f2fabfcac3341a87d")!),
+                    .pushBytes(.init([0xdc, 0xf7, 0x2c, 0x4f, 0xd0, 0x2f, 0x5a, 0x98, 0x7c, 0xf9, 0xb0, 0x2f, 0x2f, 0xab, 0xfc, 0xac, 0x33, 0x41, 0xa8, 0x7d])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -522,7 +522,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "dcf72c4fd02f5a987cf9b02f2fabfcac3341a87d")!),
+                    .pushBytes(.init([0xdc, 0xf7, 0x2c, 0x4f, 0xd0, 0x2f, 0x5a, 0x98, 0x7c, 0xf9, 0xb0, 0x2f, 0x2f, 0xab, 0xfc, 0xac, 0x33, 0x41, 0xa8, 0x7d])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -540,11 +540,11 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushData1(.init(hex: "606563686f2022553246736447566b58312b5a536e587574356542793066794778625456415675534a6c376a6a334878416945325364667657734f53474f36633338584d7439435c6e543249584967306a486956304f376e775236644546673d3d22203e20743b206f70656e73736c20656e63202d7061737320706173733a5b314a564d7751432d707269766b65792d6865785d202d64202d6165732d3235362d636263202d61202d696e207460")!),
+                    .pushData1(.init([0x60, 0x65, 0x63, 0x68, 0x6f, 0x20, 0x22, 0x55, 0x32, 0x46, 0x73, 0x64, 0x47, 0x56, 0x6b, 0x58, 0x31, 0x2b, 0x5a, 0x53, 0x6e, 0x58, 0x75, 0x74, 0x35, 0x65, 0x42, 0x79, 0x30, 0x66, 0x79, 0x47, 0x78, 0x62, 0x54, 0x56, 0x41, 0x56, 0x75, 0x53, 0x4a, 0x6c, 0x37, 0x6a, 0x6a, 0x33, 0x48, 0x78, 0x41, 0x69, 0x45, 0x32, 0x53, 0x64, 0x66, 0x76, 0x57, 0x73, 0x4f, 0x53, 0x47, 0x4f, 0x36, 0x63, 0x33, 0x38, 0x58, 0x4d, 0x74, 0x39, 0x43, 0x5c, 0x6e, 0x54, 0x32, 0x49, 0x58, 0x49, 0x67, 0x30, 0x6a, 0x48, 0x69, 0x56, 0x30, 0x4f, 0x37, 0x6e, 0x77, 0x52, 0x36, 0x64, 0x45, 0x46, 0x67, 0x3d, 0x3d, 0x22, 0x20, 0x3e, 0x20, 0x74, 0x3b, 0x20, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x73, 0x6c, 0x20, 0x65, 0x6e, 0x63, 0x20, 0x2d, 0x70, 0x61, 0x73, 0x73, 0x20, 0x70, 0x61, 0x73, 0x73, 0x3a, 0x5b, 0x31, 0x4a, 0x56, 0x4d, 0x77, 0x51, 0x43, 0x2d, 0x70, 0x72, 0x69, 0x76, 0x6b, 0x65, 0x79, 0x2d, 0x68, 0x65, 0x78, 0x5d, 0x20, 0x2d, 0x64, 0x20, 0x2d, 0x61, 0x65, 0x73, 0x2d, 0x32, 0x35, 0x36, 0x2d, 0x63, 0x62, 0x63, 0x20, 0x2d, 0x61, 0x20, 0x2d, 0x69, 0x6e, 0x20, 0x74, 0x60])),
                     .drop,
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "bfd7436b6265aa9de506f8a994f881ff08cc2872")!),
+                    .pushBytes(.init([0xbf, 0xd7, 0x43, 0x6b, 0x62, 0x65, 0xaa, 0x9d, 0xe5, 0x06, 0xf8, 0xa9, 0x94, 0xf8, 0x81, 0xff, 0x08, 0xcc, 0x28, 0x72])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -564,7 +564,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "b1ce99298d5f07364b57b1e5c9cc00be0b04a954")!),
+                    .pushBytes(.init([0xb1, 0xce, 0x99, 0x29, 0x8d, 0x5f, 0x07, 0x36, 0x4b, 0x57, 0xb1, 0xe5, 0xc9, 0xcc, 0x00, 0xbe, 0x0b, 0x04, 0xa9, 0x54])),
                     .equal
                 ]
             )
@@ -580,7 +580,7 @@ fileprivate let testVectors: [TestVector] = [
                 transactionIdentifier: "cbebc4da731e8995fe97f6fadcd731b36ad40e5ecb31e38e904f6e5982fa09f7",
                 outputIndex: 0,
                 amount: 0,
-                scriptOperations: BitcoinScript(.init(hex: "2102085c6600657566acc2d6382a47bc3f324008d2aa10940dd7705a48aa2a5a5e33ac7c2103f5d0fb955f95dd6be6115ce85661db412ec6a08abcbfce7da0ba8297c6cc0ec4ac7c5379a820d68df9e32a147cffa36193c6f7c43a1c8c69cda530e1c6db354bfabdcfefaf3c875379a820f531f3041d3136701ea09067c53e7159c8f9b2746a56c3d82966c54bbc553226879a5479827701200122a59a5379827701200122a59a6353798277537982778779679a68")!).operations
+                scriptOperations: BitcoinScript(.init([0x21, 0x02, 0x08, 0x5c, 0x66, 0x00, 0x65, 0x75, 0x66, 0xac, 0xc2, 0xd6, 0x38, 0x2a, 0x47, 0xbc, 0x3f, 0x32, 0x40, 0x08, 0xd2, 0xaa, 0x10, 0x94, 0x0d, 0xd7, 0x70, 0x5a, 0x48, 0xaa, 0x2a, 0x5a, 0x5e, 0x33, 0xac, 0x7c, 0x21, 0x03, 0xf5, 0xd0, 0xfb, 0x95, 0x5f, 0x95, 0xdd, 0x6b, 0xe6, 0x11, 0x5c, 0xe8, 0x56, 0x61, 0xdb, 0x41, 0x2e, 0xc6, 0xa0, 0x8a, 0xbc, 0xbf, 0xce, 0x7d, 0xa0, 0xba, 0x82, 0x97, 0xc6, 0xcc, 0x0e, 0xc4, 0xac, 0x7c, 0x53, 0x79, 0xa8, 0x20, 0xd6, 0x8d, 0xf9, 0xe3, 0x2a, 0x14, 0x7c, 0xff, 0xa3, 0x61, 0x93, 0xc6, 0xf7, 0xc4, 0x3a, 0x1c, 0x8c, 0x69, 0xcd, 0xa5, 0x30, 0xe1, 0xc6, 0xdb, 0x35, 0x4b, 0xfa, 0xbd, 0xcf, 0xef, 0xaf, 0x3c, 0x87, 0x53, 0x79, 0xa8, 0x20, 0xf5, 0x31, 0xf3, 0x04, 0x1d, 0x31, 0x36, 0x70, 0x1e, 0xa0, 0x90, 0x67, 0xc5, 0x3e, 0x71, 0x59, 0xc8, 0xf9, 0xb2, 0x74, 0x6a, 0x56, 0xc3, 0xd8, 0x29, 0x66, 0xc5, 0x4b, 0xbc, 0x55, 0x32, 0x26, 0x87, 0x9a, 0x54, 0x79, 0x82, 0x77, 0x01, 0x20, 0x01, 0x22, 0xa5, 0x9a, 0x53, 0x79, 0x82, 0x77, 0x01, 0x20, 0x01, 0x22, 0xa5, 0x9a, 0x63, 0x53, 0x79, 0x82, 0x77, 0x53, 0x79, 0x82, 0x77, 0x87, 0x79, 0x67, 0x9a, 0x68])).operations
                 // scriptPubKey: "02085c6600657566acc2d6382a47bc3f324008d2aa10940dd7705a48aa2a5a5e33 OP_CHECKSIG OP_SWAP 03f5d0fb955f95dd6be6115ce85661db412ec6a08abcbfce7da0ba8297c6cc0ec4 OP_CHECKSIG OP_SWAP 3 OP_PICK OP_SHA256 d68df9e32a147cffa36193c6f7c43a1c8c69cda530e1c6db354bfabdcfefaf3c OP_EQUAL 3 OP_PICK OP_SHA256 f531f3041d3136701ea09067c53e7159c8f9b2746a56c3d82966c54bbc553226 OP_EQUAL OP_BOOLAND 4 OP_PICK OP_SIZE OP_NIP 32 34 OP_WITHIN OP_BOOLAND 3 OP_PICK OP_SIZE OP_NIP 32 34 OP_WITHIN OP_BOOLAND OP_IF 3 OP_PICK OP_SIZE OP_NIP 3 OP_PICK OP_SIZE OP_NIP OP_EQUAL OP_PICK OP_ELSE OP_BOOLAND OP_ENDIF"
                 // scriptSig: "ca42095840735e89283fec298e62ac2ddea9b5f34a8cbb7097ad965b87568100 1b1b01dc829177da4a14551d2fc96a9db00c6501edfa12f22cd9cefd335c227f 3045022100a9df60536df5733dd0de6bc921fab0b3eee6426501b43a228afa2c90072eb5ca02201c78b74266fac7d1db5deff080d8a403743203f109fbcabf6d5a760bf87386d2[ALL] 0"
             )
@@ -615,7 +615,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "028a1d66975dbdf97897e3a4aef450ebeb5b5293e4a0b4a6d3a2daaa0b2b110e02")!),
+                    .pushBytes(.init([0x02, 0x8a, 0x1d, 0x66, 0x97, 0x5d, 0xbd, 0xf9, 0x78, 0x97, 0xe3, 0xa4, 0xae, 0xf4, 0x50, 0xeb, 0xeb, 0x5b, 0x52, 0x93, 0xe4, 0xa0, 0xb4, 0xa6, 0xd3, 0xa2, 0xda, 0xaa, 0x0b, 0x2b, 0x11, 0x0e, 0x02])),
                     .checkSig,
                     .not
                 ]
@@ -634,7 +634,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .constant(1),
                     .zero,
-                    .pushBytes(.init(hex: "02136b04758b0b6e363e7a6fbe83aaf527a153db2b060d36cc29f7f8309ba6e458")!),
+                    .pushBytes(.init([0x02, 0x13, 0x6b, 0x04, 0x75, 0x8b, 0x0b, 0x6e, 0x36, 0x3e, 0x7a, 0x6f, 0xbe, 0x83, 0xaa, 0xf5, 0x27, 0xa1, 0x53, 0xdb, 0x2b, 0x06, 0x0d, 0x36, 0xcc, 0x29, 0xf7, 0xf8, 0x30, 0x9b, 0xa6, 0xe4, 0x58])),
                     .constant(2),
                     .checkMultiSig
                 ]
@@ -652,7 +652,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(1),
-                    .pushBytes(.init(hex: "03905380c7013e36e6e19d305311c1b81fce6581f5ee1c86ef0627c68c9362fc9f")!),
+                    .pushBytes(.init([0x03, 0x90, 0x53, 0x80, 0xc7, 0x01, 0x3e, 0x36, 0xe6, 0xe1, 0x9d, 0x30, 0x53, 0x11, 0xc1, 0xb8, 0x1f, 0xce, 0x65, 0x81, 0xf5, 0xee, 0x1c, 0x86, 0xef, 0x06, 0x27, 0xc6, 0x8c, 0x93, 0x62, 0xfc, 0x9f])),
                     .zero,
                     .constant(2),
                     .checkMultiSig
@@ -671,8 +671,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(2),
-                    .pushBytes(.init(hex: "033bcaa0a602f0d44cc9d5637c6e515b0471db514c020883830b7cefd73af04194")!),
-                    .pushBytes(.init(hex: "03a88b326f8767f4f192ce252afe33c94d25ab1d24f27f159b3cb3aa691ffe1423")!),
+                    .pushBytes(.init([0x03, 0x3b, 0xca, 0xa0, 0xa6, 0x02, 0xf0, 0xd4, 0x4c, 0xc9, 0xd5, 0x63, 0x7c, 0x6e, 0x51, 0x5b, 0x04, 0x71, 0xdb, 0x51, 0x4c, 0x02, 0x08, 0x83, 0x83, 0x0b, 0x7c, 0xef, 0xd7, 0x3a, 0xf0, 0x41, 0x94])),
+                    .pushBytes(.init([0x03, 0xa8, 0x8b, 0x32, 0x6f, 0x87, 0x67, 0xf4, 0xf1, 0x92, 0xce, 0x25, 0x2a, 0xfe, 0x33, 0xc9, 0x4d, 0x25, 0xab, 0x1d, 0x24, 0xf2, 0x7f, 0x15, 0x9b, 0x3c, 0xb3, 0xaa, 0x69, 0x1f, 0xfe, 0x14, 0x23])),
                     .constant(2),
                     .checkMultiSig,
                     .not
@@ -691,8 +691,8 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(2),
-                    .pushBytes(.init(hex: "037c615d761e71d38903609bf4f46847266edc2fb37532047d747ba47eaae5ffe1")!),
-                    .pushBytes(.init(hex: "02edc823cd634f2c4033d94f5755207cb6b60c4b1f1f056ad7471c47de5f2e4d50")!),
+                    .pushBytes(.init([0x03, 0x7c, 0x61, 0x5d, 0x76, 0x1e, 0x71, 0xd3, 0x89, 0x03, 0x60, 0x9b, 0xf4, 0xf4, 0x68, 0x47, 0x26, 0x6e, 0xdc, 0x2f, 0xb3, 0x75, 0x32, 0x04, 0x7d, 0x74, 0x7b, 0xa4, 0x7e, 0xaa, 0xe5, 0xff, 0xe1])),
+                    .pushBytes(.init([0x02, 0xed, 0xc8, 0x23, 0xcd, 0x63, 0x4f, 0x2c, 0x40, 0x33, 0xd9, 0x4f, 0x57, 0x55, 0x20, 0x7c, 0xb6, 0xb6, 0x0c, 0x4b, 0x1f, 0x1f, 0x05, 0x6a, 0xd7, 0x47, 0x1c, 0x47, 0xde, 0x5f, 0x2e, 0x4d, 0x50])),
                     .constant(2),
                     .checkMultiSig,
                     .not
@@ -714,7 +714,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .codeSeparator,
-                    .pushBytes(.init(hex: "038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041")!),
+                    .pushBytes(.init([0x03, 0x84, 0x79, 0xa0, 0xfa, 0x99, 0x8c, 0xd3, 0x52, 0x59, 0xa2, 0xef, 0x0a, 0x7a, 0x5c, 0x68, 0x66, 0x2c, 0x14, 0x74, 0xf8, 0x8c, 0xcb, 0x6d, 0x08, 0xa7, 0x67, 0x7b, 0xbe, 0xc7, 0xf2, 0x20, 0x41])),
                     .checkSig
                 ]
             ),
@@ -732,7 +732,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .codeSeparator,
                     .codeSeparator,
-                    .pushBytes(.init(hex: "038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041")!),
+                    .pushBytes(.init([0x03, 0x84, 0x79, 0xa0, 0xfa, 0x99, 0x8c, 0xd3, 0x52, 0x59, 0xa2, 0xef, 0x0a, 0x7a, 0x5c, 0x68, 0x66, 0x2c, 0x14, 0x74, 0xf8, 0x8c, 0xcb, 0x6d, 0x08, 0xa7, 0x67, 0x7b, 0xbe, 0xc7, 0xf2, 0x20, 0x41])),
                     .checkSig
                 ]
             ),
@@ -749,7 +749,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041")!),
+                    .pushBytes(.init([0x03, 0x84, 0x79, 0xa0, 0xfa, 0x99, 0x8c, 0xd3, 0x52, 0x59, 0xa2, 0xef, 0x0a, 0x7a, 0x5c, 0x68, 0x66, 0x2c, 0x14, 0x74, 0xf8, 0x8c, 0xcb, 0x6d, 0x08, 0xa7, 0x67, 0x7b, 0xbe, 0xc7, 0xf2, 0x20, 0x41])),
                     .codeSeparator,
                     .checkSig
                 ]
@@ -767,10 +767,10 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041")!),
+                    .pushBytes(.init([0x03, 0x84, 0x79, 0xa0, 0xfa, 0x99, 0x8c, 0xd3, 0x52, 0x59, 0xa2, 0xef, 0x0a, 0x7a, 0x5c, 0x68, 0x66, 0x2c, 0x14, 0x74, 0xf8, 0x8c, 0xcb, 0x6d, 0x08, 0xa7, 0x67, 0x7b, 0xbe, 0xc7, 0xf2, 0x20, 0x41])),
                     .checkSigVerify,
                     .codeSeparator,
-                    .pushBytes(.init(hex: "038479a0fa998cd35259a2ef0a7a5c68662c1474f88ccb6d08a7677bbec7f22041")!),
+                    .pushBytes(.init([0x03, 0x84, 0x79, 0xa0, 0xfa, 0x99, 0x8c, 0xd3, 0x52, 0x59, 0xa2, 0xef, 0x0a, 0x7a, 0x5c, 0x68, 0x66, 0x2c, 0x14, 0x74, 0xf8, 0x8c, 0xcb, 0x6d, 0x08, 0xa7, 0x67, 0x7b, 0xbe, 0xc7, 0xf2, 0x20, 0x41])),
                     .checkSigVerify,
                     .codeSeparator,
                     .constant(1)
@@ -792,7 +792,7 @@ fileprivate let testVectors: [TestVector] = [
                     .if,
                     .codeSeparator,
                     .endIf,
-                    .pushBytes(.init(hex: "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71")!),
+                    .pushBytes(.init([0x03, 0x78, 0xd4, 0x30, 0x27, 0x4f, 0x8c, 0x5e, 0xc1, 0x32, 0x13, 0x38, 0x15, 0x1e, 0x9f, 0x27, 0xf4, 0xc6, 0x76, 0xa0, 0x08, 0xbd, 0xf8, 0x63, 0x8d, 0x07, 0xc0, 0xb6, 0xbe, 0x9a, 0xb3, 0x5c, 0x71])),
                     .checkSigVerify,
                     .codeSeparator,
                     .constant(1)
@@ -814,7 +814,7 @@ fileprivate let testVectors: [TestVector] = [
                     .if,
                     .codeSeparator,
                     .endIf,
-                    .pushBytes(.init(hex: "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71")!),
+                    .pushBytes(.init([0x03, 0x78, 0xd4, 0x30, 0x27, 0x4f, 0x8c, 0x5e, 0xc1, 0x32, 0x13, 0x38, 0x15, 0x1e, 0x9f, 0x27, 0xf4, 0xc6, 0x76, 0xa0, 0x08, 0xbd, 0xf8, 0x63, 0x8d, 0x07, 0xc0, 0xb6, 0xbe, 0x9a, 0xb3, 0x5c, 0x71])),
                     .checkSigVerify,
                     .codeSeparator,
                     .constant(1)
@@ -835,7 +835,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "ee5a6aa40facefb2655ac23c0c28c57c65c41f9b")!),
+                    .pushBytes(.init([0xee, 0x5a, 0x6a, 0xa4, 0x0f, 0xac, 0xef, 0xb2, 0x65, 0x5a, 0xc2, 0x3c, 0x0c, 0x28, 0xc5, 0x7c, 0x65, 0xc4, 0x1f, 0x9b])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -855,7 +855,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "ee5a6aa40facefb2655ac23c0c28c57c65c41f9b")!),
+                    .pushBytes(.init([0xee, 0x5a, 0x6a, 0xa4, 0x0f, 0xac, 0xef, 0xb2, 0x65, 0x5a, 0xc2, 0x3c, 0x0c, 0x28, 0xc5, 0x7c, 0x65, 0xc4, 0x1f, 0x9b])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -875,7 +875,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "ee5a6aa40facefb2655ac23c0c28c57c65c41f9b")!),
+                    .pushBytes(.init([0xee, 0x5a, 0x6a, 0xa4, 0x0f, 0xac, 0xef, 0xb2, 0x65, 0x5a, 0xc2, 0x3c, 0x0c, 0x28, 0xc5, 0x7c, 0x65, 0xc4, 0x1f, 0x9b])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -895,7 +895,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "ee5a6aa40facefb2655ac23c0c28c57c65c41f9b")!),
+                    .pushBytes(.init([0xee, 0x5a, 0x6a, 0xa4, 0x0f, 0xac, 0xef, 0xb2, 0x65, 0x5a, 0xc2, 0x3c, 0x0c, 0x28, 0xc5, 0x7c, 0x65, 0xc4, 0x1f, 0x9b])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -916,7 +916,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "f6f365c40f0739b61de827a44751e5e99032ed8f")!),
+                    .pushBytes(.init([0xf6, 0xf3, 0x65, 0xc4, 0x0f, 0x07, 0x39, 0xb6, 0x1d, 0xe8, 0x27, 0xa4, 0x47, 0x51, 0xe5, 0xe9, 0x90, 0x32, 0xed, 0x8f])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -927,7 +927,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "d8dacdadb7462ae15cd906f1878706d0da8660e6")!),
+                    .pushBytes(.init([0xd8, 0xda, 0xcd, 0xad, 0xb7, 0x46, 0x2a, 0xe1, 0x5c, 0xd9, 0x06, 0xf1, 0x87, 0x87, 0x06, 0xd0, 0xda, 0x86, 0x60, 0xe6])),
                     .equal
                 ]
             ),
@@ -946,7 +946,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "f6f365c40f0739b61de827a44751e5e99032ed8f")!),
+                    .pushBytes(.init([0xf6, 0xf3, 0x65, 0xc4, 0x0f, 0x07, 0x39, 0xb6, 0x1d, 0xe8, 0x27, 0xa4, 0x47, 0x51, 0xe5, 0xe9, 0x90, 0x32, 0xed, 0x8f])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -957,9 +957,9 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .constant(2),
-                    .pushBytes(.init(hex: "3045022015bd0139bcccf990a6af6ec5c1c52ed8222e03a0d51c334df139968525d2fcd20221009f9efe325476eb64c3958e4713e9eefe49bf1d820ed58d2112721b134e2a1a5303")!),
-                    .pushBytes(.init(hex: "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71")!),
-                    .pushBytes(.init(hex: "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71")!),
+                    .pushBytes(.init([0x30, 0x45, 0x02, 0x20, 0x15, 0xbd, 0x01, 0x39, 0xbc, 0xcc, 0xf9, 0x90, 0xa6, 0xaf, 0x6e, 0xc5, 0xc1, 0xc5, 0x2e, 0xd8, 0x22, 0x2e, 0x03, 0xa0, 0xd5, 0x1c, 0x33, 0x4d, 0xf1, 0x39, 0x96, 0x85, 0x25, 0xd2, 0xfc, 0xd2, 0x02, 0x21, 0x00, 0x9f, 0x9e, 0xfe, 0x32, 0x54, 0x76, 0xeb, 0x64, 0xc3, 0x95, 0x8e, 0x47, 0x13, 0xe9, 0xee, 0xfe, 0x49, 0xbf, 0x1d, 0x82, 0x0e, 0xd5, 0x8d, 0x21, 0x12, 0x72, 0x1b, 0x13, 0x4e, 0x2a, 0x1a, 0x53, 0x03])),
+                    .pushBytes(.init([0x03, 0x78, 0xd4, 0x30, 0x27, 0x4f, 0x8c, 0x5e, 0xc1, 0x32, 0x13, 0x38, 0x15, 0x1e, 0x9f, 0x27, 0xf4, 0xc6, 0x76, 0xa0, 0x08, 0xbd, 0xf8, 0x63, 0x8d, 0x07, 0xc0, 0xb6, 0xbe, 0x9a, 0xb3, 0x5c, 0x71])),
+                    .pushBytes(.init([0x03, 0x78, 0xd4, 0x30, 0x27, 0x4f, 0x8c, 0x5e, 0xc1, 0x32, 0x13, 0x38, 0x15, 0x1e, 0x9f, 0x27, 0xf4, 0xc6, 0x76, 0xa0, 0x08, 0xbd, 0xf8, 0x63, 0x8d, 0x07, 0xc0, 0xb6, 0xbe, 0x9a, 0xb3, 0x5c, 0x71])),
                     .constant(3),
                     .checkMultiSig
                 ]
@@ -996,7 +996,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "1dcd64ff")!.reversed())), // 499_999_999
+                    .pushBytes(.init(Data([0x1d, 0xcd, 0x64, 0xff]).reversed())), // 499_999_999
                     .checkLockTimeVerify
                 ]
             )
@@ -1030,7 +1030,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "1dcd6500")!.reversed())), // 500_000_000
+                    .pushBytes(.init(Data([0x1d, 0xcd, 0x65, 0x00]).reversed())), // 500_000_000
                     .checkLockTimeVerify,
                 ]
             )
@@ -1046,7 +1046,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
                     .checkLockTimeVerify
                 ]
             )
@@ -1062,7 +1062,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "1dcd6500")!.reversed())), // 500_000_000
+                    .pushBytes(.init(Data([0x1d, 0xcd, 0x65, 0x00]).reversed())), // 500_000_000
                     .checkLockTimeVerify
                 ]
             )
@@ -1097,7 +1097,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "1dcd64ff")!.reversed())), // 499_999_999
+                    .pushBytes(.init(Data([0x1d, 0xcd, 0x64, 0xff]).reversed())), // 499_999_999
                     .oneAdd,
                     .checkLockTimeVerify
                 ]
@@ -1115,8 +1115,8 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "7fffffff")!.reversed())), // 2_147_483_647
-                    .pushBytes(.init(Data(hex: "7fffffff")!.reversed())), // 2_147_483_647
+                    .pushBytes(.init(Data([0x7f, 0xff, 0xff, 0xff]).reversed())), // 2_147_483_647
+                    .pushBytes(.init(Data([0x7f, 0xff, 0xff, 0xff]).reversed())), // 2_147_483_647
                     .add,
                     .checkLockTimeVerify
                 ]
@@ -1134,7 +1134,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "0000000000")!),
+                    .pushBytes(.init([0x00, 0x00, 0x00, 0x00, 0x00])),
                     .checkLockTimeVerify,
                     .constant(1)
                 ]
@@ -1169,7 +1169,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "c5b93064159b3b2d6ab506a41b1f50463771b988")!),
+                    .pushBytes(.init([0xc5, 0xb9, 0x30, 0x64, 0x15, 0x9b, 0x3b, 0x2d, 0x6a, 0xb5, 0x06, 0xa4, 0x1b, 0x1f, 0x50, 0x46, 0x37, 0x71, 0xb9, 0x88])),
                     .equal
                 ]
             )
@@ -1188,7 +1188,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "4b3bd7eba3bc0284fd3007be7f3be275e94f5826")!),
+                    .pushBytes(.init([0x4b, 0x3b, 0xd7, 0xeb, 0xa3, 0xbc, 0x02, 0x84, 0xfd, 0x30, 0x07, 0xbe, 0x7f, 0x3b, 0xe2, 0x75, 0xe9, 0x4f, 0x58, 0x26])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -1225,7 +1225,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffff")!.reversed())), // 65_535
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff]).reversed())), // 65_535
                     .checkSequenceVerify
                 ]
             )
@@ -1241,7 +1241,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffff")!.reversed())), // 65_535
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff]).reversed())), // 65_535
                     .checkSequenceVerify
                 ]
             )
@@ -1275,7 +1275,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "400000")!.reversed())), // 4_194_304
+                    .pushBytes(.init(Data([0x40, 0x00, 0x00]).reversed())), // 4_194_304
                     .checkSequenceVerify
                 ]
             )
@@ -1291,7 +1291,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "40ffff")!.reversed())), // 4_259_839
+                    .pushBytes(.init(Data([0x40, 0xff, 0xff]).reversed())), // 4_259_839
                     .checkSequenceVerify
                 ]
             )
@@ -1307,7 +1307,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "40ffff")!.reversed())), // 4_259_839
+                    .pushBytes(.init(Data([0x40, 0xff, 0xff]).reversed())), // 4_259_839
                     .checkSequenceVerify
                 ]
             )
@@ -1323,7 +1323,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "400000")!.reversed())), // 4_194_304
+                    .pushBytes(.init(Data([0x40, 0x00, 0x00]).reversed())), // 4_194_304
                     .checkSequenceVerify
                 ]
             )
@@ -1340,7 +1340,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "0080000000")!.reversed())), // 2_147_483_648
+                    .pushBytes(.init(Data([0x00, 0x80, 0x00, 0x00, 0x00]).reversed())), // 2_147_483_648
                     .checkSequenceVerify
                 ]
             )
@@ -1356,7 +1356,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
                     .checkSequenceVerify
                 ]
             )
@@ -1372,7 +1372,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "0080000000")!.reversed())), // 2_147_483_648
+                    .pushBytes(.init(Data([0x00, 0x80, 0x00, 0x00, 0x00]).reversed())), // 2_147_483_648
                     .checkSequenceVerify
                 ]
             )
@@ -1388,7 +1388,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
                     .checkSequenceVerify
                 ]
             )
@@ -1404,7 +1404,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "0080000000")!.reversed())), // 2_147_483_648
+                    .pushBytes(.init(Data([0x00, 0x80, 0x00, 0x00, 0x00]).reversed())), // 2_147_483_648
                     .checkSequenceVerify
                 ]
             )
@@ -1420,7 +1420,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
                     .checkSequenceVerify
                 ]
             )
@@ -1437,7 +1437,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "0080000000")!.reversed())), // 2_147_483_648
+                    .pushBytes(.init(Data([0x00, 0x80, 0x00, 0x00, 0x00]).reversed())), // 2_147_483_648
                     .checkSequenceVerify
                 ]
             )
@@ -1453,7 +1453,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "0080000000")!.reversed())), // 2_147_483_648
+                    .pushBytes(.init(Data([0x00, 0x80, 0x00, 0x00, 0x00]).reversed())), // 2_147_483_648
                     .checkSequenceVerify
                 ]
             )
@@ -1469,7 +1469,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "0080000000")!.reversed())), // 2_147_483_648
+                    .pushBytes(.init(Data([0x00, 0x80, 0x00, 0x00, 0x00]).reversed())), // 2_147_483_648
                     .checkSequenceVerify
                 ]
             )
@@ -1487,7 +1487,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
                     .checkSequenceVerify
                 ]
             )
@@ -1503,7 +1503,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
                     .checkSequenceVerify
                 ]
             )
@@ -1519,7 +1519,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "00ffffffff")!.reversed())), // 4_294_967_295
+                    .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
                     .checkSequenceVerify
                 ]
             )
@@ -1537,7 +1537,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "0000008001")!),
+                    .pushBytes(.init([0x00, 0x00, 0x00, 0x80, 0x01])),
                     .checkSequenceVerify
                 ]
             )
@@ -1553,7 +1553,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "0000008001")!),
+                    .pushBytes(.init([0x00, 0x00, 0x00, 0x80, 0x01])),
                     .checkSequenceVerify
                 ]
             )
@@ -1569,7 +1569,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "0000008001")!),
+                    .pushBytes(.init([0x00, 0x00, 0x00, 0x80, 0x01])),
                     .checkSequenceVerify
                 ]
             )
@@ -1586,7 +1586,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "0000000000")!),
+                    .pushBytes(.init([0x00, 0x00, 0x00, 0x00, 0x00])),
                     .checkSequenceVerify,
                     .constant(1)
                 ]
@@ -1605,7 +1605,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "3ffffff")!.reversed())), // 4_194_303
+                    .pushBytes(.init(Data([0x3f, 0xff, 0xff]).reversed())), // 4_194_303
                     .oneAdd,
                     .checkSequenceVerify
                 ]
@@ -1622,7 +1622,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "400000")!.reversed())), // 4_194_304
+                    .pushBytes(.init(Data([0x40, 0x00, 0x00]).reversed())), // 4_194_304
                     .oneSub,
                     .checkSequenceVerify
                 ]
@@ -1641,8 +1641,8 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "7fffffff")!.reversed())), // 2_147_483_647
-                    .pushBytes(.init(Data(hex: "10000")!.reversed())), // 65_536
+                    .pushBytes(.init(Data([0x7f, 0xff, 0xff, 0xff]).reversed())), // 2_147_483_647
+                    .pushBytes(.init(Data([0x10, 0x000]).reversed())), // 65_536
                     .add,
                     .checkSequenceVerify
                 ]
@@ -1659,8 +1659,8 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 0,
                 scriptOperations: [
-                    .pushBytes(.init(Data(hex: "7fffffff")!.reversed())), // 2_147_483_647
-                    .pushBytes(.init(Data(hex: "410000")!.reversed())), // 4_259_840
+                    .pushBytes(.init(Data([0x7f, 0xff, 0xff, 0xff]).reversed())), // 2_147_483_647
+                    .pushBytes(.init(Data([0x41, 0x00, 0x00]).reversed())), // 4_259_840
                     .add,
                     .checkSequenceVerify
                 ]
@@ -1696,7 +1696,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "7c17aff532f22beb54069942f9bf567a66133eaf")!),
+                    .pushBytes(.init([0x7c, 0x17, 0xaf, 0xf5, 0x32, 0xf2, 0x2b, 0xeb, 0x54, 0x06, 0x99, 0x42, 0xf9, 0xbf, 0x56, 0x7a, 0x66, 0x13, 0x3e, 0xaf])),
                     .equal
                 ]
             )
@@ -1714,7 +1714,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             )
         ],
@@ -1731,7 +1731,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "ff25429251b5a84f452230a3c75fd886b7fc5a7865ce4a7bb7a9d7c5be6da3db")!)
+                    .pushBytes(.init([0xff, 0x25, 0x42, 0x92, 0x51, 0xb5, 0xa8, 0x4f, 0x45, 0x22, 0x30, 0xa3, 0xc7, 0x5f, 0xd8, 0x86, 0xb7, 0xfc, 0x5a, 0x78, 0x65, 0xce, 0x4a, 0x7b, 0xb7, 0xa9, 0xd7, 0xc5, 0xbe, 0x6d, 0xa3, 0xdb]))
                 ]
             )
         ],
@@ -1748,7 +1748,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "fe9c7dacc9fcfbf7e3b7d5ad06aa2b28c5a7b7e3")!),
+                    .pushBytes(.init([0xfe, 0x9c, 0x7d, 0xac, 0xc9, 0xfc, 0xfb, 0xf7, 0xe3, 0xb7, 0xd5, 0xad, 0x06, 0xaa, 0x2b, 0x28, 0xc5, 0xa7, 0xb7, 0xe3])),
                     .equal
                 ]
             )
@@ -1766,7 +1766,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "2135ab4f0981830311e35600eebc7376dce3a914")!),
+                    .pushBytes(.init([0x21, 0x35, 0xab, 0x4f, 0x09, 0x81, 0x83, 0x03, 0x11, 0xe3, 0x56, 0x00, 0xee, 0xbc, 0x73, 0x76, 0xdc, 0xe3, 0xa9, 0x14])),
                     .equal
                 ]
             )
@@ -1792,7 +1792,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -1833,7 +1833,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -1866,7 +1866,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -1899,7 +1899,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -1940,7 +1940,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -1973,7 +1973,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2006,7 +2006,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2039,7 +2039,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2072,7 +2072,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2113,7 +2113,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2146,7 +2146,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2179,7 +2179,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 2000,
                 scriptOperations: [
                     .constant(16),
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2204,7 +2204,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "33198a9bfef674ebddb9ffaa52928017b8472791e54c609cb95f278ac6b1e349")!)
+                    .pushBytes(.init([0x33, 0x19, 0x8a, 0x9b, 0xfe, 0xf6, 0x74, 0xeb, 0xdd, 0xb9, 0xff, 0xaa, 0x52, 0x92, 0x80, 0x17, 0xb8, 0x47, 0x27, 0x91, 0xe5, 0x4c, 0x60, 0x9c, 0xb9, 0x5f, 0x27, 0x8a, 0xc6, 0xb1, 0xe3, 0x49]))
                 ]
             )
         ],
@@ -2221,7 +2221,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2230,7 +2230,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1001,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2240,7 +2240,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!),
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -2252,7 +2252,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!),
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -2264,7 +2264,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!),
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -2276,7 +2276,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!),
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -2288,7 +2288,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!),
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -2299,7 +2299,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1007,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2308,7 +2308,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1008,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2317,7 +2317,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1009,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2326,7 +2326,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1010,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2336,7 +2336,7 @@ fileprivate let testVectors: [TestVector] = [
                 scriptOperations: [
                     .dup,
                     .hash160,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!),
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f])),
                     .equalVerify,
                     .checkSig
                 ]
@@ -2355,7 +2355,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .constant(16),
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             )
         ],
@@ -2380,7 +2380,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4d6c2a32c87821d68fc016fca70797abdb80df6cd84651d40a9300c6bad79e62")!)
+                    .pushBytes(.init([0x4d, 0x6c, 0x2a, 0x32, 0xc8, 0x78, 0x21, 0xd6, 0x8f, 0xc0, 0x16, 0xfc, 0xa7, 0x07, 0x97, 0xab, 0xdb, 0x80, 0xdf, 0x6c, 0xd8, 0x46, 0x51, 0xd4, 0x0a, 0x93, 0x00, 0xc6, 0xba, 0xd7, 0x9e, 0x62]))
                 ]
             ),
         ],
@@ -2415,7 +2415,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .constant(16),
-                    .pushBytes(.init(hex: "ff25429251b5a84f452230a3c75fd886b7fc5a7865ce4a7bb7a9d7c5be6da3dbff0000000000000000")!)
+                    .pushBytes(.init([0xff, 0x25, 0x42, 0x92, 0x51, 0xb5, 0xa8, 0x4f, 0x45, 0x22, 0x30, 0xa3, 0xc7, 0x5f, 0xd8, 0x86, 0xb7, 0xfc, 0x5a, 0x78, 0x65, 0xce, 0x4a, 0x7b, 0xb7, 0xa9, 0xd7, 0xc5, 0xbe, 0x6d, 0xa3, 0xdb, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]))
                 ]
             )
         ],
@@ -2431,8 +2431,8 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 1000,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "10")!),
-                    .pushBytes(.init(hex: "0001")!)
+                    .pushBytes(.init([0x10])),
+                    .pushBytes(.init([0x00, 0x01]))
                 ]
             )
         ],
@@ -2449,7 +2449,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .constant(16),
-                    .pushData1(.init(hex: "0001")!)
+                    .pushData1(.init([0x00, 0x01]))
                 ]
             )
         ],
@@ -2466,7 +2466,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2475,7 +2475,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1001,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
         ],
@@ -2492,7 +2492,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1001,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
             .init(
@@ -2501,7 +2501,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 1000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "4c9c3dfac4207d5d8cb89df5722cb3d712385e3f")!)
+                    .pushBytes(.init([0x4c, 0x9c, 0x3d, 0xfa, 0xc4, 0x20, 0x7d, 0x5d, 0x8c, 0xb8, 0x9d, 0xf5, 0x72, 0x2c, 0xb3, 0xd7, 0x12, 0x38, 0x5e, 0x3f]))
                 ]
             ),
         ],
@@ -2517,7 +2517,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 1000,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "03596d3451025c19dbbdeb932d6bf8bfb4ad499b95b6f88db8899efac102e5fc71")!),
+                    .pushBytes(.init([0x03, 0x59, 0x6d, 0x34, 0x51, 0x02, 0x5c, 0x19, 0xdb, 0xbd, 0xeb, 0x93, 0x2d, 0x6b, 0xf8, 0xbf, 0xb4, 0xad, 0x49, 0x9b, 0x95, 0xb6, 0xf8, 0x8d, 0xb8, 0x89, 0x9e, 0xfa, 0xc1, 0x02, 0xe5, 0xfc, 0x71])),
                     .checkSig
                 ]
             ),
@@ -2526,7 +2526,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 1,
                 amount: 1001,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "03596d3451025c19dbbdeb932d6bf8bfb4ad499b95b6f88db8899efac102e5fc71")!),
+                    .pushBytes(.init([0x03, 0x59, 0x6d, 0x34, 0x51, 0x02, 0x5c, 0x19, 0xdb, 0xbd, 0xeb, 0x93, 0x2d, 0x6b, 0xf8, 0xbf, 0xb4, 0xad, 0x49, 0x9b, 0x95, 0xb6, 0xf8, 0x8d, 0xb8, 0x89, 0x9e, 0xfa, 0xc1, 0x02, 0xe5, 0xfc, 0x71])),
                     .checkSig
                 ]
             ),
@@ -2545,7 +2545,7 @@ fileprivate let testVectors: [TestVector] = [
                 outputIndex: 0,
                 amount: 156250000,
                 scriptOperations: [
-                    .pushBytes(.init(hex: "036d5c20fa14fb2f635474c1dc4ef5909d4568e5569b79fc94d3448486e14685f8")!),
+                    .pushBytes(.init([0x03, 0x6d, 0x5c, 0x20, 0xfa, 0x14, 0xfb, 0x2f, 0x63, 0x54, 0x74, 0xc1, 0xdc, 0x4e, 0xf5, 0x90, 0x9d, 0x45, 0x68, 0xe5, 0x56, 0x9b, 0x79, 0xfc, 0x94, 0xd3, 0x44, 0x84, 0x86, 0xe1, 0x46, 0x85, 0xf8])),
                     .checkSig
                 ]
             ),
@@ -2555,7 +2555,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 4900000000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "5d1b56b63d714eebe542309525f484b7e9d6f686b3781b6f61ef925d66d6f6a0")!)
+                    .pushBytes(.init([0x5d, 0x1b, 0x56, 0xb6, 0x3d, 0x71, 0x4e, 0xeb, 0xe5, 0x42, 0x30, 0x95, 0x25, 0xf4, 0x84, 0xb7, 0xe9, 0xd6, 0xf6, 0x86, 0xb3, 0x78, 0x1b, 0x6f, 0x61, 0xef, 0x92, 0x5d, 0x66, 0xd6, 0xf6, 0xa0]))
                 ]
             ),
         ],
@@ -2572,7 +2572,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 16777215,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "ba468eea561b26301e4cf69fa34bde4ad60c81e70f059f045ca9a79931004a4d")!)
+                    .pushBytes(.init([0xba, 0x46, 0x8e, 0xea, 0x56, 0x1b, 0x26, 0x30, 0x1e, 0x4c, 0xf6, 0x9f, 0xa3, 0x4b, 0xde, 0x4a, 0xd6, 0x0c, 0x81, 0xe7, 0x0f, 0x05, 0x9f, 0x04, 0x5c, 0xa9, 0xa7, 0x99, 0x31, 0x00, 0x4a, 0x4d]))
                 ]
             ),
             .init(
@@ -2581,7 +2581,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 16777215,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "d9bbfbe56af7c4b7f960a70d7ea107156913d9e5a26b0a71429df5e097ca6537")!)
+                    .pushBytes(.init([0xd9, 0xbb, 0xfb, 0xe5, 0x6a, 0xf7, 0xc4, 0xb7, 0xf9, 0x60, 0xa7, 0x0d, 0x7e, 0xa1, 0x07, 0x15, 0x69, 0x13, 0xd9, 0xe5, 0xa2, 0x6b, 0x0a, 0x71, 0x42, 0x9d, 0xf5, 0xe0, 0x97, 0xca, 0x65, 0x37]))
                 ]
             ),
         ],
@@ -2598,7 +2598,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 16777215,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "d9bbfbe56af7c4b7f960a70d7ea107156913d9e5a26b0a71429df5e097ca6537")!)
+                    .pushBytes(.init([0xd9, 0xbb, 0xfb, 0xe5, 0x6a, 0xf7, 0xc4, 0xb7, 0xf9, 0x60, 0xa7, 0x0d, 0x7e, 0xa1, 0x07, 0x15, 0x69, 0x13, 0xd9, 0xe5, 0xa2, 0x6b, 0x0a, 0x71, 0x42, 0x9d, 0xf5, 0xe0, 0x97, 0xca, 0x65, 0x37]))
                 ]
             ),
             .init(
@@ -2607,7 +2607,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 16777215,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "ba468eea561b26301e4cf69fa34bde4ad60c81e70f059f045ca9a79931004a4d")!)
+                    .pushBytes(.init([0xba, 0x46, 0x8e, 0xea, 0x56, 0x1b, 0x26, 0x30, 0x1e, 0x4c, 0xf6, 0x9f, 0xa3, 0x4b, 0xde, 0x4a, 0xd6, 0x0c, 0x81, 0xe7, 0x0f, 0x05, 0x9f, 0x04, 0x5c, 0xa9, 0xa7, 0x99, 0x31, 0x00, 0x4a, 0x4d]))
                 ]
             ),
         ],
@@ -2624,7 +2624,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 987654321,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "9993a429037b5d912407a71c252019287b8d27a5")!),
+                    .pushBytes(.init([0x99, 0x93, 0xa4, 0x29, 0x03, 0x7b, 0x5d, 0x91, 0x24, 0x07, 0xa7, 0x1c, 0x25, 0x20, 0x19, 0x28, 0x7b, 0x8d, 0x27, 0xa5])),
                     .equal
                 ]
             )
@@ -2648,7 +2648,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 200000,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "0c746489e2d83cdbb5b90b432773342ba809c134")!),
+                    .pushBytes(.init([0x0c, 0x74, 0x64, 0x89, 0xe2, 0xd8, 0x3c, 0xdb, 0xb5, 0xb9, 0x0b, 0x43, 0x27, 0x73, 0x34, 0x2b, 0xa8, 0x09, 0xc1, 0x34])),
                     .equal
                 ]
             )
@@ -2666,7 +2666,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 200000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "9e1be07558ea5cc8e02ed1d80c0911048afad949affa36d5c3951e3159dbea19")!)
+                    .pushBytes(.init([0x9e, 0x1b, 0xe0, 0x75, 0x58, 0xea, 0x5c, 0xc8, 0xe0, 0x2e, 0xd1, 0xd8, 0x0c, 0x09, 0x11, 0x04, 0x8a, 0xfa, 0xd9, 0x49, 0xaf, 0xfa, 0x36, 0xd5, 0xc3, 0x95, 0x1e, 0x31, 0x59, 0xdb, 0xea, 0x19]))
                 ]
             )
         ],
@@ -2687,7 +2687,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 200000,
                 scriptOperations: [
                     .hash160,
-                    .pushBytes(.init(hex: "5748407f5ca5cdca53ba30b79040260770c9ee1b")!),
+                    .pushBytes(.init([0x57, 0x48, 0x40, 0x7f, 0x5c, 0xa5, 0xcd, 0xca, 0x53, 0xba, 0x30, 0xb7, 0x90, 0x40, 0x26, 0x07, 0x70, 0xc9, 0xee, 0x1b])),
                     .equal
                 ]
             )
@@ -2705,7 +2705,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 200000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "9b66c15b4e0b4eb49fa877982cafded24859fe5b0e2dbfbe4f0df1de7743fd52")!)
+                    .pushBytes(.init([0x9b, 0x66, 0xc1, 0x5b, 0x4e, 0x0b, 0x4e, 0xb4, 0x9f, 0xa8, 0x77, 0x98, 0x2c, 0xaf, 0xde, 0xd2, 0x48, 0x59, 0xfe, 0x5b, 0x0e, 0x2d, 0xbf, 0xbe, 0x4f, 0x0d, 0xf1, 0xde, 0x77, 0x43, 0xfd, 0x52]))
                 ]
             )
         ],
@@ -2722,7 +2722,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 5000000,
                 scriptOperations: [
                     .zero,
-                    .pushBytes(.init(hex: "751e76e8199196d454941c45d1b3a323f1433bd6")!)
+                    .pushBytes(.init([0x75, 0x1e, 0x76, 0xe8, 0x19, 0x91, 0x96, 0xd4, 0x54, 0x94, 0x1c, 0x45, 0xd1, 0xb3, 0xa3, 0x23, 0xf1, 0x43, 0x3b, 0xd6]))
                 ]
             )
         ],

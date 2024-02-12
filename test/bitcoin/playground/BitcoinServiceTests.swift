@@ -24,7 +24,7 @@ final class BitcoinServiceTests: XCTestCase {
                 .init(value: 49_98_000_000, script: .init([
                     .dup,
                     .hash160,
-                    .pushBytes(Data(hex: "25337bc59613aa8717459c5f7e6bf29479ddd0ed")!),
+                    .pushBytes(Data([0x25, 0x33, 0x7b, 0xc5, 0x96, 0x13, 0xaa, 0x87, 0x17, 0x45, 0x9c, 0x5f, 0x7e, 0x6b, 0xf2, 0x94, 0x79, 0xdd, 0xd0, 0xed])),
                     .equalVerify,
                     .checkSig
                 ]))
@@ -32,13 +32,13 @@ final class BitcoinServiceTests: XCTestCase {
 
         // Sign the transaction
         let sigHash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, previousOutput: previousOutput, scriptCode: previousOutput.script.data)
-        let sig = signECDSA(message: sigHash, secretKey: Data(hex: "45851ee2662f0c36f4fd2a7d53a08f7b06c7abfd61953c5216cc397c4f2cae8c")!) + [SighashType.all.value]
+        let sig = signECDSA(message: sigHash, secretKey: Data([0x45, 0x85, 0x1e, 0xe2, 0x66, 0x2f, 0x0c, 0x36, 0xf4, 0xfd, 0x2a, 0x7d, 0x53, 0xa0, 0x8f, 0x7b, 0x06, 0xc7, 0xab, 0xfd, 0x61, 0x95, 0x3c, 0x52, 0x16, 0xcc, 0x39, 0x7c, 0x4f, 0x2c, 0xae, 0x8c])) + [SighashType.all.value]
         let signedInput = TransationInput(
             outpoint: unsignedInput.outpoint,
             sequence: unsignedInput.sequence,
             script: .init([
                 .pushBytes(sig),
-                .pushBytes(Data(hex: "035ac9d1487868eca64e932a06ee8d6d2e89d98659db7f247410d3e79f88f8d005")!)
+                .pushBytes(Data([0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05]))
             ]),
             witness: unsignedInput.witness)
         let signedTransaction = BitcoinTransaction(
@@ -64,7 +64,7 @@ final class BitcoinServiceTests: XCTestCase {
 
     func testDifficultyTarget() async throws {
         let difficultyBits = 0x207fffff
-        let powLimitBE = Data(hex: "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")! // Regtest
+        let powLimitBE = Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]) // Regtest
         let powLimitLE = Data(powLimitBE.reversed())
         let powLimitTarget = DifficultyTarget(powLimitLE)
         XCTAssertEqual(powLimitTarget.data, powLimitLE)
@@ -83,7 +83,7 @@ final class BitcoinServiceTests: XCTestCase {
 
     func testDifficultyAdjustment() async throws {
         let service = BitcoinService(consensusParameters: .init(
-            powLimit: Data(hex: "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")!,
+            powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
             powTargetTimespan: 1 * 1 * 10 * 60, // 12 minutes
             powTargetSpacing: 2 * 60, // 2 minutes
             powAllowMinDifficultyBlocks: true,
