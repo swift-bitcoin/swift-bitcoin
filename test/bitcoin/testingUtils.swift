@@ -7,12 +7,12 @@ extension BitcoinTransaction {
 
 extension BitcoinScript {
     func run(_ stack: inout [Data]) throws {
-        try run(&stack, transaction: .empty, inputIndex: -1, previousOutputs: [], configuration: .standard)
+        try run(&stack, transaction: .empty, inputIndex: -1, previousOutputs: [], config: .standard)
     }
 
     func runV1(_ stack: inout [Data]) throws {
-        let configuration = ScriptConfigurarion(discourageOpSuccess: false)
-        try run(&stack, transaction: .init(version: .v1, locktime: .init(0), inputs: [.init(outpoint: .coinbase, sequence: .final, script: .empty, witness: .init([]))], outputs: []), inputIndex: 0, previousOutputs: [], configuration: configuration)
+        let config = ScriptConfig.standard.subtracting(.discourageOpSuccess)
+        try run(&stack, transaction: .init(version: .v1, locktime: .init(0), inputs: [.init(outpoint: .coinbase, sequence: .final, script: .empty, witness: .init([]))], outputs: []), inputIndex: 0, previousOutputs: [], config: config)
     }
 }
 

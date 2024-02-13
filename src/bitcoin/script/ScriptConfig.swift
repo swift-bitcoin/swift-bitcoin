@@ -1,7 +1,110 @@
 import Foundation
 
-/// Script verification flags represented by configuration options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
-public struct ScriptConfigurarion {
+/// Script verification flags represented by config options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
+public struct ScriptConfig: OptionSet {
+
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+
+    public let rawValue: Int
+
+    /// BIP66 (consensus) and BIP62 rule 1 (policy)
+    /// Passing a non-strict-DER signature to a checksig operation causes script failure.
+    public static let strictDER = Self(rawValue: 1 << 0)
+
+    /// BIP62 rule 2
+    /// Using a non-push operator in the scriptSig causes script failure.
+    public static let pushOnly = Self(rawValue: 1 << 1)
+
+    /// BIP62 rule 3-4
+    /// Require minimal encodings for all push operations (`OP_0`…`OP_16`, `OP_1NEGATE` where possible, direct  pushes up to 75 bytes, `OP_PUSHDATA` up to 255 bytes, `OP_PUSHDATA2` for anything larger).
+    /// Evaluating any other push causes the script to fail (BIP62 rule 3).
+    /// In addition, whenever a stack element is interpreted as a number, it must be of minimal length (BIP62 rule 4).
+    public static let minimalData = Self(rawValue: 1 << 2)
+
+    /// BIP62 rule 5
+    /// Passing a non-strict-DER signature or one with S > order/2 to a checksig operation causes script failure.
+    public static let lowS = Self(rawValue: 1 << 3)
+
+    /// BIP62 rule 6
+    /// Require that only a single stack element remains after evaluation. Only to be used with P2SH.
+    public static let cleanStack = Self(rawValue: 1 << 4)
+
+    /// BIP62 rule 7
+    /// Verify dummy stack item consumed by `CHECKMULTISIG` is of zero-length.
+    public static let nullDummy = Self(rawValue: 1 << 5)
+
+    /// Passing a non-strict-DER signature or one with undefined hashtype to a checksig operation causes script failure.
+    /// Evaluating a pubkey that is not (0x04 + 64 bytes) or (0x02 or 0x03 + 32 bytes) by checksig causes script failure.
+    /// Not used or intended as a consensus rule.
+    public static let strictEncoding = Self(rawValue: 1 << 6)
+
+    /// BIP16
+    public static let payToScriptHash = Self(rawValue: 1 << 7)
+
+    /// BIP65: Evaluate `OP_CHECKLOCKTIMEVERIFY`.
+    public static let checkLockTimeVerify = Self(rawValue: 1 << 8)
+
+    /// BIP112: Evaluate `OP_CHECKSEQUENCEVERIFY`.
+    public static let checkSequenceVerify = Self(rawValue: 1 << 9)
+
+    /// Discourage use of NOPs reserved for upgrades (NOP1-10)
+    ///
+    /// Provided so that nodes can avoid accepting or mining transactions containing executed NOP's whose meaning may change after a soft-fork, thus rendering the script invalid; with this flag set executing discouraged NOPs fails the script.
+    /// This verification flag will never be a mandatory flag applied to scripts in a block.
+    /// NOPs that are not executed, e.g.  within an unexecuted IF ENDIF block, are *not* rejected.
+    /// NOPs that have associated forks to give them new meaning (CLTV, CSV) are not subject to this rule.
+    public static let discourageUpgradableNoOps = Self(rawValue: 1 << 10)
+
+    /// Making OP_CODESEPARATOR and FindAndDelete fail any non-segwit scripts
+    public static let constantScriptCode = Self(rawValue: 1 << 11)
+
+    /// BIP141: Verify witness program (all witness versions).
+    public static let witness = Self(rawValue: 1 << 12)
+
+    /// BIP141: Only compressed public keys are accepted in P2WPKH and P2WSH (See BIP143). Relay/mining policy rule 1.
+    public static let witnessCompressedPublicKey = Self(rawValue: 1 << 13)
+
+    /// BIP141: The argument of OP_IF/NOTIF in P2WSH must be minimal. Relay/mining policy rule 2.
+    public static let minimalIf = Self(rawValue: 1 << 14)
+
+    /// BIP141: Signature(s) must be null vector(s) if an OP_CHECKSIG or OP_CHECKMULTISIG is failed (for both pre-segregated witness script and P2WSH. See BIP146). Relay/mining policy rule 3.
+    public static let nullFail = Self(rawValue: 1 << 15)
+
+    /// Making v2-v16 witness program non-standard.
+    public static let discourageUpgradableWitnessProgram = Self(rawValue: 1 << 16)
+
+    /// BIP341, BIP342: Taproot/Tapscript validation.
+    public static let taproot = Self(rawValue: 1 << 17)
+
+    /// Making unknown Taproot leaf versions non-standard.
+    public static let discourageUpgradableTaprootVersion = Self(rawValue: 1 << 18)
+
+    /// Making unknown `OP_SUCCESS` non-standard.
+    public static let discourageOpSuccess = Self(rawValue: 1 << 19)
+
+    /// Making unknown public key versions (in BIP342 scripts) non-standard.
+    public static let discourageUpgradablePublicKeyType = Self(rawValue: 1 << 20)
+
+    /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
+    public static let standard: Self = [.strictDER, .pushOnly, .minimalData, .lowS, .cleanStack, .nullDummy, .strictEncoding, .payToScriptHash, .checkLockTimeVerify, .checkSequenceVerify, .discourageUpgradableNoOps, .constantScriptCode, .witness, .witnessCompressedPublicKey, .minimalIf, .nullFail, .discourageUpgradableWitnessProgram, .taproot, .discourageUpgradableTaprootVersion, .discourageOpSuccess, .discourageUpgradablePublicKeyType]
+
+    /// Mandatory script verification flags that all new transactions must comply with for them to be valid. Failing one of these tests may trigger a DoS ban. See `CheckInputScripts()` on Bitcoin Core  for details.
+    /// Note that this does not affect consensus validity. See `GetBlockScriptFlags()` for that.
+    public static let mandatory: Self = [
+        .strictDER, // After DEPLOYMENT_DERSIG (BIP66) buried deployment block (1st)
+        .nullDummy, // After DEPLOYMENT_SEGWIT (BIP147) buried deployment block (3rd)
+        .payToScriptHash, // From chain start with 1 block excepted on mainnet
+        .checkLockTimeVerify, // After DEPLOYMENT_CLTV (BIP65) buried deployment block (2st)
+        .checkSequenceVerify, // After DEPLOYMENT_CSV (BIP112) buried deployment block (3rd)
+        .witness, // From chain start with 0 blocks excepted
+        .taproot // From chain start with 1 block excepted on mainnet
+    ]
+}
+
+/*
+public struct ScriptConfig {
 
     public init(strictDER: Bool = true, pushOnly: Bool = true, minimalData: Bool = true, lowS: Bool = true, cleanStack: Bool = true, nullDummy: Bool = true, strictEncoding: Bool = true, payToScriptHash: Bool = true, checkLockTimeVerify: Bool = true, checkSequenceVerify: Bool = true, discourageUpgradableNoOps: Bool = true, constantScriptCode: Bool = true, witness: Bool = true, witnessCompressedPublicKey: Bool = true, minimalIf: Bool = true, nullFail: Bool = true, discourageUpgradableWitnessProgram: Bool = true, taproot: Bool = true, discourageUpgradableTaprootVersion: Bool = true, discourageOpSuccess: Bool = true, discourageUpgradablePublicKeyType: Bool = true) {
         self.strictDER = strictDER || lowS || strictEncoding
@@ -106,11 +209,11 @@ public struct ScriptConfigurarion {
     public let discourageUpgradablePublicKeyType: Bool
 
     /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
-    public static let standard = ScriptConfigurarion()
+    public static let standard = ScriptConfig()
 
     /// Mandatory script verification flags that all new transactions must comply with for them to be valid. Failing one of these tests may trigger a DoS ban. See `CheckInputScripts()` on Bitcoin Core  for details.
     /// Note that this does not affect consensus validity. See `GetBlockScriptFlags()` for that.
-    public static let mandatory = ScriptConfigurarion(
+    public static let mandatory = ScriptConfig(
         // strictDER: true, // After DEPLOYMENT_DERSIG (BIP66) buried deployment block (1st)
         pushOnly: false,
         minimalData: false,
@@ -134,3 +237,4 @@ public struct ScriptConfigurarion {
         discourageUpgradablePublicKeyType: false
     )
 }
+*/

@@ -3,7 +3,7 @@ import Foundation
 /// [BIP112](https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki)
 func opCheckSequenceVerify(_ stack: inout [Data], context: ScriptContext) throws {
     let first = try getUnaryParam(&stack, keep: true)
-    let sequence64 = try ScriptNumber(first, extendedLength: true, minimal: context.configuration.minimalData).value
+    let sequence64 = try ScriptNumber(first, extendedLength: true, minimal: context.config.contains(.minimalData)).value
 
     guard
         first.count < 6,

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ConsensusParameters {
+public struct ConsensusParams {
 
     public let powLimit: Data
     public let powTargetTimespan: Int

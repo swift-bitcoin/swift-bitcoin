@@ -3,11 +3,11 @@ import Foundation
 /// SCRIPT execution context.
 struct ScriptContext {
 
-    init(transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion, script: BitcoinScript, tapLeafHash: Data?) {
+    init(transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], config: ScriptConfig, script: BitcoinScript, tapLeafHash: Data?) {
         self.transaction = transaction
         self.inputIndex = inputIndex
         self.previousOutputs = previousOutputs
-        self.configuration = configuration
+        self.config = config
         self.script = script
         self.tapLeafHash = tapLeafHash
 
@@ -21,7 +21,7 @@ struct ScriptContext {
     let transaction: BitcoinTransaction
     let inputIndex: Int
     let previousOutputs: [TransactionOutput]
-    let configuration: ScriptConfigurarion
+    let config: ScriptConfig
     let script: BitcoinScript
     var programCounter = 0
     var operationIndex = 0
@@ -86,7 +86,7 @@ struct ScriptContext {
             for sig in signatures {
                 if !sig.isEmpty, operation == .pushBytes(sig) {
                     operationContainsSignature = true
-                    if configuration.constantScriptCode {
+                    if config.contains(.constantScriptCode) {
                         throw ScriptError.nonConstantScript
                     }
                     break

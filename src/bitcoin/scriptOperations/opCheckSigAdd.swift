@@ -11,7 +11,7 @@ func opCheckSigAdd(_ stack: inout [Data], context: inout ScriptContext) throws {
     // If fewer than 3 elements are on the stack, the script MUST fail and terminate immediately.
     let (sig, nData, publicKey) = try getTernaryParams(&stack)
 
-    var n = try ScriptNumber(nData, minimal: context.configuration.minimalData)
+    var n = try ScriptNumber(nData, minimal: context.config.contains(.minimalData))
     guard n.size <= 4 else {
         // - If n is larger than 4 bytes, the script MUST fail and terminate immediately.
         throw ScriptError.invalidCheckSigAddArgument
@@ -40,7 +40,7 @@ func opCheckSigAdd(_ stack: inout [Data], context: inout ScriptContext) throws {
         throw ScriptError.emptyPublicKey
     } else {
         // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
-        if context.configuration.discourageUpgradablePublicKeyType {
+        if context.config.contains(.discourageUpgradablePublicKeyType) {
             throw ScriptError.disallowsPublicKeyType
         }
     }

@@ -78,7 +78,7 @@ public struct BitcoinScript: Equatable {
     // MARK: - Instance Methods
 
     /// Evaluates the script.
-    public func run(_ stack: inout [Data], transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], tapLeafHash: Data?, configuration: ScriptConfigurarion) throws {
+    public func run(_ stack: inout [Data], transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], tapLeafHash: Data?, config: ScriptConfig) throws {
 
         // BIP141
         if (sigVersion == .base || sigVersion == .witnessV0) && size > Self.maxScriptSize {
@@ -96,12 +96,12 @@ public struct BitcoinScript: Equatable {
             throw ScriptError.initialStackMaxElementSizeExceeded
         }
 
-        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration, script: self, tapLeafHash: tapLeafHash)
+        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config, script: self, tapLeafHash: tapLeafHash)
 
         // BIP342: `OP_SUCCESS`
         if sigVersion != .base && sigVersion != .witnessV0 &&
            operations.contains(where: { if case .success(_) = $0 { true } else { false }}) {
-            if configuration.discourageOpSuccess {
+            if config.contains(.discourageOpSuccess) {
                 throw ScriptError.disallowedOpSuccess
             }
             return // Do not run the script.
@@ -131,8 +131,8 @@ public struct BitcoinScript: Equatable {
         }
     }
 
-    public func run(_ stack: inout [Data], transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion) throws {
-        try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, configuration: configuration)
+    public func run(_ stack: inout [Data], transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], config: ScriptConfig) throws {
+        try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, config: config)
     }
 
     // BIP62

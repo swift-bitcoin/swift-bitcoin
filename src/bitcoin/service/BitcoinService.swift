@@ -3,12 +3,12 @@ import BitcoinCrypto
 
 public actor BitcoinService {
 
-    let consensusParameters: ConsensusParameters
+    let consensusParams: ConsensusParams
     public private(set) var blockchain = [TransactionBlock]()
     public private(set) var mempool = [BitcoinTransaction]()
 
-    public init(consensusParameters: ConsensusParameters = .regtest) {
-        self.consensusParameters = consensusParameters
+    public init(consensusParams: ConsensusParams = .regtest) {
+        self.consensusParams = consensusParams
     }
 
     public var genesisBlock: TransactionBlock {
@@ -21,7 +21,7 @@ public actor BitcoinService {
 
     public func createGenesisBlock() {
         guard blockchain.isEmpty else { return }
-        blockchain.append(TransactionBlock.makeGenesisBlock(consensusParameters: consensusParameters))
+        blockchain.append(TransactionBlock.makeGenesisBlock(consensusParams: consensusParams))
     }
 
     public func generateTo(_ address: String, blockTime: Date = .now) {
@@ -36,13 +36,13 @@ public actor BitcoinService {
         let destinationPublicKeyHash = addressData[addressData.startIndex.advanced(by: 1)...]
 
         let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool)
-        let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: blockchain.count, destinationPublicKeyHash: destinationPublicKeyHash, witnessMerkleRoot: witnessMerkleRoot, consensusParameters: consensusParameters)
+        let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: blockchain.count, destinationPublicKeyHash: destinationPublicKeyHash, witnessMerkleRoot: witnessMerkleRoot, consensusParams: consensusParams)
 
         let previousBlockHash = blockchain.last!.identifier
         let blockTransactions = [coinbaseTx] + mempool
         let merkleRoot = calculateMerkleRoot(blockTransactions)
 
-        let target = getNextWorkRequired(forHeight: blockchain.endIndex.advanced(by: -1), newBlockTime: blockTime, params: consensusParameters)
+        let target = getNextWorkRequired(forHeight: blockchain.endIndex.advanced(by: -1), newBlockTime: blockTime, params: consensusParams)
 
         var nonce = 0
         var block: TransactionBlock
@@ -64,7 +64,7 @@ public actor BitcoinService {
         mempool = .init()
     }
 
-    private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParameters) -> Int {
+    private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParams) -> Int {
         precondition(heightLast >= 0)
         let lastBlock = blockchain[heightLast]
         let powLimitTarget = DifficultyTarget(Data(params.powLimit.reversed()))
@@ -99,7 +99,7 @@ public actor BitcoinService {
         return calculateNextWorkRequired(lastBlock: lastBlock, firstBlockTime: firstBlock.header.time, params: params)
     }
 
-    private func calculateNextWorkRequired(lastBlock: TransactionBlock, firstBlockTime: Date, params: ConsensusParameters) -> Int {
+    private func calculateNextWorkRequired(lastBlock: TransactionBlock, firstBlockTime: Date, params: ConsensusParams) -> Int {
         if params.powNoRetargeting {
             return lastBlock.header.target
         }

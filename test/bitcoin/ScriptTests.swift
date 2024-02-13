@@ -29,14 +29,14 @@ final class ScriptTests: XCTestCase {
                     .init(value: txCredit.outputs[0].value, script: .empty)
                 ]
             )
-            let result = txSpend.verifyScript(previousOutputs: [txCredit.outputs[0]], configuration: test.flags)
+            let result = txSpend.verifyScript(previousOutputs: [txCredit.outputs[0]], config: test.flags)
             if test.evalTrue {
                 XCTAssert(result)
             } else if test.expectedErrors.isEmpty {
                 XCTAssertFalse(result)
             } else {
                 do {
-                    try txSpend.verifyScript(inputIndex: 0, previousOutputs: [txCredit.outputs[0]], configuration: test.flags)
+                    try txSpend.verifyScript(inputIndex: 0, previousOutputs: [txCredit.outputs[0]], config: test.flags)
                 } catch let error as ScriptError {
                     if error != test.expectedErrors[0] {
                         XCTFail()
@@ -54,7 +54,7 @@ fileprivate struct TestVector {
     init(
         _ scriptSig: BitcoinScript,
         _ scriptPubKey: BitcoinScript,
-        _ flags: ScriptConfigurarion,
+        _ flags: ScriptConfig,
         _ evalTrue: Bool,
         _ expectedErrors: [ScriptError],
         _ comments: String
@@ -76,7 +76,7 @@ fileprivate struct TestVector {
         _ amount: BitcoinAmount,
         _ scriptSig: BitcoinScript,
         _ scriptPubKey: BitcoinScript,
-        _ flags: ScriptConfigurarion,
+        _ flags: ScriptConfig,
         _ evalTrue: Bool,
         _ expectedErrors: [ScriptError],
         _ comments: String
@@ -95,7 +95,7 @@ fileprivate struct TestVector {
     let amount: BitcoinAmount
     let scriptSig: BitcoinScript
     let scriptPubKey: BitcoinScript
-    let flags: ScriptConfigurarion
+    let flags: ScriptConfig
     let evalTrue: Bool
     let expectedErrors: [ScriptError]
     let comments: String
@@ -103,20 +103,20 @@ fileprivate struct TestVector {
 
 /// Format is: ([wit..., amount]?, scriptSig, scriptPubKey, flags, expected_scripterror, ... comments)
 fileprivate let testVectors: [TestVector] = [
-    .init(.empty, .init([.depth, .zero, .equal]), .init(strictEncoding: true, payToScriptHash: true), true, [], "Test the test: we should have an empty stack after scriptSig evaluation"),
+    .init(.empty, .init([.depth, .zero, .equal]), [.strictEncoding, .payToScriptHash], true, [], "Test the test: we should have an empty stack after scriptSig evaluation"),
     // Some missing _test the test_ tests involving spaces in data which are not applicable here.
-    .init(.init([.constant(1), .constant(2)]), .init([.constant(2), .equalVerify, .constant(1), .equal]), .init(strictEncoding: true, payToScriptHash: true), true, [], "Similarly whitespace around and between symbols"),
+    .init(.init([.constant(1), .constant(2)]), .init([.constant(2), .equalVerify, .constant(1), .equal]), [.strictEncoding, .payToScriptHash], true, [], "Similarly whitespace around and between symbols"),
     // Additional missing _test the test_ tests involving spaces in data which are not applicable here.
 
     // MARK: - Actual script tests.
-    .init(.init([.constant(1)]), .empty, .init(strictEncoding: true, payToScriptHash: true), true, [], ""),
-    .init(.init([.pushBytes(Data([0x01, 0x00]))]), .empty, .init(strictEncoding: true, payToScriptHash: true), true, [], "all bytes are significant, not only the last one"),
-    .init(.init([.pushBytes(Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10]))]), .empty, .init(strictEncoding: true, payToScriptHash: true), true, [], "equals zero when cast to Int64"),
+    .init(.init([.constant(1)]), .empty, [.strictEncoding, .payToScriptHash], true, [], ""),
+    .init(.init([.pushBytes(Data([0x01, 0x00]))]), .empty, [.strictEncoding, .payToScriptHash], true, [], "all bytes are significant, not only the last one"),
+    .init(.init([.pushBytes(Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10]))]), .empty, [.strictEncoding, .payToScriptHash], true, [], "equals zero when cast to Int64"),
 
     // Missing tests here.
 
     // MARK: - Some basic segwit checks
-    .init([.init([0x00])], 0, .empty, .init([.zero, .pushBytes(Data([0x20, 0x6e, 0x34, 0x0b, 0x9c, 0xff, 0xb3, 0x7a, 0x98, 0x9c, 0xa5, 0x44, 0xe6, 0xbb, 0x78, 0x0a, 0x2c, 0x78, 0x90, 0x1d, 0x3f, 0xb3, 0x37, 0x38, 0x76, 0x85, 0x11, 0xa3, 0x06, 0x17, 0xaf, 0xa0, 0x1d]))]), .init(payToScriptHash: true, witness: true), false, [], "Invalid witness script"),
+    .init([.init([0x00])], 0, .empty, .init([.zero, .pushBytes(Data([0x20, 0x6e, 0x34, 0x0b, 0x9c, 0xff, 0xb3, 0x7a, 0x98, 0x9c, 0xa5, 0x44, 0xe6, 0xbb, 0x78, 0x0a, 0x2c, 0x78, 0x90, 0x1d, 0x3f, 0xb3, 0x37, 0x38, 0x76, 0x85, 0x11, 0xa3, 0x06, 0x17, 0xaf, 0xa0, 0x1d]))]), [.payToScriptHash, .witness], false, [], "Invalid witness script"),
 
-    .init([.init([0x33 /* or 51 (?) */])], 0, .empty, .init([.zero, .pushBytes(Data([0x20, 0x6e, 0x34, 0x0b, 0x9c, 0xff, 0xb3, 0x7a, 0x98, 0x9c, 0xa5, 0x44, 0xe6, 0xbb, 0x78, 0x0a, 0x2c, 0x78, 0x90, 0x1d, 0x3f, 0xb3, 0x37, 0x38, 0x76, 0x85, 0x11, 0xa3, 0x06, 0x17, 0xaf, 0xa0, 0x1d]))]), .init(payToScriptHash: true, witness: true), false, [.witnessProgramWrongLength /* WITNESS_PROGRAM_MISMATCH */], "Witness script hash mismatch"),
+    .init([.init([0x33 /* or 51 (?) */])], 0, .empty, .init([.zero, .pushBytes(Data([0x20, 0x6e, 0x34, 0x0b, 0x9c, 0xff, 0xb3, 0x7a, 0x98, 0x9c, 0xa5, 0x44, 0xe6, 0xbb, 0x78, 0x0a, 0x2c, 0x78, 0x90, 0x1d, 0x3f, 0xb3, 0x37, 0x38, 0x76, 0x85, 0x11, 0xa3, 0x06, 0x17, 0xaf, 0xa0, 0x1d]))]), [.payToScriptHash, .witness], false, [.witnessProgramWrongLength /* WITNESS_PROGRAM_MISMATCH */], "Witness script hash mismatch"),
 ]
