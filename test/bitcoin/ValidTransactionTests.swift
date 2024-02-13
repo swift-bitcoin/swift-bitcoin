@@ -14,33 +14,26 @@ final class ValidTransactionTests: XCTestCase {
             XCTAssertNoThrow(try tx.check())
             var excludeFlags = Set(vector.verifyFlags.split(separator: ","))
             excludeFlags.remove("NONE")
-            let config = ScriptConfigurarion(
-                strictDER: !excludeFlags.contains("DERSIG"),
-                pushOnly: !excludeFlags.contains("SIGPUSHONLY"),
-                minimalData: !excludeFlags.contains("MINIMALDATA"),
-                lowS: !excludeFlags.contains("LOW_S"),
-                cleanStack: !excludeFlags.contains("CLEANSTACK"),
-                nullDummy: !excludeFlags.contains("NULLDUMMY"),
-                strictEncoding: !excludeFlags.contains("STRICTENC"),
-                payToScriptHash: !excludeFlags.contains("P2SH"),
-                checkLockTimeVerify: !excludeFlags.contains("CHECKLOCKTIMEVERIFY"),
-                checkSequenceVerify: !excludeFlags.contains("CHECKSEQUENCEVERIFY"),
-                discourageUpgradableNoOps: true,
-                constantScriptCode: !excludeFlags.contains("CONST_SCRIPTCODE"),
-                witness: !excludeFlags.contains("WITNESS"),
-                witnessCompressedPublicKey: true,
-                minimalIf: true,
-                nullFail: !excludeFlags.contains("NULLFAIL"),
-                discourageUpgradableWitnessProgram:  !excludeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"),
-                taproot: true,
-                discourageUpgradableTaprootVersion: true,
-                discourageOpSuccess: true,
-                discourageUpgradablePublicKeyType: true
-            )
-            let result = tx.verifyScript(previousOutputs: previousOutputs, configuration: config)
+            var config: ScriptConfig = .standard
+            if excludeFlags.contains("DERSIG") { config.remove(.strictDER) }
+            if excludeFlags.contains("SIGPUSHONLY") { config.remove(.pushOnly) }
+            if excludeFlags.contains("MINIMALDATA") { config.remove(.minimalData) }
+            if excludeFlags.contains("LOW_S") { config.remove(.lowS) }
+            if excludeFlags.contains("CLEANSTACK") { config.remove(.cleanStack) }
+            if excludeFlags.contains("NULLDUMMY") { config.remove(.nullDummy) }
+            if excludeFlags.contains("STRICTENC") { config.remove(.strictEncoding) }
+            if excludeFlags.contains("P2SH") { config.remove(.payToScriptHash) }
+            if excludeFlags.contains("CHECKLOCKTIMEVERIFY") { config.remove(.checkLockTimeVerify) }
+            if excludeFlags.contains("CHECKSEQUENCEVERIFY") { config.remove(.checkSequenceVerify) }
+            if excludeFlags.contains("CONST_SCRIPTCODE") { config.remove(.constantScriptCode) }
+            if excludeFlags.contains("WITNESS") { config.remove(.witness) }
+            if excludeFlags.contains("NULLFAIL") { config.remove(.nullFail) }
+            if excludeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.remove(.discourageUpgradableWitnessProgram) }
+
+            let result = tx.verifyScript(previousOutputs: previousOutputs, config: config)
             XCTAssert(result)
             if !excludeFlags.isEmpty {
-                 let failure = tx.verifyScript(previousOutputs: previousOutputs, configuration: .standard)
+                 let failure = tx.verifyScript(previousOutputs: previousOutputs, config: .standard)
                  XCTAssertFalse(failure)
             }
         }

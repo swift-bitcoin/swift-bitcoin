@@ -3,7 +3,7 @@ import BitcoinCrypto
 
 func getUnaryNumericParam(_ stack: inout [Data], context: inout ScriptContext) throws -> ScriptNumber {
     let first = try getUnaryParam(&stack)
-    let minimal = context.configuration.minimalData
+    let minimal = context.config.contains(.minimalData)
     let a = try ScriptNumber(first, minimal: minimal)
     return a
 }
@@ -18,7 +18,7 @@ func getUnaryParam(_ stack: inout [Data], keep: Bool = false) throws -> Data {
 
 func getBinaryNumericParams(_ stack: inout [Data], context: inout ScriptContext) throws -> (ScriptNumber, ScriptNumber) {
     let (first, second) = try getBinaryParams(&stack)
-    let minimal = context.configuration.minimalData
+    let minimal = context.config.contains(.minimalData)
     let a = try ScriptNumber(first, minimal: minimal)
     let b = try ScriptNumber(second, minimal: minimal)
     return (a, b)
@@ -35,7 +35,7 @@ func getBinaryParams(_ stack: inout [Data]) throws -> (Data, Data) {
 
 func getTernaryNumericParams(_ stack: inout [Data], context: inout ScriptContext) throws -> (ScriptNumber, ScriptNumber, ScriptNumber) {
     let (first, second, third) = try getTernaryParams(&stack)
-    let minimal = context.configuration.minimalData
+    let minimal = context.config.contains(.minimalData)
     let a = try ScriptNumber(first, minimal: minimal)
     let b = try ScriptNumber(second, minimal: minimal)
     let c = try ScriptNumber(third, minimal: minimal)
@@ -70,39 +70,39 @@ func getSenaryParams(_ stack: inout [Data]) throws -> (Data, Data, Data, Data, D
     return (first, second, third, fourth, fifth, sixth)
 }
 
-func getCheckMultiSigParams(_ stack: inout [Data], configuration: ScriptConfigurarion) throws -> (Int, [Data], Int, [Data]) {
+func getCheckMultiSigParams(_ stack: inout [Data], config: ScriptConfig) throws -> (Int, [Data], Int, [Data]) {
     guard stack.count > 4 else {
         throw ScriptError.missingMultiSigArgument
     }
-    let n = try ScriptNumber(stack.removeLast(), minimal: configuration.minimalData).value
+    let n = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
     let publicKeys = Array(stack[(stack.endIndex - n)...].reversed())
     stack.removeLast(n)
-    let m = try ScriptNumber(stack.removeLast(), minimal: configuration.minimalData).value
+    let m = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
     let sigs = Array(stack[(stack.endIndex - m)...].reversed())
     stack.removeLast(m)
     guard stack.count > 0 else {
         throw ScriptError.missingDummyValue
     }
     let dummyValue = stack.removeLast()
-    if configuration.nullDummy, dummyValue.count > 0 {
+    if config.contains(.nullDummy), dummyValue.count > 0 {
         throw ScriptError.dummyValueNotNull
     }
     return (n, publicKeys, m, sigs)
 }
 
-func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfigurarion) throws {
+func checkSignature(_ extendedSignature: Data, scriptConfig: ScriptConfig) throws {
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
     if extendedSignature.isEmpty { return }
-    if scriptConfiguration.strictDER || scriptConfiguration.lowS || scriptConfiguration.strictEncoding {
+    if scriptConfig.contains(.strictDER) || scriptConfig.contains(.lowS) || scriptConfig.contains(.strictEncoding) {
         guard checkSignatureEncoding(extendedSignature) else {
             throw ScriptError.invalidSignatureEncoding
         }
     }
-    if scriptConfiguration.lowS && !isSignatureLowS(extendedSignature) {
+    if scriptConfig.contains(.lowS) && !isSignatureLowS(extendedSignature) {
         throw ScriptError.nonLowSSignature
     }
-    if scriptConfiguration.strictEncoding  {
+    if scriptConfig.contains(.strictEncoding)  {
         let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
         guard let sighashType = SighashType(sighashTypeData) else {
             preconditionFailure()
@@ -113,14 +113,14 @@ func checkSignature(_ extendedSignature: Data, scriptConfiguration: ScriptConfig
     }
 }
 
-func checkPublicKey(_ publicKey: Data, scriptVersion: SigVersion, scriptConfiguration: ScriptConfigurarion) throws {
-    if scriptConfiguration.strictEncoding  {
+func checkPublicKey(_ publicKey: Data, scriptVersion: SigVersion, scriptConfig: ScriptConfig) throws {
+    if scriptConfig.contains(.strictEncoding)  {
         guard checkPublicKeyEncoding(publicKey) else {
             throw ScriptError.invalidPublicKeyEncoding
         }
     }
     // Only compressed keys are accepted in segwit
-    if scriptVersion == .witnessV0 && scriptConfiguration.witnessCompressedPublicKey {
+    if scriptVersion == .witnessV0 && scriptConfig.contains(.witnessCompressedPublicKey) {
         guard checkCompressedPublicKeyEncoding(publicKey) else {
             throw ScriptError.invalidPublicKeyEncoding
         }

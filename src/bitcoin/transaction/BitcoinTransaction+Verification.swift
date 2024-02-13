@@ -6,10 +6,10 @@ extension BitcoinTransaction {
 
     // MARK: - Instance Methods
 
-    public func verifyScript(previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion = .standard) -> Bool {
+    public func verifyScript(previousOutputs: [TransactionOutput], config: ScriptConfig = .standard) -> Bool {
         for i in inputs.indices {
             do {
-                try verifyScript(inputIndex: i, previousOutputs: previousOutputs, configuration: configuration)
+                try verifyScript(inputIndex: i, previousOutputs: previousOutputs, config: config)
             } catch {
                 print("\(error) \(error.localizedDescription)")
                 return false
@@ -19,7 +19,7 @@ extension BitcoinTransaction {
     }
 
     /// Initial simplified version of transaction verification that allows for script execution.
-    func verifyScript(inputIndex: Int, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion) throws {
+    func verifyScript(inputIndex: Int, previousOutputs: [TransactionOutput], config: ScriptConfig) throws {
 
         precondition(previousOutputs.count == inputs.count)
 
@@ -27,10 +27,10 @@ extension BitcoinTransaction {
         let scriptPubKey = previousOutputs[inputIndex].script
 
         // BIP16
-        let isPayToScriptHash = configuration.payToScriptHash && scriptPubKey.isPayToScriptHash
+        let isPayToScriptHash = config.contains(.payToScriptHash) && scriptPubKey.isPayToScriptHash
 
         // BIP141
-        let isNativeSegwit = configuration.witness && scriptPubKey.isSegwit
+        let isNativeSegwit = config.contains(.witness) && scriptPubKey.isSegwit
         let isSegwit: Bool
         let witnessVersion: Int?
         let witnessProgram: Data?
@@ -41,7 +41,7 @@ extension BitcoinTransaction {
         }
 
         // BIP62, BIP16
-        if configuration.pushOnly || isPayToScriptHash {
+        if config.contains(.pushOnly) || isPayToScriptHash {
             try scriptSig.checkPushOnly()
         }
 
@@ -52,11 +52,11 @@ extension BitcoinTransaction {
         } else {
             // Execute scriptSig
             var stack = [Data]()
-            try scriptSig.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+            try scriptSig.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
             let stackTmp = stack // BIP16
 
             // scriptSig and scriptPubKey must be evaluated sequentially on the same stack rather than being simply concatenated (see CVE-2010-5141)
-            try scriptPubKey.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+            try scriptPubKey.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
             if let last = stack.last, !ScriptBoolean(last).value {
                 throw ScriptError.falseReturned
             }
@@ -84,7 +84,7 @@ extension BitcoinTransaction {
                     witnessVersion = .none
                     witnessProgram = .none
 
-                    try redeemScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+                    try redeemScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
                     if let last = stack.last, !ScriptBoolean(last).value {
                         throw ScriptError.falseReturned
                     }
@@ -96,7 +96,7 @@ extension BitcoinTransaction {
                 witnessProgram = .none
             }
 
-            if !isSegwit && configuration.cleanStack && stack.count != 1 { // BIP62, BIP16
+            if !isSegwit && config.contains(.cleanStack) && stack.count != 1 { // BIP62, BIP16
                 throw ScriptError.uncleanStack
             }
         }
@@ -105,18 +105,18 @@ extension BitcoinTransaction {
         if isSegwit {
             guard let witnessVersion, let witnessProgram else { preconditionFailure() }
             if witnessVersion == 0 {
-                try verifyWitness(inputIndex: inputIndex, witnessVersion: witnessVersion, witnessProgram: witnessProgram, previousOutputs: previousOutputs, configuration: configuration)
+                try verifyWitness(inputIndex: inputIndex, witnessVersion: witnessVersion, witnessProgram: witnessProgram, previousOutputs: previousOutputs, config: config)
             } else if witnessVersion == 1 && witnessProgram.count == 32 && !isPayToScriptHash {
                 // BIP341
-                try verifyTaproot(inputIndex: inputIndex, witnessVersion: witnessVersion, witnessProgram: witnessProgram, previousOutputs: previousOutputs, configuration: configuration)
-            } else if configuration.discourageUpgradableWitnessProgram {
+                try verifyTaproot(inputIndex: inputIndex, witnessVersion: witnessVersion, witnessProgram: witnessProgram, previousOutputs: previousOutputs, config: config)
+            } else if config.contains(.discourageUpgradableWitnessProgram) {
                 throw ScriptError.disallowedWitnessVersion
             }
             // If the version byte is 2 to 16, no further interpretation of the witness program or witness stack happens
         }
     }
 
-    private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion) throws {
+    private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [TransactionOutput], config: ScriptConfig) throws {
         guard var stack = inputs[inputIndex].witness?.elements else { preconditionFailure() }
 
         if witnessProgram.count == 20 {
@@ -133,7 +133,7 @@ extension BitcoinTransaction {
                 .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
             ], sigVersion: .witnessV0)
 
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
 
             // The verification must result in a single TRUE on the stack.
             guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
@@ -157,7 +157,7 @@ extension BitcoinTransaction {
             }
 
             let witnessScript = BitcoinScript(witnessScriptRaw, sigVersion: .witnessV0)
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, configuration: configuration)
+            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
             guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
@@ -170,10 +170,10 @@ extension BitcoinTransaction {
     }
 
     /// BIP341, BIP342
-    private func verifyTaproot(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [TransactionOutput], configuration: ScriptConfigurarion) throws {
+    private func verifyTaproot(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [TransactionOutput], config: ScriptConfig) throws {
 
         guard let witness = inputs[inputIndex].witness else { preconditionFailure() }
-        guard configuration.taproot else { return }
+        guard config.contains(.taproot) else { return }
 
         var stack = witness.elements
         // Fail if the witness stack has 0 elements.
@@ -233,14 +233,14 @@ extension BitcoinTransaction {
         // BIP 342 Tapscript - https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki
         // The leaf version is 0xc0 (i.e. the first byte of the last witness element after removing the optional annex is 0xc0 or 0xc1), marking it as a tapscript spend.
         guard leafVersion == 0xc0 else {
-            if configuration.discourageUpgradableTaprootVersion {
+            if config.contains(.discourageUpgradableTaprootVersion) {
                 throw ScriptError.disallowedTaprootVersion
             }
             return
         }
 
         let tapscript = BitcoinScript(tapscriptData, sigVersion: .witnessV1)
-        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, configuration: configuration)
+        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, config: config)
     }
 
     /// Signature hash for legacy inputs.

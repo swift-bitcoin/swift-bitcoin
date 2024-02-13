@@ -11,9 +11,9 @@ func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
     case .base, .witnessV0:
         let scriptCode = try context.sigVersion == .base ? context.getScriptCode(signatures: [sig]) : context.segwitScriptCode
 
-        try checkPublicKey(publicKey, scriptVersion: context.sigVersion, scriptConfiguration: context.configuration)
+        try checkPublicKey(publicKey, scriptVersion: context.sigVersion, scriptConfig: context.config)
 
-        try checkSignature(sig, scriptConfiguration: context.configuration)
+        try checkSignature(sig, scriptConfig: context.config)
 
         if sig.isEmpty {
             result = false
@@ -57,14 +57,14 @@ func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
             }
             
             // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
-            if context.configuration.discourageUpgradablePublicKeyType {
+            if context.config.contains(.discourageUpgradablePublicKeyType) {
                 throw ScriptError.disallowsPublicKeyType
             }
             result = true
         }
     }
 
-    if !result && context.configuration.nullFail && !sig.isEmpty {
+    if !result && context.config.contains(.nullFail) && !sig.isEmpty {
         throw ScriptError.signatureNotEmpty
     }
 

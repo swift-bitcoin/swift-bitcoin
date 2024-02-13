@@ -20,35 +20,26 @@ final class InvalidTransactionTests: XCTestCase {
                 XCTAssertNoThrow(try tx.check())
             }
             includeFlags.remove("BADTX")
-            let config = ScriptConfigurarion(
-                strictDER: includeFlags.contains("DERSIG"),
-                pushOnly: includeFlags.contains("SIGPUSHONLY"),
-                minimalData: includeFlags.contains("MINIMALDATA"),
-                lowS: includeFlags.contains("LOW_S"),
-                cleanStack: includeFlags.contains("CLEANSTACK"),
-                nullDummy: includeFlags.contains("NULLDUMMY"),
-                strictEncoding: includeFlags.contains("STRICTENC"),
-                payToScriptHash: includeFlags.contains("P2SH"),
-                checkLockTimeVerify: includeFlags.contains("CHECKLOCKTIMEVERIFY"),
-                checkSequenceVerify: includeFlags.contains("CHECKSEQUENCEVERIFY"),
-                discourageUpgradableNoOps: false,
-                constantScriptCode: includeFlags.contains("CONST_SCRIPTCODE"),
-                witness: includeFlags.contains("WITNESS"),
-                witnessCompressedPublicKey: false,
-                minimalIf: false,
-                nullFail: includeFlags.contains("NULLFAIL"),
-                discourageUpgradableWitnessProgram: includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"),
-                taproot: false,
-                discourageUpgradableTaprootVersion: false,
-                discourageOpSuccess: false,
-                discourageUpgradablePublicKeyType: false
-            )
-            let result = tx.verifyScript(previousOutputs: previousOutputs, configuration: config)
+            var config: ScriptConfig = []
+            if includeFlags.contains("DERSIG") { config.insert(.strictDER) }
+            if includeFlags.contains("SIGPUSHONLY") { config.insert(.pushOnly) }
+            if includeFlags.contains("MINIMALDATA") { config.insert(.minimalData) }
+            if includeFlags.contains("LOW_S") { config.insert(.lowS) }
+            if includeFlags.contains("CLEANSTACK") { config.insert(.cleanStack) }
+            if includeFlags.contains("NULLDUMMY") { config.insert(.nullDummy) }
+            if includeFlags.contains("STRICTENC") { config.insert(.strictEncoding) }
+            if includeFlags.contains("P2SH") { config.insert(.payToScriptHash) }
+            if includeFlags.contains("CHECKLOCKTIMEVERIFY") { config.insert(.checkLockTimeVerify) }
+            if includeFlags.contains("CHECKSEQUENCEVERIFY") { config.insert(.checkSequenceVerify) }
+            if includeFlags.contains("CONST_SCRIPTCODE") { config.insert(.constantScriptCode) }
+            if includeFlags.contains("WITNESS") { config.insert(.witness) }
+            if includeFlags.contains("NULLFAIL") { config.insert(.nullFail) }
+            if includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.insert(.discourageUpgradableWitnessProgram) }
+            let result = tx.verifyScript(previousOutputs: previousOutputs, config: config)
             XCTAssertFalse(result)
 
             if !includeFlags.isEmpty {
-                let configSuccess = ScriptConfigurarion.init(strictDER: false, pushOnly: false, minimalData: false, lowS: false, cleanStack: false, nullDummy: false, strictEncoding: false, payToScriptHash: false, checkLockTimeVerify: false, checkSequenceVerify: false, discourageUpgradableNoOps: false, constantScriptCode: false, witness: false, witnessCompressedPublicKey: false, minimalIf: false, nullFail: false, discourageUpgradableWitnessProgram: false, taproot: false, discourageUpgradableTaprootVersion: false, discourageOpSuccess: false, discourageUpgradablePublicKeyType: false)
-                let resultSuccess = tx.verifyScript(previousOutputs: previousOutputs, configuration: configSuccess)
+                let resultSuccess = tx.verifyScript(previousOutputs: previousOutputs, config: [])
                 XCTAssert(resultSuccess)
             }
         }

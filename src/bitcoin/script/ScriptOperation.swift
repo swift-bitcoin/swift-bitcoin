@@ -413,14 +413,14 @@ public enum ScriptOperation: Equatable {
         case .checkMultiSigVerify:
             guard context.sigVersion == .base || context.sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
             try opCheckMultiSigVerify(&stack, context: &context)
-        case .noOp1: if context.configuration.discourageUpgradableNoOps { throw ScriptError.disallowedNoOp }
+        case .noOp1: if context.config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
         case .checkLockTimeVerify:
-            guard context.configuration.checkLockTimeVerify else { break }
+            guard context.config.contains(.checkLockTimeVerify) else { break }
             try opCheckLockTimeVerify(&stack, context: context)
         case .checkSequenceVerify:
-            guard context.configuration.checkSequenceVerify else { break }
+            guard context.config.contains(.checkSequenceVerify) else { break }
             try opCheckSequenceVerify(&stack, context: context)
-        case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: if context.configuration.discourageUpgradableNoOps { throw ScriptError.disallowedNoOp }
+        case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: if context.config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
         case .checkSigAdd:
             guard context.sigVersion == .witnessV1 else { throw ScriptError.unknownOperation }
             try opCheckSigAdd(&stack, context: &context)

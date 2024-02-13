@@ -32,16 +32,16 @@ public struct TransactionBlock: Equatable {
 
     // MARK: - Type Methods
 
-    static func makeGenesisBlock(consensusParameters: ConsensusParameters) -> Self {
-        let genesisTx = BitcoinTransaction.makeGenesisTransaction(consensusParameters: consensusParameters)
+    static func makeGenesisBlock(consensusParams: ConsensusParams) -> Self {
+        let genesisTx = BitcoinTransaction.makeGenesisTransaction(consensusParams: consensusParams)
         let genesisBlock = TransactionBlock(
             header: .init(
                 version: 1,
                 previous: Data(count: 32),
                 merkleRoot: genesisTx.identifier,
-                time: Date(timeIntervalSince1970: TimeInterval(consensusParameters.genesisBlockTime)),
-                target: consensusParameters.genesisBlockTarget,
-                nonce: consensusParameters.genesisBlockNonce
+                time: Date(timeIntervalSince1970: TimeInterval(consensusParams.genesisBlockTime)),
+                target: consensusParams.genesisBlockTarget,
+                nonce: consensusParams.genesisBlockNonce
             ),
             transactions: [genesisTx])
         return genesisBlock
