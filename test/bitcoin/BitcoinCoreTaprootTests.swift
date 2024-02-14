@@ -32,7 +32,7 @@ final class BitcoinCoreTaprootTests: XCTestCase {
             let inputIndex = testCase.inputIndex
             let input = unsignedTx.inputs[inputIndex]
             if let success = testCase.success {
-                let successInput = TransationInput(
+                let successInput = TransactionInput(
                     outpoint: input.outpoint,
                     sequence: input.sequence,
                     script: .init(Data(success.scriptSig)),
@@ -45,7 +45,7 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 XCTAssertNoThrow(try successTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, config: testCase.final ? config : []))
             }
             if let failure = testCase.failure, testCase.final {
-                let failureInput = TransationInput(
+                let failureInput = TransactionInput(
                     outpoint: input.outpoint,
                     sequence: input.sequence,
                     script: .init(Data(failure.scriptSig)),

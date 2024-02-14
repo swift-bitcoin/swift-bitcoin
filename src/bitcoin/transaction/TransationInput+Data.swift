@@ -1,6 +1,6 @@
 import Foundation
 
-extension TransationInput {
+extension TransactionInput {
 
     init?(_ data: Data) {
         var data = data

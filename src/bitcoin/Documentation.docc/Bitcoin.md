@@ -1,21 +1,22 @@
-# Swift Bitcoin
+# ``Bitcoin``
 
-Pure-Swift implementation of core Bitcoin Protocol features.
+@Metadata {
+    @DisplayName("Swift Bitcoin")
+}
+
+Pure-Swift Bitcoin client implementation with full node capabilities.
 
 ## Overview
 
-_Swift Bitcoin_ provides accesss to many protocol features primarily through three main interfaces:
+Swift Bitcoin is comprised of several core components. The main entry-point is the `Bitcoin` framework which can be easily integrated into virtually all types of Swift projects.
 
-- `Bitcoin` Swift Library module.
-- `bcutil` Command-Line Interface tool.
-- `bcnode` service daemon.
+### Bitcoin Node
 
-The library and executables cover Bitcoin's main areas of funcionality:
+The [Bitcoin Node (bcnode)](https://swift-bitcoin.github.io/docc/bcnode/documentation/bcnode/) command-line tool is used to launch a Bitcoin RPC server and peer-to-peer network client.
 
-- Transactions and scripting
-- Wallet and key pairs
-- Peer-to-Peer Transport
-- RPC Interface
+### Bitcoin Utility
+
+The [Bitcoin Utility (bcutil)](https://swift-bitcoin.github.io/docc/bcutil/documentation/bcutil/) command-line tool can be used to perform off-chain wallet operations as well as controlling a running node instance via RPC.
 
 ## Topics
 

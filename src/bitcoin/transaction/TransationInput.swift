@@ -1,7 +1,7 @@
 import Foundation
 
 /// A single input belonging to a ``BitcoinTransaction``.
-public struct TransationInput: Equatable {
+public struct TransactionInput: Equatable {
 
     // MARK: - Initializers
 

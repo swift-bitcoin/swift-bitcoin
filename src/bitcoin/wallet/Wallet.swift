@@ -9,7 +9,13 @@ extension Wallet {
     /// Generates a new secret key suitable for ECDSA signing.
     /// - Returns: The secret key in hex format.
     public static func createSecretKey() -> String {
-        BitcoinCrypto.createSecretKey().hex
+        createSecretKey().hex
+    }
+    
+    /// Generates a new secret key suitable for ECDSA signing.
+    /// - Returns: The secret key in hex format.
+    public static func createSecretKey() -> Data {
+        BitcoinCrypto.createSecretKey()
     }
     
     /// Computes the public key corresponding to the provided secret key.

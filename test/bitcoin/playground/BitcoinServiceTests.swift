@@ -6,59 +6,88 @@ final class BitcoinServiceTests: XCTestCase {
 
     /// Tests mining empty blocks, spending a coinbase transaction and mine again.
     func testMineAndSpend() async throws {
+
+        // Generate a secret key, corresponding public key, hash and address.
+        let secretKey = Wallet.createSecretKey() as Data
+        let publicKey = Wallet.getPublicKey(secretKey: secretKey)
+        let publicKeyHash = hash160(publicKey)
+        let address = try Wallet.getAddress(publicKey: publicKey, sigVersion: .base, network: .regtest)
+
+        // Instantiate a fresh Bitcoin service (regtest).
         let service = BitcoinService()
+
+        // Create the genesis block.
         await service.createGenesisBlock()
+
+        // Mine 100 blocks so block 1's coinbase output reaches maturity.
         for _ in 0 ..< 100 {
-            await service.generateTo("miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5")
+            await service.generateTo(address)
         }
 
-        // Create spending transaction
+        // Grab block 1's coinbase transaction and output.
         let previousTransaction = await service.blockchain[1].transactions[0]
         let previousOutput = previousTransaction.outputs[0]
         let outpoint = previousTransaction.outpoint(for: 0)!
-        let unsignedInput = TransationInput(outpoint: outpoint, sequence: .final)
+
+        // Create a new transaction spending from the previous transaction's outpoint.
+        let unsignedInput = TransactionInput(outpoint: outpoint, sequence: .final)
+
+        // Specify the transaction's output. We'll leave 1000 sats on the table to tip miners. We'll re-use the origin address for simplicity.
         let unsignedTransaction = BitcoinTransaction(
-            version: .v1,
             inputs: [unsignedInput],
             outputs: [
-                .init(value: 49_98_000_000, script: .init([
+                .init(value: 49_99_999_000, script: .init([
                     .dup,
                     .hash160,
-                    .pushBytes(Data([0x25, 0x33, 0x7b, 0xc5, 0x96, 0x13, 0xaa, 0x87, 0x17, 0x45, 0x9c, 0x5f, 0x7e, 0x6b, 0xf2, 0x94, 0x79, 0xdd, 0xd0, 0xed])),
+                    .pushBytes(publicKeyHash),
                     .equalVerify,
                     .checkSig
                 ]))
             ])
 
-        // Sign the transaction
+        // Sign the transaction by first calculating the signature hash.
         let sigHash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, previousOutput: previousOutput, scriptCode: previousOutput.script.data)
-        let sig = signECDSA(message: sigHash, secretKey: Data([0x45, 0x85, 0x1e, 0xe2, 0x66, 0x2f, 0x0c, 0x36, 0xf4, 0xfd, 0x2a, 0x7d, 0x53, 0xa0, 0x8f, 0x7b, 0x06, 0xc7, 0xab, 0xfd, 0x61, 0x95, 0x3c, 0x52, 0x16, 0xcc, 0x39, 0x7c, 0x4f, 0x2c, 0xae, 0x8c])) + [SighashType.all.value]
-        let signedInput = TransationInput(
+
+        // Obtain the signature using our secret key and append the signature hash type.
+        let sig = signECDSA(message: sigHash, secretKey: secretKey) + [SighashType.all.value]
+
+        // Sign our input by including the signature and public key.
+        let signedInput = TransactionInput(
             outpoint: unsignedInput.outpoint,
             sequence: unsignedInput.sequence,
             script: .init([
                 .pushBytes(sig),
-                .pushBytes(Data([0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05]))
+                .pushBytes(publicKey)
             ]),
             witness: unsignedInput.witness)
+
+        // Put the signed input back into the transaction.
         let signedTransaction = BitcoinTransaction(
             version: unsignedTransaction.version,
             locktime: unsignedTransaction.locktime,
             inputs: [signedInput],
             outputs: unsignedTransaction.outputs)
+
+        // Make sure the transaction was signed correctly by verifying the scripts.
         XCTAssert(signedTransaction.verifyScript(previousOutputs: [previousOutput]))
 
+        // Submit the signed transaction to the mempool.
         await service.addTransaction(signedTransaction)
         let mempoolBefore = await service.mempool.count
         XCTAssertEqual(mempoolBefore, 1)
-        await service.generateTo("miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5")
+
+        // Let's mine another block to confirm our transaction.
+        await service.generateTo(address)
         let mempoolAfter = await service.mempool.count
+
+        // Verify the mempool is empty once again.
         XCTAssertEqual(mempoolAfter, 0)
         let blocks = await service.blockchain.count
         XCTAssertEqual(blocks, 102)
         guard let lastBlock = await service.blockchain.last else {
             XCTFail(); return
         }
+        // Verify our transaction was confirmed in a block.
         XCTAssertEqual(lastBlock.transactions[1], signedTransaction)
     }
 
