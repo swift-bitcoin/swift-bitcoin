@@ -11,7 +11,7 @@ struct ECNew: ParsableCommand {
     )
 
     mutating func run() throws {
-        print(Wallet.createSecretKey())
+        print(Wallet.createSecretKey() as String)
         destroyECCSigningContext()
     }
 }

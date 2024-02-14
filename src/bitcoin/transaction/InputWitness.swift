@@ -1,6 +1,6 @@
 import Foundation
 
-/// Witness data associated with a particular ``TransationInput``.
+/// Witness data associated with a particular ``TransactionInput``.
 ///
 /// Refer to BIP141 for more information.
 public struct InputWitness: Equatable {

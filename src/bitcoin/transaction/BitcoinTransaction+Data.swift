@@ -29,9 +29,9 @@ extension BitcoinTransaction {
         }
         data = data.dropFirst(inputsCount.varIntSize)
 
-        var inputs = [TransationInput]()
+        var inputs = [TransactionInput]()
         for _ in 0 ..< inputsCount {
-            guard let input = TransationInput(data) else {
+            guard let input = TransactionInput(data) else {
                 return nil
             }
             inputs.append(input)

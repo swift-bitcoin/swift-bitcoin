@@ -8,6 +8,8 @@ let package = Package(
         .library(
             name: "Bitcoin",
             targets: ["Bitcoin"]),
+        .executable(name: "bcnode", targets: ["bcnode"]),
+        .executable(name: "bcutil", targets: ["bcutil"])
     ],
     dependencies: [
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),

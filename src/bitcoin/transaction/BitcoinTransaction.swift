@@ -20,7 +20,7 @@ public struct BitcoinTransaction: Equatable {
     ///   - locktime: The absolute lock time by which this transaction will be able to be mined. It can be specified as a block height or a calendar date. Disabled by default.
     ///   - inputs: The coins this transaction will be spending.
     ///   - outputs: The new coins this transaction will create.
-    public init(version: TransactionVersion = .v1, locktime: TransactionLocktime = .disabled, inputs: [TransationInput], outputs: [TransactionOutput]) {
+    public init(version: TransactionVersion = .v1, locktime: TransactionLocktime = .disabled, inputs: [TransactionInput], outputs: [TransactionOutput]) {
         self.version = version
         self.locktime = locktime
         self.inputs = inputs
@@ -36,7 +36,7 @@ public struct BitcoinTransaction: Equatable {
     public let locktime: TransactionLocktime
 
     /// All of the inputs consumed (coins spent) by this transaction.
-    public let inputs: [TransationInput]
+    public let inputs: [TransactionInput]
 
     /// The new outputs to be created by this transaction.
     public let outputs: [TransactionOutput]
@@ -65,7 +65,7 @@ public struct BitcoinTransaction: Equatable {
 
     // MARK: - Instance Methods
 
-    /// Creates an outpoint from a particular output in this transaction to be used when creating an ``TransationInput`` instance.
+    /// Creates an outpoint from a particular output in this transaction to be used when creating an ``TransactionInput`` instance.
     public func outpoint(for output: Int) -> TransactionOutpoint? {
         guard output < outputs.count else {
             return .none

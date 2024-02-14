@@ -264,7 +264,7 @@ extension BitcoinTransaction {
 
     /// Aka sigMsg. See https://en.bitcoin.it/wiki/OP_CHECKSIG
     func signatureMessage(sighashType: SighashType, inputIndex: Int, scriptCode: Data) -> Data {
-        var newIns = [TransationInput]()
+        var newIns = [TransactionInput]()
         if sighashType.isAnyCanPay {
             // Procedure for Hashtype SIGHASH_ANYONECANPAY
             // The txCopy input vector is resized to a length of one.
