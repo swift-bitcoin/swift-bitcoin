@@ -1,58 +1,40 @@
+import Bitcoin
+import AsyncAlgorithms
 import ServiceLifecycle
-import NIOCore
-import NIOPosix
+import NIO
 
 public actor P2PService: Service {
 
     public struct Status {
-        var isRunning = false
-        var isListening = false
-        var port = Int?.none
-        var overallTotalConnections = 0
-        var connectionsThisSession = 0
-        var activeConnections = 0
+        public var isRunning = false
+        public var isListening = false
+        public var port = Int?.none
+        public var overallTotalConnections = 0
+        public var connectionsThisSession = 0
+        public var activeConnections = 0
     }
 
-    private enum ControlAction {
-        case start(Int), stop
-    }
-
-    public init(eventLoopGroup: EventLoopGroup) {
+    public init(eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService) {
         self.eventLoopGroup = eventLoopGroup
+        self.bitcoinService = bitcoinService
     }
 
-    private(set) public var status = Status()
     private let eventLoopGroup: EventLoopGroup
-    private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<Message, Message>, Never>?
-    private var controlActionHandler: ((ControlAction) -> ())?
+    private let bitcoinService: BitcoinService
+    private(set) public var status = Status() // Network status
 
-    private var controlActions: AsyncStream<ControlAction> {
-        AsyncStream { continuation in
-            controlActionHandler = { action in
-                continuation.yield(action)
-            }
-        }
-    }
+    private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<Message, Message>, Never>?
 
     public func run() async throws {
 
         // Update status
         status.isRunning = true
 
-        try await withGracefulShutdownHandler {
+        await withGracefulShutdownHandler {
 
-            for await action in controlActions.cancelOnGracefulShutdown() {
-                switch action {
-                case .start(let port):
-                    guard serverChannel == nil else { break }
-                    Task {
-                        try await startListening(port: port)
-                    }
-                case .stop:
-                    try await stopListening()
-                }
-            }
-            print("P2P server: no more control actions.")
+            // We want to keep the service alive while we connect/disconnect from servers. Unless there is a shutdown signal.
+            for await _ in AsyncChannel<()>().cancelOnGracefulShutdown() { }
+
         } onGracefulShutdown: {
             // status.isRunning = false
             print("P2P server shutting down gracefully…")
@@ -60,11 +42,17 @@ public actor P2PService: Service {
     }
 
     public func start(port: Int) {
-        controlActionHandler?(.start(port))
+        guard serverChannel == nil else { return }
+        Task {
+            try await startListening(port: port)
+        }
     }
 
-    public func stop() {
-        controlActionHandler?(.stop)
+    public func stopListening() async throws {
+        try await serverChannel?.channel.close()
+        serverChannel = .none
+        status.isListening = false
+        status.port = .none
     }
 
     private func decreaseActiveConnections() {
@@ -109,11 +97,11 @@ public actor P2PService: Service {
 
                     group.addTask {
                         do {
-                            try await connectionChannel.executeThenClose { [weak self] in
-                                try await handleIO($0, $1)
+                            try await connectionChannel.executeThenClose { [self] in
+                                try await handleIO(bitcoinService: self.bitcoinService, $0, $1)
                                 print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.port ?? -1).")
 
-                                await self?.decreaseActiveConnections()
+                                await self.decreaseActiveConnections()
                             }
                         } catch {
                             // TODO: Handle errors
@@ -125,12 +113,5 @@ public actor P2PService: Service {
             }
             print("P2P server stopped listening.")
         }
-    }
-
-    private func stopListening() async throws {
-        try await serverChannel?.channel.close()
-        serverChannel = .none
-        status.isListening = false
-        status.port = .none
     }
 }

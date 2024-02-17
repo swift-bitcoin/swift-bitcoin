@@ -1,4 +1,5 @@
 import Foundation
+import AsyncAlgorithms
 import BitcoinCrypto
 
 public actor BitcoinService {
@@ -7,8 +8,15 @@ public actor BitcoinService {
     public private(set) var blockchain = [TransactionBlock]()
     public private(set) var mempool = [BitcoinTransaction]()
 
+    private var blockChannels = [AsyncChannel<TransactionBlock>]()
+    public var blocks: AsyncChannel<TransactionBlock> {
+        blockChannels.append(.init())
+        return blockChannels.last!
+    }
+
     public init(consensusParams: ConsensusParams = .regtest) {
         self.consensusParams = consensusParams
+        blockchain.append(TransactionBlock.makeGenesisBlock(consensusParams: consensusParams))
     }
 
     public var genesisBlock: TransactionBlock {
@@ -62,6 +70,12 @@ public actor BitcoinService {
 
         blockchain.append(block)
         mempool = .init()
+
+        Task {
+            for channel in blockChannels {
+                await channel.send(block)
+            }
+        }
     }
 
     private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParams) -> Int {
@@ -124,5 +138,16 @@ public actor BitcoinService {
         if new > powLimitTarget { new = powLimitTarget }
 
         return new.toCompact()
+    }
+
+    public func shutdown() {
+        for channel in blockChannels {
+            channel.finish()
+        }
+    }
+
+    public func unsubscribe(_ channel: AsyncChannel<TransactionBlock>) {
+        channel.finish()
+        blockChannels.removeAll(where: { $0 === channel })
     }
 }

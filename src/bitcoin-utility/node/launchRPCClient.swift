@@ -29,10 +29,14 @@ public func launchRPCClient(port: Int, method: String, params: [String]) async t
     }
 
     try await clientChannel.executeThenClose {
+        let params = if method == "generate-to" {
+            JSONObject(RPCObject(params))
+        } else {
+            JSONObject(RPCObject(params.compactMap { Int($0) }))
+        }
         let request = JSONRequest(id: NSUUID().uuidString, method: method,
-            params: JSONObject(RPCObject(params.compactMap { Int($0) })))
+            params: params)
         try await $1.write(request)
-
         try await handleRPC($0, $1)
     }
 }
@@ -46,6 +50,8 @@ private func handleRPC(_ inbound: NIOAsyncChannelInboundStream<JSONResponse>, _ 
             } else {
                 print(result)
             }
+        } else if let error = response.error {
+            print(error)
         } else {
             print("Received empty result.")
         }

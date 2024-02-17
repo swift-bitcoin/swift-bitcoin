@@ -1,8 +1,8 @@
-import ServiceLifecycle
-import NIOCore
-import NIOPosix
-import JSONRPC
+import Bitcoin
 import BitcoinP2P
+import JSONRPC
+import ServiceLifecycle
+import NIO
 
 actor RPCService: Service {
 
@@ -13,18 +13,21 @@ actor RPCService: Service {
         var overallTotalConnections = 0
     }
 
-    init(port: Int, eventLoopGroup: EventLoopGroup, p2pService: P2PService, p2pClientService0: P2PClientService) {
+    init(port: Int, eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
         self.port = port
         self.eventLoopGroup = eventLoopGroup
+        self.bitcoinService = bitcoinService
         self.p2pService = p2pService
-        self.p2pClientService0 = p2pClientService0
+        self.p2pClientServices = p2pClientServices
     }
 
     let port: Int // Configuration
-    private(set) var status = Status()
     private let eventLoopGroup: EventLoopGroup
+    private let bitcoinService: BitcoinService
     private let p2pService: P2PService
-    private let p2pClientService0: P2PClientService
+    private let p2pClientServices: [P2PClientService]
+
+    private(set) var status = Status() // Network status
     private var serviceGroup: ServiceGroup?
 
     func setServiceGroup(_ serviceGroup: ServiceGroup) {
@@ -105,16 +108,20 @@ actor RPCService: Service {
             switch request.method {
             case "status":
                 let p2pStatus = await p2pService.status
-                let p2pClientStatus = await p2pClientService0.status
+                // Gathering all clients' statuses
+                var p2pClientStatus = ""
+                for service in p2pClientServices {
+                    p2pClientStatus += "\(await service.status)\n"
+                }
                 try await outbound.write(.init(id: request.id, result: .string("""
-                    RPC server status:
-                    \(status)
+                RPC server status:
+                \(status)
 
-                    P2P server status:
-                    \(p2pStatus)
+                P2P server status:
+                \(p2pStatus)
 
-                    P2P client 0 status:
-                    \(p2pClientStatus)
+                P2P clients' status:
+                \(p2pClientStatus)
                 """) as JSONObject))
             case "stop":
                 try await outbound.write(.init(id: request.id, result: .string("Stopping…") as JSONObject))
@@ -128,22 +135,56 @@ actor RPCService: Service {
                 }
             case "stop-p2p":
                 try await outbound.write(.init(id: request.id, result: .string("Stopping P2P server…") as JSONObject))
-                await p2pService.stop()
+                try await p2pService.stopListening()
             case "connect":
-                if case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(port) = first {
-                    try await outbound.write(.init(id: request.id, result: .string("Connecting to peer @\(port)…") as JSONObject))
-                    await p2pClientService0.connect(port)
-                } else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("Port (integer) is required."))))
+                guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(port) = first else {
+                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("port"), description: "Port (integer) is required.")))
+                    return // or break?
                 }
+                // Attempt to find an inactive client.
+                var clientService = P2PClientService?.none
+                for service in p2pClientServices {
+                    if await !service.status.isConnected {
+                        clientService = service
+                        break
+                    }
+                }
+                guard let clientService else {
+                    try await outbound.write(.init(id: request.id, error: .init(.applicationError("Maximum P2P client instances reached."))))
+                    return
+                }
+
+                try await outbound.write(.init(id: request.id, result: .string("Connecting to peer @\(port)…") as JSONObject))
+                await clientService.connect(port)
             case "disconnect":
-                if case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(port) = first {
-                    try await outbound.write(.init(id: request.id, result: .string("Disconnecting from peer @\(port)…") as RPCObject))
-                    await p2pClientService0.disconnect()
+                if case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(localPort) = first {
+                    try await outbound.write(.init(id: request.id, result: .string("Disconnecting from client @\(localPort)…") as RPCObject))
+
+                    // Attempt to find a non-running client.
+                    var clientService = P2PClientService?.none
+                    for service in p2pClientServices {
+                        if await service.status.localPort == localPort {
+                            clientService = service
+                        }
+                    }
+                    guard let clientService else {
+                        try await outbound.write(.init(id: request.id, error: .init(.applicationError("No client connected @\(localPort)"))))
+                        return
+                    }
+
+                    try await clientService.disconnect()
                 } else {
                     try await outbound.write(.init(id: request.id, error: .init(.invalidParams("Port (integer) is required."))))
                 }
-            default: break
+            case "generate-to":
+                guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(address) = first else {
+                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("address"), description: "Address (string) is required.")))
+                    return
+                }
+                await bitcoinService.generateTo(address)
+                try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.blockchain.last!.hash.hex) as JSONObject))
+            default:
+                try await outbound.write(.init(id: request.id, error: .init(.invalidParams("method"), description: "Method `\(request.method)` does not exist.")))
             }
         }
     }
