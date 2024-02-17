@@ -1,11 +1,12 @@
 # Swift Bitcoin
 
-[Documentation](https://swift-bitcoin.github.io/docc/documentation/bitcoin/)
 [Blog](https://swift-bitcoin.github.io)
+[Documentation](https://swift-bitcoin.github.io/docc/documentation/bitcoin/)
 
-_Swift Bitcoin_ is a [bitcoin](https://bitcoin.org/bitcoin.pdf) library written entirely in **Swift**. Its only dependency is the official [libsecp256k1](https://github.com/bitcoin-core/secp256k1) for ECDSA and [Schnorr](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) cryptography.
+Swift Bitcoin is a [Bitcoin](https://bitcoin.org/bitcoin.pdf) network client written entirely in [Swift](https://www.swift.org/documentation/) with minimal[^1] third-party dependencies. It fully implements the Bitcoin protocol and exposes it as a framework for Swift application development on every [supported platform](https://www.swift.org/platform-support/). In addition to the [API](https://swift-bitcoin.github.io/docc/documentation/bitcoin/) there's command-line tools for [launching](https://swift-bitcoin.github.io/docc/bcnode/documentation/bcnode/) a peer-to-peer node, [interfacing](https://swift-bitcoin.github.io/docc/bcutil/documentation/bcutil/) with it using RPC and performing advanced off-chain wallet and cryptographic operations.
 
-The library provides full support for bitcoin [transactions](https://en.bitcoin.it/wiki/Transaction), [SCRIPT](https://en.bitcoin.it/wiki/Script), [segregated witness](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki), [taproot](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki), [tapscript](https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki) and more.
+The library provides full support for bitcoin [transactions](https://en.bitcoin.it/wiki/Transaction), [SCRIPT](https://en.bitcoin.it/wiki/Script), [segregated witness](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki),
+[Schnorr signatures](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki), [taproot](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki), [tapscript](https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki) and more.
 
 The goal is to make Swift Bitcoin the most comprehensive SDK for bitcoin in Swift with features like mempool management, block mining and connectivity via the bitcoin protocol.
 
@@ -40,3 +41,5 @@ Below is a rough roadmap of the order in which features could be integrated.
 - [`Bech32m`](https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki) address encoding/decoding.
 - `OP_CHECKSIGADD` (witness V1 script).
 - Tapscript transactions.
+
+[^1]: There is one dependency on Bitcoin's official [secp256k1](https://github.com/bitcoin-core/secp256k1) library for critical elliptic curve cryptography operations.

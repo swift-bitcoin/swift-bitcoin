@@ -8,7 +8,23 @@ import BitcoinCrypto
 final class BIP341Tests: XCTestCase {
 
     func testScriptPubKey() {
-        let scriptPubKeyTestVector = [
+        let scriptPubKeyTestVector: [(
+            given: (
+                internalPubkey: Data,
+                scriptTree: ScriptTree?
+            ),
+            intermediary: (
+                leafHashes: [Data],
+                merkleRoot: Data?,
+                tweak: Data,
+                tweakedPubkey: Data
+            ),
+            expected: (
+                scriptPubKey: Data,
+                bip350Address: String,
+                scriptPathControlBlocks: [Data]
+            )
+        )] = [
             (
                 given: (
                     internalPubkey: Data([0xd6, 0x88, 0x9c, 0xb0, 0x81, 0x03, 0x6e, 0x0f, 0xae, 0xfa, 0x3a, 0x35, 0x15, 0x7a, 0xd7, 0x10, 0x86, 0xb1, 0x23, 0xb2, 0xb1, 0x44, 0xb6, 0x49, 0x79, 0x8b, 0x49, 0x4c, 0x30, 0x0a, 0x96, 0x1d]),
@@ -269,7 +285,29 @@ final class BIP341Tests: XCTestCase {
             XCTFail("Could not produce some of the hashes required for the signature message.")
         }
 
-        let inputSpending = [
+        let inputSpending: [(
+            given: (
+                txinIndex: Int,
+                internalSecretKey: Data,
+                merkleRoot: Data?,
+                sighashType: SighashType?
+            ),
+            intermediary: (
+                internalPubkey: Data,
+                tweak: Data,
+                tweakedSecretKey: Data,
+                sigMsg: Data,
+                precomputedUsed: (
+                    hashAmounts: Bool,
+                    hashPrevouts: Bool,
+                    hashScriptPubkeys: Bool,
+                    hashSequences: Bool,
+                    hashOutputs: Bool
+                ),
+                sighash: Data
+            ),
+            expectedWitness: [Data]
+        )] = [
             (
                 given: (
                     txinIndex: 0,

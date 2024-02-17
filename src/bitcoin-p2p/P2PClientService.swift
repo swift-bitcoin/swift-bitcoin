@@ -1,74 +1,61 @@
+import Bitcoin
+import AsyncAlgorithms
 import ServiceLifecycle
-import NIOCore
-import NIOPosix
+import NIO
 
 public actor P2PClientService: Service {
 
     public struct Status {
-        var isRunning = false
-        var isConnected = false
-        var port = Int?.none
-        var overallTotalConnections = 0
+        public var isRunning = false
+        public var isConnected = false
+        public var localPort = Int?.none
+        public var remotePort = Int?.none
+        public var overallTotalConnections = 0
     }
 
-    private enum ControlAction {
-        case connect(Int), disconnect
-    }
-
-    public init(eventLoopGroup: EventLoopGroup) {
+    public init(eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService) {
         self.eventLoopGroup = eventLoopGroup
+        self.bitcoinService = bitcoinService
     }
 
-    private(set) public var status = Status()
     private let eventLoopGroup: EventLoopGroup
+    private let bitcoinService: BitcoinService
+    private(set) public var status = Status() // Network status
+
     private var clientChannel: NIOAsyncChannel<Message, Message>?
-    private var controlActionHandler: ((ControlAction) -> ())?
 
     public func run() async throws {
-        try await withGracefulShutdownHandler {
 
-            status.isRunning = true
+        status.isRunning = true
 
-            for await action in controlActions.cancelOnGracefulShutdown() {
-                switch action {
-                case .connect(let port):
-                    guard clientChannel == nil else { break }
-                    Task {
-                        try await connectToPeer(on: port)
-                    }
-                case .disconnect:
-                    try await disconnectFromPeer()
-                }
-            }
-            print("P2P client: No longer receiving control actions.")
+        await withGracefulShutdownHandler {
+
+            // We want to keep the service alive while we connect/disconnect from servers. Unless there is a shutdown signal.
+            for await _ in AsyncChannel<()>().cancelOnGracefulShutdown() { }
+
         } onGracefulShutdown: {
             print("P2P client shutting down gracefully…")
         }
     }
 
     public func connect(_ port: Int) {
-        controlActionHandler?(.connect(port))
-    }
-
-    public func disconnect() {
-        controlActionHandler?(.disconnect)
-    }
-
-    private var controlActions: AsyncStream<ControlAction> {
-        AsyncStream { continuation in
-            controlActionHandler = { action in
-                continuation.yield(action)
-            }
+        guard clientChannel == nil else { return }
+        Task {
+            try await connectToPeer(on: port)
         }
     }
 
-    private func connectToPeer(on port: Int) async throws {
+    public func disconnect() async throws {
+        try await disconnectFromPeer()
+    }
+
+    private func connectToPeer(on remotePort: Int) async throws {
 
         let clientChannel = try await ClientBootstrap(
             group: eventLoopGroup
         ).connect(
             host: "127.0.0.1",
-            port: port
+            port: remotePort
         ) { channel in
             channel.pipeline.addHandlers([
                 MessageToByteHandler(MessageCoder()),
@@ -77,26 +64,28 @@ public actor P2PClientService: Service {
                 try NIOAsyncChannel<Message, Message>(wrappingChannelSynchronously: channel)
             }
         }
+
         self.clientChannel = clientChannel
+        status.isConnected = true
+        status.localPort = clientChannel.channel.localAddress?.port
+        status.remotePort = remotePort
+        status.overallTotalConnections += 1
+        print("P2P client @\(status.localPort ?? -1) connected to peer @\(remotePort) ( …")
 
         try await clientChannel.executeThenClose {
-            print("P2P client ready to connect to peer @\(port)…")
-            status.isConnected = true
-            status.port = port
-            status.overallTotalConnections += 1
+            try await handleIO(bitcoinService: bitcoinService, isClient: true, $0, $1)
 
-            try await handleIO(isClient: true, $0, $1)
-
-            print("P2P client got disconnected from peer @\(port).")
+            print("P2P client got disconnected from peer @\(remotePort).")
             status.isConnected = false
         }
     }
 
     private func disconnectFromPeer() async throws {
-        print("P2P client disconnecting from remote peer @\(status.port ?? -1)…")
+        print("P2P client @\(status.localPort ?? -1) disconnecting from remote peer @\(status.remotePort ?? -1)…")
         try await clientChannel?.channel.close()
         clientChannel = .none
         status.isConnected = false
-        status.port = .none
+        status.localPort = .none
+        status.remotePort = .none
     }
 }

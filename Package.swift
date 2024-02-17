@@ -14,6 +14,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.4.0"),
+        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.3"),
@@ -28,16 +29,14 @@ let package = Package(
                 "JSONRPC",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio")],
+                .product(name: "NIO", package: "swift-nio")],
             path: "src/bitcoin-node"),
         .executableTarget(
             name: "bcutil", dependencies: [
                 "Bitcoin",
                 "JSONRPC",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio")],
+                .product(name: "NIO", package: "swift-nio")],
             path: "src/bitcoin-utility"),
         .target(
             name: "ECCHelper",
@@ -54,8 +53,8 @@ let package = Package(
         .target(
             name: "Bitcoin",
             dependencies: [
-                "BitcoinCrypto"
-            ],
+                "BitcoinCrypto",
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
             path: "src/bitcoin"),
         .target(
             name: "BitcoinP2P",
@@ -64,16 +63,14 @@ let package = Package(
                 "BitcoinCrypto",
                 "JSONRPC",
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio")
-            ],
+                .product(name: "NIO", package: "swift-nio"),
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
             path: "src/bitcoin-p2p"),
         .target(
             name: "JSONRPC",
             dependencies: [
                 .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOFoundationCompat", package: "swift-nio")
-            ],
+                .product(name: "NIOFoundationCompat", package: "swift-nio")],
             path: "src/json-rpc"),
         .testTarget(
             name: "BitcoinTests",
