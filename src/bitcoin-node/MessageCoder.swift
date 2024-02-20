@@ -1,5 +1,6 @@
 import Foundation
-import NIOCore
+import BitcoinP2P
+import NIO
 
 internal final class MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
     public typealias InboundIn = ByteBuffer

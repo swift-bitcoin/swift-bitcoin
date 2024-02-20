@@ -22,9 +22,7 @@ final class BlockTests: XCTestCase {
         let genesisBlockData = genesisBlock.data
         XCTAssertEqual(genesisBlockData.hex, expectedBlockData)
 
-        guard let genesisBlockRedeserialized = TransactionBlock(genesisBlockData) else {
-            XCTFail(); return
-        }
+        let genesisBlockRedeserialized = try XCTUnwrap(TransactionBlock(genesisBlockData))
         XCTAssertEqual(genesisBlockRedeserialized, genesisBlock)
         XCTAssertEqual(genesisBlock.identifier.hex, expectedBlockHash)
     }

@@ -1,4 +1,5 @@
 import Bitcoin
+import BitcoinP2P
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO
@@ -24,6 +25,7 @@ public actor P2PService: Service {
     private(set) public var status = Status() // Network status
 
     private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<Message, Message>, Never>?
+    private var peers = [BitcoinPeer]()
 
     public func run() async throws {
 
@@ -55,7 +57,19 @@ public actor P2PService: Service {
         status.port = .none
     }
 
-    private func decreaseActiveConnections() {
+    public func pingAll() async throws {
+        for peer in peers {
+            try await peer.sendPing()
+        }
+    }
+
+    private func registerPeer(_ peer: BitcoinPeer) -> Int {
+        peers.append(peer)
+        return peers.count - 1
+    }
+
+    private func deregisterPeer(_ index: Int) {
+        peers.remove(at: index)
         status.activeConnections -= 1
     }
 
@@ -97,11 +111,26 @@ public actor P2PService: Service {
 
                     group.addTask {
                         do {
-                            try await connectionChannel.executeThenClose { [self] in
-                                try await handleIO(bitcoinService: self.bitcoinService, $0, $1)
-                                print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.port ?? -1).")
+                            try await connectionChannel.executeThenClose { [self] inbound, outbound in
+                                let peer = BitcoinPeer(bitcoinService: self.bitcoinService, isClient: false)
+                                let peerID = await self.registerPeer(peer)
 
-                                await self.decreaseActiveConnections()
+                                Task {
+                                    for await message in await peer.messagesOut {
+                                        try await outbound.write(message)
+                                    }
+                                }
+                                Task {
+                                    try await peer.start()
+                                }
+                                for try await message in inbound.cancelOnGracefulShutdown() {
+                                    await peer.messagesIn.send(message)
+                                }
+
+                                // Disconnected
+                                print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.port ?? -1).")
+                                try await peer.stop()
+                                await self.deregisterPeer(peerID)
                             }
                         } catch {
                             // TODO: Handle errors

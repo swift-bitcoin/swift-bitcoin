@@ -61,9 +61,6 @@ let package = Package(
             dependencies: [
                 "Bitcoin",
                 "BitcoinCrypto",
-                "JSONRPC",
-                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                .product(name: "NIO", package: "swift-nio"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
             path: "src/bitcoin-p2p"),
         .target(
@@ -74,7 +71,7 @@ let package = Package(
             path: "src/json-rpc"),
         .testTarget(
             name: "BitcoinTests",
-            dependencies: ["Bitcoin"],
+            dependencies: ["Bitcoin", "BitcoinP2P"],
             path: "test/bitcoin",
             resources: [
                 .copy("data")

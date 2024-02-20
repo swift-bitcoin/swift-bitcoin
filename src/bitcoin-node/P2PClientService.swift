@@ -1,4 +1,5 @@
 import Bitcoin
+import BitcoinP2P
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO
@@ -23,6 +24,7 @@ public actor P2PClientService: Service {
     private(set) public var status = Status() // Network status
 
     private var clientChannel: NIOAsyncChannel<Message, Message>?
+    private var peer: BitcoinPeer?
 
     public func run() async throws {
 
@@ -49,6 +51,10 @@ public actor P2PClientService: Service {
         try await disconnectFromPeer()
     }
 
+    public func ping() async throws {
+        try await peer?.sendPing()
+    }
+
     private func connectToPeer(on remotePort: Int) async throws {
 
         let clientChannel = try await ClientBootstrap(
@@ -72,11 +78,27 @@ public actor P2PClientService: Service {
         status.overallTotalConnections += 1
         print("P2P client @\(status.localPort ?? -1) connected to peer @\(remotePort) ( …")
 
-        try await clientChannel.executeThenClose {
-            try await handleIO(bitcoinService: bitcoinService, isClient: true, $0, $1)
+        try await clientChannel.executeThenClose { inbound, outbound in
+            let peer = BitcoinPeer(bitcoinService: bitcoinService, isClient: true)
+            self.peer = peer
 
+            Task {
+                for await message in await peer.messagesOut {
+                    try await outbound.write(message)
+                }
+            }
+            Task {
+                try await peer.start()
+            }
+            for try await message in inbound.cancelOnGracefulShutdown() {
+                await peer.messagesIn.send(message)
+            }
+
+            // Disconnected
             print("P2P client got disconnected from peer @\(remotePort).")
+            try await peer.stop()
             status.isConnected = false
+            self.peer = .none
         }
     }
 
