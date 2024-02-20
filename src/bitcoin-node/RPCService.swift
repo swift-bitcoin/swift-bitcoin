@@ -183,6 +183,17 @@ actor RPCService: Service {
                 }
                 await bitcoinService.generateTo(address)
                 try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.blockchain.last!.hash.hex) as JSONObject))
+            case "ping-all":
+                try await withThrowingDiscardingTaskGroup {
+                    $0.addTask {
+                        try await self.p2pService.pingAll()
+                    }
+                    for client in p2pClientServices {
+                        $0.addTask {
+                            try await client.ping()
+                        }
+                    }
+                }
             default:
                 try await outbound.write(.init(id: request.id, error: .init(.invalidParams("method"), description: "Method `\(request.method)` does not exist.")))
             }

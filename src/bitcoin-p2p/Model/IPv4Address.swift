@@ -2,9 +2,9 @@ import Foundation
 
 fileprivate let length = 4
 
-public struct IPv4Address: Equatable {
+struct IPv4Address: Equatable {
 
-    public init(_ rawValue: Data) {
+    init(_ rawValue: Data) {
         let rawValue1 = if rawValue.count > length {
             rawValue[..<rawValue.startIndex.advanced(by: length)]
         } else {
@@ -18,7 +18,7 @@ public struct IPv4Address: Equatable {
         self.rawValue = rawValue2
     }
 
-    public private(set) var rawValue: Data
+    private(set) var rawValue: Data
 
-    public static let loopback = Self(Data([0xff, 0x00, 0x00, 0x01]))
+    static let loopback = Self(Data([0xff, 0x00, 0x00, 0x01]))
 }

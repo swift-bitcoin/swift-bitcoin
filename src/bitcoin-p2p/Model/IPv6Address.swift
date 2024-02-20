@@ -2,9 +2,9 @@ import Foundation
 
 fileprivate let length = 16
 
-public struct IPv6Address: Equatable {
+struct IPv6Address: Equatable {
 
-    public init(_ rawValue: Data) {
+    init(_ rawValue: Data) {
         let rawValue1 = if rawValue.count > length {
             rawValue[..<rawValue.startIndex.advanced(by: length)]
         } else {
@@ -19,11 +19,11 @@ public struct IPv6Address: Equatable {
     }
 
     /// https://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses
-    public init(_ ipv4: IPv4Address) {
+    init(_ ipv4: IPv4Address) {
         self.init(Data(repeating: 0xff, count: 2) + ipv4.rawValue)
     }
 
-    public private(set) var rawValue: Data
+    private(set) var rawValue: Data
 
-    public static let loopback = Self(Data([0x01]))
+    static let loopback = Self(Data([0x01]))
 }
