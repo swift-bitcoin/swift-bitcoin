@@ -112,6 +112,8 @@ public actor P2PService: Service {
                     group.addTask {
                         do {
                             try await connectionChannel.executeThenClose { [self] inbound, outbound in
+
+                                let remotePort = connectionChannel.channel.remoteAddress?.port ?? -1
                                 let peer = BitcoinPeer(bitcoinService: self.bitcoinService, isClient: false)
                                 let peerID = await self.registerPeer(peer)
 
@@ -128,7 +130,8 @@ public actor P2PService: Service {
                                 }
 
                                 // Disconnected
-                                print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.port ?? -1).")
+                                print("P2P server disconnected from peer @ \(remotePort).")
+
                                 try await peer.stop()
                                 await self.deregisterPeer(peerID)
                             }
@@ -138,9 +141,7 @@ public actor P2PService: Service {
                         }
                     }
                 }
-                print("P2P server: No more incoming connections.")
             }
-            print("P2P server stopped listening.")
         }
     }
 }
