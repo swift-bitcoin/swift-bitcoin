@@ -1,7 +1,7 @@
 import Foundation
 import Bitcoin
 
-struct Version: Equatable {
+struct VersionMessage: Equatable {
     init(versionIdentifier: VersionIdentifier, services: Services, receiverServices: Services, receiverAddress: IPv6Address, receiverPort: Int, transmitterServices: Services, transmitterAddress: IPv6Address, transmitterPort: Int, nonce: UInt64, userAgent: String, startHeight: Int, relay: Bool) {
         self.versionIdentifier = versionIdentifier
         self.services = services
@@ -37,7 +37,7 @@ struct Version: Equatable {
     }
 }
 
-extension Version {
+extension VersionMessage {
     init?(_ data: Data) {
         guard data.count >= 85 else { return nil }
 

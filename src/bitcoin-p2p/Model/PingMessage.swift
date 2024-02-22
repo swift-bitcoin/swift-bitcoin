@@ -1,6 +1,6 @@
 import Foundation
 
-struct Ping: Equatable {
+struct PingMessage: Equatable {
 
     public init() {
         self.nonce = .random(in: UInt64.min ... UInt64.max)
@@ -11,7 +11,7 @@ struct Ping: Equatable {
     static let size = MemoryLayout<UInt64>.size
 }
 
-extension Ping {
+extension PingMessage {
 
     var data: Data {
         Data(value: nonce)

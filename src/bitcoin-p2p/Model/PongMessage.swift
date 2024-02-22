@@ -1,6 +1,6 @@
 import Foundation
 
-struct Pong: Equatable {
+struct PongMessage: Equatable {
 
     init(nonce: UInt64) {
         self.nonce = nonce
@@ -11,7 +11,7 @@ struct Pong: Equatable {
     static let size = MemoryLayout<UInt64>.size
 }
 
-extension Pong {
+extension PongMessage {
 
     var data: Data {
         Data(value: nonce)

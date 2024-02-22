@@ -23,7 +23,7 @@ public actor P2PClientService: Service {
     private let bitcoinService: BitcoinService
     private(set) public var status = Status() // Network status
 
-    private var clientChannel: NIOAsyncChannel<Message, Message>?
+    private var clientChannel: NIOAsyncChannel<BitcoinMessage, BitcoinMessage>?
     private var peer: BitcoinPeer?
 
     public func run() async throws {
@@ -67,7 +67,7 @@ public actor P2PClientService: Service {
                 MessageToByteHandler(MessageCoder()),
                 ByteToMessageHandler(MessageCoder())
             ]).eventLoop.makeCompletedFuture {
-                try NIOAsyncChannel<Message, Message>(wrappingChannelSynchronously: channel)
+                try NIOAsyncChannel<BitcoinMessage, BitcoinMessage>(wrappingChannelSynchronously: channel)
             }
         }
 

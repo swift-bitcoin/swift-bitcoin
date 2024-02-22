@@ -1,9 +1,13 @@
 import Foundation
 
 public enum MessageCommand: String, RawRepresentable {
-    case version, verack, ping, pong
+    case version, verack, ping, pong, unknown
 
     static let size = 12 // Data size
+
+    public init(tentativeRawValue: String) {
+        self = Self(rawValue: tentativeRawValue) ?? .unknown
+    }
 }
 
 extension MessageCommand {
@@ -13,7 +17,7 @@ extension MessageCommand {
         let commandDataUntrimmed = data[data.startIndex ..< data.startIndex.advanced(by: Self.size)]
         let commandData = commandDataUntrimmed.reversed().trimmingPrefix(while: { $0 == 0x00 }).reversed()
         let commandRawValue = String(decoding: commandData, as: Unicode.ASCII.self)
-        self.init(rawValue: commandRawValue)
+        self.init(tentativeRawValue: commandRawValue)
     }
 
     var data: Data {
