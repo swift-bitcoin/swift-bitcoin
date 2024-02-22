@@ -93,7 +93,7 @@ actor RPCService: Service {
                     }
                     print("No more incoming RPC connections.")
                 }
-                print("RPC server stoped (no longer listening for connections).")
+                print("RPC server stopped (no longer listening for connections).")
             }
 
         } onGracefulShutdown: {

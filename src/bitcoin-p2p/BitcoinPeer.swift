@@ -11,14 +11,14 @@ public actor BitcoinPeer {
 
     private let bitcoinService: BitcoinService
     private let isClient: Bool
-    public let messagesIn = AsyncChannel<Message>()
-    public let messagesOut = AsyncChannel<Message>()
+    public let messagesIn = AsyncChannel<BitcoinMessage>()
+    public let messagesOut = AsyncChannel<BitcoinMessage>()
 
     private var blocks = AsyncChannel<TransactionBlock>?.none
 
-    private var localVersion: Version = {
+    private var localVersion: VersionMessage = {
         let receiverAddress = IPv6Address(IPv4Address.loopback)
-        return Version(versionIdentifier: .latest, services: .all, receiverServices: .all, receiverAddress: receiverAddress, receiverPort: 18444, transmitterServices: .all, transmitterAddress: .init(Data(repeating: 0x00, count: 16)), transmitterPort: 0, nonce: 0xF85379C9CB358012, userAgent: "/Satoshi:25.1.0/", startHeight: 916, relay: true)
+        return VersionMessage(versionIdentifier: .latest, services: .all, receiverServices: .all, receiverAddress: receiverAddress, receiverPort: 18444, transmitterServices: .all, transmitterAddress: .init(Data(repeating: 0x00, count: 16)), transmitterPort: 0, nonce: 0xF85379C9CB358012, userAgent: "/Satoshi:25.1.0/", startHeight: 916, relay: true)
     }()
     private var version = VersionIdentifier?.none
     private(set) var handshakeComplete = false
@@ -60,20 +60,20 @@ public actor BitcoinPeer {
         await messagesOut.send(ping)
     }
 
-    private func getFirstMessage() -> Message {
+    private func getFirstMessage() -> BitcoinMessage {
         print("Handshake initiated.")
         debugPrint(localVersion)
         let versionData = localVersion.data
-        return Message(network: .regtest, command: .version, payload: versionData)
+        return .init(network: .regtest, command: .version, payload: versionData)
     }
 
-    private func makePingMessage() -> Message {
-        let ping = Ping()
+    private func makePingMessage() -> BitcoinMessage {
+        let ping = PingMessage()
         lastPingNonce = ping.nonce
-        return Message(network: .regtest, command: .ping, payload: ping.data)
+        return .init(network: .regtest, command: .ping, payload: ping.data)
     }
 
-    private func processMessage(_ message: Message) throws -> Message? {
+    private func processMessage(_ message: BitcoinMessage) throws -> BitcoinMessage? {
         print("\n<<<")
         debugPrint(message)
         let response = switch message.command {
@@ -85,6 +85,8 @@ public actor BitcoinPeer {
             try processPing(message)
         case .pong:
             try processPong(message)
+        case .unknown:
+            BitcoinMessage?.none
         }
         if let response {
             debugPrint(response)
@@ -95,9 +97,9 @@ public actor BitcoinPeer {
         return response
     }
 
-    private func processVersion(_ message: Message) throws -> Message? {
+    private func processVersion(_ message: BitcoinMessage) throws -> BitcoinMessage? {
         if isClient {
-            guard let theirVersion = Version(message.payload) else {
+            guard let theirVersion = VersionMessage(message.payload) else {
                 print("Cannot decode server's version.")
                 preconditionFailure()
             }
@@ -105,16 +107,16 @@ public actor BitcoinPeer {
             if localVersion.versionIdentifier == theirVersion.versionIdentifier {
                 print("Protocol version identifiers match.")
             }
-            return Message(network: .regtest, command: .verack, payload: Data())
+            return .init(network: .regtest, command: .verack, payload: Data())
         }
         // Server
         let receiverAddress = IPv6Address(IPv4Address.loopback)
-        let version = Version(versionIdentifier: .latest, services: .all, receiverServices: .all, receiverAddress: receiverAddress, receiverPort: 18444, transmitterServices: .all, transmitterAddress: .init(Data(repeating: 0x00, count: 16)), transmitterPort: 0, nonce: 0xF85379C9CB358012, userAgent: "/Satoshi:25.1.0/", startHeight: 329167, relay: true)
+        let version = VersionMessage(versionIdentifier: .latest, services: .all, receiverServices: .all, receiverAddress: receiverAddress, receiverPort: 18444, transmitterServices: .all, transmitterAddress: .init(Data(repeating: 0x00, count: 16)), transmitterPort: 0, nonce: 0xF85379C9CB358012, userAgent: "/Satoshi:25.1.0/", startHeight: 329167, relay: true)
         let versionData = version.data
-        return Message(network: .regtest, command: .version, payload: versionData)
+        return BitcoinMessage(network: .regtest, command: .version, payload: versionData)
     }
 
-    private func processVerack(_ message: Message) throws -> Message? {
+    private func processVerack(_ message: BitcoinMessage) throws -> BitcoinMessage? {
         if isClient {
             handshakeComplete = true
             print("Handshake successful.")
@@ -123,22 +125,22 @@ public actor BitcoinPeer {
         // Server
         handshakeComplete = true
         print("Handshake successful.")
-        return Message(network: .regtest, command: .verack, payload: .init())
+        return .init(network: .regtest, command: .verack, payload: .init())
     }
 
-    private func processPing(_ message: Message) throws -> Message? {
-        guard let ping = Ping(message.payload) else {
+    private func processPing(_ message: BitcoinMessage) throws -> BitcoinMessage? {
+        guard let ping = PingMessage(message.payload) else {
             // TODO: Send reject and disconnect.
             preconditionFailure()
         }
         debugPrint(ping)
-        let pong = Pong(nonce: ping.nonce)
+        let pong = PongMessage(nonce: ping.nonce)
         debugPrint(pong)
-        return Message(network: .regtest, command: .pong, payload: pong.data)
+        return .init(network: .regtest, command: .pong, payload: pong.data)
     }
 
-    private func processPong(_ message: Message) throws -> Message? {
-        guard let pong = Pong(message.payload) else {
+    private func processPong(_ message: BitcoinMessage) throws -> BitcoinMessage? {
+        guard let pong = PongMessage(message.payload) else {
             // TODO: Send reject (#165) and disconnect.
             print("Wrong pong")
             preconditionFailure()

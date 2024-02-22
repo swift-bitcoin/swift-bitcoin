@@ -126,21 +126,21 @@ final class BitcoinPeerTests: XCTestCase {
         let serverTask = Task {
             for await message in await serverPeer.messagesOut {
                 if message.command == .pong {
-                    return Message?.some(message)
+                    return BitcoinMessage?.some(message)
                 }
                 await clientPeer.messagesIn.send(message)
             }
-            return Message?.none
+            return BitcoinMessage?.none
         }
 
         let clientTask = Task {
             for await message in await clientPeer.messagesOut {
                 await serverPeer.messagesIn.send(message)
                 if message.command == .ping {
-                    return Message?.some(message)
+                    return BitcoinMessage?.some(message)
                 }
             }
-            return Message?.none
+            return BitcoinMessage?.none
         }
 
         Task {
@@ -157,7 +157,7 @@ final class BitcoinPeerTests: XCTestCase {
         // Initiate the ping
         try await clientPeer.sendPing()
 
-        let (pingMessage, pongMessage) = try await withThrowingTaskGroup(of: Message?.self, returning: (Message, Message).self) { group in
+        let (pingMessage, pongMessage) = try await withThrowingTaskGroup(of: BitcoinMessage?.self, returning: (BitcoinMessage, BitcoinMessage).self) { group in
             group.addTask {
                 await serverTask.value
             }
@@ -177,8 +177,8 @@ final class BitcoinPeerTests: XCTestCase {
         try await clientPeer.stop()
         try await serverPeer.stop()
 
-        let ping = try XCTUnwrap(Ping(pingMessage.payload))
-        let pong = try XCTUnwrap(Pong(pongMessage.payload))
+        let ping = try XCTUnwrap(PingMessage(pingMessage.payload))
+        let pong = try XCTUnwrap(PongMessage(pongMessage.payload))
         XCTAssertEqual(ping.nonce, pong.nonce)
     }
 
@@ -214,12 +214,12 @@ final class BitcoinPeerTests: XCTestCase {
         }
         guard let message = await clientMessages.next() else { XCTFail(); return }
         XCTAssertEqual(message.command, .ping)
-        let ping = try XCTUnwrap(Ping(message.payload))
+        let ping = try XCTUnwrap(PingMessage(message.payload))
         await serverPeer.messagesIn.send(message)
 
         guard let message = await serverMessages.next() else { XCTFail(); return }
         XCTAssertEqual(message.command, .pong)
-        let pong = try XCTUnwrap(Pong(message.payload))
+        let pong = try XCTUnwrap(PongMessage(message.payload))
         XCTAssertEqual(ping.nonce, pong.nonce)
         await clientPeer.messagesIn.send(message)
 

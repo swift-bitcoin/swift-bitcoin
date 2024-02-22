@@ -2,7 +2,7 @@ import Foundation
 import Bitcoin
 import BitcoinCrypto
 
-public struct Message: Equatable {
+public struct BitcoinMessage: Equatable {
 
     public init(network: Network, command: MessageCommand, payload: Data) {
         self.network = network
@@ -34,7 +34,7 @@ public struct Message: Equatable {
     public static let payloadSizeEndIndex = 20
 }
 
-extension Message {
+extension BitcoinMessage {
 
     public init?(_ data: Data) {
         guard data.count >= Self.baseSize else { return nil }
