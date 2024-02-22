@@ -24,30 +24,28 @@ public actor P2PService: Service {
     private let bitcoinService: BitcoinService
     private(set) public var status = Status() // Network status
 
+    private var listenRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
+
     private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<BitcoinMessage, BitcoinMessage>, Never>?
     private var peers = [BitcoinPeer]()
 
     public func run() async throws {
-
         // Update status
         status.isRunning = true
 
-        await withGracefulShutdownHandler {
-
-            // We want to keep the service alive while we connect/disconnect from servers. Unless there is a shutdown signal.
-            for await _ in AsyncChannel<()>().cancelOnGracefulShutdown() { }
-
+        try await withGracefulShutdownHandler {
+            for await _ in listenRequests.cancelOnGracefulShutdown() {
+                try await startListening()
+            }
         } onGracefulShutdown: {
-            // status.isRunning = false
             print("P2P server shutting down gracefully…")
         }
     }
 
-    public func start(port: Int) {
+    public func start(port: Int) async {
         guard serverChannel == nil else { return }
-        Task {
-            try await startListening(port: port)
-        }
+        status.port = port
+        await listenRequests.send(()) // Signal to start listening
     }
 
     public func stopListening() async throws {
@@ -73,7 +71,8 @@ public actor P2PService: Service {
         status.activeConnections -= 1
     }
 
-    private func startListening(port: Int) async throws {
+    private func startListening() async throws {
+        guard let port = status.port else { return }
 
         // Bootstraping server channel.
         let bootstrap = ServerBootstrap(group: eventLoopGroup)
@@ -81,7 +80,6 @@ public actor P2PService: Service {
             host: "127.0.0.1",
             port: port
         ) { channel in
-
             // This closure is called for every inbound connection.
             channel.pipeline.addHandlers([
                 ByteToMessageHandler(MessageCoder()),
@@ -95,7 +93,6 @@ public actor P2PService: Service {
         // Accept connections
         try await withThrowingDiscardingTaskGroup { group in
             try await serverChannel.executeThenClose { serverChannelInbound in
-
                 print("P2P server accepting incoming connections on port \(port)…")
                 status.isListening = true
                 status.port = port
@@ -109,36 +106,37 @@ public actor P2PService: Service {
                     status.connectionsThisSession += 1
                     status.activeConnections += 1
 
+                    let remotePort = connectionChannel.channel.remoteAddress?.port ?? -1
+                    let peer = BitcoinPeer(bitcoinService: self.bitcoinService, isClient: false)
+                    let peerID = registerPeer(peer)
+
                     group.addTask {
                         do {
-                            try await connectionChannel.executeThenClose { [self] inbound, outbound in
-
-                                let remotePort = connectionChannel.channel.remoteAddress?.port ?? -1
-                                let peer = BitcoinPeer(bitcoinService: self.bitcoinService, isClient: false)
-                                let peerID = await self.registerPeer(peer)
-
-                                Task {
-                                    for await message in await peer.messagesOut {
-                                        try await outbound.write(message)
+                            try await connectionChannel.executeThenClose { inbound, outbound in
+                                try await withThrowingDiscardingTaskGroup { group in
+                                    group.addTask {
+                                        try await peer.start()
+                                    }
+                                    group.addTask {
+                                        for await message in await peer.messagesOut.cancelOnGracefulShutdown() {
+                                            try await outbound.write(message)
+                                        }
+                                    }
+                                    group.addTask {
+                                        for try await message in inbound.cancelOnGracefulShutdown() {
+                                            await peer.messagesIn.send(message)
+                                        }
+                                        // Disconnected
+                                        print("P2P server disconnected from peer @ \(remotePort).")
+                                        try await peer.stop()
                                     }
                                 }
-                                Task {
-                                    try await peer.start()
-                                }
-                                for try await message in inbound.cancelOnGracefulShutdown() {
-                                    await peer.messagesIn.send(message)
-                                }
-
-                                // Disconnected
-                                print("P2P server disconnected from peer @ \(remotePort).")
-
-                                try await peer.stop()
-                                await self.deregisterPeer(peerID)
                             }
                         } catch {
                             // TODO: Handle errors
-                            print("An unexpected error has occurred:\n\n\(error.localizedDescription)")
+                            print("Unexpected error:\n\(error.localizedDescription)")
                         }
+                        await self.deregisterPeer(peerID)
                     }
                 }
             }

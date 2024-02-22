@@ -23,6 +23,8 @@ public actor P2PClientService: Service {
     private let bitcoinService: BitcoinService
     private(set) public var status = Status() // Network status
 
+    private var connectRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
+
     private var clientChannel: NIOAsyncChannel<BitcoinMessage, BitcoinMessage>?
     private var peer: BitcoinPeer?
 
@@ -30,21 +32,19 @@ public actor P2PClientService: Service {
 
         status.isRunning = true
 
-        await withGracefulShutdownHandler {
-
-            // We want to keep the service alive while we connect/disconnect from servers. Unless there is a shutdown signal.
-            for await _ in AsyncChannel<()>().cancelOnGracefulShutdown() { }
-
+        try await withGracefulShutdownHandler {
+            for await _ in connectRequests.cancelOnGracefulShutdown() {
+                try await connectToPeer()
+            }
         } onGracefulShutdown: {
             print("P2P client shutting down gracefully…")
         }
     }
 
-    public func connect(_ port: Int) {
+    public func connect(_ port: Int) async {
         guard clientChannel == nil else { return }
-        Task {
-            try await connectToPeer(on: port)
-        }
+        status.remotePort = port
+        await connectRequests.send(()) // Signal to connect to remote peer
     }
 
     public func disconnect() async throws {
@@ -55,7 +55,8 @@ public actor P2PClientService: Service {
         try await peer?.sendPing()
     }
 
-    private func connectToPeer(on remotePort: Int) async throws {
+    private func connectToPeer() async throws {
+        guard let remotePort = status.remotePort else { return }
 
         let clientChannel = try await ClientBootstrap(
             group: eventLoopGroup
@@ -82,32 +83,37 @@ public actor P2PClientService: Service {
             let peer = BitcoinPeer(bitcoinService: bitcoinService, isClient: true)
             self.peer = peer
 
-            Task {
-                for await message in await peer.messagesOut {
-                    try await outbound.write(message)
+            try await withThrowingDiscardingTaskGroup { group in
+                group.addTask {
+                    try await peer.start()
+                }
+                group.addTask {
+                    for await message in await peer.messagesOut.cancelOnGracefulShutdown() {
+                        try await outbound.write(message)
+                    }
+                }
+                group.addTask {
+                    for try await message in inbound.cancelOnGracefulShutdown() {
+                        await peer.messagesIn.send(message)
+                    }
+                    // Channel was closed
+                    try await peer.stop() // stop sibbling tasks
                 }
             }
-            Task {
-                try await peer.start()
-            }
-            for try await message in inbound.cancelOnGracefulShutdown() {
-                await peer.messagesIn.send(message)
-            }
-
-            // Disconnected
-            print("P2P client got disconnected from peer @\(remotePort).")
-            try await peer.stop()
-            status.isConnected = false
-            self.peer = .none
         }
+        peerDisconnected() // Clean up, update status
     }
 
-    private func disconnectFromPeer() async throws {
-        print("P2P client @\(status.localPort ?? -1) disconnecting from remote peer @\(status.remotePort ?? -1)…")
-        try await clientChannel?.channel.close()
+    private func peerDisconnected() {
+        print("P2P client @\(status.localPort ?? -1) disconnected from remote peer @\(status.remotePort ?? -1)…")
         clientChannel = .none
+        peer = .none
         status.isConnected = false
         status.localPort = .none
         status.remotePort = .none
+    }
+
+    private func disconnectFromPeer() async throws {
+        try await clientChannel?.channel.close()
     }
 }
