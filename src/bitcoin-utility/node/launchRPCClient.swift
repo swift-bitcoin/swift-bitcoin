@@ -3,7 +3,7 @@ import NIOCore
 import NIOPosix
 import JSONRPC
 
-public func launchRPCClient(port: Int, method: String, params: [String]) async throws {
+public func launchRPCClient(host: String, port: Int, method: String, params: [String]) async throws {
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
     let clientChannel = try await ClientBootstrap(
@@ -11,7 +11,7 @@ public func launchRPCClient(port: Int, method: String, params: [String]) async t
     )
     .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
     .connect(
-        host: "127.0.0.1",
+        host: host,
         port: port
     ) { channel in
         channel.pipeline.addHandlers([

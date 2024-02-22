@@ -13,7 +13,8 @@ actor RPCService: Service {
         var overallTotalConnections = 0
     }
 
-    init(port: Int, eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
+    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
+        self.host = host
         self.port = port
         self.eventLoopGroup = eventLoopGroup
         self.bitcoinService = bitcoinService
@@ -21,7 +22,8 @@ actor RPCService: Service {
         self.p2pClientServices = p2pClientServices
     }
 
-    let port: Int // Configuration
+    let host: String
+    let port: Int
     private let eventLoopGroup: EventLoopGroup
     private let bitcoinService: BitcoinService
     private let p2pService: P2PService
@@ -45,7 +47,7 @@ actor RPCService: Service {
         .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
         .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
         .bind(
-            host: "127.0.0.1",
+            host: host,
             port: port
         ) { channel in
 
@@ -68,13 +70,13 @@ actor RPCService: Service {
             try await withThrowingDiscardingTaskGroup { group in
                 try await serverChannel.executeThenClose { serverChannelInbound in
 
-                    print("RPC server accepting incoming connections on port \(port)…")
+                    print("RPC server accepting incoming connections on port \(host):\(port)…")
                     status.isListening = true
                     status.port = port
 
                     for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
 
-                        print("Incoming RPC connection from client @ \(connectionChannel.channel.remoteAddress?.port ?? -1)")
+                        print("Incoming RPC connection from client @ \(String(describing: connectionChannel.channel.remoteAddress))")
                         status.overallTotalConnections += 1
 
                         group.addTask {
@@ -82,7 +84,7 @@ actor RPCService: Service {
                                 try await connectionChannel.executeThenClose {
                                     try await self.handleRPC($0, $1)
 
-                                    print("RPC server disconnected from client @ \(connectionChannel.channel.remoteAddress?.port ?? -1).")
+                                    print("RPC server disconnected from client @ \(String(describing: connectionChannel.channel.remoteAddress)).")
 
                                 }
                             } catch {

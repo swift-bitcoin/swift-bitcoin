@@ -224,7 +224,7 @@ final class BitcoinPeerTests: XCTestCase {
         await clientPeer.messagesIn.send(message)
 
         var lastPingNonce = await clientPeer.lastPingNonce
-        XCTAssertEqual(pong.nonce, lastPingNonce)
+        XCTAssertEqual(pong.nonce, lastPingNonce) // FIXME: This failed once with lastPingNonce == nil
         await Task.yield()
         lastPingNonce = await clientPeer.lastPingNonce
         XCTAssertNil(lastPingNonce)
