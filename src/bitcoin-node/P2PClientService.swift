@@ -10,6 +10,7 @@ public actor P2PClientService: Service {
         public var isRunning = false
         public var isConnected = false
         public var localPort = Int?.none
+        public var remoteHost = String?.none
         public var remotePort = Int?.none
         public var overallTotalConnections = 0
     }
@@ -41,8 +42,9 @@ public actor P2PClientService: Service {
         }
     }
 
-    public func connect(_ port: Int) async {
+    public func connect(host: String, port: Int) async {
         guard clientChannel == nil else { return }
+        status.remoteHost = host
         status.remotePort = port
         await connectRequests.send(()) // Signal to connect to remote peer
     }
@@ -56,12 +58,13 @@ public actor P2PClientService: Service {
     }
 
     private func connectToPeer() async throws {
-        guard let remotePort = status.remotePort else { return }
+        guard let remoteHost = status.remoteHost,
+              let remotePort = status.remotePort else { return }
 
         let clientChannel = try await ClientBootstrap(
             group: eventLoopGroup
         ).connect(
-            host: "127.0.0.1",
+            host: remoteHost,
             port: remotePort
         ) { channel in
             channel.pipeline.addHandlers([
@@ -75,9 +78,10 @@ public actor P2PClientService: Service {
         self.clientChannel = clientChannel
         status.isConnected = true
         status.localPort = clientChannel.channel.localAddress?.port
+        status.remoteHost = remoteHost
         status.remotePort = remotePort
         status.overallTotalConnections += 1
-        print("P2P client @\(status.localPort ?? -1) connected to peer @\(remotePort) ( …")
+        print("P2P client @\(status.localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
 
         try await clientChannel.executeThenClose { inbound, outbound in
             let peer = BitcoinPeer(bitcoinService: bitcoinService, isClient: true)
@@ -105,11 +109,12 @@ public actor P2PClientService: Service {
     }
 
     private func peerDisconnected() {
-        print("P2P client @\(status.localPort ?? -1) disconnected from remote peer @\(status.remotePort ?? -1)…")
+        print("P2P client @\(status.localPort ?? -1) disconnected from remote peer @\(status.remoteHost ?? ""):\(status.remotePort ?? -1)…")
         clientChannel = .none
         peer = .none
         status.isConnected = false
         status.localPort = .none
+        status.remoteHost = .none
         status.remotePort = .none
     }
 

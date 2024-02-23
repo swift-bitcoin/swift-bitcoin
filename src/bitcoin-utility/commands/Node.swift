@@ -1,24 +1,22 @@
 import ArgumentParser
+import Bitcoin
 
 struct Node: AsyncParsableCommand {
 
     static var configuration = CommandConfiguration(
-        abstract: "Connect to a running server."
-    )
+        subcommands: [SendRPC.self, StartP2P.self, Connect.self],
+        defaultSubcommand: SendRPC.self)
+
+    @Option(name: .shortAndLong, help: "The P2P network to connect to.")
+    var network = NodeNetwork.main
 
     @Option(name: .shortAndLong, help: "The hostname or address of the RPC service to connect to.")
     var host = "127.0.0.1"
 
-    @Option(name: .shortAndLong, help: "The server TCP port to connect to.")
-    var port = 18332
+    @Option(name: .shortAndLong, help: "The server TCP port to connect to. Default's to network's default port (\(NodeNetwork.main.defaultRPCPort) for \(NodeNetwork.main))")
+    var port: Int?
 
-    @Argument(help: "The JSON-RPC method name.")
-    var method: String
-
-    @Argument(help: "The JSON-RPC parameters.")
-    var params: [String] = []
-
-    mutating func run() async throws {
-        try await launchRPCClient(host: host, port: port, method: method, params: params)
+    var resolvedPort: Int {
+        port ?? network.defaultRPCPort
     }
 }

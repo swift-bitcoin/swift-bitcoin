@@ -9,6 +9,7 @@ public actor P2PService: Service {
     public struct Status {
         public var isRunning = false
         public var isListening = false
+        public var host = String?.none
         public var port = Int?.none
         public var overallTotalConnections = 0
         public var connectionsThisSession = 0
@@ -42,8 +43,9 @@ public actor P2PService: Service {
         }
     }
 
-    public func start(port: Int) async {
+    public func start(host: String, port: Int) async {
         guard serverChannel == nil else { return }
+        status.host = host
         status.port = port
         await listenRequests.send(()) // Signal to start listening
     }
@@ -52,6 +54,7 @@ public actor P2PService: Service {
         try await serverChannel?.channel.close()
         serverChannel = .none
         status.isListening = false
+        status.host = .none
         status.port = .none
     }
 
@@ -72,12 +75,12 @@ public actor P2PService: Service {
     }
 
     private func startListening() async throws {
-        guard let port = status.port else { return }
+        guard let host = status.host, let port = status.port else { return }
 
         // Bootstraping server channel.
         let bootstrap = ServerBootstrap(group: eventLoopGroup)
         let serverChannel = try await bootstrap.bind(
-            host: "127.0.0.1",
+            host: host,
             port: port
         ) { channel in
             // This closure is called for every inbound connection.
@@ -93,7 +96,7 @@ public actor P2PService: Service {
         // Accept connections
         try await withThrowingDiscardingTaskGroup { group in
             try await serverChannel.executeThenClose { serverChannelInbound in
-                print("P2P server accepting incoming connections on port \(port)…")
+                print("P2P server accepting incoming connections on \(host):\(port)…")
                 status.isListening = true
                 status.port = port
                 status.connectionsThisSession = 0
@@ -101,12 +104,11 @@ public actor P2PService: Service {
 
                 for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
 
-                    print("P2P server received incoming connection from peer @ \(connectionChannel.channel.remoteAddress?.port ?? -1).")
+                    print("P2P server received incoming connection from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
                     status.overallTotalConnections += 1
                     status.connectionsThisSession += 1
                     status.activeConnections += 1
 
-                    let remotePort = connectionChannel.channel.remoteAddress?.port ?? -1
                     let peer = BitcoinPeer(bitcoinService: self.bitcoinService, isClient: false)
                     let peerID = registerPeer(peer)
 
@@ -127,7 +129,7 @@ public actor P2PService: Service {
                                             await peer.messagesIn.send(message)
                                         }
                                         // Disconnected
-                                        print("P2P server disconnected from peer @ \(remotePort).")
+                                        print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
                                         try await peer.stop()
                                     }
                                 }

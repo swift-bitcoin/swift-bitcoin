@@ -1,9 +1,9 @@
 import ArgumentParser
 
-enum NodeNetwork: String, ExpressibleByArgument {
+public enum NodeNetwork: String, ExpressibleByArgument {
     case main, test, signet, regtest
 
-    var defaultRPCPort: Int {
+    public var defaultRPCPort: Int {
         switch self {
         case .main: 8332
         case .test: 18332
@@ -12,7 +12,7 @@ enum NodeNetwork: String, ExpressibleByArgument {
         }
     }
 
-    var defaultP2PPort: Int {
+    public var defaultP2PPort: Int {
         switch self {
         case .main: 8333
         case .test: 18333
