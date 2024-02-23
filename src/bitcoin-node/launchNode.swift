@@ -3,7 +3,7 @@ import BitcoinP2P
 import ServiceLifecycle
 import NIO
 
-public func launchNode(port: Int) async throws {
+public func launchNode(host: String, port: Int) async throws {
 
     let bitcoinService = BitcoinService()
 
@@ -20,7 +20,7 @@ public func launchNode(port: Int) async throws {
         }
     }
 
-    let rpcService = RPCService(port: port, eventLoopGroup: eventLoopGroup, bitcoinService: bitcoinService, p2pService: p2pService, p2pClientServices: p2pClientServices)
+    let rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, bitcoinService: bitcoinService, p2pService: p2pService, p2pClientServices: p2pClientServices)
     let serviceGroup = ServiceGroup(configuration: .init(
         services: [p2pService] + p2pClientServices + [rpcService],
         gracefulShutdownSignals: [.sigint, .sigterm],

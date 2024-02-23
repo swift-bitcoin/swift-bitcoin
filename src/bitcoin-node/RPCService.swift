@@ -9,11 +9,13 @@ actor RPCService: Service {
     struct Status {
         var isRunning = false
         var isListening = false
+        var host = String?.none
         var port = Int?.none
         var overallTotalConnections = 0
     }
 
-    init(port: Int, eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
+    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
+        self.host = host
         self.port = port
         self.eventLoopGroup = eventLoopGroup
         self.bitcoinService = bitcoinService
@@ -21,7 +23,8 @@ actor RPCService: Service {
         self.p2pClientServices = p2pClientServices
     }
 
-    let port: Int // Configuration
+    let host: String
+    let port: Int
     private let eventLoopGroup: EventLoopGroup
     private let bitcoinService: BitcoinService
     private let p2pService: P2PService
@@ -45,7 +48,7 @@ actor RPCService: Service {
         .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
         .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
         .bind(
-            host: "127.0.0.1",
+            host: host,
             port: port
         ) { channel in
 
@@ -68,13 +71,14 @@ actor RPCService: Service {
             try await withThrowingDiscardingTaskGroup { group in
                 try await serverChannel.executeThenClose { serverChannelInbound in
 
-                    print("RPC server accepting incoming connections on port \(port)…")
+                    print("RPC server accepting incoming connections on port \(host):\(port)…")
                     status.isListening = true
+                    status.host = host
                     status.port = port
 
                     for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
 
-                        print("Incoming RPC connection from client @ \(connectionChannel.channel.remoteAddress?.port ?? -1)")
+                        print("Incoming RPC connection from client @ \(String(describing: connectionChannel.channel.remoteAddress))")
                         status.overallTotalConnections += 1
 
                         group.addTask {
@@ -82,7 +86,7 @@ actor RPCService: Service {
                                 try await connectionChannel.executeThenClose {
                                     try await self.handleRPC($0, $1)
 
-                                    print("RPC server disconnected from client @ \(connectionChannel.channel.remoteAddress?.port ?? -1).")
+                                    print("RPC server disconnected from client @ \(String(describing: connectionChannel.channel.remoteAddress)).")
 
                                 }
                             } catch {
@@ -127,9 +131,12 @@ actor RPCService: Service {
                 try await outbound.write(.init(id: request.id, result: .string("Stopping…") as JSONObject))
                 await serviceGroup?.triggerGracefulShutdown()
             case "start-p2p":
-                if case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(port) = first {
-                    try await outbound.write(.init(id: request.id, result: .string("Staring P2P server on port \(port)…") as JSONObject))
-                    await p2pService.start(port: port)
+                if case let .list(objects) = RPCObject(request.params),
+                   objects.count > 1,
+                   case let .string(host) = objects[0],
+                   case let .integer(port) = objects[1] {
+                    try await outbound.write(.init(id: request.id, result: .string("Staring P2P server on \(host):\(port)…") as JSONObject))
+                    await p2pService.start(host: host, port: port)
                 } else {
                     try await outbound.write(.init(id: request.id, error: .init(.invalidParams("Port (integer) is required."))))
                 }
@@ -137,8 +144,11 @@ actor RPCService: Service {
                 try await outbound.write(.init(id: request.id, result: .string("Stopping P2P server…") as JSONObject))
                 try await p2pService.stopListening()
             case "connect":
-                guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(port) = first else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("port"), description: "Port (integer) is required.")))
+                guard case let .list(objects) = RPCObject(request.params),
+                      objects.count > 1,
+                      case let .string(host) = objects[0],
+                      case let .integer(port) = objects[1] else {
+                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("host,port"), description: "Host (string) and port (integer) are required.")))
                     return // or break?
                 }
                 // Attempt to find an inactive client.
@@ -154,8 +164,8 @@ actor RPCService: Service {
                     return
                 }
 
-                try await outbound.write(.init(id: request.id, result: .string("Connecting to peer @\(port)…") as JSONObject))
-                await clientService.connect(port)
+                try await outbound.write(.init(id: request.id, result: .string("Connecting to peer @\(host):\(port)…") as JSONObject))
+                await clientService.connect(host: host, port: port)
             case "disconnect":
                 if case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .integer(localPort) = first {
                     try await outbound.write(.init(id: request.id, result: .string("Disconnecting from client @\(localPort)…") as RPCObject))
