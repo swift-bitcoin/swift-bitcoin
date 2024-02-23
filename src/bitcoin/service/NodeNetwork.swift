@@ -1,6 +1,4 @@
-import ArgumentParser
-
-public enum NodeNetwork: String, ExpressibleByArgument {
+public enum NodeNetwork: String {
     case main, test, signet, regtest
 
     public var defaultRPCPort: Int {
