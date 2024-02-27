@@ -12,7 +12,7 @@ final class OpIfTests: XCTestCase {
         XCTAssertEqual(stack, [Data([2])])
 
         // If branch (not activated)
-        script = BitcoinScript([.zero, .if, .constant(2), .endIf])
+        script = [.zero, .if, .constant(2), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [])
@@ -26,7 +26,7 @@ final class OpIfTests: XCTestCase {
         XCTAssertEqual(stack, [Data([2])])
 
         // Not-if (not activated)
-        script = BitcoinScript([.constant(1), .notIf, .constant(2), .endIf])
+        script = [.constant(1), .notIf, .constant(2), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [])
@@ -41,19 +41,19 @@ final class OpIfTests: XCTestCase {
         XCTAssertEqual(stack, [Data([2])])
 
         // If branch (not activated), else branch (activated)
-        script = BitcoinScript([.zero, .if, .constant(2), .else, .constant(3), .endIf])
+        script = [.zero, .if, .constant(2), .else, .constant(3), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([3])])
 
         // Not-If branch (activated), else branch (not activated)
-        script = BitcoinScript([.zero, .notIf, .constant(2), .else, .constant(3), .endIf])
+        script = [.zero, .notIf, .constant(2), .else, .constant(3), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([2])])
 
         // Not-If branch (not activated), else branch (activated)
-        script = BitcoinScript([.constant(1), .notIf, .constant(2), .else, .constant(3), .endIf])
+        script = [.constant(1), .notIf, .constant(2), .else, .constant(3), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([3])])
@@ -67,7 +67,7 @@ final class OpIfTests: XCTestCase {
         XCTAssertEqual(stack, [Data([2])])
 
         // 2 level nesting
-        script = BitcoinScript([.constant(1), .if, .constant(1), .if, .constant(1), .if, .constant(2), .endIf, .endIf, .endIf])
+        script = [.constant(1), .if, .constant(1), .if, .constant(1), .if, .constant(2), .endIf, .endIf, .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([2])])
@@ -81,43 +81,43 @@ final class OpIfTests: XCTestCase {
         XCTAssertEqual(stack, [Data([3])])
 
         // 2 level nesting, inner else
-        script = BitcoinScript([.constant(1), .if, .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3) , .endIf, .endIf, .endIf])
+        script = [.constant(1), .if, .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3) , .endIf, .endIf, .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([3])])
 
         // 1 level nesting, outer else
-        script = BitcoinScript([.zero, .if, .constant(1), .if, .constant(2), .endIf, .else, .constant(3), .endIf])
+        script = [.zero, .if, .constant(1), .if, .constant(2), .endIf, .else, .constant(3), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([3])])
 
         // 2 level nesting, outer else
-        script = BitcoinScript([.zero, .if, .constant(1), .if, .constant(1), .if, .constant(2), .endIf, .endIf, .else, .constant(3), .endIf])
+        script = [.zero, .if, .constant(1), .if, .constant(1), .if, .constant(2), .endIf, .endIf, .else, .constant(3), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([3])])
 
         // 2 level nesting, middle else
-        script = BitcoinScript([.constant(1), .if, .zero, .if, .constant(1), .if, .constant(2), .endIf, .else, .constant(3), .endIf, .endIf])
+        script = [.constant(1), .if, .zero, .if, .constant(1), .if, .constant(2), .endIf, .else, .constant(3), .endIf, .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([3])])
 
         // 2 level nesting, alternate 1
-        script = BitcoinScript([.zero, .if, .constant(1), .if, .constant(1), .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf])
+        script = [.zero, .if, .constant(1), .if, .constant(1), .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([5])])
 
         // alternate 2
-        script = BitcoinScript([.constant(1), .if, .zero, .if, .constant(1), .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf])
+        script = [.constant(1), .if, .zero, .if, .constant(1), .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([4])])
 
         // alternate 2
-        script = BitcoinScript([.constant(1), .if, .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf])
+        script = [.constant(1), .if, .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([3])])
@@ -131,31 +131,31 @@ final class OpIfTests: XCTestCase {
         XCTAssertEqual(stack, [])
 
         // Empty if branch (negative)
-        script = BitcoinScript([.zero, .if, .else, .constant(3), .endIf])
+        script = [.zero, .if, .else, .constant(3), .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([3])])
 
         // Empty else branch (activated)
-        script = BitcoinScript([.zero, .if, .constant(2), .else, .endIf])
+        script = [.zero, .if, .constant(2), .else, .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [])
 
         // Empty else branch (not activated)
-        script = BitcoinScript([.constant(1), .if, .constant(2), .else, .endIf])
+        script = [.constant(1), .if, .constant(2), .else, .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [Data([2])])
 
         // Empty branches
-        script = BitcoinScript([.constant(1), .if, .else, .endIf])
+        script = [.constant(1), .if, .else, .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [])
 
         // Empty branches (negative)
-        script = BitcoinScript([.zero, .if, .else, .endIf])
+        script = [.zero, .if, .else, .endIf]
         stack = []
         XCTAssertNoThrow(try script.run(&stack))
         XCTAssertEqual(stack, [])
@@ -168,17 +168,17 @@ final class OpIfTests: XCTestCase {
         XCTAssertThrowsError(try script.run(&stack))
 
         // Falsish value
-        script = BitcoinScript([.pushBytes(Data([0])), .if, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
+        script = .init([.pushBytes(Data([0])), .if, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
         // Falsish value not-if
-        script = BitcoinScript([.pushBytes(Data([0])), .notIf, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
+        script = .init([.pushBytes(Data([0])), .notIf, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
         // true-ish value not-if
-        script = BitcoinScript([.constant(2), .notIf, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
+        script = .init([.constant(2), .notIf, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
     }
@@ -188,11 +188,11 @@ final class OpIfTests: XCTestCase {
         var stack = [Data]()
         XCTAssertThrowsError(try script.run(&stack))
 
-        script = BitcoinScript([.constant(1), .if, .constant(2), .else, .verIf, .endIf])
+        script = [.constant(1), .if, .constant(2), .else, .verIf, .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
-        script = BitcoinScript([.zero, .if, .verIf, .else, .constant(2), .endIf])
+        script = [.zero, .if, .verIf, .else, .constant(2), .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
     }
@@ -202,7 +202,7 @@ final class OpIfTests: XCTestCase {
         var stack = [Data]()
         XCTAssertNoThrow(try script.runV1(&stack))
 
-        script = BitcoinScript([.constant(1), .if, .success(80), .else, .constant(2), .endIf], sigVersion: .witnessV1)
+        script = .init([.constant(1), .if, .success(80), .else, .constant(2), .endIf], sigVersion: .witnessV1)
         stack = []
         XCTAssertNoThrow(try script.runV1(&stack))
     }
@@ -214,37 +214,37 @@ final class OpIfTests: XCTestCase {
         XCTAssertThrowsError(try script.run(&stack))
 
         // Too many endifs
-        script = BitcoinScript([.constant(1), .if, .constant(2), .endIf, .endIf])
+        script = [.constant(1), .if, .constant(2), .endIf, .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
-        script = BitcoinScript([.zero, .if, .constant(2), .endIf, .endIf])
+        script = [.zero, .if, .constant(2), .endIf, .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
         // Too many else's
-        script = BitcoinScript([.constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf])
+        script = [.constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
         // Too many else's (else branch evaluated)
-        script = BitcoinScript([.zero, .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf])
+        script = [.zero, .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
         // interlaced
-        script = BitcoinScript([
-            .constant(1), .if, .constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf])
+        script = [
+            .constant(1), .if, .constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
-        script = BitcoinScript([
-            .zero, .if, .constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf])
+        script = [
+            .zero, .if, .constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
 
-        script = BitcoinScript([
-            .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf])
+        script = [
+            .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf]
         stack = []
         XCTAssertThrowsError(try script.run(&stack))
     }

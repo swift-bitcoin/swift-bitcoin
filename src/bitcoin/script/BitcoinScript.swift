@@ -168,3 +168,10 @@ public struct BitcoinScript: Equatable {
     // No type methods yet.
 
 }
+
+extension BitcoinScript: ExpressibleByArrayLiteral {
+
+    public init(arrayLiteral operations: ScriptOperation...) {
+        self.init(operations)
+    }
+}
