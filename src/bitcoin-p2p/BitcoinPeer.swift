@@ -85,7 +85,7 @@ public actor BitcoinPeer {
             try processPing(message)
         case .pong:
             try processPong(message)
-        case .unknown:
+        case .wtxidrelay, .sendaddrv2, .sendcmpct, .getheaders, .feefilter, .unknown:
             BitcoinMessage?.none
         }
         if let response {
