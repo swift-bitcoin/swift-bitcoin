@@ -1,36 +1,36 @@
+import Foundation
 import Bitcoin
-import BitcoinP2P
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO
 
-public actor P2PService: Service {
+actor P2PService: Service {
 
-    public struct Status {
-        public var isRunning = false
-        public var isListening = false
-        public var host = String?.none
-        public var port = Int?.none
-        public var overallTotalConnections = 0
-        public var connectionsThisSession = 0
-        public var activeConnections = 0
+    struct Status {
+        var isRunning = false
+        var isListening = false
+        var host = String?.none
+        var port = Int?.none
+        var overallTotalConnections = 0
+        var connectionsThisSession = 0
+        var activeConnections = 0
     }
 
-    public init(eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService) {
+    init(eventLoopGroup: EventLoopGroup, bitcoinNode: BitcoinNode) {
         self.eventLoopGroup = eventLoopGroup
-        self.bitcoinService = bitcoinService
+        self.bitcoinNode = bitcoinNode
     }
 
     private let eventLoopGroup: EventLoopGroup
-    private let bitcoinService: BitcoinService
-    private(set) public var status = Status() // Network status
+    private let bitcoinNode: BitcoinNode
+    private(set) var status = Status() // Network status
 
     private var listenRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
 
     private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<BitcoinMessage, BitcoinMessage>, Never>?
-    private var peers = [BitcoinPeer]()
+    private var peerIDs = [UUID]()
 
-    public func run() async throws {
+    func run() async throws {
         // Update status
         status.isRunning = true
 
@@ -43,34 +43,24 @@ public actor P2PService: Service {
         }
     }
 
-    public func start(host: String, port: Int) async {
+    func start(host: String, port: Int) async {
         guard serverChannel == nil else { return }
         status.host = host
         status.port = port
+        await bitcoinNode.setAddress(host, port)
         await listenRequests.send(()) // Signal to start listening
     }
 
-    public func stopListening() async throws {
+    func stopListening() async throws {
         try await serverChannel?.channel.close()
         serverChannel = .none
         status.isListening = false
         status.host = .none
         status.port = .none
+        await bitcoinNode.resetAddress()
     }
 
-    public func pingAll() async throws {
-        for peer in peers {
-            try await peer.sendPing()
-        }
-    }
-
-    private func registerPeer(_ peer: BitcoinPeer) -> Int {
-        peers.append(peer)
-        return peers.count - 1
-    }
-
-    private func deregisterPeer(_ index: Int) {
-        peers.remove(at: index)
+    private func updateStats() {
         status.activeConnections -= 1
     }
 
@@ -105,32 +95,40 @@ public actor P2PService: Service {
                 for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
 
                     print("P2P server received incoming connection from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
+                    let remoteHost = connectionChannel.channel.remoteAddress!.ipAddress!
+                    let remotePort = connectionChannel.channel.remoteAddress!.port!
                     status.overallTotalConnections += 1
                     status.connectionsThisSession += 1
                     status.activeConnections += 1
 
-                    let peer = BitcoinPeer(bitcoinService: self.bitcoinService, isClient: false)
-                    let peerID = registerPeer(peer)
-
                     group.addTask {
                         do {
                             try await connectionChannel.executeThenClose { inbound, outbound in
+
+                                let peerID = await self.bitcoinNode.addPeer(host: remoteHost, port: remotePort)
+
                                 try await withThrowingDiscardingTaskGroup { group in
                                     group.addTask {
-                                        try await peer.start()
-                                    }
-                                    group.addTask {
-                                        for await message in await peer.messagesOut.cancelOnGracefulShutdown() {
+                                        for await message in await self.bitcoinNode.getChannel(for: peerID).cancelOnGracefulShutdown() {
                                             try await outbound.write(message)
                                         }
                                     }
                                     group.addTask {
                                         for try await message in inbound.cancelOnGracefulShutdown() {
-                                            await peer.messagesIn.send(message)
+                                            do {
+                                                try await self.bitcoinNode.processMessage(message, from: peerID)
+                                            } catch BitcoinNode.Error.connectionToSelf,
+                                                    BitcoinNode.Error.unsupportedVersion,
+                                                    BitcoinNode.Error.unsupportedServices,
+                                                    BitcoinNode.Error.pingPongMismatch,
+                                                    BitcoinNode.Error.invalidPayload {
+                                                try await connectionChannel.channel.close()
+                                            }
+
                                         }
                                         // Disconnected
                                         print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
-                                        try await peer.stop()
+                                        await self.bitcoinNode.removePeer(peerID) // stop sibbling tasks
                                     }
                                 }
                             }
@@ -138,7 +136,7 @@ public actor P2PService: Service {
                             // TODO: Handle errors
                             print("Unexpected error:\n\(error.localizedDescription)")
                         }
-                        await self.deregisterPeer(peerID)
+                        await self.updateStats()
                     }
                 }
             }

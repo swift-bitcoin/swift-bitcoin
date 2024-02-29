@@ -1,35 +1,34 @@
+import Foundation
 import Bitcoin
-import BitcoinP2P
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO
 
-public actor P2PClientService: Service {
+actor P2PClientService: Service {
 
-    public struct Status {
-        public var isRunning = false
-        public var isConnected = false
-        public var localPort = Int?.none
-        public var remoteHost = String?.none
-        public var remotePort = Int?.none
-        public var overallTotalConnections = 0
+    struct Status {
+        var isRunning = false
+        var isConnected = false
+        var localPort = Int?.none
+        var remoteHost = String?.none
+        var remotePort = Int?.none
+        var overallTotalConnections = 0
     }
 
-    public init(eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService) {
+    init(eventLoopGroup: EventLoopGroup, bitcoinNode: BitcoinNode) {
         self.eventLoopGroup = eventLoopGroup
-        self.bitcoinService = bitcoinService
+        self.bitcoinNode = bitcoinNode
     }
 
     private let eventLoopGroup: EventLoopGroup
-    private let bitcoinService: BitcoinService
-    private(set) public var status = Status() // Network status
+    private let bitcoinNode: BitcoinNode
+    private(set) var status = Status() // Network status
 
     private var connectRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
 
     private var clientChannel: NIOAsyncChannel<BitcoinMessage, BitcoinMessage>?
-    private var peer: BitcoinPeer?
 
-    public func run() async throws {
+    func run() async throws {
 
         status.isRunning = true
 
@@ -42,19 +41,15 @@ public actor P2PClientService: Service {
         }
     }
 
-    public func connect(host: String, port: Int) async {
+    func connect(host: String, port: Int) async {
         guard clientChannel == nil else { return }
         status.remoteHost = host
         status.remotePort = port
         await connectRequests.send(()) // Signal to connect to remote peer
     }
 
-    public func disconnect() async throws {
+    func disconnect() async throws {
         try await disconnectFromPeer()
-    }
-
-    public func ping() async throws {
-        try await peer?.sendPing()
     }
 
     private func connectToPeer() async throws {
@@ -84,24 +79,28 @@ public actor P2PClientService: Service {
         print("P2P client @\(status.localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
 
         try await clientChannel.executeThenClose { inbound, outbound in
-            let peer = BitcoinPeer(bitcoinService: bitcoinService, isClient: true)
-            self.peer = peer
+            let peerID = await bitcoinNode.addPeer(host: remoteHost, port: remotePort, incoming: false)
 
             try await withThrowingDiscardingTaskGroup { group in
                 group.addTask {
-                    try await peer.start()
-                }
-                group.addTask {
-                    for await message in await peer.messagesOut.cancelOnGracefulShutdown() {
+                    for await message in await self.bitcoinNode.getChannel(for: peerID).cancelOnGracefulShutdown() {
                         try await outbound.write(message)
                     }
                 }
                 group.addTask {
                     for try await message in inbound.cancelOnGracefulShutdown() {
-                        await peer.messagesIn.send(message)
+                        do {
+                            try await self.bitcoinNode.processMessage(message, from: peerID)
+                        } catch BitcoinNode.Error.connectionToSelf,
+                                BitcoinNode.Error.unsupportedVersion,
+                                BitcoinNode.Error.unsupportedServices,
+                                BitcoinNode.Error.pingPongMismatch,
+                                BitcoinNode.Error.invalidPayload {
+                            try await clientChannel.channel.close()
+                        }
                     }
                     // Channel was closed
-                    try await peer.stop() // stop sibbling tasks
+                    await self.bitcoinNode.removePeer(peerID) // stop sibbling tasks
                 }
             }
         }
@@ -111,7 +110,6 @@ public actor P2PClientService: Service {
     private func peerDisconnected() {
         print("P2P client @\(status.localPort ?? -1) disconnected from remote peer @\(status.remoteHost ?? ""):\(status.remotePort ?? -1)…")
         clientChannel = .none
-        peer = .none
         status.isConnected = false
         status.localPort = .none
         status.remoteHost = .none

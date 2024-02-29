@@ -1,14 +1,13 @@
 import Foundation
-import BitcoinP2P
 import NIO
 
-internal final class MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
-    public typealias InboundIn = ByteBuffer
-    public typealias InboundOut = BitcoinMessage
-    public typealias OutboundIn = BitcoinMessage
-    public typealias OutboundOut = ByteBuffer
+final class MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
+    typealias InboundIn = ByteBuffer
+    typealias InboundOut = BitcoinMessage
+    typealias OutboundIn = BitcoinMessage
+    typealias OutboundOut = ByteBuffer
 
-    public func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
 
         guard buffer.readableBytes >= BitcoinMessage.payloadSizeEndIndex else {
             return .needMoreData
@@ -46,7 +45,7 @@ internal final class MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
     }
 
     // outbound
-    public func encode(data message: OutboundIn, out: inout ByteBuffer) throws {
+    func encode(data message: OutboundIn, out: inout ByteBuffer) throws {
         out.writeBytes(message.data)
     }
 }

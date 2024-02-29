@@ -2,11 +2,11 @@ import Foundation
 
 struct PingMessage: Equatable {
 
-    public init() {
+    init() {
         self.nonce = .random(in: UInt64.min ... UInt64.max)
     }
 
-    public let nonce: UInt64
+    let nonce: UInt64
 
     static let size = MemoryLayout<UInt64>.size
 }

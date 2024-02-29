@@ -2,9 +2,9 @@ import Foundation
 import Bitcoin
 import BitcoinCrypto
 
-public struct BitcoinMessage: Equatable {
+struct BitcoinMessage: Equatable {
 
-    public init(network: Network, command: MessageCommand, payload: Data) {
+    init(network: NodeNetwork, command: MessageCommand, payload: Data) {
         self.network = network
         self.command = command
         self.payloadSize = payload.count
@@ -15,13 +15,13 @@ public struct BitcoinMessage: Equatable {
         self.payload = payload
     }
 
-    public let network: Network
-    public let command: MessageCommand
-    public let payloadSize: Int
-    public let checksum: UInt32
-    public let payload: Data
+    let network: NodeNetwork
+    let command: MessageCommand
+    let payloadSize: Int
+    let checksum: UInt32
+    let payload: Data
 
-    public var isChecksumOk: Bool {
+    var isChecksumOk: Bool {
         let hash = hash256(payload)
         let realChecksum = hash.withUnsafeBytes {
             $0.load(as: UInt32.self)
@@ -29,19 +29,19 @@ public struct BitcoinMessage: Equatable {
         return checksum == realChecksum
     }
 
-    public static let baseSize = 24
-    public static let payloadSizeStartIndex = 16
-    public static let payloadSizeEndIndex = 20
+    static let baseSize = 24
+    static let payloadSizeStartIndex = 16
+    static let payloadSizeEndIndex = 20
 }
 
 extension BitcoinMessage {
 
-    public init?(_ data: Data) {
+    init?(_ data: Data) {
         guard data.count >= Self.baseSize else { return nil }
         var data = data
-        guard let network = Network(data) else { return nil }
+        guard let network = NodeNetwork(data) else { return nil }
         self.network = network
-        data = data.dropFirst(Network.size)
+        data = data.dropFirst(NodeNetwork.size)
         guard let command = MessageCommand(data) else { return nil }
         self.command = command
         data = data.dropFirst(MessageCommand.size)
@@ -67,7 +67,7 @@ extension BitcoinMessage {
         Self.baseSize + payload.count
     }
 
-    public var data: Data {
+    var data: Data {
         var ret = Data(count: size)
         var offset = ret.addData(network.data)
         offset = ret.addData(command.data, at: offset)
@@ -76,23 +76,4 @@ extension BitcoinMessage {
         ret.addData(payload, at: offset)
         return ret
     }
-}
-
-public enum Network: UInt32 {
-
-    public init?(_ data: Data) {
-        guard data.count >= MemoryLayout<RawValue>.size else { return nil }
-        let rawValue = data.withUnsafeBytes {
-            $0.loadUnaligned(as: RawValue.self)
-        }
-        self.init(rawValue: rawValue)
-    }
-
-    case main = 0xD9B4BEF9, regtest = 0xDAB5BFFA
-
-    var data: Data {
-        Data(value: rawValue)
-    }
-
-    static let size = MemoryLayout<RawValue>.size
 }
