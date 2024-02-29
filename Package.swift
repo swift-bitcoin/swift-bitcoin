@@ -25,8 +25,9 @@ let package = Package(
         .executableTarget(
             name: "bcnode", dependencies: [
                 "Bitcoin",
-                "BitcoinP2P",
+                "BitcoinCrypto",
                 "JSONRPC",
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 .product(name: "NIO", package: "swift-nio")],
@@ -57,13 +58,6 @@ let package = Package(
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
             path: "src/bitcoin"),
         .target(
-            name: "BitcoinP2P",
-            dependencies: [
-                "Bitcoin",
-                "BitcoinCrypto",
-                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
-            path: "src/bitcoin-p2p"),
-        .target(
             name: "JSONRPC",
             dependencies: [
                 .product(name: "NIOCore", package: "swift-nio"),
@@ -71,7 +65,7 @@ let package = Package(
             path: "src/json-rpc"),
         .testTarget(
             name: "BitcoinTests",
-            dependencies: ["Bitcoin", "BitcoinP2P"],
+            dependencies: ["Bitcoin", "bcnode"],
             path: "test/bitcoin",
             resources: [
                 .copy("data")

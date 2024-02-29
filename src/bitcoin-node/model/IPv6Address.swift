@@ -26,4 +26,6 @@ struct IPv6Address: Equatable {
     private(set) var rawValue: Data
 
     static let loopback = Self(Data([0x01]))
+    static let ipV4Loopback = Self(IPv4Address.loopback)
+    static let empty = Self(Data(repeating: 0x00, count: 16))
 }

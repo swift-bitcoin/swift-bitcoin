@@ -1,28 +1,23 @@
 import Bitcoin
-import BitcoinP2P
 import ServiceLifecycle
 import NIO
 
-public func launchNode(host: String, port: Int) async throws {
+func launchNode(host: String, port: Int) async throws {
 
     let bitcoinService = BitcoinService()
+    let bitcoinNode = BitcoinNode(bitcoinService: bitcoinService)
 
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-    let p2pService = P2PService(eventLoopGroup: eventLoopGroup, bitcoinService: bitcoinService)
 
     let p2pClientServices = (0 ..< 3).map { _ in
-        P2PClientService(eventLoopGroup: eventLoopGroup, bitcoinService: bitcoinService)
+        P2PClientService(eventLoopGroup: eventLoopGroup, bitcoinNode: bitcoinNode)
     }
 
-    Task {
-        for await block in await bitcoinService.blocks {
-            print("New block found:\n\t\(block.hash.hex)")
-        }
-    }
+    let p2pService = P2PService(eventLoopGroup: eventLoopGroup, bitcoinNode: bitcoinNode)
 
-    let rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, bitcoinService: bitcoinService, p2pService: p2pService, p2pClientServices: p2pClientServices)
+    let rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, bitcoinNode: bitcoinNode, bitcoinService: bitcoinService, p2pService: p2pService, p2pClientServices: p2pClientServices)
     let serviceGroup = ServiceGroup(configuration: .init(
-        services: [p2pService] + p2pClientServices + [rpcService],
+        services: [bitcoinNode] + p2pClientServices + [p2pService, rpcService],
         gracefulShutdownSignals: [.sigint, .sigterm],
         cancellationSignals: [.sigquit],
         logger: .init(label: "mainServiceGroup")

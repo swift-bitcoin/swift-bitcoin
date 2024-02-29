@@ -68,12 +68,17 @@ public actor BitcoinService {
             nonce += 1
         } while DifficultyTarget(block.hash) > DifficultyTarget(compact: target)
 
-        blockchain.append(block)
+        let blockFound = block
+        blockchain.append(blockFound)
         mempool = .init()
 
         Task {
-            for channel in blockChannels {
-                await channel.send(block)
+            await withDiscardingTaskGroup {
+                for channel in blockChannels {
+                    $0.addTask {
+                        await channel.send(blockFound)
+                    }
+                }
             }
         }
     }

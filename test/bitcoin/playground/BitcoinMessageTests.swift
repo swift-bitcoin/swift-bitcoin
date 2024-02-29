@@ -1,6 +1,6 @@
 import XCTest
 @testable import Bitcoin
-@testable import BitcoinP2P
+@testable import bcnode
 import BitcoinCrypto
 
 final class BitcoinMessageTests: XCTestCase {

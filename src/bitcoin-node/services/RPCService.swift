@@ -1,5 +1,4 @@
 import Bitcoin
-import BitcoinP2P
 import JSONRPC
 import ServiceLifecycle
 import NIO
@@ -14,10 +13,11 @@ actor RPCService: Service {
         var overallTotalConnections = 0
     }
 
-    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
+    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, bitcoinNode: BitcoinNode, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
         self.host = host
         self.port = port
         self.eventLoopGroup = eventLoopGroup
+        self.bitcoinNode = bitcoinNode
         self.bitcoinService = bitcoinService
         self.p2pService = p2pService
         self.p2pClientServices = p2pClientServices
@@ -26,6 +26,7 @@ actor RPCService: Service {
     let host: String
     let port: Int
     private let eventLoopGroup: EventLoopGroup
+    private let bitcoinNode: BitcoinNode
     private let bitcoinService: BitcoinService
     private let p2pService: P2PService
     private let p2pClientServices: [P2PClientService]
@@ -194,16 +195,7 @@ actor RPCService: Service {
                 await bitcoinService.generateTo(address)
                 try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.blockchain.last!.hash.hex) as JSONObject))
             case "ping-all":
-                try await withThrowingDiscardingTaskGroup {
-                    $0.addTask {
-                        try await self.p2pService.pingAll()
-                    }
-                    for client in p2pClientServices {
-                        $0.addTask {
-                            try await client.ping()
-                        }
-                    }
-                }
+                await bitcoinNode.pingAll()
             default:
                 try await outbound.write(.init(id: request.id, error: .init(.invalidParams("method"), description: "Method `\(request.method)` does not exist.")))
             }

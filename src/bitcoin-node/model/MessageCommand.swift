@@ -1,11 +1,11 @@
 import Foundation
 
-public enum MessageCommand: String, RawRepresentable {
-    case version, verack, ping, pong, unknown, wtxidrelay, sendaddrv2, sendcmpct, getheaders, feefilter
+enum MessageCommand: String, RawRepresentable {
+    case version, verack, ping, pong, wtxidrelay, getaddr, sendaddrv2, sendcmpct, getheaders, feefilter, unknown
 
     static let size = 12 // Data size
 
-    public init(tentativeRawValue: String) {
+    init(tentativeRawValue: String) {
         // Messages received after connection to server: version, wtxidrelay sendaddrv2, verack, sendcmpct, ping, getheaders, feefilter
         self = Self(rawValue: tentativeRawValue) ?? .unknown
     }

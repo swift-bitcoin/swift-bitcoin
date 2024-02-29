@@ -1,9 +1,8 @@
 import Foundation
-import Bitcoin
 
 struct VersionMessage: Equatable {
-    init(versionIdentifier: VersionIdentifier, services: Services, receiverServices: Services, receiverAddress: IPv6Address, receiverPort: Int, transmitterServices: Services, transmitterAddress: IPv6Address, transmitterPort: Int, nonce: UInt64, userAgent: String, startHeight: Int, relay: Bool) {
-        self.versionIdentifier = versionIdentifier
+    init(protocolVersion: ProtocolVersion, services: ProtocolServices, receiverServices: ProtocolServices, receiverAddress: IPv6Address, receiverPort: Int, transmitterServices: ProtocolServices, transmitterAddress: IPv6Address, transmitterPort: Int, nonce: UInt64, userAgent: String, startHeight: Int, relay: Bool) {
+        self.protocolVersion = protocolVersion
         self.services = services
         self.timestamp = Date(timeIntervalSince1970: Date.now.timeIntervalSince1970.rounded(.down))
         self.receiverServices = receiverServices
@@ -18,13 +17,13 @@ struct VersionMessage: Equatable {
         self.relay = relay
     }
     
-    let versionIdentifier: VersionIdentifier
-    let services: Services
+    let protocolVersion: ProtocolVersion
+    let services: ProtocolServices
     let timestamp: Date
-    let receiverServices: Services
+    let receiverServices: ProtocolServices
     let receiverAddress: IPv6Address
     let receiverPort: Int
-    let transmitterServices: Services
+    let transmitterServices: ProtocolServices
     let transmitterAddress: IPv6Address
     let transmitterPort: Int
     let nonce: UInt64
@@ -42,13 +41,13 @@ extension VersionMessage {
         guard data.count >= 85 else { return nil }
 
         var data = data
-        guard let versionIdentifier = VersionIdentifier(data) else { return nil }
-        self.versionIdentifier = versionIdentifier
-        data = data.dropFirst(VersionIdentifier.size)
+        guard let protocolVersion = ProtocolVersion(data) else { return nil }
+        self.protocolVersion = protocolVersion
+        data = data.dropFirst(ProtocolVersion.size)
 
-        guard let services = Services(data) else { return nil }
+        guard let services = ProtocolServices(data) else { return nil }
         self.services = services
-        data = data.dropFirst(Services.size)
+        data = data.dropFirst(ProtocolServices.size)
 
         guard data.count >= MemoryLayout<Int64>.size else { return nil }
         let timestamp = data.withUnsafeBytes {
@@ -57,9 +56,9 @@ extension VersionMessage {
         self.timestamp = Date(timeIntervalSince1970: TimeInterval(timestamp))
         data = data.dropFirst(MemoryLayout<Int64>.size)
 
-        guard let receiverServices = Services(data) else { return nil }
+        guard let receiverServices = ProtocolServices(data) else { return nil }
         self.receiverServices = receiverServices
-        data = data.dropFirst(Services.size)
+        data = data.dropFirst(ProtocolServices.size)
 
         let receiverAddress = IPv6Address(data[..<data.startIndex.advanced(by: 16)])
         self.receiverAddress = receiverAddress
@@ -72,9 +71,9 @@ extension VersionMessage {
         self.receiverPort = Int(reveiverPort.byteSwapped) // bigEndian -> littleEndian
         data = data.dropFirst(MemoryLayout<UInt16>.size)
 
-        guard let transmitterServices = Services(data) else { return nil }
+        guard let transmitterServices = ProtocolServices(data) else { return nil }
         self.transmitterServices = transmitterServices
-        data = data.dropFirst(Services.size)
+        data = data.dropFirst(ProtocolServices.size)
 
         let transmitterAddress = IPv6Address(data[..<data.startIndex.advanced(by: 16)])
         self.transmitterAddress = transmitterAddress
@@ -120,9 +119,9 @@ extension VersionMessage {
         85 + userAgentData.varLenSize
     }
 
-    public var data: Data {
+    var data: Data {
         var ret = Data(count: size)
-        var offset = ret.addBytes(versionIdentifier.rawValue)
+        var offset = ret.addData(protocolVersion.data)
         offset = ret.addBytes(services.rawValue, at: offset)
         offset = ret.addBytes(Int64(timestamp.timeIntervalSince1970), at: offset)
         offset = ret.addBytes(receiverServices.rawValue, at: offset)
@@ -137,42 +136,4 @@ extension VersionMessage {
         offset = ret.addBytes(relay, at: offset)
         return ret
     }
-}
-
-enum VersionIdentifier: Int32 {
-
-    init?(_ data: Data) {
-        guard data.count >= MemoryLayout<RawValue>.size else { return nil }
-        let rawValue = data.withUnsafeBytes {
-            $0.loadUnaligned(as: RawValue.self)
-        }
-        self.init(rawValue: rawValue)
-    }
-
-    case latest = 70016
-
-    static var size: Int { MemoryLayout<RawValue>.size }
-}
-
-struct Services: OptionSet {
-    init(rawValue: UInt64) {
-        self.rawValue = rawValue
-    }
-    
-    init?(_ data: Data) {
-        guard data.count >= MemoryLayout<RawValue>.size else { return nil }
-        let rawValue = data.withUnsafeBytes {
-            $0.loadUnaligned(as: RawValue.self)
-        }
-        self.init(rawValue: rawValue)
-    }
-
-    let rawValue: UInt64
-
-    static let network = Self(rawValue: 1 << 0)
-    static let witness = Self(rawValue: 1 << 3)
-
-    static let all: Services = [.network, .witness]
-
-    static var size: Int { MemoryLayout<RawValue>.size }
 }
