@@ -11,7 +11,7 @@ struct Start: AsyncParsableCommand {
     var network = NodeNetwork.main
 
     @Option(name: .shortAndLong, help: "The address to bind the RPC server to.")
-    var host = "127.0.0.1"
+    var host = "0.0.0.0"
 
     @Option(name: .shortAndLong, help: "The TCP port number to bind the server instance to. Default's to network's default port (\(NodeNetwork.main.defaultRPCPort) for \(NodeNetwork.main))")
     var port: Int?

@@ -9,14 +9,14 @@ actor BitcoinNode {
     }
 
     struct Peer {
-        let host: String
+        let address: IPv6Address
         let port: Int
         let incoming: Bool
 
         // Information from the version message sent by the peer
         var preferredVersion = ProtocolVersion?.none
-        var subVersion = String?.none // userAgent
-        var address = IPv6Address?.none
+        var userAgent = String?.none
+        var addressDeclared = IPv6Address?.none
         var portDeclared = Int?.none
         var services = ProtocolServices?.none
         var relay = Bool?.none
@@ -45,7 +45,7 @@ actor BitcoinNode {
     var blocks = AsyncChannel<TransactionBlock>?.none
 
     /// IP address as string.
-    var host = "127.0.0.1"
+    var address = IPv6Address?.none
 
     /// Our port might not exist if peer-to-peer server is down. We can still be conecting with peers as a client.
     var port = Int?.none
@@ -61,13 +61,13 @@ actor BitcoinNode {
 
     /// Called when the peer-to-peer service stops listening for incoming connections.
     func resetAddress() {
-        host = "127.0.0.1"
+        address = .none
         port = .none
     }
 
     /// Receive address information from the peer-to-peer service whenever it's actively listening.
     func setAddress(_ host: String, _ port: Int) {
-        self.host = host
+        self.address = IPv6Address.fromHost(host)
         self.port = port
     }
 
@@ -92,7 +92,7 @@ actor BitcoinNode {
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
     func addPeer(host: String, port: Int, incoming: Bool = true) async -> UUID {
         let id = UUID()
-        peers[id] = Peer(host: host, port: port, incoming: incoming)
+        peers[id] = Peer(address: IPv6Address.fromHost(host), port: port, incoming: incoming)
         peerOuts[id] = .init()
         await connect(id)
         return id
@@ -119,13 +119,13 @@ actor BitcoinNode {
             protocolVersion: Self.version,
             services: Self.services,
             receiverServices: peer.services ?? .empty,
-            receiverAddress: peer.address ?? .empty,
+            receiverAddress: peer.addressDeclared ?? .unspecified,
             receiverPort: peer.portDeclared ?? 0,
             transmitterServices: Self.services,
-            transmitterAddress: .ipV4Loopback,
+            transmitterAddress: address ?? .unspecified,
             transmitterPort: port ?? 0,
             nonce: nonce,
-            userAgent: Self.subVersion,
+            userAgent: Self.userAgent,
             startHeight: lastBlock,
             relay: true)
     }
@@ -239,9 +239,9 @@ actor BitcoinNode {
 
         peers[peerID]?.nonce = peerVersion.nonce
         peers[peerID]?.preferredVersion = peerVersion.protocolVersion
-        peers[peerID]?.subVersion = peerVersion.userAgent
+        peers[peerID]?.userAgent = peerVersion.userAgent
         peers[peerID]?.services = peerVersion.services
-        peers[peerID]?.address = peerVersion.transmitterAddress
+        peers[peerID]?.addressDeclared = peerVersion.transmitterAddress
         peers[peerID]?.portDeclared = peerVersion.transmitterPort
         peers[peerID]?.relay = peerVersion.relay
         peers[peerID]?.timeDiff = Int(ourTime.timeIntervalSince1970) - Int(peerVersion.timestamp.timeIntervalSince1970)
@@ -297,6 +297,6 @@ actor BitcoinNode {
     }
 
     static let version = ProtocolVersion.latest
-    static let subVersion = "/Satoshi:25.1.0/"
+    static let userAgent = "/SwiftBitcoin:0.1.0/"
     static let services = ProtocolServices.all
 }
