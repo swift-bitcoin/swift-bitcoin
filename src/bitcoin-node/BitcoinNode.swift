@@ -1,7 +1,7 @@
 import ArgumentParser
 
 @main
-struct NodeCommand: AsyncParsableCommand {
+struct BitcoinNode: AsyncParsableCommand {
     static var configuration = CommandConfiguration(
         commandName: "bcnode",
         abstract: "A Bitcoin server listening for RPC commands.",

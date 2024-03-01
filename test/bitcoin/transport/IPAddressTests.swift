@@ -1,5 +1,5 @@
 import XCTest
-@testable import bcnode
+import Bitcoin
 
 final class IPAddressTests: XCTestCase {
 

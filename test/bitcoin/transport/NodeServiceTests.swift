@@ -1,16 +1,14 @@
 import XCTest
-@testable import Bitcoin
-@testable import bcnode
-import BitcoinCrypto
+import Bitcoin
 
-final class BitcoinPeerTests: XCTestCase {
+final class NodeServiceTests: XCTestCase {
 
      func testHandshake() async throws {
         let serviceA = BitcoinService()
         let serviceB = BitcoinService()
 
-        let serverNode = BitcoinNode(bitcoinService: serviceA)
-        let clientNode = BitcoinNode(bitcoinService: serviceB)
+        let serverNode = NodeService(bitcoinService: serviceA)
+        let clientNode = NodeService(bitcoinService: serviceB)
 
         let peerInServer = await serverNode.addPeer(host: "", port: 0)
         let peerInClient = await clientNode.addPeer(host: "", port: 0, incoming: false)
@@ -29,6 +27,18 @@ final class BitcoinPeerTests: XCTestCase {
         }
         XCTAssertEqual(message.command, .version)
         do { try await clientNode.processMessage(message, from: peerInClient) } catch { XCTFail(); return }
+
+        guard let message = await serverMessages.next() else {
+            XCTFail(); return
+        }
+        XCTAssertEqual(message.command, .sendaddrv2)
+        do { try await clientNode.processMessage(message, from: peerInClient) } catch { XCTFail(); return }
+
+        guard let message = await clientMessages.next() else {
+            XCTFail(); return
+        }
+        XCTAssertEqual(message.command, .sendaddrv2)
+        do { try await serverNode.processMessage(message, from: peerInServer) } catch { XCTFail(); return }
 
         guard let message = await clientMessages.next() else {
             XCTFail(); return
@@ -61,8 +71,8 @@ final class BitcoinPeerTests: XCTestCase {
         let serviceA = BitcoinService()
         let serviceB = BitcoinService()
 
-        let serverNode = BitcoinNode(bitcoinService: serviceA)
-        let clientNode = BitcoinNode(bitcoinService: serviceB)
+        let serverNode = NodeService(bitcoinService: serviceA)
+        let clientNode = NodeService(bitcoinService: serviceB)
 
         let peerInServer = await serverNode.addPeer(host: "", port: 0)
         let peerInClient = await clientNode.addPeer(host: "", port: 0, incoming: false)
@@ -74,7 +84,10 @@ final class BitcoinPeerTests: XCTestCase {
         do { try await serverNode.processMessage(message, from: peerInServer) } catch { XCTFail(); return }
         guard let message = await serverMessages.next() else { XCTFail(); return }
         do { try await clientNode.processMessage(message, from: peerInClient) } catch { XCTFail(); return }
-
+        guard let message = await serverMessages.next() else { XCTFail(); return }
+        do { try await clientNode.processMessage(message, from: peerInClient) } catch { XCTFail(); return }
+        guard let message = await clientMessages.next() else { XCTFail(); return }
+        do { try await serverNode.processMessage(message, from: peerInServer) } catch { XCTFail(); return }
         guard let message = await clientMessages.next() else { XCTFail(); return }
         do { try await serverNode.processMessage(message, from: peerInServer) } catch { XCTFail(); return }
         guard let message = await serverMessages.next() else { XCTFail(); return }

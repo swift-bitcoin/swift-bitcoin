@@ -1,17 +1,24 @@
 import Foundation
-import Bitcoin
 import AsyncAlgorithms
 
-actor BitcoinNode {
+public actor NodeService {
 
-    enum Error: Swift.Error {
+    public enum Error: Swift.Error {
         case connectionToSelf, unsupportedVersion, unsupportedServices, invalidPayload, pingPongMismatch
     }
 
-    struct Peer {
-        let address: IPv6Address
-        let port: Int
-        let incoming: Bool
+    public struct Peer {
+        public let address: IPv6Address
+        public let port: Int
+        public let incoming: Bool
+
+        /// Our version was acknowledged by the peer.
+        var sentVersion = false
+        var receivedVersion = false
+        var sentV2AddressPreference = false
+        var receivedV2AddressPreference = false
+        var sentVersionAck = false
+        var receivedVersionAck = false
 
         // Information from the version message sent by the peer
         var preferredVersion = ProtocolVersion?.none
@@ -26,23 +33,32 @@ actor BitcoinNode {
         var timeDiff = 0
 
         // Status
-        var handshakeComplete = false
-        var height = 0
-        var lastPingNonce = UInt64?.none
+        public internal(set) var height = 0
+        public internal(set) var lastPingNonce = UInt64?.none
 
         var outgoing: Bool { !incoming }
+
+        /// The connection has been established.
+        public var handshakeComplete: Bool {
+            sentVersion &&
+                receivedVersion &&
+                sentV2AddressPreference &&
+                receivedV2AddressPreference &&
+                sentVersionAck &&
+                receivedVersionAck
+        }
     }
 
-    init(bitcoinService: BitcoinService, network: NodeNetwork = .regtest) {
+    public init(bitcoinService: BitcoinService, network: NodeNetwork = .regtest) {
         self.bitcoinService = bitcoinService
         self.network = network
     }
 
-    let bitcoinService: BitcoinService
-    let network: NodeNetwork
+    public let bitcoinService: BitcoinService
+    public let network: NodeNetwork
 
     /// Subscription to the bitcoin service's blocks channel.
-    var blocks = AsyncChannel<TransactionBlock>?.none
+    public var blocks = AsyncChannel<TransactionBlock>?.none
 
     /// IP address as string.
     var address = IPv6Address?.none
@@ -51,7 +67,7 @@ actor BitcoinNode {
     var port = Int?.none
 
     /// Peer information.
-    var peers = [UUID : Peer]()
+    public internal(set) var peers = [UUID : Peer]()
 
     /// Channel for delivering message to peers.
     var peerOuts = [UUID : AsyncChannel<BitcoinMessage>]()
@@ -60,37 +76,33 @@ actor BitcoinNode {
     let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
 
     /// Called when the peer-to-peer service stops listening for incoming connections.
-    func resetAddress() {
+    public func resetAddress() {
         address = .none
         port = .none
     }
 
     /// Receive address information from the peer-to-peer service whenever it's actively listening.
-    func setAddress(_ host: String, _ port: Int) {
+    public func setAddress(_ host: String, _ port: Int) {
         self.address = IPv6Address.fromHost(host)
         self.port = port
     }
 
     /// We unsubscribe from Bitcoin service's blocks.
-    func stop() async throws {
+    public func stop() async throws {
         if let blocks {
             await bitcoinService.unsubscribe(blocks)
         }
     }
 
     /// Send a ping to each of our peers. Calling this function will create child tasks.
-    func pingAll() async {
-        await withDiscardingTaskGroup {
-            for peerID in peers.keys {
-                $0.addTask {
-                    await self.sendPingTo(peerID)
-                }
-            }
+    public func pingAll() async {
+        for id in peers.keys {
+            sendPingTo(id)
         }
     }
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
-    func addPeer(host: String, port: Int, incoming: Bool = true) async -> UUID {
+    public func addPeer(host: String, port: Int, incoming: Bool = true) async -> UUID {
         let id = UUID()
         peers[id] = Peer(address: IPv6Address.fromHost(host), port: port, incoming: incoming)
         peerOuts[id] = .init()
@@ -99,20 +111,20 @@ actor BitcoinNode {
     }
 
     /// Deregisters a peer and cleans up outbound channels.
-    func removePeer(_ id: UUID) {
+    public func removePeer(_ id: UUID) {
         peerOuts[id]?.finish()
         peerOuts.removeValue(forKey: id)
         peers.removeValue(forKey: id)
     }
 
     /// Returns a channel for a given peer's outbox. The caller can be notified of new messages generated for this peer.
-    func getChannel(for peerID: UUID) -> AsyncChannel<BitcoinMessage> {
-        precondition(peers[peerID] != nil)
-        return peerOuts[peerID]!
+    public func getChannel(for id: UUID) -> AsyncChannel<BitcoinMessage> {
+        precondition(peers[id] != nil)
+        return peerOuts[id]!
     }
 
-    func makeVersion(for peerID: UUID) async -> VersionMessage {
-        guard let peer = peers[peerID] else { preconditionFailure() }
+    func makeVersion(for id: UUID) async -> VersionMessage {
+        guard let peer = peers[id] else { preconditionFailure() }
 
         let lastBlock = await bitcoinService.blockchain.count - 1
         return .init(
@@ -131,8 +143,8 @@ actor BitcoinNode {
     }
 
     /// Starts the handshake process but only if its an outgoing peer – i.e. we initiated the connection. Generates a child task for delivering the initial version message.
-    func connect(_ peerID: UUID) async {
-        guard let peer = peers[peerID], peer.outgoing else { return }
+    func connect(_ id: UUID) async {
+        guard let peer = peers[id], peer.outgoing else { return }
 
         // Outbound connection sequence:
         // -> version (we send the first message)
@@ -148,61 +160,54 @@ actor BitcoinNode {
         // -> feefilter
         // <- pong
 
-        let versionMessage = await makeVersion(for: peerID)
+        let versionMessage = await makeVersion(for: id)
         print("Our version:")
         debugPrint(versionMessage)
 
-        let message = BitcoinMessage(network: network, command: .version, payload: versionMessage.data)
-        Task {
-            await peerOuts[peerID]?.send(message)
-        }
+        peers[id]?.sentVersion = true
+        send(.version, payload: versionMessage.data, to: id)
     }
 
     /// Sends a ping message to a peer. Creates a new child task.
-    func sendPingTo(_ peerID: UUID) async {
+    func sendPingTo(_ id: UUID) {
         let ping = PingMessage()
-        peers[peerID]?.lastPingNonce = ping.nonce
-        let pingMessage = BitcoinMessage(network: .regtest, command: .ping, payload: ping.data)
-        Task {
-            await peerOuts[peerID]?.send(pingMessage)
-        }
+        peers[id]?.lastPingNonce = ping.nonce
+        send(.ping, payload: ping.data, to: id)
     }
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
-    func processMessage(_ message: BitcoinMessage, from peerID: UUID) async throws {
-        print("\n<<<")
-        debugPrint(message)
-        let response = switch message.command {
+    public func processMessage(_ message: BitcoinMessage, from id: UUID) async throws {
+        print("<- \(message.command) (\(message.payload.count))")
+        switch message.command {
         case .version:
-            try await processVersion(message, from: peerID)
+            try await processVersion(message, from: id)
+        case .sendaddrv2:
+            processSendAddrV2(message, from: id)
         case .verack:
-            processVerack(message, from: peerID)
+            processVerack(message, from: id)
         case .ping:
-            try processPing(message, from: peerID)
+            try processPing(message, from: id)
         case .pong:
-            try processPong(message, from: peerID)
-        case .wtxidrelay, .sendaddrv2, .sendcmpct, .getheaders, .feefilter, .getaddr, .unknown:
-            BitcoinMessage?.none
+            try processPong(message, from: id)
+        case .wtxidrelay, .sendcmpct, .getheaders, .feefilter, .getaddr, .addrv2, .unknown:
+            break
         }
-        if let response {
-            debugPrint(response)
-            Task {
-                await peerOuts[peerID]?.send(response)
-            }
-        } else {
-            print("No response sent.")
+    }
+
+    /// Creates a child task.
+    private func send(_ command: MessageCommand, payload: Data = .init(), to id: UUID) {
+        print("-> \(command) (\(payload.count))")
+        Task {
+            await peerOuts[id]?.send(.init(network: network, command: command, payload: payload))
         }
-        print(">>>\n")
     }
 
     /// Processes an incoming version message as part of the handshake.
-    private func processVersion(_ message: BitcoinMessage, from peerID: UUID) async throws -> BitcoinMessage? {
+    private func processVersion(_ message: BitcoinMessage, from id: UUID) async throws {
 
         // Inbound connection sequence:
         // <- version (we receive the first message from the connecting peer)
         // -> version
-        // -> wtxidrelay
-        // -> sendaddrv2
         // -> wtxidrelay
         // -> sendaddrv2
         // <- verack
@@ -213,7 +218,8 @@ actor BitcoinNode {
         // -> feefilter
         // <- pong
 
-        guard let peer = peers[peerID] else { return .none }
+        guard let peer = peers[id] else { return }
+        peers[id]?.receivedVersion = true
 
         let ourTime = Date.now
 
@@ -228,6 +234,7 @@ actor BitcoinNode {
             print("Error: Connection to self.")
             throw Error.connectionToSelf
         }
+
         if peerVersion.services.intersection(Self.services) != Self.services {
             throw Error.unsupportedServices
         }
@@ -237,63 +244,73 @@ actor BitcoinNode {
             throw Error.unsupportedVersion
         }
 
-        peers[peerID]?.nonce = peerVersion.nonce
-        peers[peerID]?.preferredVersion = peerVersion.protocolVersion
-        peers[peerID]?.userAgent = peerVersion.userAgent
-        peers[peerID]?.services = peerVersion.services
-        peers[peerID]?.addressDeclared = peerVersion.transmitterAddress
-        peers[peerID]?.portDeclared = peerVersion.transmitterPort
-        peers[peerID]?.relay = peerVersion.relay
-        peers[peerID]?.timeDiff = Int(ourTime.timeIntervalSince1970) - Int(peerVersion.timestamp.timeIntervalSince1970)
-        peers[peerID]?.height = peerVersion.startHeight
+        peers[id]?.nonce = peerVersion.nonce
+        peers[id]?.preferredVersion = peerVersion.protocolVersion
+        peers[id]?.userAgent = peerVersion.userAgent
+        peers[id]?.services = peerVersion.services
+        peers[id]?.addressDeclared = peerVersion.transmitterAddress
+        peers[id]?.portDeclared = peerVersion.transmitterPort
+        peers[id]?.relay = peerVersion.relay
+        peers[id]?.timeDiff = Int(ourTime.timeIntervalSince1970) - Int(peerVersion.timestamp.timeIntervalSince1970)
+        peers[id]?.height = peerVersion.startHeight
 
-        if peer.outgoing {
-            // Outbound connection. Version message is a response to our version.
-            if peerVersion.protocolVersion > Self.version {
-                throw Error.unsupportedVersion
-            }
-            return .init(network: .regtest, command: .verack, payload: Data())
+        // Outbound connection. Version message is a response to our version.
+        if peer.outgoing && peerVersion.protocolVersion > Self.version {
+            throw Error.unsupportedVersion
         }
 
-        let versionMessage = await makeVersion(for: peerID)
+        if peer.incoming {
+            let versionMessage = await makeVersion(for: id)
 
-        print("Our version:")
-        debugPrint(versionMessage)
+            print("Our version:")
+            debugPrint(versionMessage)
 
-        return BitcoinMessage(network: .regtest, command: .version, payload: versionMessage.data)
+            peers[id]?.sentVersion = true
+            send(.version, payload: versionMessage.data, to: id)
+        }
+
+        peers[id]?.sentV2AddressPreference = true
+        send(.sendaddrv2, payload: Data(), to: id)
     }
 
-    private func processVerack(_ message: BitcoinMessage, from peerID: UUID) -> BitcoinMessage? {
-        guard let peer = peers[peerID] else { return .none }
+    private func processSendAddrV2(_ message: BitcoinMessage, from id: UUID) {
+        guard peers[id] != nil else { return }
+        peers[id]?.receivedV2AddressPreference = true
 
-        peers[peerID]?.handshakeComplete = true
+        debugPrint(peers[id]!)
 
-        print("Handshake successful.")
-        debugPrint(peers[peerID]!)
-
-        return peer.outgoing ? .none : .init(network: .regtest, command: .verack, payload: .init())
+        peers[id]?.sentVersionAck = true
+        send(.verack, to: id)
     }
 
-    private func processPing(_ message: BitcoinMessage, from peerID: UUID) throws -> BitcoinMessage? {
+    private func processVerack(_ message: BitcoinMessage, from id: UUID) {
+        guard peers[id] != nil else { return }
+        peers[id]!.receivedVersionAck = true
+
+        if peers[id]!.handshakeComplete {
+            print("Handshake successful.")
+        }
+    }
+
+    private func processPing(_ message: BitcoinMessage, from id: UUID) throws {
         guard let ping = PingMessage(message.payload) else {
             throw Error.invalidPayload
         }
         debugPrint(ping)
         let pong = PongMessage(nonce: ping.nonce)
         debugPrint(pong)
-        return .init(network: .regtest, command: .pong, payload: pong.data)
+        send(.pong, payload: pong.data, to: id)
     }
 
-    private func processPong(_ message: BitcoinMessage, from peerID: UUID) throws -> BitcoinMessage? {
+    private func processPong(_ message: BitcoinMessage, from id: UUID) throws {
         guard let pong = PongMessage(message.payload) else {
             throw Error.invalidPayload
         }
         debugPrint(pong)
-        guard let nonce = peers[peerID]?.lastPingNonce, pong.nonce == nonce else {
+        guard let nonce = peers[id]?.lastPingNonce, pong.nonce == nonce else {
             throw Error.pingPongMismatch
         }
-        peers[peerID]?.lastPingNonce = .none
-        return .none
+        peers[id]?.lastPingNonce = .none
     }
 
     static let version = ProtocolVersion.latest
