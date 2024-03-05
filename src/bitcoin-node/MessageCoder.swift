@@ -14,17 +14,17 @@ final class MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
             return .needMoreData
         }
 
-        let peek = buffer.readableBytesView[BitcoinMessage.payloadSizeStartIndex...]
+        let peekFrom = buffer.readableBytesView.startIndex.advanced(by: BitcoinMessage.payloadSizeStartIndex)
+        let peek = buffer.readableBytesView[peekFrom...]
         let payloadLength = Int(peek.withUnsafeBytes {
             $0.load(as: UInt32.self)
         })
 
         let messageLength = BitcoinMessage.baseSize + payloadLength
-        guard let slice = buffer.readSlice(length: messageLength) else {
+        guard let messageData = buffer.readData(length: messageLength) else {
             return .needMoreData
         }
 
-        let messageData = Data(slice.readableBytesView)
         guard let message = BitcoinMessage(messageData) else {
             print("Malformed message")
             print(messageData.hex)
