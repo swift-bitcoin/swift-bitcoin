@@ -4,7 +4,7 @@ import AsyncAlgorithms
 public actor NodeService {
 
     public enum Error: Swift.Error {
-        case connectionToSelf, unsupportedVersion, unsupportedServices, invalidPayload, pingPongMismatch
+        case connectionToSelf, unsupportedVersion, unsupportedServices, invalidPayload, missingV2AddrPreference, requestedV2AddrAfterVerack, pingPongMismatch
     }
 
     public struct Peer {
@@ -96,8 +96,12 @@ public actor NodeService {
 
     /// Send a ping to each of our peers. Calling this function will create child tasks.
     public func pingAll() async {
-        for id in peers.keys {
-            sendPingTo(id)
+        await withDiscardingTaskGroup {
+            for id in peers.keys {
+                $0.addTask {
+                    await self.sendPingTo(id)
+                }
+            }
         }
     }
 
@@ -106,7 +110,6 @@ public actor NodeService {
         let id = UUID()
         peers[id] = Peer(address: IPv6Address.fromHost(host), port: port, incoming: incoming)
         peerOuts[id] = .init()
-        await connect(id)
         return id
     }
 
@@ -143,7 +146,7 @@ public actor NodeService {
     }
 
     /// Starts the handshake process but only if its an outgoing peer – i.e. we initiated the connection. Generates a child task for delivering the initial version message.
-    func connect(_ id: UUID) async {
+    public func connect(_ id: UUID) async {
         guard let peer = peers[id], peer.outgoing else { return }
 
         // Outbound connection sequence:
@@ -165,14 +168,14 @@ public actor NodeService {
         debugPrint(versionMessage)
 
         peers[id]?.sentVersion = true
-        send(.version, payload: versionMessage.data, to: id)
+        await send(.version, payload: versionMessage.data, to: id)
     }
 
     /// Sends a ping message to a peer. Creates a new child task.
-    func sendPingTo(_ id: UUID) {
+    func sendPingTo(_ id: UUID) async {
         let ping = PingMessage()
         peers[id]?.lastPingNonce = ping.nonce
-        send(.ping, payload: ping.data, to: id)
+        await send(.ping, payload: ping.data, to: id)
     }
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
@@ -182,11 +185,11 @@ public actor NodeService {
         case .version:
             try await processVersion(message, from: id)
         case .sendaddrv2:
-            processSendAddrV2(message, from: id)
+            try await processSendAddrV2(message, from: id)
         case .verack:
-            processVerack(message, from: id)
+            try processVerack(message, from: id)
         case .ping:
-            try processPing(message, from: id)
+            try await processPing(message, from: id)
         case .pong:
             try processPong(message, from: id)
         case .wtxidrelay, .sendcmpct, .getheaders, .feefilter, .getaddr, .addrv2, .unknown:
@@ -194,12 +197,10 @@ public actor NodeService {
         }
     }
 
-    /// Creates a child task.
-    private func send(_ command: MessageCommand, payload: Data = .init(), to id: UUID) {
+    /// Sends a message.
+    private func send(_ command: MessageCommand, payload: Data = .init(), to id: UUID) async {
         print("-> \(command) (\(payload.count))")
-        Task {
-            await peerOuts[id]?.send(.init(network: network, command: command, payload: payload))
-        }
+        await peerOuts[id]?.send(.init(network: network, command: command, payload: payload))
     }
 
     /// Processes an incoming version message as part of the handshake.
@@ -231,7 +232,6 @@ public actor NodeService {
         debugPrint(peerVersion)
 
         if peerVersion.nonce == nonce {
-            print("Error: Connection to self.")
             throw Error.connectionToSelf
         }
 
@@ -266,40 +266,56 @@ public actor NodeService {
             debugPrint(versionMessage)
 
             peers[id]?.sentVersion = true
-            send(.version, payload: versionMessage.data, to: id)
+            await send(.version, payload: versionMessage.data, to: id)
         }
 
         peers[id]?.sentV2AddressPreference = true
-        send(.sendaddrv2, payload: Data(), to: id)
-    }
-
-    private func processSendAddrV2(_ message: BitcoinMessage, from id: UUID) {
-        guard peers[id] != nil else { return }
-        peers[id]?.receivedV2AddressPreference = true
-
-        debugPrint(peers[id]!)
+        await send(.sendaddrv2, to: id)
 
         peers[id]?.sentVersionAck = true
-        send(.verack, to: id)
+        await send(.verack, to: id)
     }
 
-    private func processVerack(_ message: BitcoinMessage, from id: UUID) {
-        guard peers[id] != nil else { return }
-        peers[id]!.receivedVersionAck = true
+    private func processSendAddrV2(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let peer = peers[id] else { return }
+
+        // Disconnect peers that send a SENDADDRV2 message after VERACK.
+        if peer.receivedVersionAck {
+            // Because we disconnect nodes that don't ask for v2, this code will never be reached.
+            throw Error.requestedV2AddrAfterVerack
+        }
+
+        peers[id]?.receivedV2AddressPreference = true
+    }
+
+    private func processVerack(_ message: BitcoinMessage, from id: UUID) throws {
+        guard let peer = peers[id] else { return }
+
+        if peer.receivedVersionAck {
+            // Ignore redundant verack.
+            print("Redundant verack.")
+            return
+        }
+
+        if !peer.receivedV2AddressPreference {
+            throw Error.missingV2AddrPreference
+        }
+
+        peers[id]?.receivedVersionAck = true
 
         if peers[id]!.handshakeComplete {
             print("Handshake successful.")
         }
     }
 
-    private func processPing(_ message: BitcoinMessage, from id: UUID) throws {
+    private func processPing(_ message: BitcoinMessage, from id: UUID) async throws {
         guard let ping = PingMessage(message.payload) else {
             throw Error.invalidPayload
         }
         debugPrint(ping)
         let pong = PongMessage(nonce: ping.nonce)
         debugPrint(pong)
-        send(.pong, payload: pong.data, to: id)
+        await send(.pong, payload: pong.data, to: id)
     }
 
     private func processPong(_ message: BitcoinMessage, from id: UUID) throws {

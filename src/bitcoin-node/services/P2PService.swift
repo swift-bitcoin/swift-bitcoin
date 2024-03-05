@@ -117,14 +117,9 @@ actor P2PService: Service {
                                         for try await message in inbound.cancelOnGracefulShutdown() {
                                             do {
                                                 try await self.bitcoinNode.processMessage(message, from: peerID)
-                                            } catch NodeService.Error.connectionToSelf,
-                                                    NodeService.Error.unsupportedVersion,
-                                                    NodeService.Error.unsupportedServices,
-                                                    NodeService.Error.pingPongMismatch,
-                                                    NodeService.Error.invalidPayload {
+                                            } catch is NodeService.Error {
                                                 try await connectionChannel.channel.close()
                                             }
-
                                         }
                                         // Disconnected
                                         print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
