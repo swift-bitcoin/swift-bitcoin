@@ -1,7 +1,5 @@
 import XCTest
-@testable import Bitcoin
-@testable import bcnode
-import BitcoinCrypto
+import Bitcoin
 
 final class BitcoinMessageTests: XCTestCase {
 

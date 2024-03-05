@@ -1,10 +1,21 @@
 import Foundation
 
-struct ProtocolServices: OptionSet {
-    init(rawValue: UInt64) {
+public struct ProtocolServices: OptionSet {
+    public init(rawValue: UInt64) {
         self.rawValue = rawValue
     }
     
+    public let rawValue: UInt64
+
+    public static let network = Self(rawValue: 1 << 0)
+    public static let witness = Self(rawValue: 1 << 3)
+
+    public static let empty: Self = []
+    public static let all: Self = [.network, .witness]
+}
+
+extension ProtocolServices {
+
     init?(_ data: Data) {
         guard data.count >= MemoryLayout<RawValue>.size else { return nil }
         let rawValue = data.withUnsafeBytes {
@@ -12,14 +23,6 @@ struct ProtocolServices: OptionSet {
         }
         self.init(rawValue: rawValue)
     }
-
-    let rawValue: UInt64
-
-    static let network = Self(rawValue: 1 << 0)
-    static let witness = Self(rawValue: 1 << 3)
-
-    static let empty: Self = []
-    static let all: Self = [.network, .witness]
 
     static var size: Int { MemoryLayout<RawValue>.size }
 }

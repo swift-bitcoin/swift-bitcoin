@@ -2,9 +2,9 @@ import Foundation
 
 fileprivate let length = 16
 
-struct IPv6Address: Equatable, CustomStringConvertible, CustomDebugStringConvertible, ExpressibleByStringLiteral {
+public struct IPv6Address: Equatable, CustomStringConvertible, CustomDebugStringConvertible, ExpressibleByStringLiteral {
 
-    var description: String {
+    public var description: String {
         var words = words
         var longestChainIndex = -1
         var longestChainLength = -1
@@ -51,11 +51,11 @@ struct IPv6Address: Equatable, CustomStringConvertible, CustomDebugStringConvert
         return description
     }
 
-    var debugDescription: String {
+    public var debugDescription: String {
         "IPv6Address(\(description))"
     }
 
-    init(_ rawValue: Data) {
+    public init(_ rawValue: Data) {
         let rawValue1 = if rawValue.count > length {
             rawValue[..<rawValue.startIndex.advanced(by: length)]
         } else {
@@ -70,11 +70,11 @@ struct IPv6Address: Equatable, CustomStringConvertible, CustomDebugStringConvert
     }
 
     /// https://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses
-    init(_ ipv4: IPv4Address) {
+    public init(_ ipv4: IPv4Address) {
         self.init(Data(repeating: 0xff, count: 2) + ipv4.rawValue)
     }
 
-    init(_ words: [UInt16]) {
+    public init(_ words: [UInt16]) {
         var bytes = [UInt8]()
         for word in words {
             bytes.append(UInt8(word >> 8))
@@ -83,7 +83,11 @@ struct IPv6Address: Equatable, CustomStringConvertible, CustomDebugStringConvert
         self.init(Data(bytes))
     }
 
-    init(stringLiteral: String) {
+    public init(stringLiteral: String) {
+        self.init(stringLiteral)
+    }
+
+    public init(_ stringLiteral: String) {
         let halfs = stringLiteral.split(separator: "::")
         let partsA = halfs.count < 1 ? [UInt16]() : halfs[0].split(separator: ":").map { UInt16($0, radix: 16) ?? 0 }
         let partsB = halfs.count < 2 ? [UInt16]() : halfs[1].split(separator: ":").map { UInt16($0, radix: 16) ?? 0 }
@@ -100,7 +104,7 @@ struct IPv6Address: Equatable, CustomStringConvertible, CustomDebugStringConvert
 
     private(set) var rawValue: Data
 
-    var words: [UInt16] {
+    public var words: [UInt16] {
         var words = [UInt16]()
         for i in stride(from: rawValue.startIndex, to: rawValue.endIndex, by: 2) {
             let word = (UInt16(rawValue[i]) << 8) + UInt16(rawValue[i + 1])
@@ -109,9 +113,9 @@ struct IPv6Address: Equatable, CustomStringConvertible, CustomDebugStringConvert
         return words
     }
 
-    static let loopback = Self(Data([0x01]))
-    static let ipV4Loopback = Self(IPv4Address.loopback)
-    static let unspecified = Self(Data(repeating: 0x00, count: 16))
+    public static let loopback = Self(Data([0x01]))
+    public static let ipV4Loopback = Self(IPv4Address.loopback)
+    public static let unspecified = Self(Data(repeating: 0x00, count: 16))
 
     /// Attempts to produce an address from a host string.
     static func fromHost(_ host: String) -> Self {

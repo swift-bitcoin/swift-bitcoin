@@ -13,7 +13,7 @@ actor RPCService: Service {
         var overallTotalConnections = 0
     }
 
-    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, bitcoinNode: BitcoinNode, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
+    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, bitcoinNode: NodeService, bitcoinService: BitcoinService, p2pService: P2PService, p2pClientServices: [P2PClientService]) {
         self.host = host
         self.port = port
         self.eventLoopGroup = eventLoopGroup
@@ -26,7 +26,7 @@ actor RPCService: Service {
     let host: String
     let port: Int
     private let eventLoopGroup: EventLoopGroup
-    private let bitcoinNode: BitcoinNode
+    private let bitcoinNode: NodeService
     private let bitcoinService: BitcoinService
     private let p2pService: P2PService
     private let p2pClientServices: [P2PClientService]

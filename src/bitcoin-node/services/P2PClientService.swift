@@ -15,13 +15,13 @@ actor P2PClientService: Service {
         var overallTotalConnections = 0
     }
 
-    init(eventLoopGroup: EventLoopGroup, bitcoinNode: BitcoinNode) {
+    init(eventLoopGroup: EventLoopGroup, bitcoinNode: NodeService) {
         self.eventLoopGroup = eventLoopGroup
         self.bitcoinNode = bitcoinNode
     }
 
     private let eventLoopGroup: EventLoopGroup
-    private let bitcoinNode: BitcoinNode
+    private let bitcoinNode: NodeService
     private(set) var status = Status() // Network status
 
     private var connectRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
@@ -49,7 +49,7 @@ actor P2PClientService: Service {
     }
 
     func disconnect() async throws {
-        try await disconnectFromPeer()
+        try await clientChannel?.channel.close()
     }
 
     private func connectToPeer() async throws {
@@ -83,6 +83,10 @@ actor P2PClientService: Service {
 
             try await withThrowingDiscardingTaskGroup { group in
                 group.addTask {
+                    await self.bitcoinNode.connect(peerID)
+                    print("Connected \(peerID)")
+                }
+                group.addTask {
                     for await message in await self.bitcoinNode.getChannel(for: peerID).cancelOnGracefulShutdown() {
                         try await outbound.write(message)
                     }
@@ -91,11 +95,7 @@ actor P2PClientService: Service {
                     for try await message in inbound.cancelOnGracefulShutdown() {
                         do {
                             try await self.bitcoinNode.processMessage(message, from: peerID)
-                        } catch BitcoinNode.Error.connectionToSelf,
-                                BitcoinNode.Error.unsupportedVersion,
-                                BitcoinNode.Error.unsupportedServices,
-                                BitcoinNode.Error.pingPongMismatch,
-                                BitcoinNode.Error.invalidPayload {
+                        } catch is NodeService.Error {
                             try await clientChannel.channel.close()
                         }
                     }
@@ -114,9 +114,5 @@ actor P2PClientService: Service {
         status.localPort = .none
         status.remoteHost = .none
         status.remotePort = .none
-    }
-
-    private func disconnectFromPeer() async throws {
-        try await clientChannel?.channel.close()
     }
 }

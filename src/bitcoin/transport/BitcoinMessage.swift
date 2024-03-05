@@ -1,10 +1,9 @@
 import Foundation
-import Bitcoin
 import BitcoinCrypto
 
-struct BitcoinMessage: Equatable {
+public struct BitcoinMessage: Equatable {
 
-    init(network: NodeNetwork, command: MessageCommand, payload: Data) {
+    public init(network: NodeNetwork, command: MessageCommand, payload: Data) {
         self.network = network
         self.command = command
         self.payloadSize = payload.count
@@ -15,13 +14,13 @@ struct BitcoinMessage: Equatable {
         self.payload = payload
     }
 
-    let network: NodeNetwork
-    let command: MessageCommand
-    let payloadSize: Int
-    let checksum: UInt32
-    let payload: Data
+    public let network: NodeNetwork
+    public let command: MessageCommand
+    private let payloadSize: Int
+    public let checksum: UInt32
+    public let payload: Data
 
-    var isChecksumOk: Bool {
+    public var isChecksumOk: Bool {
         let hash = hash256(payload)
         let realChecksum = hash.withUnsafeBytes {
             $0.load(as: UInt32.self)
@@ -29,14 +28,14 @@ struct BitcoinMessage: Equatable {
         return checksum == realChecksum
     }
 
-    static let baseSize = 24
-    static let payloadSizeStartIndex = 16
-    static let payloadSizeEndIndex = 20
+    public static let baseSize = 24
+    public static let payloadSizeStartIndex = 16
+    public static let payloadSizeEndIndex = 20
 }
 
 extension BitcoinMessage {
 
-    init?(_ data: Data) {
+    public init?(_ data: Data) {
         guard data.count >= Self.baseSize else { return nil }
         var data = data
         guard let network = NodeNetwork(data) else { return nil }
@@ -67,7 +66,7 @@ extension BitcoinMessage {
         Self.baseSize + payload.count
     }
 
-    var data: Data {
+    public var data: Data {
         var ret = Data(count: size)
         var offset = ret.addData(network.data)
         offset = ret.addData(command.data, at: offset)

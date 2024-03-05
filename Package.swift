@@ -8,8 +8,8 @@ let package = Package(
         .library(
             name: "Bitcoin",
             targets: ["Bitcoin"]),
-        .executable(name: "bcnode", targets: ["bcnode"]),
-        .executable(name: "bcutil", targets: ["bcutil"])
+        .executable(name: "bcnode", targets: ["BitcoinNode"]),
+        .executable(name: "bcutil", targets: ["BitcoinUtility"])
     ],
     dependencies: [
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
@@ -23,7 +23,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "bcnode", dependencies: [
+            name: "BitcoinNode", dependencies: [
                 "Bitcoin",
                 "BitcoinCrypto",
                 "JSONRPC",
@@ -33,7 +33,7 @@ let package = Package(
                 .product(name: "NIO", package: "swift-nio")],
             path: "src/bitcoin-node"),
         .executableTarget(
-            name: "bcutil", dependencies: [
+            name: "BitcoinUtility", dependencies: [
                 "Bitcoin",
                 "JSONRPC",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
@@ -65,7 +65,7 @@ let package = Package(
             path: "src/json-rpc"),
         .testTarget(
             name: "BitcoinTests",
-            dependencies: ["Bitcoin", "bcnode"],
+            dependencies: ["Bitcoin"],
             path: "test/bitcoin",
             resources: [
                 .copy("data")

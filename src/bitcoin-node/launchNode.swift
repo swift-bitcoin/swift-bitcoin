@@ -5,7 +5,7 @@ import NIO
 func launchNode(host: String, port: Int) async throws {
 
     let bitcoinService = BitcoinService()
-    let bitcoinNode = BitcoinNode(bitcoinService: bitcoinService)
+    let bitcoinNode = NodeService(bitcoinService: bitcoinService)
 
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 

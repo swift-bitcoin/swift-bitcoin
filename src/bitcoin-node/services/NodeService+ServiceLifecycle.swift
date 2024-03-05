@@ -1,7 +1,8 @@
+import Bitcoin
 import ServiceLifecycle
 
-extension BitcoinNode: Service {
-    func run() async throws {
+extension NodeService: Service {
+    public func run() async throws {
         let blocks = await bitcoinService.blocks
         self.blocks = blocks
         await withGracefulShutdownHandler {

@@ -16,13 +16,13 @@ actor P2PService: Service {
         var activeConnections = 0
     }
 
-    init(eventLoopGroup: EventLoopGroup, bitcoinNode: BitcoinNode) {
+    init(eventLoopGroup: EventLoopGroup, bitcoinNode: NodeService) {
         self.eventLoopGroup = eventLoopGroup
         self.bitcoinNode = bitcoinNode
     }
 
     private let eventLoopGroup: EventLoopGroup
-    private let bitcoinNode: BitcoinNode
+    private let bitcoinNode: NodeService
     private(set) var status = Status() // Network status
 
     private var listenRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
@@ -117,14 +117,9 @@ actor P2PService: Service {
                                         for try await message in inbound.cancelOnGracefulShutdown() {
                                             do {
                                                 try await self.bitcoinNode.processMessage(message, from: peerID)
-                                            } catch BitcoinNode.Error.connectionToSelf,
-                                                    BitcoinNode.Error.unsupportedVersion,
-                                                    BitcoinNode.Error.unsupportedServices,
-                                                    BitcoinNode.Error.pingPongMismatch,
-                                                    BitcoinNode.Error.invalidPayload {
+                                            } catch is NodeService.Error {
                                                 try await connectionChannel.channel.close()
                                             }
-
                                         }
                                         // Disconnected
                                         print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
