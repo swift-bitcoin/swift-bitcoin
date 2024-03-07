@@ -49,9 +49,9 @@ extension NetworkAddress {
         var ret = Data(count: size)
         var offset = ret.addBytes(UInt32(time.timeIntervalSince1970))
         offset = ret.addData(Data(varInt: services.rawValue), at: offset)
-        offset = ret.addData(networkID.data)
-        offset = ret.addData(addressData)
-        ret.addBytes(UInt16(port))
+        offset = ret.addData(networkID.data, at: offset)
+        offset = ret.addData(addressData, at: offset)
+        ret.addBytes(UInt16(port), at: offset)
         return ret
     }
 
