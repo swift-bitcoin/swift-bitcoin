@@ -11,7 +11,9 @@ public enum MessageCommand: String, RawRepresentable {
     case sendaddrv2, addrv2
 
     /// BIP152
+    /// ``SendCompactMessage``
     case sendcmpct
+
     case getheaders
 
     /// BIP133
