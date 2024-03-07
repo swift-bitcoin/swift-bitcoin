@@ -36,6 +36,9 @@ public actor NodeService {
         public internal(set) var height = 0
         public internal(set) var lastPingNonce = UInt64?.none
 
+        /// BIP133
+        public internal(set) var feeFilterRate = BitcoinAmount?.none // TODO: Honor when relaying transacions (inv) to this peer, #188
+
         var outgoing: Bool { !incoming }
 
         /// The connection has been established.
@@ -49,9 +52,12 @@ public actor NodeService {
         }
     }
 
-    public init(bitcoinService: BitcoinService, network: NodeNetwork = .regtest) {
+    public init(bitcoinService: BitcoinService, network: NodeNetwork = .regtest, feeFilterRate: BitcoinAmount? = .none) {
         self.bitcoinService = bitcoinService
         self.network = network
+        if let feeFilterRate {
+            self.feeFilterRate = feeFilterRate
+        }
     }
 
     public let bitcoinService: BitcoinService
@@ -65,6 +71,9 @@ public actor NodeService {
 
     /// Our port might not exist if peer-to-peer server is down. We can still be conecting with peers as a client.
     var port = Int?.none
+
+    /// BIP133: Our current fee filter rate for transactions relayed to us by peers. Default: 1 satoshi per virtual byte (sat/vbyte).
+    var feeFilterRate = BitcoinAmount(1) // TODO: Allow to be changed via RPC command, #189
 
     /// Peer information.
     public internal(set) var peers = [UUID : Peer]()
@@ -149,20 +158,6 @@ public actor NodeService {
     public func connect(_ id: UUID) async {
         guard let peer = peers[id], peer.outgoing else { return }
 
-        // Outbound connection sequence:
-        // -> version (we send the first message)
-        // -> wtxidrelay
-        // -> sendaddrv2
-        // <- version
-        // -> verack
-        // -> getaddr
-        // <- verack
-        // -> sendcmpct
-        // -> ping
-        // -> getheaders
-        // -> feefilter
-        // <- pong
-
         let versionMessage = await makeVersion(for: id)
         print("Our version:")
         debugPrint(versionMessage)
@@ -187,12 +182,14 @@ public actor NodeService {
         case .sendaddrv2:
             try await processSendAddrV2(message, from: id)
         case .verack:
-            try processVerack(message, from: id)
+            try await processVerack(message, from: id)
+        case .feefilter:
+            try processFeeFilter(message, from: id)
         case .ping:
             try await processPing(message, from: id)
         case .pong:
             try processPong(message, from: id)
-        case .wtxidrelay, .sendcmpct, .getheaders, .feefilter, .getaddr, .addrv2, .unknown:
+        case .wtxidrelay, .sendcmpct, .getheaders, .getaddr, .addrv2, .unknown:
             break
         }
     }
@@ -288,7 +285,7 @@ public actor NodeService {
         peers[id]?.receivedV2AddressPreference = true
     }
 
-    private func processVerack(_ message: BitcoinMessage, from id: UUID) throws {
+    private func processVerack(_ message: BitcoinMessage, from id: UUID) async throws {
         guard let peer = peers[id] else { return }
 
         if peer.receivedVersionAck {
@@ -306,6 +303,8 @@ public actor NodeService {
         if peers[id]!.handshakeComplete {
             print("Handshake successful.")
         }
+
+        await send(.feefilter, payload: FeeFilterMessage(feeRate: feeFilterRate).data, to: id)
     }
 
     private func processPing(_ message: BitcoinMessage, from id: UUID) async throws {
@@ -327,6 +326,14 @@ public actor NodeService {
             throw Error.pingPongMismatch
         }
         peers[id]?.lastPingNonce = .none
+    }
+
+    private func processFeeFilter(_ message: BitcoinMessage, from id: UUID) throws {
+        guard let feeFilter = FeeFilterMessage(message.payload) else {
+            throw Error.invalidPayload
+        }
+        debugPrint(feeFilter)
+        peers[id]?.feeFilterRate = feeFilter.feeRate
     }
 
     static let version = ProtocolVersion.latest
