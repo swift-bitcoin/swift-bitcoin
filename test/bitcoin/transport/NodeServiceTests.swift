@@ -43,6 +43,9 @@ final class NodeServiceTests: XCTestCase {
         guard let serverVersion = await serverMessages.next() else { XCTFail(); return }
         await Task.yield()
         XCTAssertEqual(serverVersion.command, .version)
+        guard let serverWTXIDRelay = await serverMessages.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(serverWTXIDRelay.command, .wtxidrelay)
         guard let serverSendAddrV2 = await serverMessages.next() else { XCTFail(); return }
         await Task.yield()
         XCTAssertEqual(serverSendAddrV2.command, .sendaddrv2)
@@ -53,6 +56,9 @@ final class NodeServiceTests: XCTestCase {
         Task {
             try await clientNode.processMessage(serverVersion, from: peerInClient)
         }
+        guard let clientWTXIDRelay = await clientMessages.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(clientWTXIDRelay.command, .wtxidrelay)
         guard let clientSendAddrV2 = await clientMessages.next() else { XCTFail(); return }
         await Task.yield()
         XCTAssertEqual(clientSendAddrV2.command, .sendaddrv2)
@@ -62,6 +68,10 @@ final class NodeServiceTests: XCTestCase {
 
         let versionReceived = await clientNode.peers[peerInClient]!.receivedVersion
         XCTAssert(versionReceived)
+
+        try await clientNode.processMessage(serverWTXIDRelay, from: peerInClient)
+        var wtxidRelay = await clientNode.peers[peerInClient]!.receivedWTXIDRelayPreference
+        XCTAssert(wtxidRelay)
 
         try await clientNode.processMessage(serverSendAddrV2, from: peerInClient)
         var v2Addr = await clientNode.peers[peerInClient]!.receivedV2AddressPreference
@@ -81,6 +91,10 @@ final class NodeServiceTests: XCTestCase {
         XCTAssert(veracked)
         var handshook = await clientNode.peers[peerInClient]!.handshakeComplete
         XCTAssert(handshook)
+
+        try await serverNode.processMessage(clientWTXIDRelay, from: peerInServer)
+        wtxidRelay = await serverNode.peers[peerInServer]!.receivedWTXIDRelayPreference
+        XCTAssert(wtxidRelay)
 
         try await serverNode.processMessage(clientSendAddrV2, from: peerInServer)
         v2Addr = await serverNode.peers[peerInServer]!.receivedV2AddressPreference
@@ -130,6 +144,8 @@ final class NodeServiceTests: XCTestCase {
         }
         guard let serverVersion = await serverMessages.next() else { XCTFail(); return }
         await Task.yield()
+        guard let serverWTXIDRelay = await serverMessages.next() else { XCTFail(); return }
+        await Task.yield()
         guard let serverSendAddrV2 = await serverMessages.next() else { XCTFail(); return }
         await Task.yield()
         guard let serverVerack = await serverMessages.next() else { XCTFail(); return }
@@ -138,11 +154,14 @@ final class NodeServiceTests: XCTestCase {
         Task {
             try await clientNode.processMessage(serverVersion, from: peerInClient)
         }
+        guard let clientWTXIDRelay = await clientMessages.next() else { XCTFail(); return }
+        await Task.yield()
         guard let clientSendAddrV2 = await clientMessages.next() else { XCTFail(); return }
         await Task.yield()
         guard let clientVerack = await clientMessages.next() else { XCTFail(); return }
         await Task.yield()
 
+        try await clientNode.processMessage(serverWTXIDRelay, from: peerInClient)
         try await clientNode.processMessage(serverSendAddrV2, from: peerInClient)
         Task {
             try await clientNode.processMessage(serverVerack, from: peerInClient)
@@ -150,6 +169,7 @@ final class NodeServiceTests: XCTestCase {
         guard let clientFeeFilter = await clientMessages.next() else { XCTFail(); return }
         await Task.yield()
 
+        try await serverNode.processMessage(clientWTXIDRelay, from: peerInServer)
         try await serverNode.processMessage(clientSendAddrV2, from: peerInServer)
         Task {
             try await serverNode.processMessage(clientVerack, from: peerInServer)
@@ -163,24 +183,24 @@ final class NodeServiceTests: XCTestCase {
         Task {
             await clientNode.pingAll()
         }
-        guard let message6 = await clientMessages.next() else { XCTFail(); return }
+        guard let pingMessage = await clientMessages.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(message6.command, .ping)
-        let ping = try XCTUnwrap(PingMessage(message6.payload))
+        XCTAssertEqual(pingMessage.command, .ping)
+        let ping = try XCTUnwrap(PingMessage(pingMessage.payload))
 
         var lastPingNonce = await clientNode.peers[peerInClient]!.lastPingNonce
         XCTAssertNotNil(lastPingNonce)
 
         Task {
-            try await serverNode.processMessage(message6, from: peerInServer)
+            try await serverNode.processMessage(pingMessage, from: peerInServer)
         }
-        guard let message7 = await serverMessages.next() else { XCTFail(); return }
+        guard let pongMessage = await serverMessages.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(message7.command, .pong)
-        let pong = try XCTUnwrap(PongMessage(message7.payload))
+        XCTAssertEqual(pongMessage.command, .pong)
+        let pong = try XCTUnwrap(PongMessage(pongMessage.payload))
         XCTAssertEqual(ping.nonce, pong.nonce)
 
-        try await clientNode.processMessage(message7, from: peerInClient)
+        try await clientNode.processMessage(pongMessage, from: peerInClient)
         lastPingNonce = await clientNode.peers[peerInClient]!.lastPingNonce
         XCTAssertNil(lastPingNonce)
     }

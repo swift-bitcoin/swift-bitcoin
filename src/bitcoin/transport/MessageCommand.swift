@@ -1,7 +1,22 @@
 import Foundation
 
 public enum MessageCommand: String, RawRepresentable {
-    case version, verack, ping, pong, wtxidrelay, getaddr, sendaddrv2, sendcmpct, getheaders, feefilter, addrv2, unknown
+    case version, verack, ping, pong
+
+    /// BIP339
+    case wtxidrelay
+    case getaddr
+
+    /// BIP155
+    case sendaddrv2, addrv2
+
+    /// BIP152
+    case sendcmpct
+    case getheaders
+
+    /// BIP133
+    case feefilter
+    case unknown
 
     static let size = 12 // Data size
 

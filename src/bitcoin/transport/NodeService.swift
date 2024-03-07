@@ -4,7 +4,7 @@ import AsyncAlgorithms
 public actor NodeService {
 
     public enum Error: Swift.Error {
-        case connectionToSelf, unsupportedVersion, unsupportedServices, invalidPayload, missingV2AddrPreference, requestedV2AddrAfterVerack, pingPongMismatch
+        case connectionToSelf, unsupportedVersion, unsupportedServices, invalidPayload, missingWTXIDRelayPreference, requestedWTXIDRelayAfterVerack, missingV2AddrPreference, requestedV2AddrAfterVerack, pingPongMismatch
     }
 
     public struct Peer {
@@ -15,8 +15,19 @@ public actor NodeService {
         /// Our version was acknowledged by the peer.
         var sentVersion = false
         var receivedVersion = false
-        var sentV2AddressPreference = false
+
+        /// BIP339
+        var sentWTXIDRelayPreference = false
+
+        /// BIP339
+        var receivedWTXIDRelayPreference = false
+
+        /// BIP155
         var receivedV2AddressPreference = false
+
+        /// BIP155
+        var sentV2AddressPreference = false
+
         var sentVersionAck = false
         var receivedVersionAck = false
 
@@ -45,6 +56,8 @@ public actor NodeService {
         public var handshakeComplete: Bool {
             sentVersion &&
                 receivedVersion &&
+                sentWTXIDRelayPreference &&
+                receivedWTXIDRelayPreference &&
                 sentV2AddressPreference &&
                 receivedV2AddressPreference &&
                 sentVersionAck &&
@@ -179,6 +192,8 @@ public actor NodeService {
         switch message.command {
         case .version:
             try await processVersion(message, from: id)
+        case .wtxidrelay:
+            try await processWTXIDRelay(message, from: id)
         case .sendaddrv2:
             try await processSendAddrV2(message, from: id)
         case .verack:
@@ -189,7 +204,7 @@ public actor NodeService {
             try await processPing(message, from: id)
         case .pong:
             try processPong(message, from: id)
-        case .wtxidrelay, .sendcmpct, .getheaders, .getaddr, .addrv2, .unknown:
+        case .sendcmpct, .getheaders, .getaddr, .addrv2, .unknown:
             break
         }
     }
@@ -266,6 +281,11 @@ public actor NodeService {
             await send(.version, payload: versionMessage.data, to: id)
         }
 
+        // BIP339
+        peers[id]?.sentWTXIDRelayPreference = true
+        await send(.wtxidrelay, to: id)
+
+        // BIP155
         peers[id]?.sentV2AddressPreference = true
         await send(.sendaddrv2, to: id)
 
@@ -273,6 +293,20 @@ public actor NodeService {
         await send(.verack, to: id)
     }
 
+    /// BIP339
+    private func processWTXIDRelay(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let peer = peers[id] else { return }
+
+        // Disconnect peers that send a WTXIDRELAY message after VERACK.
+        if peer.receivedVersionAck {
+            // Because we disconnect nodes that don't signal for WTXID relay, this code will never be reached.
+            throw Error.requestedWTXIDRelayAfterVerack
+        }
+
+        peers[id]?.receivedWTXIDRelayPreference = true
+    }
+
+    /// BIP155
     private func processSendAddrV2(_ message: BitcoinMessage, from id: UUID) async throws {
         guard let peer = peers[id] else { return }
 
@@ -294,6 +328,12 @@ public actor NodeService {
             return
         }
 
+        // BIP339
+        if !peer.receivedWTXIDRelayPreference {
+            throw Error.missingWTXIDRelayPreference
+        }
+
+        // BIP155
         if !peer.receivedV2AddressPreference {
             throw Error.missingV2AddrPreference
         }
