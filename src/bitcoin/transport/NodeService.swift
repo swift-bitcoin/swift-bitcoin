@@ -35,11 +35,14 @@ public actor NodeService {
         var sentCompactBlocksPreference = false
 
         /// BIP152
-        /// We support only version 2 compact blocks.
-        var compatibleCompactBlocksVersion = false
+        var highBandwidthCompactBlocks = false
 
         /// BIP152
-        var highBandwidthCompactBlocks = false
+        /// We really only support version 2 compact blocks.
+        var compactBlocksVersion = Int?.none
+
+        /// BIP152
+        var compactBlocksVersionLocked = false
 
         /// BIP152: Holding pong until our compact block version was sent.
         var pongOnHoldUntilCompactBlocksPreference = PongMessage?.none
@@ -394,11 +397,6 @@ public actor NodeService {
 
         guard let peer = peers[id] else { return }
 
-        // BIP152: Lock compact block version on first pong.
-        guard peer.compatibleCompactBlocksVersion else {
-            throw Error.unsupportedCompactBlocksVersion
-        }
-
         guard let pong = PongMessage(message.payload) else {
             throw Error.invalidPayload
         }
@@ -407,17 +405,26 @@ public actor NodeService {
             throw Error.pingPongMismatch
         }
         peers[id]?.lastPingNonce = .none
+
+        // BIP152: Lock compact block version on first pong.
+        guard let compactBlocksVersion = peer.compactBlocksVersion, compactBlocksVersion >= Self.minCompactBlocksVersion else {
+            throw Error.unsupportedCompactBlocksVersion
+        }
+        peers[id]?.compactBlocksVersionLocked = true
     }
 
     /// BIP152
     private func processSendCompact(_ message: BitcoinMessage, from id: UUID) throws {
+        guard let peer = peers[id] else { return }
+
         guard let sendCompact = SendCompactMessage(message.payload) else {
             throw Error.invalidPayload
         }
         debugPrint(sendCompact)
-        if sendCompact.version == 2 {
+        // We let the negotiation play out for versions lower than our max supported. When version is finally locked we will enforce our minimum supported version as well.
+        if peer.compactBlocksVersion == .none, sendCompact.version <= Self.maxCompactBlocksVersion {
             peers[id]?.highBandwidthCompactBlocks = sendCompact.highBandwidth
-            peers[id]?.compatibleCompactBlocksVersion = true
+            peers[id]?.compactBlocksVersion = sendCompact.version
         }
     }
 
@@ -433,4 +440,6 @@ public actor NodeService {
     static let version = ProtocolVersion.latest
     static let userAgent = "/SwiftBitcoin:0.1.0/"
     static let services = ProtocolServices.all
+    static let minCompactBlocksVersion = 2
+    static let maxCompactBlocksVersion = 2
 }
