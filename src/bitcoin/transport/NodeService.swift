@@ -4,7 +4,7 @@ import AsyncAlgorithms
 public actor NodeService {
 
     public enum Error: Swift.Error {
-        case connectionToSelf, unsupportedVersion, unsupportedServices, invalidPayload, missingWTXIDRelayPreference, requestedWTXIDRelayAfterVerack, missingV2AddrPreference, requestedV2AddrAfterVerack, pingPongMismatch
+        case connectionToSelf, unsupportedVersion, unsupportedServices, invalidPayload, missingWTXIDRelayPreference, requestedWTXIDRelayAfterVerack, missingV2AddrPreference, requestedV2AddrAfterVerack, pingPongMismatch, unsupportedCompactBlocksVersion
     }
 
     public struct Peer {
@@ -30,6 +30,19 @@ public actor NodeService {
 
         var sentVersionAck = false
         var receivedVersionAck = false
+
+        /// BIP152
+        var sentCompactBlocksPreference = false
+
+        /// BIP152
+        /// We support only version 2 compact blocks.
+        var compatibleCompactBlocksVersion = false
+
+        /// BIP152
+        var highBandwidthCompactBlocks = false
+
+        /// BIP152: Holding pong until our compact block version was sent.
+        var pongOnHoldUntilCompactBlocksPreference = PongMessage?.none
 
         // Information from the version message sent by the peer
         var preferredVersion = ProtocolVersion?.none
@@ -175,8 +188,8 @@ public actor NodeService {
         print("Our version:")
         debugPrint(versionMessage)
 
-        peers[id]?.sentVersion = true
         await send(.version, payload: versionMessage.data, to: id)
+        peers[id]?.sentVersion = true
     }
 
     /// Sends a ping message to a peer. Creates a new child task.
@@ -198,13 +211,15 @@ public actor NodeService {
             try await processSendAddrV2(message, from: id)
         case .verack:
             try await processVerack(message, from: id)
+        case .sendcmpct:
+            try processSendCompact(message, from: id)
         case .feefilter:
             try processFeeFilter(message, from: id)
         case .ping:
             try await processPing(message, from: id)
         case .pong:
             try processPong(message, from: id)
-        case .sendcmpct, .getheaders, .getaddr, .addrv2, .unknown:
+        case .getheaders, .getaddr, .addrv2, .unknown:
             break
         }
     }
@@ -277,20 +292,20 @@ public actor NodeService {
             print("Our version:")
             debugPrint(versionMessage)
 
-            peers[id]?.sentVersion = true
             await send(.version, payload: versionMessage.data, to: id)
+            peers[id]?.sentVersion = true
         }
 
         // BIP339
-        peers[id]?.sentWTXIDRelayPreference = true
         await send(.wtxidrelay, to: id)
+        peers[id]?.sentWTXIDRelayPreference = true
 
         // BIP155
-        peers[id]?.sentV2AddressPreference = true
         await send(.sendaddrv2, to: id)
+        peers[id]?.sentV2AddressPreference = true
 
-        peers[id]?.sentVersionAck = true
         await send(.verack, to: id)
+        peers[id]?.sentVersionAck = true
     }
 
     /// BIP339
@@ -344,20 +359,46 @@ public actor NodeService {
             print("Handshake successful.")
         }
 
+        // BIP152 send a burst of supported compact block versions followed by a ping to lock it down.
+        await send(.sendcmpct, payload: SendCompactMessage().data, to: id)
+        peers[id]?.sentCompactBlocksPreference = true
+        if let pong = peer.pongOnHoldUntilCompactBlocksPreference {
+            await send(.pong, payload: pong.data, to: id)
+            peers[id]?.pongOnHoldUntilCompactBlocksPreference = .none
+        }
+        await sendPingTo(id)
+
         await send(.feefilter, payload: FeeFilterMessage(feeRate: feeFilterRate).data, to: id)
     }
 
     private func processPing(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let peer = peers[id] else { return }
+
         guard let ping = PingMessage(message.payload) else {
             throw Error.invalidPayload
         }
         debugPrint(ping)
+
         let pong = PongMessage(nonce: ping.nonce)
         debugPrint(pong)
-        await send(.pong, payload: pong.data, to: id)
+
+        // BIP152 We need to hold the pong until the compact block version was sent.
+        if peer.sentCompactBlocksPreference {
+            await send(.pong, payload: pong.data, to: id)
+        } else {
+            peers[id]?.pongOnHoldUntilCompactBlocksPreference = pong
+        }
     }
 
     private func processPong(_ message: BitcoinMessage, from id: UUID) throws {
+
+        guard let peer = peers[id] else { return }
+
+        // BIP152: Lock compact block version on first pong.
+        guard peer.compatibleCompactBlocksVersion else {
+            throw Error.unsupportedCompactBlocksVersion
+        }
+
         guard let pong = PongMessage(message.payload) else {
             throw Error.invalidPayload
         }
@@ -368,6 +409,19 @@ public actor NodeService {
         peers[id]?.lastPingNonce = .none
     }
 
+    /// BIP152
+    private func processSendCompact(_ message: BitcoinMessage, from id: UUID) throws {
+        guard let sendCompact = SendCompactMessage(message.payload) else {
+            throw Error.invalidPayload
+        }
+        debugPrint(sendCompact)
+        if sendCompact.version == 2 {
+            peers[id]?.highBandwidthCompactBlocks = sendCompact.highBandwidth
+            peers[id]?.compatibleCompactBlocksVersion = true
+        }
+    }
+
+    /// BIP133
     private func processFeeFilter(_ message: BitcoinMessage, from id: UUID) throws {
         guard let feeFilter = FeeFilterMessage(message.payload) else {
             throw Error.invalidPayload
