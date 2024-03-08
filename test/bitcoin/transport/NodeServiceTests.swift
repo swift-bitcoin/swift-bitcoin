@@ -167,8 +167,8 @@ final class NodeServiceTests: XCTestCase {
 
         // … --(sendcmpct)->> Server
         try await serverNode.processMessage(clientSendCompactMessage, from: peerInServer) // No response expected
-        let serverCompatibleCompactBlocksVersion = await serverNode.peers[peerInServer]!.compatibleCompactBlocksVersion
-        XCTAssert(serverCompatibleCompactBlocksVersion)
+        let serverCompactBlocksVersion = await serverNode.peers[peerInServer]!.compactBlocksVersion
+        XCTAssertEqual(serverCompactBlocksVersion, 2)
 
         // … --(ping)->> Server
         Task {
@@ -188,8 +188,8 @@ final class NodeServiceTests: XCTestCase {
 
         // Client <<-(sendcmpct)-- …
         try await clientNode.processMessage(serverSendCompactMessage, from: peerInClient) // No response expected
-        let clientCompatibleCompactBlocksVersion = await clientNode.peers[peerInClient]!.compatibleCompactBlocksVersion
-        XCTAssert(clientCompatibleCompactBlocksVersion)
+        let clientCompactBlocksVersion = await clientNode.peers[peerInClient]!.compactBlocksVersion
+        XCTAssertEqual(clientCompactBlocksVersion, 2)
 
         // Client <<-(ping)-- …
         Task {
@@ -209,8 +209,12 @@ final class NodeServiceTests: XCTestCase {
         try await clientNode.processMessage(serverPongMessage, from: peerInClient) // No response expected
         lastPingNonce = await clientNode.peers[peerInClient]!.lastPingNonce
         XCTAssertNil(lastPingNonce)
+        let clientCompactBlocksVersionLocked = await clientNode.peers[peerInClient]!.compactBlocksVersionLocked
+        XCTAssert(clientCompactBlocksVersionLocked)
 
         // … --(pong)->> Server
         try await serverNode.processMessage(clientPongMessage, from: peerInServer) // No response expected
+        let serverCompactBlocksVersionLocked = await serverNode.peers[peerInServer]!.compactBlocksVersionLocked
+        XCTAssert(serverCompactBlocksVersionLocked)
     }
 }
