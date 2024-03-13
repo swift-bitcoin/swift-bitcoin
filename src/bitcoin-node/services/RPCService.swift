@@ -38,6 +38,16 @@ actor RPCService: Service {
         self.serviceGroup = serviceGroup
     }
 
+    func serviceUp() {
+        status.isListening = true
+        status.host = host
+        status.port = port
+    }
+
+    func connectionMade() {
+        status.overallTotalConnections += 1
+    }
+
     func run() async throws {
 
         // Bootstraping server channel.
@@ -68,20 +78,18 @@ actor RPCService: Service {
         // Update status
         status.isRunning = true
 
-        try await withGracefulShutdownHandler {
+        try await withGracefulShutdownHandler { @Sendable in
             try await withThrowingDiscardingTaskGroup { group in
                 // TODO: Make sendable closure
-                try await serverChannel.executeThenClose { /* @Sendable */ serverChannelInbound in
+                try await serverChannel.executeThenClose { serverChannelInbound in
 
                     print("RPC server accepting incoming connections on port \(host):\(port)…")
-                    status.isListening = true
-                    status.host = host
-                    status.port = port
+                    await serviceUp()
 
                     for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
 
                         print("Incoming RPC connection from client @ \(String(describing: connectionChannel.channel.remoteAddress))")
-                        status.overallTotalConnections += 1
+                        await connectionMade()
 
                         group.addTask {
                             do {
