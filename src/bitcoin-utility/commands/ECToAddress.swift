@@ -5,7 +5,7 @@ import Foundation
 /// Creates an address from the provided public key.
 struct ECToAddress: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Creates an address from the provided public key."
     )
 

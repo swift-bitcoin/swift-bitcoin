@@ -1,11 +1,8 @@
 import Foundation
 import LibSECP256k1
 
-/// BIP32: Used to derive private keys.
+/// BIP32: Used to derive private keys. Requires global signing context to be initialized.
 public func tweakSecretKey(_ keyData: Data, tweak: Data) -> Data {
-    guard let eccSigningContext else {
-        preconditionFailure()
-    }
     var keyBytes = [UInt8](keyData)
     var tweakBytes = [UInt8](tweak)
 

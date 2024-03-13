@@ -25,7 +25,6 @@ public func getInternalKey(publicKey publicKeyData: Data) -> Data {
 
 /// Gets the internal (x-only) public key for the specified secret key. Requires global signing context to be initialized.
 public func getInternalKey(secretKey secretKeyData: Data) -> Data {
-    guard let eccSigningContext else { preconditionFailure() }
 
     let secretKey = [UInt8](secretKeyData)
 

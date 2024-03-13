@@ -1,5 +1,4 @@
 import Foundation
-import BigInt
 
 /// A static utility class which provides Base58 encoding and decoding functionality.
 public enum Base58 {
@@ -75,7 +74,7 @@ public enum Base58 {
             i *= radix
         }
 
-        let bytes = answer.serialize()
+        let bytes = answer.data
         return Array(byteString.prefix { i in i == alphabet[0] }) + bytes
     }
 

@@ -3,7 +3,7 @@ import Foundation
 /// A fully decoded Bitcoin script and its associated signature version.
 ///
 /// If there is a portion of the data that cannot be parsed it will be stored in ``BitcoinScript/unparsable``.
-public struct BitcoinScript: Equatable {
+public struct BitcoinScript: Equatable, Sendable {
 
     // MARK: - Initializers
     

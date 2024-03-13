@@ -6,8 +6,6 @@ public func signCompact(message: Data, secretKey secretKeyData: Data, compressed
 
     precondition(secretKeyData.count == secretKeySize)
 
-    guard let eccSigningContext else { preconditionFailure() }
-
     let hash = [UInt8](messageHash(message))
     let secretKey = [UInt8](secretKeyData)
 

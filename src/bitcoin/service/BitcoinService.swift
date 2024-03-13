@@ -2,7 +2,7 @@ import Foundation
 import AsyncAlgorithms
 import BitcoinCrypto
 
-public actor BitcoinService {
+public actor BitcoinService: Sendable {
 
     let consensusParams: ConsensusParams
     public private(set) var blockchain = [TransactionBlock]()

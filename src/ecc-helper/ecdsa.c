@@ -3,6 +3,10 @@
 #include <assert.h>
 #include <string.h>
 
+const secp256k1_context* get_static_context() {
+    return secp256k1_context_static;
+}
+
 /** This function is taken from the libsecp256k1 distribution and implements
  *  DER parsing for ECDSA signatures, while supporting an arbitrary subset of
  *  format violations.

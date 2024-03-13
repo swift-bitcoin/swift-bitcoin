@@ -1,6 +1,6 @@
 import Foundation
 
-struct VersionMessage: Equatable {
+struct VersionMessage: Equatable, Sendable {
     init(protocolVersion: ProtocolVersion, services: ProtocolServices, receiverServices: ProtocolServices, receiverAddress: IPv6Address, receiverPort: Int, transmitterServices: ProtocolServices, transmitterAddress: IPv6Address, transmitterPort: Int, nonce: UInt64, userAgent: String, startHeight: Int, relay: Bool) {
         self.protocolVersion = protocolVersion
         self.services = services

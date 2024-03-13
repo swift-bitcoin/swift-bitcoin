@@ -1,8 +1,13 @@
 import ArgumentParser
+import NIO
+
+// TODO: Remove these
+extension ClientBootstrap: @unchecked Sendable { }
+extension CommandConfiguration: @unchecked Sendable { }
 
 @main
 struct BitcoinUtility: AsyncParsableCommand {
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         commandName: "bcutil",
         abstract: "An all-purpose Bitcoin Utility.",
         version: "1.0.0",

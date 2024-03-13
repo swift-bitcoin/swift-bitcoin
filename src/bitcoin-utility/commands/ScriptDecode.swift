@@ -5,7 +5,7 @@ import Foundation
 /// Decodes a script into its assembly textual representation.
 struct ScriptDecode: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Decodes a script into its assembly textual representation.."
     )
 

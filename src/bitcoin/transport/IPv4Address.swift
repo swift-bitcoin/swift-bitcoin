@@ -2,7 +2,7 @@ import Foundation
 
 fileprivate let length = 4
 
-public struct IPv4Address: Equatable, CustomStringConvertible, CustomDebugStringConvertible, ExpressibleByStringLiteral {
+public struct IPv4Address: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, ExpressibleByStringLiteral {
 
     public var description: String {
         "\(rawValue[0]).\(rawValue[1]).\(rawValue[2]).\(rawValue[3])"

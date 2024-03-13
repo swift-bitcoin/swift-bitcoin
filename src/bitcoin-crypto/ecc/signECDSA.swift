@@ -7,8 +7,6 @@ public func signECDSA(message messageData: Data, secretKey secretKeyData: Data, 
     precondition(secretKeyData.count == secretKeySize)
     precondition(messageData.count == messageHashSize)
 
-    guard let eccSigningContext else { preconditionFailure() }
-
     let msg = [UInt8](messageData)
     let secretKey = [UInt8](secretKeyData)
 

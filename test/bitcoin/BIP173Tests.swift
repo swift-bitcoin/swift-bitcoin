@@ -200,13 +200,4 @@ class BIP173Tests: XCTestCase {
             return rhs == .nonPrintableCharacter
         }
     }
-
-    static var allTests = [
-        ("Valid Checksum", testValidChecksum),
-        ("Invalid Checksum", testInvalidChecksum),
-        ("Valid Address", testValidAddress),
-        ("Invalid Address", testInvalidAddress),
-        ("Zero Data", testInvalidAddressEncoding),
-        ("Perfomance", testAddressEncodingDecodingPerfomance)
-    ]
 }

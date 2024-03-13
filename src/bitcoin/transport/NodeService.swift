@@ -1,13 +1,13 @@
 import Foundation
 import AsyncAlgorithms
 
-public actor NodeService {
+public actor NodeService: Sendable {
 
-    public enum Error: Swift.Error {
+    public enum Error: Swift.Error, Sendable {
         case connectionToSelf, unsupportedVersion, unsupportedServices, invalidPayload, missingWTXIDRelayPreference, requestedWTXIDRelayAfterVerack, missingV2AddrPreference, requestedV2AddrAfterVerack, pingPongMismatch, unsupportedCompactBlocksVersion
     }
 
-    public struct Peer {
+    public struct Peer: Sendable {
         public let address: IPv6Address
         public let port: Int
         public let incoming: Bool

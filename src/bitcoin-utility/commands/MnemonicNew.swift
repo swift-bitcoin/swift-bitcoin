@@ -8,7 +8,7 @@ import Foundation
 ///
 struct MnemonicNew: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Create a mnemonic seed (BIP39) from entropy.",
         discussion: "WARNING: mnemonic should be created from properly generated entropy."
     )

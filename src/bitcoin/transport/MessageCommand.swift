@@ -1,6 +1,6 @@
 import Foundation
 
-public enum MessageCommand: String, RawRepresentable {
+public enum MessageCommand: String, RawRepresentable, Sendable {
     case version, verack, ping, pong
 
     /// BIP339

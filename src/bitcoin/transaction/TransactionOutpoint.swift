@@ -1,7 +1,7 @@
 import Foundation
 
 /// A reference to a specific ``TransactionOutput`` of a particular ``BitcoinTransaction`` which is stored in a ``TransactionInput``.
-public struct TransactionOutpoint: Equatable, Hashable {
+public struct TransactionOutpoint: Equatable, Hashable, Sendable {
     
     /// Creates a reference to an output of a previous transaction.
     /// - Parameters:

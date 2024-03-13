@@ -6,7 +6,7 @@ import Foundation
 /// Signs a message with a private key. The signature is encoded in Base64 format.
 struct MessageSign: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Signs a message with a private key.The signature is encoded in Base64 format."
     )
 

@@ -1,6 +1,6 @@
 import Foundation
 
-public enum NodeNetwork: String {
+public enum NodeNetwork: String, Sendable {
     case main, test, signet, regtest
 
     /// Also known as block and message header.

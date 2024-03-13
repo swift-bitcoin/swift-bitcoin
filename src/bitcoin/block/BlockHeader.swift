@@ -1,7 +1,7 @@
 import Foundation
 
 /// A block's header.
-public struct BlockHeader: Equatable {
+public struct BlockHeader: Equatable, Sendable {
 
     // MARK: - Initializers
 

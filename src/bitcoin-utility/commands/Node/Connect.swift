@@ -4,7 +4,7 @@ import Bitcoin
 
 struct Connect: AsyncParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Starts the P2P service."
     )
 

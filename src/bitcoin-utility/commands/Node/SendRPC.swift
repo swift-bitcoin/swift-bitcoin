@@ -3,7 +3,7 @@ import JSONRPC
 
 struct SendRPC: AsyncParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Connect to a running server."
     )
 

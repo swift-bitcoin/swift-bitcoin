@@ -78,7 +78,7 @@ import Foundation
 
 private let jsonrpcVersion = "2.0"
 
-public struct JSONRequest: Codable {
+public struct JSONRequest: Codable, Sendable {
     public var jsonrpc: String
     public var id: String
     public var method: String
@@ -92,7 +92,7 @@ public struct JSONRequest: Codable {
     }
 }
 
-public struct JSONResponse: Codable {
+public struct JSONResponse: Codable, Sendable {
     public var jsonrpc: String
     public var id: String
     public var result: JSONObject?
@@ -125,7 +125,7 @@ public struct JSONResponse: Codable {
     }
 }
 
-public struct JSONError: Codable {
+public struct JSONError: Codable, Sendable {
     public var code: Int
     public var message: String
     public var data: Dictionary<String, String>?
@@ -158,7 +158,7 @@ public struct JSONError: Codable {
     }
 }
 
-public enum JSONErrorCode: Int, Codable {
+public enum JSONErrorCode: Int, Codable, Sendable {
     case parseError = -32700
     case invalidRequest = -32600
     case methodNotFound = -32601
@@ -167,7 +167,7 @@ public enum JSONErrorCode: Int, Codable {
     case other = -32000
 }
 
-public enum JSONObject: Codable {
+public enum JSONObject: Codable, Sendable {
     case none
     case string(String)
     case integer(Int)

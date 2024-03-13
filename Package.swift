@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 5.10
 import PackageDescription
 
 let package = Package(
@@ -12,14 +12,13 @@ let package = Package(
         .executable(name: "bcutil", targets: ["BitcoinUtility"])
     ],
     dependencies: [
-        .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.4.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0"),
-        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.3"),
-        .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0-alpha.1"),
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.62.0")
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.3.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.4.1"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.64.0")
     ],
     targets: [
         .executableTarget(
@@ -31,14 +30,16 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 .product(name: "NIO", package: "swift-nio")],
-            path: "src/bitcoin-node"),
+            path: "src/bitcoin-node",
+            swiftSettings: [ .enableExperimentalFeature("StrictConcurrency")]),
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
                 "Bitcoin",
                 "JSONRPC",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "NIO", package: "swift-nio")],
-            path: "src/bitcoin-utility"),
+            path: "src/bitcoin-utility",
+            swiftSettings: [ .enableExperimentalFeature("StrictConcurrency")]),
         .target(
             name: "ECCHelper",
             dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")],
@@ -47,28 +48,31 @@ let package = Package(
             name: "BitcoinCrypto",
             dependencies: [
                 "ECCHelper",
-                "BigInt",
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
             ],
-            path: "src/bitcoin-crypto"),
+            path: "src/bitcoin-crypto",
+            swiftSettings: [ .enableExperimentalFeature("StrictConcurrency")]),
         .target(
             name: "Bitcoin",
             dependencies: [
                 "BitcoinCrypto",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
-            path: "src/bitcoin"),
+            path: "src/bitcoin",
+            swiftSettings: [ .enableExperimentalFeature("StrictConcurrency")]),
         .target(
             name: "JSONRPC",
             dependencies: [
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
-            path: "src/json-rpc"),
+            path: "src/json-rpc",
+            swiftSettings: [ .enableExperimentalFeature("StrictConcurrency")]),
         .testTarget(
             name: "BitcoinTests",
             dependencies: ["Bitcoin"],
             path: "test/bitcoin",
             resources: [
                 .copy("data")
-            ])
+            ],
+            swiftSettings: [ .enableExperimentalFeature("StrictConcurrency")])
     ]
 )

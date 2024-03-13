@@ -4,8 +4,6 @@ import LibSECP256k1
 /// Requires global signing context to be initialized.
 public func getPublicKey(secretKey secretKeyData: Data, compress: Bool = true) -> Data {
 
-    guard let eccSigningContext else { preconditionFailure() }
-
     let secretKey = [UInt8](secretKeyData)
 
     var pubKey = secp256k1_pubkey()

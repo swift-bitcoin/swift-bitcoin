@@ -1,7 +1,7 @@
 import Foundation
 
 /// Script verification flags represented by config options. All flags are intended to be soft forks: the set of acceptable scripts under flags (A | B) is a subset of the acceptable scripts under flag (A).
-public struct ScriptConfig: OptionSet {
+public struct ScriptConfig: OptionSet, Sendable {
 
     public init(rawValue: Int) {
         self.rawValue = rawValue

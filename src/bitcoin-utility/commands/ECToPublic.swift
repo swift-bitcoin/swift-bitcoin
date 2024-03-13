@@ -6,7 +6,7 @@ import Foundation
 /// Computes the public key corresponding to the provided secret key.
 struct ECToPublic: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Computes the public key corresponding to the provided secret key."
     )
 

@@ -10,7 +10,7 @@ import BitcoinCrypto
 /// A lock time can also be specified for a transaction which prevents it from being processed until a given block or time has passed.
 ///
 /// Version 2 transactions allows for relative lock times based on age of spent outputs.
-public struct BitcoinTransaction: Equatable {
+public struct BitcoinTransaction: Equatable, Sendable {
 
     // MARK: - Initializers
     

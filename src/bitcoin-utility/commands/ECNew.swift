@@ -6,7 +6,7 @@ import Foundation
 /// Generates a new secret key suitable for ECDSA signing.
 struct ECNew: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Generates a new secret key suitable for ECDSA signing."
     )
 
