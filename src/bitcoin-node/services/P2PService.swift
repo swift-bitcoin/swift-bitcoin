@@ -43,6 +43,17 @@ actor P2PService: Service {
         }
     }
 
+    func serviceUp(_ port: Int) {
+        status.isListening = true
+        status.port = port
+        status.connectionsThisSession = 0
+        status.activeConnections = 0
+    }
+
+    func connectionMade() {
+        status.overallTotalConnections += 1
+    }
+
     func start(host: String, port: Int) async {
         guard serverChannel == nil else { return }
         status.host = host
@@ -84,23 +95,20 @@ actor P2PService: Service {
         self.serverChannel = serverChannel
 
         // Accept connections
-        try await withThrowingDiscardingTaskGroup { group in
-            // TODO: Make sendable closure
-            try await serverChannel.executeThenClose { /* @Sendable */ serverChannelInbound in
+        try await withThrowingDiscardingTaskGroup { @Sendable group in
+
+            try await serverChannel.executeThenClose { serverChannelInbound in
                 print("P2P server accepting incoming connections on \(host):\(port)…")
-                status.isListening = true
-                status.port = port
-                status.connectionsThisSession = 0
-                status.activeConnections = 0
+
+                await serviceUp(port)
 
                 for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
 
                     print("P2P server received incoming connection from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
                     let remoteHost = connectionChannel.channel.remoteAddress!.ipAddress!
                     let remotePort = connectionChannel.channel.remoteAddress!.port!
-                    status.overallTotalConnections += 1
-                    status.connectionsThisSession += 1
-                    status.activeConnections += 1
+
+                    await connectionMade()
 
                     group.addTask {
                         do {
