@@ -5,7 +5,7 @@ import Foundation
 /// Generates an address from a script..
 struct ScriptToAddress: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Generates an address from a script."
     )
 

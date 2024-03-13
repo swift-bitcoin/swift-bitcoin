@@ -2,7 +2,7 @@ import Foundation
 
 fileprivate let length = 16
 
-public struct IPv6Address: Equatable, CustomStringConvertible, CustomDebugStringConvertible, ExpressibleByStringLiteral {
+public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, ExpressibleByStringLiteral {
 
     public var description: String {
         var words = words

@@ -1,7 +1,7 @@
 import Foundation
 import BitcoinCrypto
 
-public struct BitcoinMessage: Equatable {
+public struct BitcoinMessage: Equatable, Sendable {
 
     public init(network: NodeNetwork, command: MessageCommand, payload: Data) {
         self.network = network

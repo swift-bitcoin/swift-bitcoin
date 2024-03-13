@@ -13,7 +13,7 @@ jobs:
       - name: Install Swift
         uses: sersoft-gmbh/swifty-linux-action@v3
         with:
-          release-version: 5.9
+          release-version: 5.10
       - name: Build
         run: swift build
       - name: Test

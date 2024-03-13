@@ -30,8 +30,6 @@ public func verifyECDSA(sig sigData: Data, msg msgData: Data, publicKey publicKe
 /// Verifies a signature using a secret key instead of a public key. Requires global signing context to be initialized. Currently unused. Untested. Unpublished.
 func verifyECDSA(sig sigData: Data, msg msgData: Data, secretKey secretKeyData: Data) -> Bool {
 
-    guard let eccSigningContext else { preconditionFailure() }
-
     let sigBytes = [UInt8](sigData)
     let secretKeyBytes = [UInt8](secretKeyData)
     let msgBytes = [UInt8](msgData)

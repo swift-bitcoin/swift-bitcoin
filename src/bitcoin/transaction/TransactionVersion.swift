@@ -3,7 +3,7 @@ import Foundation
 /// The version of a ``BitcoinTransaction``.
 ///
 /// Version 2 transactions enable use of relative lock times.
-public struct TransactionVersion: Equatable, Comparable {
+public struct TransactionVersion: Equatable, Comparable, Sendable {
 
     private init(_ versionValue: Int) {
         self.versionValue = versionValue

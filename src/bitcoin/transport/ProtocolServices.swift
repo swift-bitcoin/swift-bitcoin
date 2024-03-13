@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ProtocolServices: OptionSet {
+public struct ProtocolServices: OptionSet, Sendable {
     public init(rawValue: UInt64) {
         self.rawValue = rawValue
     }

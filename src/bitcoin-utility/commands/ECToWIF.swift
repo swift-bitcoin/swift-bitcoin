@@ -5,7 +5,7 @@ import Foundation
 /// Converts a raw private key to the Wallet Interchange Format (WIF).
 struct ECToWIF: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Converts a raw private key to the Wallet Interchange Format (WIF)."
     )
 

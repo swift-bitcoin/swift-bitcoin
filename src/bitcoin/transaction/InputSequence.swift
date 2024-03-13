@@ -3,7 +3,7 @@ import Foundation
 /// The sequence value of a ``TransactionInput``.
 ///
 /// On version 2 transactions this field is used to indicate a lock time relative to the output being spent. Until the coin is as old as the indicated number of blocks or time interval the transaction will not be validated or mined.
-public struct InputSequence: Equatable {
+public struct InputSequence: Equatable, Sendable {
     
     /// Creates a sequence with a specific value. Use only in verion 1 transactions.
     /// - Parameter sequenceValue: The number value of this sequence field.

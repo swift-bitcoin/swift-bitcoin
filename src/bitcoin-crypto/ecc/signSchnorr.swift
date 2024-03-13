@@ -4,8 +4,6 @@ import LibSECP256k1
 /// Requires global signing context to be initialized.
 public func signSchnorr(msg msgData: Data, secretKey secretKeyData: Data, merkleRoot: Data?, skipTweak: Bool = false, aux auxData: Data?) -> Data {
 
-    guard let eccSigningContext else { preconditionFailure() }
-
     let msg = [UInt8](msgData)
     let secretKey = [UInt8](secretKeyData)
     let aux = if let auxData { [UInt8](auxData) } else { [UInt8]?.none }

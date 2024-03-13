@@ -78,7 +78,7 @@ actor P2PClientService: Service {
         status.overallTotalConnections += 1
         print("P2P client @\(status.localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
 
-        try await clientChannel.executeThenClose { inbound, outbound in
+        try await clientChannel.executeThenClose { @Sendable inbound, outbound in
             let peerID = await bitcoinNode.addPeer(host: remoteHost, port: remotePort, incoming: false)
 
             try await withThrowingDiscardingTaskGroup { group in

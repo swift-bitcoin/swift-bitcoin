@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 
 /// A block of transactions.
-public struct TransactionBlock: Equatable {
+public struct TransactionBlock: Equatable, Sendable {
 
     // MARK: - Initializers
 

@@ -85,7 +85,8 @@ actor P2PService: Service {
 
         // Accept connections
         try await withThrowingDiscardingTaskGroup { group in
-            try await serverChannel.executeThenClose { serverChannelInbound in
+            // TODO: Make sendable closure
+            try await serverChannel.executeThenClose { /* @Sendable */ serverChannelInbound in
                 print("P2P server accepting incoming connections on \(host):\(port)…")
                 status.isListening = true
                 status.port = port

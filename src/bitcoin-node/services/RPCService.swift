@@ -70,7 +70,8 @@ actor RPCService: Service {
 
         try await withGracefulShutdownHandler {
             try await withThrowingDiscardingTaskGroup { group in
-                try await serverChannel.executeThenClose { serverChannelInbound in
+                // TODO: Make sendable closure
+                try await serverChannel.executeThenClose { /* @Sendable */ serverChannelInbound in
 
                     print("RPC server accepting incoming connections on port \(host):\(port)…")
                     status.isListening = true

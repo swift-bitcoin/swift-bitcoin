@@ -1,7 +1,7 @@
 import Foundation
 
 /// Lock time value for a ``BitcoinTransaction``. If less than 500,000,000 is interpreted as the minimum block height at which the transaction is unlocked. When equal or greater than 500,000,000 it represents the time (UNIX epoch) at which the transaction is unlocked. Use 0 to disable the time lock entirely.
-public struct TransactionLocktime: Equatable {
+public struct TransactionLocktime: Equatable, Sendable {
 
     public init(_ locktimeValue: Int) {
         self.locktimeValue = locktimeValue

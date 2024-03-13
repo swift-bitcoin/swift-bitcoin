@@ -3,7 +3,7 @@ import Foundation
 /// Witness data associated with a particular ``TransactionInput``.
 ///
 /// Refer to BIP141 for more information.
-public struct InputWitness: Equatable {
+public struct InputWitness: Equatable, Sendable {
 
     public init(_ elements: [Data]) {
         self.elements = elements

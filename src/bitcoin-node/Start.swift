@@ -3,7 +3,7 @@ import Bitcoin
 
 struct Start: AsyncParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Launch a Bitcoin node instance."
     )
 

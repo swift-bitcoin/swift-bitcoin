@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SighashType {
+public struct SighashType: Sendable {
 
     init?(_ value: UInt8) {
         self.value = value

@@ -5,7 +5,7 @@ import Foundation
 /// Verifies a message signatue using the specified Bitcoin address.
 struct MessageVerify: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Verifies a message signatue using the specified Bitcoin address."
     )
 

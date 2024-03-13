@@ -3,7 +3,7 @@ import Bitcoin
 
 struct Node: AsyncParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         subcommands: [SendRPC.self, StartP2P.self, Connect.self],
         defaultSubcommand: SendRPC.self)
 

@@ -1,14 +1,6 @@
 {
+  "originHash" : "9d75bdd9e59595ebac9288c1240855a1202a550f5c100aa0a969b552c9e30743",
   "pins" : [
-    {
-      "identity" : "bigint",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/attaswift/BigInt.git",
-      "state" : {
-        "revision" : "0ed110f7555c34ff468e72e1686e59721f2b0da6",
-        "version" : "5.3.0"
-      }
-    },
     {
       "identity" : "secp256k1",
       "kind" : "remoteSourceControl",
@@ -59,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
       "state" : {
-        "revision" : "b51f1d6845b353a2121de1c6a670738ec33561a6",
-        "version" : "3.1.0"
+        "revision" : "f0525da24dc3c6cbb2b6b338b65042bc91cbc4bb",
+        "version" : "3.3.0"
       }
     },
     {
@@ -95,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio.git",
       "state" : {
-        "revision" : "702cd7c56d5d44eeba73fdf83918339b26dc855c",
-        "version" : "2.62.0"
+        "revision" : "fc63f0cf4e55a4597407a9fc95b16a2bc44b4982",
+        "version" : "2.64.0"
       }
     },
     {
@@ -104,10 +96,19 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swift-server/swift-service-lifecycle.git",
       "state" : {
-        "revision" : "d673fdc912f09ad83f34dd00ef823d2d80fbd3a7",
-        "version" : "2.3.0"
+        "revision" : "d7fe0e731499a8dcce53bf4cbbc812c8e565d3a7",
+        "version" : "2.4.1"
+      }
+    },
+    {
+      "identity" : "swift-system",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-system.git",
+      "state" : {
+        "revision" : "025bcb1165deab2e20d4eaba79967ce73013f496",
+        "version" : "1.2.1"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

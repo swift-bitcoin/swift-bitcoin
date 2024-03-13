@@ -8,7 +8,7 @@ import Foundation
 ///
 struct MnemonicToSeed: ParsableCommand {
 
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         abstract: "Convert a mnemonic phrase (BIP39) into a seed suitable for BIP32 master key generation."
     )
 

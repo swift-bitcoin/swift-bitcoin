@@ -1,6 +1,6 @@
 import Foundation
 
-public struct PongMessage: Equatable {
+public struct PongMessage: Equatable, Sendable {
 
     init(nonce: UInt64) {
         self.nonce = nonce

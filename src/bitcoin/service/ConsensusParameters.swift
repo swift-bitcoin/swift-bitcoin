@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ConsensusParams {
+public struct ConsensusParams: Sendable {
 
     public let powLimit: Data
     public let powTargetTimespan: Int

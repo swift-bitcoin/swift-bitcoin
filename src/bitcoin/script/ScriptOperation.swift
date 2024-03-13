@@ -1,7 +1,7 @@
 import Foundation
 
 /// A script operation.
-public enum ScriptOperation: Equatable {
+public enum ScriptOperation: Equatable, Sendable {
     case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, reserved(UInt8), success(UInt8), constant(UInt8), noOp, ver, `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultiSig, checkMultiSigVerify, noOp1, checkLockTimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, checkSigAdd, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
 
     init?(pushOpCode opCode: UInt8, _ data: Data) {

@@ -1,7 +1,7 @@
 import Foundation
 
 /// The output of a ``BitcoinTransaction``. While unspent also referred to as a _coin_.
-public struct TransactionOutput: Equatable {
+public struct TransactionOutput: Equatable, Sendable {
     
     /// Creates an output out of an amount (value) and a locking script.
     /// - Parameters:

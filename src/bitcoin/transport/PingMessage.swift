@@ -1,6 +1,6 @@
 import Foundation
 
-public struct PingMessage: Equatable {
+public struct PingMessage: Equatable, Sendable {
 
     init() {
         self.nonce = .random(in: UInt64.min ... UInt64.max)

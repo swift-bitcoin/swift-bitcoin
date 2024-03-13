@@ -38,8 +38,6 @@ public func createTapTweak(internalKey internalKeyData: Data, merkleRoot: Data?)
 /// Requires global signing context to be initialized.
 public func createTapTweak(secretKey secretKeyData: Data, merkleRoot: Data?) -> Data {
 
-    guard let eccSigningContext else { preconditionFailure() }
-
     let secretKey = [UInt8](secretKeyData)
 
     var keypair = secp256k1_keypair()
