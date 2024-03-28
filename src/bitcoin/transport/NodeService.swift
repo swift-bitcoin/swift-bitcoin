@@ -222,7 +222,7 @@ public actor NodeService: Sendable {
             try await processPing(message, from: id)
         case .pong:
             try processPong(message, from: id)
-        case .getheaders, .getaddr, .addrv2, .unknown:
+        case .getheaders, .getaddr, .addrv2, .inv, .getdata, .notfound, .unknown:
             break
         }
     }
