@@ -15,12 +15,16 @@ extension GetDataMessage {
 
     public init?(_ data: Data) {
         guard data.count >= 1 else { return nil }
+        var data = data
 
         guard let itemCount = data.varInt, itemCount <= 50_000 else { return nil }
+        data = data.dropFirst(itemCount.varIntSize)
+
         var items = [InventoryItem]()
         for _ in 0 ..< itemCount {
             guard let item = InventoryItem(data) else { return nil }
             items.append(item)
+            data = data.dropFirst(InventoryItem.size)
         }
         self.items = items
     }

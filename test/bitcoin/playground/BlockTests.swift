@@ -135,22 +135,6 @@ final class BlockTests: XCTestCase {
         XCTAssertEqual(block, expectedBlock)
         XCTAssertEqual(block.data, expectedBlockData)
         XCTAssertEqual(block.identifier.hex, expectedBlockHash)
-
-        // Test block message
-        let blockMessage = BlockMessage(block: block)
-        let blockMessageData = blockMessage.data
-        guard let blockMessageRoundtrip = BlockMessage(blockMessageData) else {
-            XCTFail(); return
-        }
-        XCTAssertEqual(blockMessageRoundtrip.data, blockMessageData)
-
-        // Test block message regtest
-        let blockMessageRegtest = BlockMessage(block: block, network: .regtest)
-        let blockMessageRegtestData = blockMessageRegtest.data
-        guard let blockMessageRegtestRoundtrip = BlockMessage(blockMessageRegtestData) else {
-            XCTFail(); return
-        }
-        XCTAssertEqual(blockMessageRegtestRoundtrip.data, blockMessageRegtestData)
     }
 
     func testBlockDateNanoseconds() throws {

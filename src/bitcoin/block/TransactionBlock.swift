@@ -6,7 +6,7 @@ public struct TransactionBlock: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    public init(header: BlockHeader, transactions: [BitcoinTransaction]) {
+    public init(header: BlockHeader, transactions: [BitcoinTransaction] = []) {
         self.header = header
         self.transactions = transactions
     }
