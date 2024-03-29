@@ -1,6 +1,6 @@
 import Foundation
 
-enum ProtocolVersion: Int, Comparable {
+public enum ProtocolVersion: Int, Comparable {
 
     case unsupported = 70015, latest = 70016, future = 70017
 
@@ -14,7 +14,7 @@ enum ProtocolVersion: Int, Comparable {
         }
     }
 
-    static func < (lhs: ProtocolVersion, rhs: ProtocolVersion) -> Bool {
+    public static func < (lhs: ProtocolVersion, rhs: ProtocolVersion) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
 }
