@@ -25,6 +25,11 @@ final class BlockTests: XCTestCase {
         let genesisBlockRedeserialized = try XCTUnwrap(TransactionBlock(genesisBlockData))
         XCTAssertEqual(genesisBlockRedeserialized, genesisBlock)
         XCTAssertEqual(genesisBlock.identifier.hex, expectedBlockHash)
+
+        // Short transaction ID
+        // TODO: The following value is taken from the function's output so nothing is being verified until replaced with a known-to-be valid ID.
+        let expectedShortTransactionIdentifier = Data([0xeb, 0x72, 0x0c, 0x3a, 0x07, 0x5b])
+        XCTAssertEqual(genesisBlock.makeShortTransactionIdentifier(for: 0, nonce: 0), expectedShortTransactionIdentifier)
     }
 
     /// Tests one empty block right after the genesis block at height 1. Includes checks for the coinbase transaction.
@@ -135,6 +140,12 @@ final class BlockTests: XCTestCase {
         XCTAssertEqual(block, expectedBlock)
         XCTAssertEqual(block.data, expectedBlockData)
         XCTAssertEqual(block.identifier.hex, expectedBlockHash)
+
+        // Short transaction ID
+        // TODO: The following value is taken from the function's output so nothing is being verified until replaced with a known-to-be valid ID.
+        let expectedShortTransactionIdentifier = Data([0x20, 0xb2, 0x36, 0x73, 0x7a, 0xcb])
+        XCTAssertEqual(block.makeShortTransactionIdentifier(for: 0, nonce: 0), expectedShortTransactionIdentifier)
+
     }
 
     func testBlockDateNanoseconds() throws {
