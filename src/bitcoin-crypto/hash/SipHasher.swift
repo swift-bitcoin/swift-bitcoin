@@ -146,8 +146,8 @@ public struct SipHasher {
 
         byteCount += buffer.count
     }
-    public mutating func finalize() -> Int {
-        Int(truncatingIfNeeded: _finalize())
+    public mutating func finalize() -> UInt64 {
+        _finalize()
     }
 }
 
