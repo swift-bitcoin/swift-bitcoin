@@ -1,6 +1,6 @@
 import Foundation
 
-public enum ProtocolVersion: Int, Comparable {
+public enum ProtocolVersion: Int, Comparable, Sendable {
 
     case unsupported = 70015, latest = 70016, future = 70017
 
