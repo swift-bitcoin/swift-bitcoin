@@ -205,6 +205,8 @@ actor RPCService: Service {
                 try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.blockchain.last!.hash.hex) as JSONObject))
             case "ping-all":
                 await bitcoinNode.pingAll()
+            case "request-headers":
+                await bitcoinNode.requestHeaders()
             default:
                 try await outbound.write(.init(id: request.id, error: .init(.invalidParams("method"), description: "Method `\(request.method)` does not exist.")))
             }

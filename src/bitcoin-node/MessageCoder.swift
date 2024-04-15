@@ -17,7 +17,7 @@ final class MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
         let peekFrom = buffer.readableBytesView.startIndex.advanced(by: BitcoinMessage.payloadSizeStartIndex)
         let peek = buffer.readableBytesView[peekFrom...]
         let payloadLength = Int(peek.withUnsafeBytes {
-            $0.load(as: UInt32.self)
+            $0.loadUnaligned(as: UInt32.self)
         })
 
         let messageLength = BitcoinMessage.baseSize + payloadLength

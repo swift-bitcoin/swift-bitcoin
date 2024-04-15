@@ -113,6 +113,9 @@ public actor NodeService: Sendable {
     /// The node's randomly generated identifier (nonce). This is sent with `version` messages.
     let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
 
+    var awaitingHeadersFrom = UUID?.none
+    var awaitingHeadersSince = Date?.none
+
     /// Called when the peer-to-peer service stops listening for incoming connections.
     public func resetAddress() {
         address = .none
@@ -142,6 +145,25 @@ public actor NodeService: Sendable {
             }
         }
     }
+
+    /// Request headers from peers.
+    public func requestHeaders() async {
+        let maxHeight = peers.values.reduce(-1) { max($0, $1.height) }
+        guard let (id, _) = peers.filter({ $0.value.height == maxHeight }).randomElement() else {
+            return
+        }
+        await requestHeaders(id)
+    }
+
+    /// Request headers from a specific peer.
+    func requestHeaders(_ id: UUID) async {
+        let locatorHashes = await bitcoinService.makeBlockLocator()
+        let getHeaders = GetHeadersMessage(protocolVersion: Self.version, locatorHashes: locatorHashes)
+        awaitingHeadersFrom = id
+        awaitingHeadersSince = .now
+        await send(.getheaders, payload: getHeaders.data, to: id)
+    }
+
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
     public func addPeer(host: String, port: Int, incoming: Bool = true) async -> UUID {

@@ -32,6 +32,27 @@ public actor BitcoinService: Sendable {
         blockchain.append(TransactionBlock.makeGenesisBlock(consensusParams: consensusParams))
     }
 
+    /// To create the block locator hashes, keep pushing hashes until you go back to the genesis block. After pushing 10 hashes back, the step backwards doubles every loop.
+    public func makeBlockLocator() -> [Data] {
+        precondition(blockchain.startIndex == 0)
+
+        var index = blockchain.endIndex - 1
+        var step = 1
+        var have = [Data]()
+        if index < 0 { return have }
+
+        while index >= 0 {
+            let block = blockchain[index]
+            have.append(block.hash)
+            if index == 0 { break }
+
+            // Exponentially larger steps back, plus the genesis block.
+            index = max(index - step, 0) // TODO: Use "skiplist"
+            if have.count > 10 { step *= 2 }
+        }
+        return have
+    }
+
     public func generateTo(_ address: String, blockTime: Date = .now) {
         if blockchain.isEmpty {
             createGenesisBlock()
