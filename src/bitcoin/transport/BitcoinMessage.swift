@@ -23,7 +23,7 @@ public struct BitcoinMessage: Equatable, Sendable {
     public var isChecksumOk: Bool {
         let hash = hash256(payload)
         let realChecksum = hash.withUnsafeBytes {
-            $0.load(as: UInt32.self)
+            $0.loadUnaligned(as: UInt32.self)
         }
         return checksum == realChecksum
     }
