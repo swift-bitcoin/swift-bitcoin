@@ -53,6 +53,28 @@ public actor BitcoinService: Sendable {
         return have
     }
 
+    public func findHeaders(using locator: [Data]) -> [BlockHeader] {
+        var from = Int?.none
+        for hash in locator {
+            for index in blockchain.indices.reversed() {
+                let block = blockchain[index]
+                if block.hash == hash {
+                    from = index
+                    break
+                }
+            }
+            if from != .none { break }
+        }
+        guard let from else { return [] }
+        let firstIndex = from.advanced(by: 1)
+        var lastIndex = blockchain.endIndex
+        if firstIndex >= lastIndex { return [] }
+        if lastIndex - firstIndex > 200 {
+            lastIndex = from.advanced(by: 200)
+        }
+        return .init(blockchain[firstIndex ..< lastIndex].map(\.header))
+    }
+
     public func generateTo(_ address: String, blockTime: Date = .now) {
         if blockchain.isEmpty {
             createGenesisBlock()

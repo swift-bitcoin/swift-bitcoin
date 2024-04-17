@@ -15,6 +15,7 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
     case sendcmpct
 
     case getheaders
+    case headers
 
     /// BIP133
     case feefilter
