@@ -62,6 +62,7 @@ public actor NodeService: Sendable {
         // Status
         public internal(set) var height = 0
         public internal(set) var lastPingNonce = UInt64?.none
+        var receivedHeaders = [BlockHeader]?.none
 
         /// BIP133
         public internal(set) var feeFilterRate = BitcoinAmount?.none // TODO: Honor when relaying transacions (inv) to this peer, #188
@@ -149,7 +150,9 @@ public actor NodeService: Sendable {
     /// Request headers from peers.
     public func requestHeaders() async {
         let maxHeight = peers.values.reduce(-1) { max($0, $1.height) }
-        guard let (id, _) = peers.filter({ $0.value.height == maxHeight }).randomElement() else {
+        let ourHeight = await bitcoinService.blockchain.count
+        guard maxHeight > ourHeight,
+              let (id, _) = peers.filter({ $0.value.height == maxHeight }).randomElement() else {
             return
         }
         await requestHeaders(id)
@@ -244,7 +247,11 @@ public actor NodeService: Sendable {
             try await processPing(message, from: id)
         case .pong:
             try processPong(message, from: id)
-        case .getheaders, .getaddr, .addrv2, .inv, .getdata, .notfound, .unknown:
+        case .getheaders:
+            try await processGetHeaders(message, from: id)
+        case .headers:
+            try await processHeaders(message, from: id)
+        case .getaddr, .addrv2, .inv, .getdata, .notfound, .unknown:
             break
         }
     }
@@ -457,6 +464,50 @@ public actor NodeService: Sendable {
         }
         debugPrint(feeFilter)
         peers[id]?.feeFilterRate = feeFilter.feeRate
+    }
+
+    private func processGetHeaders(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let _ = peers[id] else { return }
+
+        guard let getHeaders = GetHeadersMessage(message.payload) else {
+            throw Error.invalidPayload
+        }
+        debugPrint(getHeaders)
+
+        let headers = await bitcoinService.findHeaders(using: getHeaders.locatorHashes)
+        let headersMessage = HeadersMessage(items: headers)
+        debugPrint(headersMessage)
+
+        await send(.headers, payload: headersMessage.data, to: id)
+    }
+
+    private func processHeaders(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let _ = peers[id], let awaitingHeadersFrom, let awaitingHeadersSince, awaitingHeadersFrom == id else { return }
+
+        self.awaitingHeadersFrom = .none
+        self.awaitingHeadersSince = .none
+
+        if awaitingHeadersSince.timeIntervalSinceNow < -60 {
+            return
+        }
+
+        guard let headersMessage = HeadersMessage(message.payload) else {
+            throw Error.invalidPayload
+        }
+
+        guard headersMessage.items.count > 0 else {
+            return
+        }
+        let connectionPoint = headersMessage.items[0].previous
+
+        guard let last = await bitcoinService.blockchain.last, connectionPoint == last.hash else {
+            return
+        }
+
+        peers[id]?.receivedHeaders = headersMessage.items
+        // TODO: Request blocks
+
+        debugPrint(headersMessage)
     }
 
     static let version = ProtocolVersion.latest
