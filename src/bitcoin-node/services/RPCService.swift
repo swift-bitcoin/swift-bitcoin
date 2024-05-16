@@ -202,7 +202,7 @@ actor RPCService: Service {
                     return
                 }
                 await bitcoinService.generateTo(address)
-                try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.blockchain.last!.hash.hex) as JSONObject))
+                try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.headers.last!.hash.hex) as JSONObject))
             case "ping-all":
                 await bitcoinNode.pingAll()
             case "request-headers":

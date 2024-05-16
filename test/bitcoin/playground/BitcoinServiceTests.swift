@@ -25,7 +25,7 @@ final class BitcoinServiceTests: XCTestCase {
         }
 
         // Grab block 1's coinbase transaction and output.
-        let previousTransaction = await service.blockchain[1].transactions[0]
+        let previousTransaction = await service.getBlock(1).transactions[0]
         let previousOutput = previousTransaction.outputs[0]
         let outpoint = previousTransaction.outpoint(for: 0)!
 
@@ -82,13 +82,13 @@ final class BitcoinServiceTests: XCTestCase {
 
         // Verify the mempool is empty once again.
         XCTAssertEqual(mempoolAfter, 0)
-        let blocks = await service.blockchain.count
+        let blocks = await service.blockTransactions.count
         XCTAssertEqual(blocks, 102)
-        guard let lastBlock = await service.blockchain.last else {
+        guard let lastBlockTtransactions = await service.blockTransactions.last else {
             XCTFail(); return
         }
         // Verify our transaction was confirmed in a block.
-        XCTAssertEqual(lastBlock.transactions[1], signedTransaction)
+        XCTAssertEqual(lastBlockTtransactions[1], signedTransaction)
     }
 
     func testDifficultyTarget() async throws {
@@ -134,7 +134,7 @@ final class BitcoinServiceTests: XCTestCase {
             let minutes = if i < 5 { 4 } else if i < 10 { 2 } else { 4 }
             date = calendar.date(byAdding: .minute, value: minutes, to: date)!
             await service.generateTo("miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5", blockTime: date)
-            let block = await service.blockchain.last!
+            let header = await service.headers.last!
             let expectedTarget = if (1...4).contains(i) {
                 0x207fffff // 0x7fffff0000000000000000000000000000000000000000000000000000000000 DifficultyTarget(compact: block.header.target).data.reversed().hex
             } else if (5...9).contains(i) {
@@ -144,7 +144,7 @@ final class BitcoinServiceTests: XCTestCase {
             } else {
                 0x1f1e9351 // 0x001e935100000000000000000000000000000000000000000000000000000000
             }
-            XCTAssertEqual(block.header.target, expectedTarget)
+            XCTAssertEqual(header.target, expectedTarget)
         }
     }
 
