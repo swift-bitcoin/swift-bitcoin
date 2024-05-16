@@ -19,11 +19,11 @@ public struct TransactionBlock: Equatable, Sendable {
     // MARK: - Computed Properties
 
     public var hash: Data {
-        hash256(header.data)
+        header.hash
     }
 
     public var identifier: Data {
-        Data(hash.reversed())
+        header.identifier
     }
 
     // MARK: - Instance Methods

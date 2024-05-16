@@ -130,7 +130,7 @@ final class BlockTests: XCTestCase {
 
         await service.generateTo("miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5", blockTime: .init(timeIntervalSince1970: 1704890713))
 
-        let block = await service.blockchain[1]
+        let block = await service.getBlock(1)
         let coinbaseTx = block.transactions[0]
         let expectedWitnessCommitmentHash = "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9"
 

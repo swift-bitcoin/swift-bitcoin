@@ -3,7 +3,7 @@ import ServiceLifecycle
 
 extension NodeService: Service {
     public func run() async throws {
-        let blocks = await bitcoinService.blocks
+        let blocks = await bitcoinService.subscribeToBlocks()
         self.blocks = blocks
         await withGracefulShutdownHandler {
             for await block in blocks.cancelOnGracefulShutdown() {

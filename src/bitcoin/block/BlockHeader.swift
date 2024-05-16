@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// A block's header.
 public struct BlockHeader: Equatable, Sendable {
@@ -33,6 +34,14 @@ public struct BlockHeader: Equatable, Sendable {
     public let nonce: Int
 
     // MARK: - Computed Properties
+
+    public var hash: Data {
+        hash256(data)
+    }
+
+    public var identifier: Data {
+        Data(hash.reversed())
+    }
 
     // MARK: - Instance Methods
 
