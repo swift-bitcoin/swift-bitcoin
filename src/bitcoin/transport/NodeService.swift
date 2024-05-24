@@ -99,7 +99,7 @@ public actor NodeService: Sendable {
 
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
-    public func addPeer(host: String, port: Int, incoming: Bool = true) async -> UUID {
+    public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) async -> UUID {
         let id = UUID()
         peers[id] = Peer(address: IPv6Address.fromHost(host), port: port, incoming: incoming)
         peerOuts[id] = .init()
@@ -126,9 +126,9 @@ public actor NodeService: Sendable {
         return .init(
             protocolVersion: Self.version,
             services: Self.services,
-            receiverServices: peer.services ?? .empty,
-            receiverAddress: peer.addressDeclared ?? .unspecified,
-            receiverPort: peer.portDeclared ?? 0,
+            receiverServices: peer.version?.services ?? .empty,
+            receiverAddress: peer.version?.transmitterAddress ?? .unspecified,
+            receiverPort: peer.version?.transmitterPort ?? 0,
             transmitterServices: Self.services,
             transmitterAddress: address ?? .unspecified,
             transmitterPort: port ?? 0,
@@ -147,7 +147,7 @@ public actor NodeService: Sendable {
         debugPrint(versionMessage)
 
         await send(.version, payload: versionMessage.data, to: id)
-        peers[id]?.sentVersion = true
+        peers[id]?.versionSent = true
     }
 
     /// Sends a ping message to a peer. Creates a new child task.
@@ -209,7 +209,6 @@ public actor NodeService: Sendable {
         // <- pong
 
         guard let peer = peers[id] else { return }
-        peers[id]?.receivedVersion = true
 
         let ourTime = Date.now
 
@@ -233,13 +232,7 @@ public actor NodeService: Sendable {
             throw Error.unsupportedVersion
         }
 
-        peers[id]?.nonce = peerVersion.nonce
-        peers[id]?.preferredVersion = peerVersion.protocolVersion
-        peers[id]?.userAgent = peerVersion.userAgent
-        peers[id]?.services = peerVersion.services
-        peers[id]?.addressDeclared = peerVersion.transmitterAddress
-        peers[id]?.portDeclared = peerVersion.transmitterPort
-        peers[id]?.relay = peerVersion.relay
+        peers[id]?.version = peerVersion
         peers[id]?.timeDiff = Int(ourTime.timeIntervalSince1970) - Int(peerVersion.timestamp.timeIntervalSince1970)
         peers[id]?.height = peerVersion.startHeight
 
@@ -255,19 +248,19 @@ public actor NodeService: Sendable {
             debugPrint(versionMessage)
 
             await send(.version, payload: versionMessage.data, to: id)
-            peers[id]?.sentVersion = true
+            peers[id]?.versionSent = true
         }
 
         // BIP339
         await send(.wtxidrelay, to: id)
-        peers[id]?.sentWTXIDRelayPreference = true
+        peers[id]?.witnessRelayPreferenceSent = true
 
         // BIP155
         await send(.sendaddrv2, to: id)
-        peers[id]?.sentV2AddressPreference = true
+        peers[id]?.v2AddressPreferenceSent = true
 
         await send(.verack, to: id)
-        peers[id]?.sentVersionAck = true
+        peers[id]?.versionAckSent = true
     }
 
     /// BIP339
@@ -275,12 +268,12 @@ public actor NodeService: Sendable {
         guard let peer = peers[id] else { return }
 
         // Disconnect peers that send a WTXIDRELAY message after VERACK.
-        if peer.receivedVersionAck {
+        if peer.versionAckReceived {
             // Because we disconnect nodes that don't signal for WTXID relay, this code will never be reached.
             throw Error.requestedWTXIDRelayAfterVerack
         }
 
-        peers[id]?.receivedWTXIDRelayPreference = true
+        peers[id]?.witnessRelayPreferenceReceived = true
     }
 
     /// BIP155
@@ -288,34 +281,34 @@ public actor NodeService: Sendable {
         guard let peer = peers[id] else { return }
 
         // Disconnect peers that send a SENDADDRV2 message after VERACK.
-        if peer.receivedVersionAck {
+        if peer.versionAckReceived {
             // Because we disconnect nodes that don't ask for v2, this code will never be reached.
             throw Error.requestedV2AddrAfterVerack
         }
 
-        peers[id]?.receivedV2AddressPreference = true
+        peers[id]?.v2AddressPreferenceReceived = true
     }
 
     private func processVerack(_ message: BitcoinMessage, from id: UUID) async throws {
         guard let peer = peers[id] else { return }
 
-        if peer.receivedVersionAck {
+        if peer.versionAckReceived {
             // Ignore redundant verack.
             print("Redundant verack.")
             return
         }
 
         // BIP339
-        if !peer.receivedWTXIDRelayPreference {
+        if !peer.witnessRelayPreferenceReceived {
             throw Error.missingWTXIDRelayPreference
         }
 
         // BIP155
-        if !peer.receivedV2AddressPreference {
+        if !peer.v2AddressPreferenceReceived {
             throw Error.missingV2AddrPreference
         }
 
-        peers[id]?.receivedVersionAck = true
+        peers[id]?.versionAckReceived = true
 
         if peers[id]!.handshakeComplete {
             print("Handshake successful.")
@@ -323,7 +316,7 @@ public actor NodeService: Sendable {
 
         // BIP152 send a burst of supported compact block versions followed by a ping to lock it down.
         await send(.sendcmpct, payload: SendCompactMessage().data, to: id)
-        peers[id]?.sentCompactBlocksPreference = true
+        peers[id]?.compactBlocksPreferenceSent = true
         if let pong = peer.pongOnHoldUntilCompactBlocksPreference {
             await send(.pong, payload: pong.data, to: id)
             peers[id]?.pongOnHoldUntilCompactBlocksPreference = .none
@@ -345,7 +338,7 @@ public actor NodeService: Sendable {
         debugPrint(pong)
 
         // BIP152 We need to hold the pong until the compact block version was sent.
-        if peer.sentCompactBlocksPreference {
+        if peer.compactBlocksPreferenceSent {
             await send(.pong, payload: pong.data, to: id)
         } else {
             peers[id]?.pongOnHoldUntilCompactBlocksPreference = pong
