@@ -1,7 +1,59 @@
 import XCTest
+import AsyncAlgorithms
 @testable import Bitcoin
 
 final class NodeServiceTests: XCTestCase {
+
+    var satoshiChain = BitcoinService?.none
+    var satoshi = NodeService?.none
+    var halPeer = UUID?.none
+    var satoshiOut = AsyncChannel<BitcoinMessage>.Iterator?.none
+
+    var halChain = BitcoinService?.none
+    var hal = NodeService?.none
+    var satoshiPeer = UUID?.none
+    var halOut = AsyncChannel<BitcoinMessage>.Iterator?.none
+
+    override class func setUp() {
+        super.setUp()
+    }
+
+    override func setUp() async throws {
+        let satoshiChain = BitcoinService()
+        self.satoshiChain = satoshiChain
+        let satoshi = NodeService(bitcoinService: satoshiChain, feeFilterRate: 2)
+        self.satoshi = satoshi
+        let halPeer = await satoshi.addPeer()
+        self.halPeer = halPeer
+        satoshiOut = await satoshi.getChannel(for: halPeer).makeAsyncIterator()
+
+        let halChain = BitcoinService()
+        self.halChain = halChain
+        let hal = NodeService(bitcoinService: halChain, feeFilterRate: 3)
+        self.hal = hal
+        let satoshiPeer = await hal.addPeer(incoming: false)
+        self.satoshiPeer = satoshiPeer
+        halOut = await hal.getChannel(for: satoshiPeer).makeAsyncIterator()
+    }
+
+    override func tearDown() async throws {
+        if let halPeer {
+            await satoshi?.removePeer(halPeer)
+        }
+        try await satoshi?.stop()
+        await satoshiChain?.shutdown()
+        halPeer = .none
+        satoshi = .none
+        satoshiChain = .none
+
+        if let satoshiPeer {
+            await hal?.removePeer(satoshiPeer)
+        }
+        try await hal?.stop()
+        await halChain?.shutdown()
+        hal = .none
+        halChain = .none
+    }
 
     /// Tests handshake and extended post-handshake exchange.
     ///
@@ -20,201 +72,230 @@ final class NodeServiceTests: XCTestCase {
     ///     -> feefilter
     ///     <- pong
     ///
-    func testExtendedHandshake() async throws {
-        let serviceA = BitcoinService()
-        let serviceB = BitcoinService()
-        let serverNode = NodeService(bitcoinService: serviceA, feeFilterRate: 2)
-        let clientNode = NodeService(bitcoinService: serviceB, feeFilterRate: 3)
-        let peerInServer = await serverNode.addPeer(host: "", port: 0)
-        let peerInClient = await clientNode.addPeer(host: "", port: 0, incoming: false)
-        var serverMessages = await serverNode.getChannel(for: peerInServer).makeAsyncIterator()
-        var clientMessages = await clientNode.getChannel(for: peerInClient).makeAsyncIterator()
+    func performExtendedHandshake() async throws {
 
-        // Client --(version)->> …
+        guard let satoshi, let halPeer, var satoshiOut, let hal, let satoshiPeer, var halOut else { preconditionFailure() }
+
+        // Hal --(version)->> …
         Task {
-            await clientNode.connect(peerInClient)
+            await hal.connect(satoshiPeer)
         }
-        guard let clientVersion = await clientMessages.next() else { XCTFail(); return }
+        // `messageHS0` means "0th Message from Hal to Satoshi".
+        guard let messageHS0_version = await halOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(clientVersion.command, .version)
+        XCTAssertEqual(messageHS0_version.command, .version)
 
-        // … --(version)->> Server
+        // … --(version)->> Satoshi
         Task {
-            try await serverNode.processMessage(clientVersion, from: peerInServer)
+            try await satoshi.processMessage(messageHS0_version, from: halPeer)
         }
-        // … <<-(version)-- Server
-        guard let serverVersion = await serverMessages.next() else { XCTFail(); return }
+        // Satoshi --(version)->> …
+        guard let messageSH0_version = await satoshiOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(serverVersion.command, .version)
+        XCTAssertEqual(messageSH0_version.command, .version)
 
-        // … <<-(wtxidrelay)-- Server
-        guard let serverWTXIDRelay = await serverMessages.next() else { XCTFail(); return }
+        // Satoshi --(wtxidrelay)->> …
+        guard let messageSH1_wtxidrelay = await satoshiOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(serverWTXIDRelay.command, .wtxidrelay)
+        XCTAssertEqual(messageSH1_wtxidrelay.command, .wtxidrelay)
 
-        // … <<-(sendaddrv2)-- Server
-        guard let serverSendAddrV2 = await serverMessages.next() else { XCTFail(); return }
+        // Satoshi --(sendaddrv2)->> …
+        guard let messageSH2_sendaddrv2 = await satoshiOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(serverSendAddrV2.command, .sendaddrv2)
+        XCTAssertEqual(messageSH2_sendaddrv2.command, .sendaddrv2)
 
-        // … <<-(verack)-- Server
-        guard let serverVerack = await serverMessages.next() else { XCTFail(); return }
+        // Satoshi --(verack)->> …
+        guard let messageSH3_verack = await satoshiOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(serverVerack.command, .verack)
+        XCTAssertEqual(messageSH3_verack.command, .verack)
 
-        // Client <<-(version)-- …
+        // … --(version)->> Hal
         Task {
-            try await clientNode.processMessage(serverVersion, from: peerInClient)
+            try await hal.processMessage(messageSH0_version, from: satoshiPeer)
         }
-        // Client --(wtxidrelay)->> …
-        guard let clientWTXIDRelay = await clientMessages.next() else { XCTFail(); return }
+        // Hal --(wtxidrelay)->> …
+        guard let messageHS1_wtxidrelay = await halOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(clientWTXIDRelay.command, .wtxidrelay)
+        XCTAssertEqual(messageHS1_wtxidrelay.command, .wtxidrelay)
 
-        // Client --(sendaddrv2)->> …
-        guard let clientSendAddrV2 = await clientMessages.next() else { XCTFail(); return }
+        // Hal --(sendaddrv2)->> …
+        guard let messageHS2_sendaddrv2 = await halOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(clientSendAddrV2.command, .sendaddrv2)
+        XCTAssertEqual(messageHS2_sendaddrv2.command, .sendaddrv2)
 
-        // Client --(verack)->> …
-        guard let clientVerack = await clientMessages.next() else { XCTFail(); return }
+        // Hal --(verack)->> …
+        guard let messageHS3_verack = await halOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(clientVerack.command, .verack)
+        XCTAssertEqual(messageHS3_verack.command, .verack)
 
-        let versionReceived = await clientNode.peers[peerInClient]!.receivedVersion
-        XCTAssert(versionReceived)
+        let versionReceived = await hal.peers[satoshiPeer]!.version
+        XCTAssertNotNil(versionReceived)
 
-        // Client <<-(wtxidrelay)-- …
-        try await clientNode.processMessage(serverWTXIDRelay, from: peerInClient)
-        var wtxidRelay = await clientNode.peers[peerInClient]!.receivedWTXIDRelayPreference
+        // … --(wtxidrelay)->> Hal
+        try await hal.processMessage(messageSH1_wtxidrelay, from: satoshiPeer)
+        var wtxidRelay = await hal.peers[satoshiPeer]!.witnessRelayPreferenceReceived
         XCTAssert(wtxidRelay)
 
-        // Client <<-(sendaddrv2)-- …
-        try await clientNode.processMessage(serverSendAddrV2, from: peerInClient)
-        var v2Addr = await clientNode.peers[peerInClient]!.receivedV2AddressPreference
+        // … --(sendaddrv2)->> Hal
+        try await hal.processMessage(messageSH2_sendaddrv2, from: satoshiPeer)
+        var v2Addr = await hal.peers[satoshiPeer]!.v2AddressPreferenceReceived
         XCTAssert(v2Addr)
 
-        // Client <<-(verack)-- …
+        // … --(verack)->> Hal
         Task {
-            try await clientNode.processMessage(serverVerack, from: peerInClient)
+            try await hal.processMessage(messageSH3_verack, from: satoshiPeer)
         }
-        // Client --(sendcmpct)->> …
-        guard let clientSendCompactMessage = await clientMessages.next() else { XCTFail(); return }
+        // Hal --(sendcmpct)->> …
+        guard let messageHS4_sendcmpct = await halOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(clientSendCompactMessage.command, .sendcmpct)
+        XCTAssertEqual(messageHS4_sendcmpct.command, .sendcmpct)
 
-        // Client --(ping)->> …
-        guard let clientPingMessage = await clientMessages.next() else { XCTFail(); return }
+        // Hal --(ping)->> …
+        guard let messageHS5_ping = await halOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(clientPingMessage.command, .ping)
+        XCTAssertEqual(messageHS5_ping.command, .ping)
 
-        let ping = try XCTUnwrap(PingMessage(clientPingMessage.payload))
-        var lastPingNonce = await clientNode.peers[peerInClient]!.lastPingNonce
+        // Hal --(feefilter)->> …
+        guard let messageHS6_feefilter = await halOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageHS6_feefilter.command, .feefilter)
+
+        let halFeeRate1 = try XCTUnwrap(FeeFilterMessage(messageHS6_feefilter.payload))
+        let halFeeRate = await hal.feeFilterRate
+        XCTAssertEqual(halFeeRate1.feeRate, halFeeRate)
+
+        var veracked = await hal.peers[satoshiPeer]!.versionAckReceived
+        XCTAssert(veracked)
+
+        var handshook = await hal.peers[satoshiPeer]!.handshakeComplete
+        XCTAssert(handshook)
+
+        // … --(wtxidrelay)->> Satoshi
+        try await satoshi.processMessage(messageHS1_wtxidrelay, from: halPeer)
+        wtxidRelay = await satoshi.peers[halPeer]!.witnessRelayPreferenceReceived
+        XCTAssert(wtxidRelay)
+
+        // … --(sendaddrv2)->> Satoshi
+        try await satoshi.processMessage(messageHS2_sendaddrv2, from: halPeer)
+        v2Addr = await satoshi.peers[halPeer]!.v2AddressPreferenceReceived
+        XCTAssert(v2Addr)
+
+        // … --(verack)->> Satoshi
+        Task {
+            try await satoshi.processMessage(messageHS3_verack, from: halPeer)
+        }
+        // Satoshi --(sendcmpct)->> …
+        guard let messageSH4_sendcmpct = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageSH4_sendcmpct.command, .sendcmpct)
+
+        // Satoshi --(ping)->> …
+        guard let messageSH5_ping = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageSH5_ping.command, .ping)
+
+        // Satoshi --(feefilter)->> …
+        guard let messageSH6_feefilter = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageSH6_feefilter.command, .feefilter)
+
+        let satoshiFeeRate1 = try XCTUnwrap(FeeFilterMessage(messageSH6_feefilter.payload))
+        let satoshiFeeRate = await satoshi.feeFilterRate
+        XCTAssertEqual(satoshiFeeRate1.feeRate, satoshiFeeRate)
+
+        veracked = await satoshi.peers[halPeer]!.versionAckReceived
+        XCTAssert(veracked)
+
+        handshook = await satoshi.peers[halPeer]!.handshakeComplete
+        XCTAssert(handshook)
+
+        // … --(sendcmpct)->> Satoshi
+        try await satoshi.processMessage(messageHS4_sendcmpct, from: halPeer) // No response expected
+        let compactBlocksVersionHal = await satoshi.peers[halPeer]!.compactBlocksVersion
+        XCTAssertEqual(compactBlocksVersionHal, 2)
+
+        // … --(ping)->> Satoshi
+        Task {
+            try await satoshi.processMessage(messageHS5_ping, from: halPeer)
+        }
+        // Satoshi --(pong)->> …
+        guard let messageSH7_pong = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageSH7_pong.command, .pong)
+
+        // … --(feefilter)->> Satoshi
+        try await satoshi.processMessage(messageHS6_feefilter, from: halPeer) // No response expected
+        let halFeeRate2 = await satoshi.peers[halPeer]!.feeFilterRate
+        XCTAssertEqual(halFeeRate2, halFeeRate)
+
+        // … --(sendcmpct)->> Hal
+        try await hal.processMessage(messageSH4_sendcmpct, from: satoshiPeer) // No response expected
+        let compactBlocksVersionSatoshiB = await hal.peers[satoshiPeer]!.compactBlocksVersion
+        XCTAssertEqual(compactBlocksVersionSatoshiB, 2)
+
+        // … --(ping)->> Hal
+        Task {
+            try await hal.processMessage(messageSH5_ping, from: satoshiPeer)
+        }
+        // Hal --(pong)->> …
+        guard let messageHS7_pong = await halOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageHS7_pong.command, .pong)
+
+        // … --(feefilter)->> Hal
+        try await hal.processMessage(messageSH6_feefilter, from: satoshiPeer) // No response expected
+        let satoshiFeeRate2 = await hal.peers[satoshiPeer]!.feeFilterRate
+        XCTAssertEqual(satoshiFeeRate2, satoshiFeeRate)
+
+        // … --(pong)->> Hal
+        try await hal.processMessage(messageSH7_pong, from: satoshiPeer) // No response expected
+
+        let compactBlocksVersionLockedHal = await hal.peers[satoshiPeer]!.compactBlocksVersionLocked
+        XCTAssert(compactBlocksVersionLockedHal)
+
+        // … --(pong)->> Satoshi
+        try await satoshi.processMessage(messageHS7_pong, from: halPeer) // No response expected
+        let compactBlocksVersionLockedSatoshi = await satoshi.peers[halPeer]!.compactBlocksVersionLocked
+        XCTAssert(compactBlocksVersionLockedSatoshi)
+    }
+
+    func testHandshake() async throws {
+        try await performExtendedHandshake()
+    }
+
+    func testPingPong() async throws {
+        try await performExtendedHandshake()
+
+        guard let satoshi, let halPeer, var satoshiOut, let hal, let satoshiPeer, var halOut else { preconditionFailure() }
+
+        Task {
+            await hal.sendPingTo(satoshiPeer)
+        }
+        // Hal --(ping)->> …
+        guard let messageHS0_ping = await halOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageHS0_ping.command, .ping)
+
+        let ping = try XCTUnwrap(PingMessage(messageHS0_ping.payload))
+        var lastPingNonce = await hal.peers[satoshiPeer]!.lastPingNonce
         XCTAssertNotNil(lastPingNonce)
 
-        // Client --(feefilter)->> …
-        guard let clientFeeFilterMessage = await clientMessages.next() else { XCTFail(); return }
-        await Task.yield()
-        XCTAssertEqual(clientFeeFilterMessage.command, .feefilter)
-
-        let clientFeeFilter = try XCTUnwrap(FeeFilterMessage(clientFeeFilterMessage.payload))
-        let clientFeeRate = await clientNode.feeFilterRate
-        XCTAssertEqual(clientFeeFilter.feeRate, clientFeeRate)
-
-        var veracked = await clientNode.peers[peerInClient]!.receivedVersionAck
-        XCTAssert(veracked)
-        var handshook = await clientNode.peers[peerInClient]!.handshakeComplete
-        XCTAssert(handshook)
-
-        // … --(wtxidrelay)->> Server
-        try await serverNode.processMessage(clientWTXIDRelay, from: peerInServer)
-        wtxidRelay = await serverNode.peers[peerInServer]!.receivedWTXIDRelayPreference
-        XCTAssert(wtxidRelay)
-
-        // … --(sendaddrv2)->> Server
-        try await serverNode.processMessage(clientSendAddrV2, from: peerInServer)
-        v2Addr = await serverNode.peers[peerInServer]!.receivedV2AddressPreference
-        XCTAssert(v2Addr)
-
-        // … --(verack)->> Server
+        // … --(ping)->> Satoshi
         Task {
-            try await serverNode.processMessage(clientVerack, from: peerInServer)
+            try await satoshi.processMessage(messageHS0_ping, from: halPeer)
         }
-        // … <<-(sendcmpct)-- Server
-        guard let serverSendCompactMessage = await serverMessages.next() else { XCTFail(); return }
+        // Satoshi --(pong)->> …
+        guard let messageSH0_pong = await satoshiOut.next() else { XCTFail(); return }
         await Task.yield()
-        XCTAssertEqual(serverSendCompactMessage.command, .sendcmpct)
+        XCTAssertEqual(messageSH0_pong.command, .pong)
 
-        // … <<-(ping)-- Server
-        guard let serverPingMessage = await serverMessages.next() else { XCTFail(); return }
-        await Task.yield()
-        XCTAssertEqual(serverPingMessage.command, .ping)
-
-        // … <<-(feefilter)-- Server
-        guard let serverFeeFilterMessage = await serverMessages.next() else { XCTFail(); return }
-        await Task.yield()
-        XCTAssertEqual(serverFeeFilterMessage.command, .feefilter)
-
-        let serverFeeFilter = try XCTUnwrap(FeeFilterMessage(serverFeeFilterMessage.payload))
-        let serverFeeRate = await serverNode.feeFilterRate
-        XCTAssertEqual(serverFeeFilter.feeRate, serverFeeRate)
-
-        veracked = await serverNode.peers[peerInServer]!.receivedVersionAck
-        XCTAssert(veracked)
-
-        handshook = await serverNode.peers[peerInServer]!.handshakeComplete
-        XCTAssert(handshook)
-
-        // … --(sendcmpct)->> Server
-        try await serverNode.processMessage(clientSendCompactMessage, from: peerInServer) // No response expected
-        let serverCompactBlocksVersion = await serverNode.peers[peerInServer]!.compactBlocksVersion
-        XCTAssertEqual(serverCompactBlocksVersion, 2)
-
-        // … --(ping)->> Server
-        Task {
-            try await serverNode.processMessage(clientPingMessage, from: peerInServer)
-        }
-        // … <<-(pong)-- Server
-        guard let serverPongMessage = await serverMessages.next() else { XCTFail(); return }
-        await Task.yield()
-        XCTAssertEqual(serverPongMessage.command, .pong)
-        let pong = try XCTUnwrap(PongMessage(serverPongMessage.payload))
+        let pong = try XCTUnwrap(PongMessage(messageSH0_pong.payload))
         XCTAssertEqual(ping.nonce, pong.nonce)
 
-        // … --(feefilter)->> Server
-        try await serverNode.processMessage(clientFeeFilterMessage, from: peerInServer) // No response expected
-        let serverFeeRateForClient = await serverNode.peers[peerInServer]!.feeFilterRate
-        XCTAssertEqual(clientFeeRate, serverFeeRateForClient)
+        // … --(pong)->> Hal
+        try await hal.processMessage(messageSH0_pong, from: satoshiPeer) // No response expected
 
-        // Client <<-(sendcmpct)-- …
-        try await clientNode.processMessage(serverSendCompactMessage, from: peerInClient) // No response expected
-        let clientCompactBlocksVersion = await clientNode.peers[peerInClient]!.compactBlocksVersion
-        XCTAssertEqual(clientCompactBlocksVersion, 2)
-
-        // Client <<-(ping)-- …
-        Task {
-            try await clientNode.processMessage(serverPingMessage, from: peerInClient)
-        }
-        // Client --(pong)->> …
-        guard let clientPongMessage = await clientMessages.next() else { XCTFail(); return }
-        await Task.yield()
-        XCTAssertEqual(clientPongMessage.command, .pong)
-
-        // Client <<-(feefilter)-- …
-        try await clientNode.processMessage(serverFeeFilterMessage, from: peerInClient) // No response expected
-        let clientFeeRateForServer = await clientNode.peers[peerInClient]!.feeFilterRate
-        XCTAssertEqual(serverFeeRate, clientFeeRateForServer)
-
-        // Client <<-(pong)-- …
-        try await clientNode.processMessage(serverPongMessage, from: peerInClient) // No response expected
-        lastPingNonce = await clientNode.peers[peerInClient]!.lastPingNonce
+        lastPingNonce = await hal.peers[satoshiPeer]!.lastPingNonce
         XCTAssertNil(lastPingNonce)
-        let clientCompactBlocksVersionLocked = await clientNode.peers[peerInClient]!.compactBlocksVersionLocked
-        XCTAssert(clientCompactBlocksVersionLocked)
-
-        // … --(pong)->> Server
-        try await serverNode.processMessage(clientPongMessage, from: peerInServer) // No response expected
-        let serverCompactBlocksVersionLocked = await serverNode.peers[peerInServer]!.compactBlocksVersionLocked
-        XCTAssert(serverCompactBlocksVersionLocked)
     }
 }

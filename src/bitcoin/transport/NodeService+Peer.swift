@@ -13,27 +13,29 @@ extension NodeService {
         /// Whether this peer has initiated the connection to us.
         public let incoming: Bool
 
-        /// Our version was acknowledged by the peer.
-        var sentVersion = false
-        var receivedVersion = false
+        /// Whether our node has already sent the version message to this peer.
+        var versionSent = false
+
+        // Information from the version message sent by the peer
+        var version = VersionMessage?.none
 
         /// BIP339
-        var sentWTXIDRelayPreference = false
+        var witnessRelayPreferenceSent = false
 
         /// BIP339
-        var receivedWTXIDRelayPreference = false
+        var witnessRelayPreferenceReceived = false
 
         /// BIP155
-        var receivedV2AddressPreference = false
+        var v2AddressPreferenceReceived = false
 
         /// BIP155
-        var sentV2AddressPreference = false
+        var v2AddressPreferenceSent = false
 
-        var sentVersionAck = false
-        var receivedVersionAck = false
+        var versionAckSent = false
+        var versionAckReceived = false
 
         /// BIP152
-        var sentCompactBlocksPreference = false
+        var compactBlocksPreferenceSent = false
 
         /// BIP152
         var highBandwidthCompactBlocks = false
@@ -47,15 +49,6 @@ extension NodeService {
 
         /// BIP152: Holding pong until our compact block version was sent.
         var pongOnHoldUntilCompactBlocksPreference = PongMessage?.none
-
-        // Information from the version message sent by the peer
-        var preferredVersion = ProtocolVersion?.none
-        var userAgent = String?.none
-        var addressDeclared = IPv6Address?.none
-        var portDeclared = Int?.none
-        var services = ProtocolServices?.none
-        var relay = Bool?.none
-        var nonce = UInt64?.none
 
         /// Difference between the time reported by the peer and our time at the time we receive the version message.
         var timeDiff = 0
@@ -72,14 +65,14 @@ extension NodeService {
 
         /// The connection has been established.
         public var handshakeComplete: Bool {
-            sentVersion &&
-            receivedVersion &&
-            sentWTXIDRelayPreference &&
-            receivedWTXIDRelayPreference &&
-            sentV2AddressPreference &&
-            receivedV2AddressPreference &&
-            sentVersionAck &&
-            receivedVersionAck
+            versionSent &&
+            version != .none &&
+            witnessRelayPreferenceSent &&
+            witnessRelayPreferenceReceived &&
+            v2AddressPreferenceSent &&
+            v2AddressPreferenceReceived &&
+            versionAckSent &&
+            versionAckReceived
         }
     }
 }
