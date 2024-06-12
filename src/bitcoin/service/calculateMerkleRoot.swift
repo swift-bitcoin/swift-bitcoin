@@ -11,7 +11,7 @@ func calculateMerkleRoot(_ hashes: [Data]) -> Data {
         return hashes[0]
     }
     let hashes = if hashes.count % 2 == 1 {
-        hashes + [hashes[hashes.endIndex]]
+        hashes + [hashes[hashes.endIndex - 1]]
     } else {
         hashes
     }
