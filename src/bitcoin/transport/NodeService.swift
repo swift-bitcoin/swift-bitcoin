@@ -9,9 +9,11 @@ public actor NodeService: Sendable {
     ///   - bitcoinService: The bitcoin service actor instance backing this node.
     ///   - network: The type of bitcoin network this node is part of.
     ///   - feeFilterRate: An arbitrary fee rate by which to filter transactions.
-    public init(bitcoinService: BitcoinService, network: NodeNetwork = .regtest, feeFilterRate: BitcoinAmount? = .none) {
+    public init(bitcoinService: BitcoinService, network: NodeNetwork = .regtest, version: ProtocolVersion = .latest, services: ProtocolServices = .all, feeFilterRate: BitcoinAmount? = .none) {
         self.bitcoinService = bitcoinService
         self.network = network
+        self.version = version
+        self.services = services
         if let feeFilterRate {
             self.feeFilterRate = feeFilterRate
         }
@@ -22,6 +24,9 @@ public actor NodeService: Sendable {
 
     /// The type of bitcoin network this node is part of.
     public let network: NodeNetwork
+
+    public let version: ProtocolVersion
+    public let services: ProtocolServices
 
     /// Subscription to the bitcoin service's blocks channel.
     public var blocks = AsyncChannel<TransactionBlock>?.none
@@ -80,7 +85,7 @@ public actor NodeService: Sendable {
     /// Request headers from peers.
     public func requestHeaders() async {
         let maxHeight = peers.values.reduce(-1) { max($0, $1.height) }
-        let ourHeight = await bitcoinService.blockTransactions.count
+        let ourHeight = await bitcoinService.headers.count - 1
         guard maxHeight > ourHeight,
               let (id, _) = peers.filter({ $0.value.height == maxHeight }).randomElement() else {
             return
@@ -91,7 +96,7 @@ public actor NodeService: Sendable {
     /// Request headers from a specific peer.
     func requestHeaders(_ id: UUID) async {
         let locatorHashes = await bitcoinService.makeBlockLocator()
-        let getHeaders = GetHeadersMessage(protocolVersion: Self.version, locatorHashes: locatorHashes)
+        let getHeaders = GetHeadersMessage(protocolVersion: .latest, locatorHashes: locatorHashes)
         awaitingHeadersFrom = id
         awaitingHeadersSince = .now
         await send(.getheaders, payload: getHeaders.data, to: id)
@@ -124,18 +129,15 @@ public actor NodeService: Sendable {
 
         let lastBlock = await bitcoinService.blockTransactions.count - 1
         return .init(
-            protocolVersion: Self.version,
-            services: Self.services,
-            receiverServices: peer.version?.services ?? .empty,
-            receiverAddress: peer.version?.transmitterAddress ?? .unspecified,
-            receiverPort: peer.version?.transmitterPort ?? 0,
-            transmitterServices: Self.services,
-            transmitterAddress: address ?? .unspecified,
-            transmitterPort: port ?? 0,
+            protocolVersion: version,
+            services: services,
+            receiverServices: peer.version?.services,
+            receiverAddress: peer.version?.transmitterAddress,
+            receiverPort: peer.version?.transmitterPort,
+            transmitterAddress: address,
+            transmitterPort: port,
             nonce: nonce,
-            userAgent: Self.userAgent,
-            startHeight: lastBlock,
-            relay: true)
+            startHeight: lastBlock)
     }
 
     /// Starts the handshake process but only if its an outgoing peer – i.e. we initiated the connection. Generates a child task for delivering the initial version message.
@@ -160,6 +162,14 @@ public actor NodeService: Sendable {
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
     public func processMessage(_ message: BitcoinMessage, from id: UUID) async throws {
         print("<- \(message.command) (\(message.payload.count))")
+
+        guard let peer = peers[id] else { return }
+
+        /// First message must always be `version`.
+        if peer.version == .none, message.command != .version {
+            throw Error.versionMissing
+        }
+
         switch message.command {
         case .version:
             try await processVersion(message, from: id)
@@ -189,7 +199,7 @@ public actor NodeService: Sendable {
     /// Sends a message.
     private func send(_ command: MessageCommand, payload: Data = .init(), to id: UUID) async {
         print("-> \(command) (\(payload.count))")
-        await peerOuts[id]?.send(.init(network: network, command: command, payload: payload))
+        await peerOuts[id]?.send(.init(command, payload: payload, network: network))
     }
 
     /// Processes an incoming version message as part of the handshake.
@@ -223,12 +233,12 @@ public actor NodeService: Sendable {
             throw Error.connectionToSelf
         }
 
-        if peerVersion.services.intersection(Self.services) != Self.services {
+        if peerVersion.services.intersection(services) != services {
             throw Error.unsupportedServices
         }
 
         // Inbound connection. Version message is the first message.
-        if peerVersion.protocolVersion < Self.version {
+        if peerVersion.protocolVersion < version {
             throw Error.unsupportedVersion
         }
 
@@ -237,7 +247,7 @@ public actor NodeService: Sendable {
         peers[id]?.height = peerVersion.startHeight
 
         // Outbound connection. Version message is a response to our version.
-        if peer.outgoing && peerVersion.protocolVersion > Self.version {
+        if peer.outgoing && peerVersion.protocolVersion > version {
             throw Error.unsupportedVersion
         }
 
@@ -440,9 +450,6 @@ public actor NodeService: Sendable {
         debugPrint(headersMessage)
     }
 
-    static let version = ProtocolVersion.latest
-    static let userAgent = "/SwiftBitcoin:0.1.0/"
-    static let services = ProtocolServices.all
     static let minCompactBlocksVersion = 2
     static let maxCompactBlocksVersion = 2
 }

@@ -20,6 +20,8 @@ final class NodeServiceTests: XCTestCase {
 
     override func setUp() async throws {
         let satoshiChain = BitcoinService()
+        await satoshiChain.generateTo("miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5")
+
         self.satoshiChain = satoshiChain
         let satoshi = NodeService(bitcoinService: satoshiChain, feeFilterRate: 2)
         self.satoshi = satoshi
@@ -57,7 +59,32 @@ final class NodeServiceTests: XCTestCase {
 
     /// Tests handshake and extended post-handshake exchange.
     ///
-    /// Outbound connection sequence:
+    /// Hal's node (initiating):
+    ///
+    ///     -> version
+    ///     <- version
+    ///     -> wtxidrelay
+    ///     -> sendaddrv2
+    ///     -> verack
+    ///     <- wtxidrelay
+    ///     <- sendaddrv2
+    ///     <- verack
+    ///     -> sendcmpct
+    ///     -> ping
+    ///     -> feefilter
+    ///     <- sendcmpct
+    ///     <- ping
+    ///     -> pong
+    ///     <- feefilter
+    ///     <- pong
+    ///
+    /// Satoshi's node (recipient):
+    ///
+    ///     <- version
+    ///     -> version
+    ///     -> wtxidrelay … (same as initiating)
+    ///
+    /// Outbound connection sequence (bitcoin core):
     ///
     ///     -> version (we send the first message)
     ///     -> wtxidrelay
@@ -259,10 +286,194 @@ final class NodeServiceTests: XCTestCase {
         XCTAssert(compactBlocksVersionLockedSatoshi)
     }
 
+    /// Extended handshake.
     func testHandshake() async throws {
         try await performExtendedHandshake()
     }
 
+    /// An exception is thrown as `verack` is received before `version`.
+    func testBadInitialMessage() async throws {
+        guard let satoshi, let halPeer else { preconditionFailure() }
+
+        let messageHS0_verack = BitcoinMessage(.verack)
+        do {
+            try await satoshi.processMessage(messageHS0_verack, from: halPeer)
+        } catch NodeService.Error.versionMissing {
+            // Ok.
+        } catch {
+            XCTFail()
+        }
+    }
+
+    /// An exception is thrown as `verack` is received before `wtxidrelay` and `sendaddrv2`.
+    func testPrematureVerAck() async throws {
+        guard let satoshi, let halPeer, var satoshiOut else { preconditionFailure() }
+
+        // … --(version)->> Satoshi
+        let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+
+        Task {
+            try await satoshi.processMessage(messageHS0_version, from: halPeer)
+        }
+
+        // Satoshi --(version)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(wtxidrelay)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(sendaddrv2)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(verack)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        let messageHS1_verack = BitcoinMessage(.verack)
+        do {
+            try await satoshi.processMessage(messageHS1_verack, from: halPeer)
+        } catch NodeService.Error.missingWTXIDRelayPreference {
+            // Ok.
+        } catch {
+            XCTFail()
+        }
+    }
+
+    /// An exception is thrown as `verack` is received  after `wtxidrelay` but before `sendaddrv2`.
+    func testPrematureVerAck2() async throws {
+        guard let satoshi, let halPeer, var satoshiOut else { preconditionFailure() }
+
+        // … --(version)->> Satoshi
+        let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+
+        Task {
+            try await satoshi.processMessage(messageHS0_version, from: halPeer)
+        }
+
+        // Satoshi --(version)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(wtxidrelay)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(sendaddrv2)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(verack)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        let messageHS1_wtxidrelay = BitcoinMessage(.wtxidrelay)
+        try await satoshi.processMessage(messageHS1_wtxidrelay, from: halPeer)
+
+        let messageHS2_verack = BitcoinMessage(.verack)
+        do {
+            try await satoshi.processMessage(messageHS2_verack, from: halPeer)
+        } catch NodeService.Error.missingV2AddrPreference {
+            // Ok.
+        } catch {
+            XCTFail()
+        }
+    }
+
+    /// An exception is thrown as `verack` is received  after `sendaddrv2` but before `wtxidrelay`.
+    func testPrematureVerAck3() async throws {
+        guard let satoshi, let halPeer, var satoshiOut else { preconditionFailure() }
+
+        // … --(version)->> Satoshi
+        let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+
+        Task {
+            try await satoshi.processMessage(messageHS0_version, from: halPeer)
+        }
+
+        // Satoshi --(version)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(wtxidrelay)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(sendaddrv2)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(verack)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        let messageHS1_sendaddrv2 = BitcoinMessage(.sendaddrv2)
+        try await satoshi.processMessage(messageHS1_sendaddrv2, from: halPeer)
+
+        let messageHS2_verack = BitcoinMessage(.verack)
+        do {
+            try await satoshi.processMessage(messageHS2_verack, from: halPeer)
+        } catch NodeService.Error.missingWTXIDRelayPreference {
+            // Ok.
+        } catch {
+            XCTFail()
+        }
+    }
+
+    /// Basic handshake but with `sendaddrv2` received _before_ `wtxidrelay`.
+    func testAlternateHandshake() async throws {
+        guard let satoshi, let halPeer, var satoshiOut else { preconditionFailure() }
+
+        // … --(version)->> Satoshi
+        let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+
+        Task {
+            try await satoshi.processMessage(messageHS0_version, from: halPeer)
+        }
+
+        // Satoshi --(version)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(wtxidrelay)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(sendaddrv2)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(verack)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        let messageHS1_sendaddrv2 = BitcoinMessage(.sendaddrv2)
+        try await satoshi.processMessage(messageHS1_sendaddrv2, from: halPeer)
+
+        let messageHS2_wtxidrelay = BitcoinMessage(.wtxidrelay)
+        try await satoshi.processMessage(messageHS2_wtxidrelay, from: halPeer)
+
+        let messageHS3_verack = BitcoinMessage(.verack)
+        Task {
+            try await satoshi.processMessage(messageHS3_verack, from: halPeer)
+        }
+
+        // Satoshi --(sendcmpct)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(ping)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+
+        // Satoshi --(feefilter)->> …
+        guard let _ = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+    }
+
+    /// Checks that a valid `pong` response is produced after receiving `ping`.
     func testPingPong() async throws {
         try await performExtendedHandshake()
 
@@ -297,5 +508,50 @@ final class NodeServiceTests: XCTestCase {
 
         lastPingNonce = await hal.peers[satoshiPeer]!.lastPingNonce
         XCTAssertNil(lastPingNonce)
+    }
+
+    func testHeaders() async throws {
+        try await performExtendedHandshake()
+
+        guard let satoshi, let halPeer, var satoshiOut, let hal, let satoshiPeer, var halOut else { preconditionFailure() }
+
+        Task {
+            await hal.requestHeaders()
+        }
+        // Hal --(getheaders)->> …
+        guard let messageHS0_getheaders = await halOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageHS0_getheaders.command, .getheaders)
+
+        let headersRequest = try XCTUnwrap(GetHeadersMessage(messageHS0_getheaders.payload))
+        var receivedHeaders = await hal.peers[satoshiPeer]!.receivedHeaders
+        XCTAssertEqual(headersRequest.locatorHashes.count, 1)
+        XCTAssertNil(receivedHeaders)
+
+        // … --(getheaders)->> Satoshi
+        Task {
+            try await satoshi.processMessage(messageHS0_getheaders, from: halPeer)
+        }
+
+        // Satoshi --(headers)->> …
+        guard let messageSH0_headers = await satoshiOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageSH0_headers.command, .headers)
+
+        let headersResponse = try XCTUnwrap(HeadersMessage(messageSH0_headers.payload))
+        XCTAssertEqual(headersResponse.items.count, 1)
+
+        // … --(headers)->> Hal
+        Task {
+            try await hal.processMessage(messageSH0_headers, from: satoshiPeer)
+        }
+        // Hal --(getheaders)->> …
+        guard let messageHS1_header = await halOut.next() else { XCTFail(); return }
+        await Task.yield()
+        XCTAssertEqual(messageHS1_header.command, .getheaders)
+
+        receivedHeaders = await hal.peers[satoshiPeer]!.receivedHeaders
+        XCTAssertNotNil(receivedHeaders)
+        XCTAssertEqual(receivedHeaders!.count, 1)
     }
 }
