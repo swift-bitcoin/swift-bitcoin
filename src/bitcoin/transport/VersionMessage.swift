@@ -1,16 +1,16 @@
 import Foundation
 
 struct VersionMessage: Equatable, Sendable {
-    init(protocolVersion: ProtocolVersion, services: ProtocolServices, receiverServices: ProtocolServices, receiverAddress: IPv6Address, receiverPort: Int, transmitterServices: ProtocolServices, transmitterAddress: IPv6Address, transmitterPort: Int, nonce: UInt64, userAgent: String, startHeight: Int, relay: Bool) {
+    init(protocolVersion: ProtocolVersion = .latest, services: ProtocolServices = .all, receiverServices: ProtocolServices? = .none, receiverAddress: IPv6Address? = .none, receiverPort: Int? = .none, transmitterAddress: IPv6Address? = .none, transmitterPort: Int? = .none, nonce: UInt64 = 0, userAgent: String = "/SwiftBitcoin:0.1.0/", startHeight: Int = 0, relay: Bool = true) {
         self.protocolVersion = protocolVersion
         self.services = services
         self.timestamp = Date(timeIntervalSince1970: Date.now.timeIntervalSince1970.rounded(.down))
-        self.receiverServices = receiverServices
-        self.receiverAddress = receiverAddress
-        self.receiverPort = receiverPort
-        self.transmitterServices = transmitterServices
-        self.transmitterAddress = transmitterAddress
-        self.transmitterPort = transmitterPort
+        self.receiverServices = receiverServices ?? .empty
+        self.receiverAddress = receiverAddress ?? .unspecified
+        self.receiverPort = receiverPort ?? 0
+        self.transmitterServices = services
+        self.transmitterAddress = transmitterAddress ?? .unspecified
+        self.transmitterPort = transmitterPort ?? 0
         self.nonce = nonce
         self.userAgent = userAgent
         self.startHeight = startHeight

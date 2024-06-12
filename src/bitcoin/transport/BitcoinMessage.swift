@@ -3,7 +3,7 @@ import BitcoinCrypto
 
 public struct BitcoinMessage: Equatable, Sendable {
 
-    public init(network: NodeNetwork, command: MessageCommand, payload: Data) {
+    public init(_ command: MessageCommand, payload: Data = .init(), network: NodeNetwork = .regtest) {
         self.network = network
         self.command = command
         self.payloadSize = payload.count
