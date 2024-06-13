@@ -1,4 +1,4 @@
 import ArgumentParser
 import Bitcoin
 
-extension SigVersion: Decodable, ExpressibleByArgument { }
+extension SigVersion: @retroactive Decodable, @retroactive ExpressibleByArgument { }

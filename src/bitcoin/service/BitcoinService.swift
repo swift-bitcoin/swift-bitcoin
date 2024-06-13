@@ -135,6 +135,11 @@ public actor BitcoinService: Sendable {
         }
     }
 
+    /// TODO: Remove the following function declaration which is a work-around for _ pattern that the region based isolation checker does not understand how to check. Please file a bug_ in Swift 6 nightly linux image as of 2024-06-13.
+    public func generateTo(_ address: String) {
+        generateTo(address, blockTime: .now)
+    }
+
     public func generateTo(_ address: String, blockTime: Date = .now) {
         if blockTransactions.isEmpty {
             createGenesisBlock()
@@ -247,6 +252,11 @@ public actor BitcoinService: Sendable {
         if new > powLimitTarget { new = powLimitTarget }
 
         return new.toCompact()
+    }
+
+    /// TODO: Remove the following function declaration which is a work-around for _ pattern that the region based isolation checker does not understand how to check. Please file a bug_ in Swift 6 nightly linux image as of 2024-06-13.
+    private func getMedianTimePast() -> Date {
+        getMedianTimePast(for: .none)
     }
 
     private func getMedianTimePast(for height: Int? = .none) -> Date {

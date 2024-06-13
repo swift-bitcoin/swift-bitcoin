@@ -144,7 +144,7 @@ final class BlockTests: XCTestCase {
         // Short transaction ID
         // TODO: The following value is taken from the function's output so nothing is being verified until replaced with a known-to-be valid ID.
         //let expectedShortTransactionIdentifier = Data([0x20, 0xb2, 0x36, 0x73, 0x7a, 0xcb])
-        let expectedShortTransactionIdentifier = 0x0000cb7a7336b220
+        // let expectedShortTransactionIdentifier = 0x0000cb7a7336b220
         //XCTAssertEqual(block.makeShortTransactionIdentifier(for: 0, nonce: 0), expectedShortTransactionIdentifier)
 
     }

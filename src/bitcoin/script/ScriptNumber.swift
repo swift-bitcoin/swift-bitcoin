@@ -77,7 +77,7 @@ extension ScriptNumber {
         var data = data
         data[data.endIndex - 1] &= 0b01111111 // We make it positive
         let padded = data + Data(repeating: 0, count: MemoryLayout<Int>.size - data.count)
-        let magnitude = padded.withUnsafeBytes { $0.load(as: Int.self) }
+        let magnitude = padded.withUnsafeBytes { $0.loadUnaligned(as: Int.self) }
 
         // Negative zero has a special error code.
         if minimal, magnitude == 0, negative {

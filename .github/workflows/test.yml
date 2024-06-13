@@ -13,7 +13,9 @@ jobs:
       - name: Install Swift
         uses: sersoft-gmbh/swifty-linux-action@v3
         with:
-          release-version: 5.10
+            branch-name: swift-6.0-branch
+            version-tag: swift-6.0-DEVELOPMENT-SNAPSHOT-2024-06-12-a
+            # release-version: 6.0
       - name: Build
         run: swift build
       - name: Test
