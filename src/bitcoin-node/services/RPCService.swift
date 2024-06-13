@@ -81,7 +81,7 @@ actor RPCService: Service {
         try await withGracefulShutdownHandler { @Sendable in
             try await withThrowingDiscardingTaskGroup { group in
                 // TODO: Make sendable closure
-                try await serverChannel.executeThenClose { serverChannelInbound in
+                try await serverChannel.executeThenClose {  serverChannelInbound in
 
                     print("RPC server accepting incoming connections on port \(host):\(port)…")
                     await serviceUp()

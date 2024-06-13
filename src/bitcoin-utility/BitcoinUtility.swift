@@ -1,10 +1,6 @@
 import ArgumentParser
 import NIO
 
-// TODO: Remove these
-extension ClientBootstrap: @unchecked Sendable { }
-extension CommandConfiguration: @unchecked Sendable { }
-
 @main
 struct BitcoinUtility: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

@@ -2,6 +2,8 @@ import Foundation
 import LibSECP256k1
 import ECCHelper
 
+extension OpaquePointer: @unchecked @retroactive Sendable { }
+
 let secp256k1_context_static = get_static_context()!
 
 let eccSigningContext: OpaquePointer = {

@@ -10,8 +10,8 @@ struct BigUInt: UnsignedInteger {
         case array
     }
 
-    fileprivate (set) var kind: Kind // Internal for testing only
-    fileprivate (set) var storage: [Word] // Internal for testing only; stored separately to prevent COW copies
+    fileprivate(set) var kind: Kind // Internal for testing only
+    fileprivate(set) var storage: [Word] // Internal for testing only; stored separately to prevent COW copies
 
     init() {
         self.kind = .inline(0, 0)

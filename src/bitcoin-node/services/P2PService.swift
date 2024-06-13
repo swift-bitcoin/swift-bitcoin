@@ -25,7 +25,7 @@ actor P2PService: Service {
     private let bitcoinNode: NodeService
     private(set) var status = Status() // Network status
 
-    private var listenRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
+    private let listenRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
 
     private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<BitcoinMessage, BitcoinMessage>, Never>?
     private var peerIDs = [UUID]()
