@@ -17,6 +17,6 @@ jobs:
             version-tag: swift-6.0-DEVELOPMENT-SNAPSHOT-2024-06-22-a
             # release-version: 6.0
       - name: Build
-        run: swift build --build-tests --disable-xctest --enable-swift-testing
+        run: swift build --build-tests --disable-xctest
       - name: Test
         run: swift test --disable-xctest
