@@ -1,12 +1,14 @@
-import XCTest
+import Testing
+import Foundation
 @testable import Bitcoin
 
-final class ScriptBooleanTests: XCTestCase {
+struct ScriptBooleanTests {
 
     let zeroData = Data()
     let oneData = Data([1])
 
-    func testFalse() {
+    @Test("Boolean false")
+    func booleanFalse() {
 
         let negativeZero = Data([0x80])
         let falseValue = Data([0])
@@ -15,34 +17,35 @@ final class ScriptBooleanTests: XCTestCase {
         let falseValue3 = Data([0, 0, 0x80])
 
         var b = ScriptBoolean(zeroData)
-        XCTAssertFalse(b.value)
+        #expect(!b.value)
         b = ScriptBoolean(negativeZero)
-        XCTAssertFalse(b.value)
+        #expect(!b.value)
         b = ScriptBoolean(falseValue)
-        XCTAssertFalse(b.value)
+        #expect(!b.value)
         b = ScriptBoolean(falseValue1)
-        XCTAssertFalse(b.value)
+        #expect(!b.value)
         b = ScriptBoolean(falseValue2)
-        XCTAssertFalse(b.value)
+        #expect(!b.value)
         b = ScriptBoolean(falseValue3)
-        XCTAssertFalse(b.value)
+        #expect(!b.value)
     }
 
-    func testTrue() {
+    @Test("Boolean true")
+    func booleanTrue() {
         let trueValue = Data([1])
         let trueValue1 = Data([0, 1])
         let trueValue2 = Data([1, 0])
         let trueValue3 = Data([0x80, 0])
 
         var b = ScriptBoolean(oneData)
-        XCTAssert(b.value)
+        #expect(b.value)
         b = ScriptBoolean(trueValue)
-        XCTAssert(b.value)
+        #expect(b.value)
         b = ScriptBoolean(trueValue1)
-        XCTAssert(b.value)
+        #expect(b.value)
         b = ScriptBoolean(trueValue2)
-        XCTAssert(b.value)
+        #expect(b.value)
         b = ScriptBoolean(trueValue3)
-        XCTAssert(b.value)
+        #expect(b.value)
     }
 }

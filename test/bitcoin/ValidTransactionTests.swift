@@ -1,17 +1,19 @@
-import XCTest
+import Testing
+import Foundation
 @testable import Bitcoin
 
-final class ValidTransactionTests: XCTestCase {
+struct ValidTransactionTests {
 
-    func testValidTransactions() throws {
+    @Test("Bitcoin Core Valid Transactions")
+    func validTransactions() throws {
         for vector in testVectors {
-            guard let tx = BitcoinTransaction(Data(vector.serializedTransaction)) else {
-                XCTFail(); return
-            }
+            let tx = try #require(BitcoinTransaction(Data(vector.serializedTransaction)))
             let previousOutputs = vector.previousOutputs.map { previousOutput in
                 TransactionOutput(value: previousOutput.amount, script: BitcoinScript(previousOutput.scriptOperations))
             }
-            XCTAssertNoThrow(try tx.check())
+            #expect(throws: Never.self) {
+                try tx.check()
+            }
             var excludeFlags = Set(vector.verifyFlags.split(separator: ","))
             excludeFlags.remove("NONE")
             var config: ScriptConfig = .standard
@@ -31,10 +33,10 @@ final class ValidTransactionTests: XCTestCase {
             if excludeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.remove(.discourageUpgradableWitnessProgram) }
 
             let result = tx.verifyScript(previousOutputs: previousOutputs, config: config)
-            XCTAssert(result)
+            #expect(result)
             if !excludeFlags.isEmpty {
                  let failure = tx.verifyScript(previousOutputs: previousOutputs, config: .standard)
-                 XCTAssertFalse(failure)
+                 #expect(!failure)
             }
         }
     }

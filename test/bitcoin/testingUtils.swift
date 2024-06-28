@@ -1,6 +1,5 @@
 import Foundation
 @testable import Bitcoin
-
 extension BitcoinTransaction {
     static let empty = Self(version: .v1, locktime: .init(0), inputs: [], outputs: [])
 }

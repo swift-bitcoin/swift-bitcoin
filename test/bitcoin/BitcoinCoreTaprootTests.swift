@@ -1,9 +1,11 @@
-import XCTest
+import Testing
+import Foundation
 @testable import Bitcoin
 
-final class BitcoinCoreTaprootTests: XCTestCase {
+struct BitcoinCoreTaprootTests {
 
-    func testVectors() {
+    @Test("Bitcoin Core Taproot")
+    func allVectors() throws {
         for testCase in coreTestAssets {
 
             var includeFlags = Set(testCase.flags.split(separator: ","))
@@ -42,7 +44,9 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 var successInputs = unsignedTx.inputs
                 successInputs[inputIndex] = successInput
                 let successTx = BitcoinTransaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: successInputs, outputs: unsignedTx.outputs)
-                XCTAssertNoThrow(try successTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, config: testCase.final ? config : []))
+                #expect(throws: Never.self) {
+                    try successTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, config: testCase.final ? config : [])
+                }
             }
             if let failure = testCase.failure, testCase.final {
                 let failureInput = TransactionInput(
@@ -55,7 +59,9 @@ final class BitcoinCoreTaprootTests: XCTestCase {
                 var failureInputs = unsignedTx.inputs
                 failureInputs[inputIndex] = failureInput
                 let failureTx = BitcoinTransaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: failureInputs, outputs: unsignedTx.outputs)
-                XCTAssertThrowsError(try failureTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, config: .standard))
+                #expect(throws: (any Error).self) {
+                    try failureTx.verifyScript(inputIndex: inputIndex, previousOutputs: previousOutputs, config: .standard)
+                }
             }
         }
     }

@@ -1,11 +1,13 @@
-import XCTest
+import Testing
+import Foundation
 @testable import Bitcoin // @testable for signatureHash(), SigHashType
 import BitcoinCrypto
 
-final class BitcoinServiceTests: XCTestCase {
+struct BitcoinServiceTests {
 
     /// Tests mining empty blocks, spending a coinbase transaction and mine again.
-    func testMineAndSpend() async throws {
+    @Test("Mine and spend")
+    func mineAndSpend() async throws {
 
         // Generate a secret key, corresponding public key, hash and address.
         let secretKey = Wallet.createSecretKey() as Data
@@ -69,48 +71,46 @@ final class BitcoinServiceTests: XCTestCase {
             outputs: unsignedTransaction.outputs)
 
         // Make sure the transaction was signed correctly by verifying the scripts.
-        XCTAssert(signedTransaction.verifyScript(previousOutputs: [previousOutput]))
+        #expect(signedTransaction.verifyScript(previousOutputs: [previousOutput]))
 
         // Submit the signed transaction to the mempool.
         await service.addTransaction(signedTransaction)
         let mempoolBefore = await service.mempool.count
-        XCTAssertEqual(mempoolBefore, 1)
+        #expect(mempoolBefore == 1)
 
         // Let's mine another block to confirm our transaction.
         await service.generateTo(address)
         let mempoolAfter = await service.mempool.count
 
         // Verify the mempool is empty once again.
-        XCTAssertEqual(mempoolAfter, 0)
+        #expect(mempoolAfter == 0)
         let blocks = await service.blockTransactions.count
-        XCTAssertEqual(blocks, 102)
-        guard let lastBlockTtransactions = await service.blockTransactions.last else {
-            XCTFail(); return
-        }
+        #expect(blocks == 102)
+        let lastBlockTtransactions = try #require(await service.blockTransactions.last)
         // Verify our transaction was confirmed in a block.
-        XCTAssertEqual(lastBlockTtransactions[1], signedTransaction)
+        #expect(lastBlockTtransactions[1] == signedTransaction)
     }
 
-    func testDifficultyTarget() async throws {
+    @Test("Difficulty Target")
+    func difficultyTarget() async throws {
         let difficultyBits = 0x207fffff
         let powLimitBE = Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]) // Regtest
         let powLimitLE = Data(powLimitBE.reversed())
         let powLimitTarget = DifficultyTarget(powLimitLE)
-        XCTAssertEqual(powLimitTarget.data, powLimitLE)
+        #expect(powLimitTarget.data == powLimitLE)
         let powLimitCompact = powLimitTarget.toCompact()
-        XCTAssertEqual(powLimitCompact, difficultyBits)
+        #expect(powLimitCompact == difficultyBits)
 
         var neg: Bool = true
         var over: Bool = true
         let powLimitTarget_ = DifficultyTarget(compact: powLimitCompact, negative: &neg, overflow: &over)
-        if powLimitTarget_.isZero || neg || over {
-            XCTFail(); return
-        }
+        #expect(!powLimitTarget_.isZero && !neg && !over)
         let powLimitLE_ = powLimitTarget_.data
-        XCTAssertEqual(powLimitLE_.reversed().hex, "7fffff0000000000000000000000000000000000000000000000000000000000")
+        #expect(powLimitLE_.reversed().hex == "7fffff0000000000000000000000000000000000000000000000000000000000")
     }
 
-    func testDifficultyAdjustment() async throws {
+    @Test("Difficulty Adjustment")
+    func difficultyAdjustment() async throws {
         let service = BitcoinService(consensusParams: .init(
             powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
             powTargetTimespan: 1 * 1 * 10 * 60, // 12 minutes
@@ -124,7 +124,7 @@ final class BitcoinServiceTests: XCTestCase {
         await service.createGenesisBlock()
         let genesisBlock = await service.genesisBlock
 
-        XCTAssertEqual(genesisBlock.header.target, 0x207fffff)
+        #expect(genesisBlock.header.target == 0x207fffff)
         let genesisDate = genesisBlock.header.time
         var date = genesisDate
         var calendar = Calendar(identifier: .iso8601)
@@ -144,31 +144,52 @@ final class BitcoinServiceTests: XCTestCase {
             } else {
                 0x1f1e9351 // 0x001e935100000000000000000000000000000000000000000000000000000000
             }
-            XCTAssertEqual(header.target, expectedTarget)
+            #expect(header.target == expectedTarget)
         }
     }
 
-    func testDifficulty() async throws {
-        let cases = [
-            // very_low_target
-            (0x1f111111, 0.000001),
-            // low_target
-            (0x1ef88f6f, 0.000016),
-            // mid_target
-            (0x1df88f6f, 0.004023),
-            // high_target
-            (0x1cf88f6f, 1.029916),
-            // very_high_target
-            (0x12345678, 5913134931067755359633408.0)
-        ]
-        for (compact, expected) in cases {
-            var negative = true
-            var overflow = true
-            let target = DifficultyTarget(compact: compact, negative: &negative, overflow: &overflow)
-            XCTAssertFalse(target.isZero)
-            XCTAssertFalse(overflow)
-            XCTAssertEqual(target.toCompact(negative: negative), compact)
-            XCTAssertEqual(DifficultyTarget.getDifficulty(compact), expected, accuracy: 0.00001)
-        }
+    @Test("Difficulty", arguments: [
+        // very_low_target
+        (0x1f111111, 0.000001),
+        // low_target
+        (0x1ef88f6f, 0.000016),
+        // mid_target
+        (0x1df88f6f, 0.004023),
+        // high_target
+        (0x1cf88f6f, 1.029916),
+        // very_high_target
+        (0x12345678, 5913134931067755359633408.0)
+    ])
+    func difficulty(compact: Int, expected: Double) async throws {
+        var negative = true
+        var overflow = true
+        let target = DifficultyTarget(compact: compact, negative: &negative, overflow: &overflow)
+        #expect(!target.isZero)
+        #expect(!overflow)
+        #expect(target.toCompact(negative: negative) == compact)
+        #expect(isApproximatelyEqual(DifficultyTarget.getDifficulty(compact), to: expected, absoluteTolerance: 0.00001))
     }
+}
+
+fileprivate func isApproximatelyEqual(
+    _ value: Double,
+    to other: Double,
+    absoluteTolerance: Double,
+    relativeTolerance: Double = 0
+  ) -> Bool {
+    precondition(
+      absoluteTolerance >= 0 && absoluteTolerance.isFinite,
+      "absoluteTolerance should be non-negative and finite, " +
+      "but is \(absoluteTolerance)."
+    )
+    precondition(
+      relativeTolerance >= 0 && relativeTolerance <= 1,
+      "relativeTolerance should be non-negative and <= 1, " +
+      "but is \(relativeTolerance)."
+    )
+    if value == other { return true }
+    let delta = value - other
+    let scale = max(value, other)
+    let bound = max(absoluteTolerance, scale*relativeTolerance)
+    return delta.isFinite && delta <= bound
 }

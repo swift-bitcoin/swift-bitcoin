@@ -1,0 +1,30 @@
+{
+  "configurations" : [
+    {
+      "id" : "8FF3750B-4A9F-4F6A-A08F-7977F3411F40",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:",
+      "identifier" : "Bitcoin",
+      "name" : "Bitcoin"
+    },
+    "uiTestingScreenshotsLifetime" : "keepNever"
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "BitcoinTests",
+        "name" : "BitcoinTests"
+      }
+    }
+  ],
+  "version" : 1
+}

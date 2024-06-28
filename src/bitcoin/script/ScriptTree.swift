@@ -1,7 +1,7 @@
 import Foundation
 import BitcoinCrypto
 
-public indirect enum ScriptTree: Equatable {
+public indirect enum ScriptTree: Equatable, Sendable {
     // Int is the leaf_version. Its value should be 0xc0 (or 0xc1) for BIP342.
     // Data is the script data.
     case leaf(Int, Data)

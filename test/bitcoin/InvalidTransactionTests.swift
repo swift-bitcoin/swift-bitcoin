@@ -1,23 +1,25 @@
-import XCTest
+import Testing
+import Foundation
 @testable import Bitcoin
 
-final class InvalidTransactionTests: XCTestCase {
+struct InvalidTransactionTests {
 
-    func testInvalidTransactions() throws {
+    @Test("Bitcoin Core Invalid Transactions")
+    func invalidTransactions() throws {
         for vector in testVectors {
-            guard let tx = BitcoinTransaction(Data(vector.serializedTransaction)) else {
-                XCTFail(); continue
-            }
+            let tx = try #require(BitcoinTransaction(Data(vector.serializedTransaction)))
             let previousOutputs = vector.previousOutputs.map { previousOutput in
                 TransactionOutput(value: previousOutput.amount, script: BitcoinScript(previousOutput.scriptOperations))
             }
             var includeFlags = Set(vector.verifyFlags.split(separator: ","))
             includeFlags.remove("NONE")
             if includeFlags.contains("BADTX") {
-                XCTAssertThrowsError(try tx.check())
+                #expect(throws: (any Error).self) {
+                    try tx.check()
+                }
                 continue
             } else {
-                XCTAssertNoThrow(try tx.check())
+                try tx.check()
             }
             includeFlags.remove("BADTX")
             var config: ScriptConfig = []
@@ -36,11 +38,11 @@ final class InvalidTransactionTests: XCTestCase {
             if includeFlags.contains("NULLFAIL") { config.insert(.nullFail) }
             if includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.insert(.discourageUpgradableWitnessProgram) }
             let result = tx.verifyScript(previousOutputs: previousOutputs, config: config)
-            XCTAssertFalse(result)
+            #expect(!result)
 
             if !includeFlags.isEmpty {
                 let resultSuccess = tx.verifyScript(previousOutputs: previousOutputs, config: [])
-                XCTAssert(resultSuccess)
+                #expect(resultSuccess)
             }
         }
     }
