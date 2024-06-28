@@ -1,24 +1,30 @@
-import XCTest
+import Testing
+import Foundation
 @testable import Bitcoin
 import BitcoinCrypto
 
-fileprivate typealias InvalidChecksum = (bech32: String, error: Bech32.DecodingError)
-fileprivate typealias ValidAddressData = (address: String, script: [UInt8])
-fileprivate typealias InvalidAddressData = (hrp: String, version: Int, programLen: Int)
-
 /// https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#test-vectors
-class BIP173Tests: XCTestCase {
+struct BIP173Tests {
 
-    private let _validChecksum: [String] = [
+    typealias ValidAddressData = (address: String, script: [UInt8])
+    typealias InvalidAddressData = (hrp: String, version: Int, programLen: Int)
+
+    @Test("Valid checksum", arguments: [
         "A12UEL5L",
         "an83characterlonghumanreadablepartthatcontainsthenumber1andtheexcludedcharactersbio1tt5tgs",
         "abcdef1qpzry9x8gf2tvdw0s3jn54khce6mua7lmqqqxw",
         "11qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqc8247j",
         "split1checkupstagehandshakeupstreamerranterredcaperred2y9e3w",
         "?1ezyfcl"
-    ]
+    ])
+    func validChecksum(valid: String) throws {
+        let decoded = try Bech32.decode(valid)
+        #expect(!decoded.hrp.isEmpty, "Empty result for \"\(valid)\"")
+        let recoded = Bech32.encode(decoded.hrp, values: decoded.checksum)
+        #expect(valid.lowercased() == recoded.lowercased(), "Roundtrip encoding failed: \(valid) != \(recoded)")
+    }
 
-    private let _invalidChecksum: [InvalidChecksum] = [
+    @Test("Invalid checksum", arguments: [
         (" 1nwldj5", Bech32.DecodingError.nonPrintableCharacter),
         ("\u{7f}1axkwrx", Bech32.DecodingError.nonPrintableCharacter),
         ("an84characterslonghumanreadablepartthatcontainsthenumber1andtheexcludedcharactersbio1569pvx", Bech32.DecodingError.stringLengthExceeded),
@@ -29,22 +35,15 @@ class BIP173Tests: XCTestCase {
         ("de1lg7wt\u{ff}", Bech32.DecodingError.nonPrintableCharacter),
         ("10a06t8", Bech32.DecodingError.incorrectHrpSize),
         ("1qzzfhee", Bech32.DecodingError.incorrectHrpSize)
-    ]
+    ])
+    func invalidChecksum(invalid: (String, Bech32.DecodingError)) throws {
+        let (checksum, reason) = invalid
+        #expect(throws: reason) {
+            try Bech32.decode(checksum)
+        }
+    }
 
-    private let _invalidAddress: [String] = [
-        "tc1qw508d6qejxtdg4y5r3zarvary0c5xw7kg3g4ty",
-        "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5",
-        "BC13W508D6QEJXTDG4Y5R3ZARVARY0C5XW7KN40WF2",
-        "bc1rw5uspcuh",
-        "bc10w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90",
-        "BC1QR508D6QEJXTDG4Y5R3ZARVARYV98GJ9P",
-        "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sL5k7",
-        "bc1zw508d6qejxtdg4y5r3zarvaryvqyzf3du",
-        "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3pjxtptv",
-        "bc1gmk9yu"
-    ]
-
-    private let _validAddressData: [ValidAddressData] = [
+    @Test("Valid address", arguments: [
         ("BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4", [
             0x00, 0x14, 0x75, 0x1e, 0x76, 0xe8, 0x19, 0x91, 0x96, 0xd4, 0x54,
             0x94, 0x1c, 0x45, 0xd1, 0xb3, 0xa3, 0x23, 0xf1, 0x43, 0x3b, 0xd6
@@ -61,143 +60,75 @@ class BIP173Tests: XCTestCase {
             0xe9, 0x1c, 0x6c, 0xe2, 0x4d, 0x16, 0x5d, 0xab, 0x93, 0xe8, 0x64,
             0x33
         ])
-    ]
+    ])
+    func validAddress(valid: ValidAddressData) throws {
+        let address = valid.address
+        let script = Data(valid.script)
+        var hrp = "bc"
 
-    private let _invalidAddressData: [InvalidAddressData] = [
+        let decodedMainnet = try? SegwitAddrCoder.decode(hrp: hrp, addr: address)
+
+        let decodedTestnet: (version: Int, program: Data)?
+        if decodedMainnet == nil {
+            hrp = "tb"
+            decodedTestnet = try SegwitAddrCoder.decode(hrp: hrp, addr: address)
+        } else {
+            decodedTestnet = .none
+        }
+
+        let decoded = try #require(decodedMainnet ?? decodedTestnet)
+
+        // Segwit public key
+        let scriptPk = BitcoinScript([decoded.version == 0 ? .zero : .constant(UInt8(decoded.version)), .pushBytes(decoded.program)]).data
+
+        #expect(scriptPk == script, "Decoded script mismatch: \(scriptPk.hex) != \(script.hex)")
+
+        let recoded = try SegwitAddrCoder.encode(hrp: hrp, version: decoded.version, program: decoded.program)
+        #expect(!recoded.isEmpty, "Recoded string is empty for \(address)")
+    }
+
+    @Test("Invalid address", arguments: [
+        "tc1qw508d6qejxtdg4y5r3zarvary0c5xw7kg3g4ty",
+        "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5",
+        "BC13W508D6QEJXTDG4Y5R3ZARVARY0C5XW7KN40WF2",
+        "bc1rw5uspcuh",
+        "bc10w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90",
+        "BC1QR508D6QEJXTDG4Y5R3ZARVARYV98GJ9P",
+        "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sL5k7",
+        "bc1zw508d6qejxtdg4y5r3zarvaryvqyzf3du",
+        "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3pjxtptv",
+        "bc1gmk9yu"
+    ])
+    func invalidAddress(invalid: String) {
+        #expect(throws: Error.self) {
+            _ = try SegwitAddrCoder.decode(hrp: "bc", addr: invalid)
+        }
+        #expect(throws: Error.self) {
+            _ = try SegwitAddrCoder.decode(hrp: "tb", addr: invalid)
+        }
+    }
+
+    @Test("Invalid address encoding", arguments: [
         ("BC", 0, 20),
         ("bc", 0, 21),
         ("bc", 17, 32),
         ("bc", 1, 1),
         ("bc", 16, 41)
-    ]
-
-    func testValidChecksum() {
-        for valid in _validChecksum {
-            do {
-                let decoded = try Bech32.decode(valid)
-                XCTAssertFalse(decoded.hrp.isEmpty, "Empty result for \"\(valid)\"")
-                let recoded = Bech32.encode(decoded.hrp, values: decoded.checksum)
-                XCTAssert(valid.lowercased() == recoded.lowercased(), "Roundtrip encoding failed: \(valid) != \(recoded)")
-            } catch {
-                XCTFail("Error decoding \(valid): \(error.localizedDescription)")
-            }
+    ])
+    func invalidAddressEncoding(invalid: InvalidAddressData) {
+        let zeroData = Data(repeating: 0x00, count: invalid.programLen)
+        #expect(throws: Error.self) {
+            let _ = try SegwitAddrCoder.encode(hrp: invalid.hrp, version: invalid.version, program: zeroData)
         }
     }
 
-    func testInvalidChecksum() {
-        for invalid in _invalidChecksum {
-            let checksum = invalid.bech32
-            let reason = invalid.error
-            do {
-                let decoded = try Bech32.decode(checksum)
-                XCTFail("Successfully decoded an invalid checksum \(checksum): \(decoded.checksum.hex)")
-            } catch let error as Bech32.DecodingError {
-                XCTAssert(errorsEqual(error, reason), "Decoding error mismatch, got \(error.localizedDescription), expected \(reason.localizedDescription)")
-            } catch {
-                XCTFail("Invalid error occured: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    func testValidAddress() {
-        for valid in _validAddressData {
-            let address = valid.address
-            let script = Data(valid.script)
-            var hrp = "bc"
-
-            var decoded = try? SegwitAddrCoder.decode(hrp: hrp, addr: address)
-
-            do {
-                if decoded == nil {
-                    hrp = "tb"
-                    decoded = try SegwitAddrCoder.decode(hrp: hrp, addr: address)
-                }
-            } catch {
-                XCTFail("Failed to decode \(address)")
-                continue
-            }
-
-            let scriptPk = segwitPublicKey(version: decoded!.version, program: decoded!.program)
-            XCTAssert(scriptPk == script, "Decoded script mismatch: \(scriptPk.hex) != \(script.hex)")
-
-            do {
-                let recoded = try SegwitAddrCoder.encode(hrp: hrp, version: decoded!.version, program: decoded!.program)
-                XCTAssertFalse(recoded.isEmpty, "Recoded string is empty for \(address)")
-            } catch {
-                XCTFail("Roundtrip encoding failed for \"\(address)\" with error: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    func testInvalidAddress() {
-        for invalid in _invalidAddress {
-            do {
-                let decoded = try SegwitAddrCoder.decode(hrp: "bc", addr: invalid)
-                XCTFail("Successfully decoded an invalid address \(invalid) for hrp \"bc\": \(decoded.program.hex)")
-            } catch {
-                // OK here :)
-            }
-
-            do {
-                let decoded = try SegwitAddrCoder.decode(hrp: "tb", addr: invalid)
-                XCTFail("Successfully decoded an invalid address \(invalid) for hrp \"tb\": \(decoded.program.hex)")
-            } catch {
-                // OK again
-            }
-        }
-    }
-
-    func testInvalidAddressEncoding() {
-        for invalid in _invalidAddressData {
-            do {
-                let zeroData = Data(repeating: 0x00, count: invalid.programLen)
-                let wtf = try SegwitAddrCoder.encode(hrp: invalid.hrp, version: invalid.version, program: zeroData)
-                XCTFail("Successfully encoded zero bytes data \(wtf)")
-            } catch {
-                // the way it should go
-            }
-        }
-    }
-
-    func testAddressEncodingDecodingPerfomance() {
-        let addressToCode = _validAddressData[0].address
-        self.measure {
-            do {
-                for _ in 0..<10 {
-                    let decoded = try SegwitAddrCoder.decode(hrp: "bc", addr: addressToCode)
-                    let _ = try SegwitAddrCoder.encode(hrp: "bc", version: decoded.version, program: decoded.program)
-                }
-            } catch {
-                XCTFail(error.localizedDescription)
-                return
-            }
-        }
-    }
-
-    private func segwitPublicKey(version: Int, program: Data) -> Data {
-        BitcoinScript([version == 0 ? .zero : .constant(UInt8(version)), .pushBytes(program)]).data
-    }
-
-    private func errorsEqual(_ lhs: Bech32.DecodingError, _ rhs: Bech32.DecodingError) -> Bool {
-        switch lhs {
-        case .checksumMismatch:
-            return rhs == .checksumMismatch
-        case .incorrectChecksumSize:
-            return rhs == .incorrectChecksumSize
-        case .incorrectHrpSize:
-            return rhs == .incorrectHrpSize
-        case .invalidCase:
-            return rhs == .invalidCase
-        case .invalidCharacter:
-            return rhs == .invalidCharacter
-        case .noChecksumMarker:
-            return rhs == .noChecksumMarker
-        case .nonUTF8String:
-            return rhs == .nonUTF8String
-        case .stringLengthExceeded:
-            return rhs == .stringLengthExceeded
-        case .nonPrintableCharacter:
-            return rhs == .nonPrintableCharacter
+    @Test("Address encoding decoding performance")
+    func addressEncodingDecodingPerfomance() throws {
+        let addressToCode = "BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4"
+        // self.measure { ... }
+        for _ in 0..<10 {
+            let decoded = try SegwitAddrCoder.decode(hrp: "bc", addr: addressToCode)
+            let _ = try SegwitAddrCoder.encode(hrp: "bc", version: decoded.version, program: decoded.program)
         }
     }
 }

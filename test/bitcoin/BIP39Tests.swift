@@ -1,23 +1,22 @@
-import XCTest
+import Testing
 import Bitcoin
 
-final class BIP39Tests: XCTestCase {
+struct BIP39Tests {
 
-    func testAll() throws {
+    @Test("Test vectors for all languages", arguments: ["cs", "fr", "it", "ko", "pt", "en", "es", "jp", "zh", "zh-Hant"])
+    func allLanguages(language: String) throws {
         let passphrase = "TREZOR"
-        for language in ["cs", "fr", "it", "ko", "pt", "en", "es", "jp", "zh", "zh-Hant"] {
-            for testCase in testVector[language]! {
-                let entropy = testCase[0]
-                let expectedMnemonic = testCase[1]
-                let expectedSeed = testCase[2]
-                let expectedXPriv = testCase[3]
-                let mnemonic = try Wallet.mnemonicNew(withEntropy: entropy, language: language)
-                XCTAssertEqual(mnemonic, expectedMnemonic)
-                let seed = try Wallet.mnemonicToSeed(mnemonic: mnemonic, passphrase: passphrase, language: language)
-                XCTAssertEqual(seed, expectedSeed)
-                let xpriv = try Wallet.computeHDMasterKey(seed)
-                XCTAssertEqual(xpriv, expectedXPriv)
-            }
+        for testCase in testVector[language]! {
+            let entropy = testCase[0]
+            let expectedMnemonic = testCase[1]
+            let expectedSeed = testCase[2]
+            let expectedXPriv = testCase[3]
+            let mnemonic = try Wallet.mnemonicNew(withEntropy: entropy, language: language)
+            #expect(mnemonic == expectedMnemonic)
+            let seed = try Wallet.mnemonicToSeed(mnemonic: mnemonic, passphrase: passphrase, language: language)
+            #expect(seed == expectedSeed)
+            let xpriv = try Wallet.computeHDMasterKey(seed)
+            #expect(xpriv == expectedXPriv)
         }
     }
 }

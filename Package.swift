@@ -13,6 +13,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
+        .package(url: "https://github.com/apple/swift-testing.git", from: "0.0.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
@@ -69,12 +70,14 @@ let package = Package(
             swiftSettings: [ .swiftLanguageVersion(.v6)]),
         .testTarget(
             name: "BitcoinTests",
-            dependencies: ["Bitcoin"],
+            dependencies: [
+                "Bitcoin",
+                .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
             path: "test/bitcoin",
             resources: [
                 .copy("data")
-            ]
-            // , swiftSettings: [ .swiftLanguageVersion(.v6)]
+            ],
+            swiftSettings: [.swiftLanguageVersion(.v6)]
         )
     ]
 )

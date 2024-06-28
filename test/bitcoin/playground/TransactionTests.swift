@@ -1,12 +1,12 @@
-import XCTest
+import Testing
+import Foundation
 import Bitcoin
 
-final class TransactionTests: XCTestCase {
+struct TransactionTests {
 
-    func testDeserialization() throws {
-        guard let url = Bundle.module.url(forResource: "mainnet-transactions", withExtension: "json", subdirectory: "data/transactions") else {
-            XCTFail(); return
-        }
+    @Test("Deserialization")
+    func deserialization() throws {
+        let url = try #require(Bundle.module.url(forResource: "mainnet-transactions", withExtension: "json", subdirectory: "data"))
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
 
@@ -19,66 +19,66 @@ final class TransactionTests: XCTestCase {
                 let expectedTransactionData = Data(hex: txInfo.hex),
                 let tx = BitcoinTransaction(expectedTransactionData)
             else {
-                XCTFail(); return
+                Issue.record("Transaction data could not be decoded."); continue
             }
 
-            XCTAssertEqual(tx.data, expectedTransactionData)
+            #expect(tx.data == expectedTransactionData)
 
             let expectedVersion = txInfo.version
-            XCTAssertEqual(tx.version.versionValue, expectedVersion)
+            #expect(tx.version.versionValue == expectedVersion)
 
             let expectedLocktime = txInfo.locktime
-            XCTAssertEqual(tx.locktime.locktimeValue, expectedLocktime)
+            #expect(tx.locktime.locktimeValue == expectedLocktime)
 
             guard let expectedID = Data(hex: txInfo.txid), let expectedWitnessID = Data(hex: txInfo.hash) else {
-                XCTFail(); return
+                Issue.record("Transaction ID data could not be decoded."); continue
             }
-            XCTAssertEqual(tx.identifier, expectedID)
-            XCTAssertEqual(tx.witnessIdentifier, expectedWitnessID)
+            #expect(tx.identifier == expectedID)
+            #expect(tx.witnessIdentifier == expectedWitnessID)
 
             let expectedSize = txInfo.size
-            XCTAssertEqual(tx.size, expectedSize)
+            #expect(tx.size == expectedSize)
 
             let expectedInputCount = txInfo.vin.count
             let expectedOutputCount = txInfo.vout.count
-            XCTAssertEqual(tx.inputs.count, expectedInputCount)
-            XCTAssertEqual(tx.outputs.count, expectedOutputCount)
+            #expect(tx.inputs.count == expectedInputCount)
+            #expect(tx.outputs.count == expectedOutputCount)
 
             for i in txInfo.vin.indices {
                 let vinData = txInfo.vin[i]
                 let input = tx.inputs[i]
 
                 let expectedSequence = vinData.sequence
-                XCTAssertEqual(input.sequence.sequenceValue, expectedSequence)
+                #expect(input.sequence.sequenceValue == expectedSequence)
 
                 if let coinbase = vinData.coinbase {
                     guard let expectedCoinbase = Data(hex: coinbase) else {
-                        XCTFail(); return
+                        Issue.record("Transaction input \(i) coinbase data could not be decoded."); continue
                     }
 
                     let expectedOutpoint = TransactionOutpoint.coinbase
-                    XCTAssertEqual(input.outpoint, expectedOutpoint)
+                    #expect(input.outpoint == expectedOutpoint)
 
                     let expectedScript = BitcoinScript(expectedCoinbase)
-                    XCTAssertEqual(input.script, expectedScript)
+                    #expect(input.script == expectedScript)
 
                 } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig, let expectedScriptData = Data(hex: scriptSig.hex) {
                     guard let expectedTransaction = Data(hex: txid) else {
-                        XCTFail(); return
+                        Issue.record("Transaction input \(i) transaction ID data could not be decoded."); continue
                     }
 
-                    XCTAssertEqual(input.outpoint.transactionIdentifier, expectedTransaction)
-                    XCTAssertEqual(input.outpoint.outputIndex, expectedOutput)
+                    #expect(input.outpoint.transactionIdentifier == expectedTransaction)
+                    #expect(input.outpoint.outputIndex == expectedOutput)
                     let expectedScript = BitcoinScript(expectedScriptData)
-                    XCTAssertEqual(input.script, expectedScript)
+                    #expect(input.script == expectedScript)
 
                     if let witness = vinData.txinwitness {
                         let expectedWitnessData = witness.compactMap { Data(hex: $0) }
                         let expectedWitness = InputWitness(expectedWitnessData)
-                        XCTAssertEqual(input.witness, expectedWitness)
+                        #expect(input.witness == expectedWitness)
                     }
                 } else {
-                    XCTFail(); return
+                    Issue.record("Transaction input \(i) data could not be decoded."); continue
                 }
             }
             for i in txInfo.vout.indices {
@@ -86,13 +86,13 @@ final class TransactionTests: XCTestCase {
                 let output = tx.outputs[i]
 
                 let expectedValue = voutData.value
-                XCTAssertEqual(Double(output.value) / 100_000_000, expectedValue)
+                #expect(Double(output.value) / 100_000_000 == expectedValue)
 
                 guard let expectedScriptData = Data(hex: voutData.scriptPubKey.hex) else {
-                    XCTFail(); return
+                    Issue.record("Transaction output \(i) script data could not be decoded."); continue
                 }
                 let expectedScript = BitcoinScript(expectedScriptData)
-                XCTAssertEqual(output.script, expectedScript)
+                #expect(output.script == expectedScript)
             }
         }
     }
