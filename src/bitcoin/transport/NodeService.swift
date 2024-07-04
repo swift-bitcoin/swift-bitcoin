@@ -102,21 +102,6 @@ public actor NodeService: Sendable {
         await send(.getheaders, payload: getHeaders.data, to: id)
     }
 
-    /// TODO: Remove the following function declaration which is a work-around for _ pattern that the region based isolation checker does not understand how to check. Please file a bug_ in Swift 6 nightly linux image as of 2024-06-13.
-    public func addPeer() async -> UUID {
-        await addPeer(host: IPv4Address.empty.description, port: 0)
-    }
-
-    /// TODO: Remove the following function declaration which is a work-around for _ pattern that the region based isolation checker does not understand how to check. Please file a bug_ in Swift 6 nightly linux image as of 2024-06-13.
-    public func addPeer(incoming: Bool) async -> UUID {
-        await addPeer(host: IPv4Address.empty.description, port: 0, incoming: incoming)
-    }
-
-    /// TODO: Remove the following function declaration which is a work-around for _ pattern that the region based isolation checker does not understand how to check. Please file a bug_ in Swift 6 nightly linux image as of 2024-06-13.
-    public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0) async -> UUID {
-        await addPeer(host: host, port: port, incoming: true)
-    }
-
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
     public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) async -> UUID {
         let id = UUID()
@@ -208,11 +193,6 @@ public actor NodeService: Sendable {
         case .getaddr, .addrv2, .inv, .getdata, .notfound, .unknown:
             break
         }
-    }
-
-    /// TODO: Remove the following function declaration which is a work-around for _ pattern that the region based isolation checker does not understand how to check. Please file a bug_ in Swift 6 nightly linux image as of 2024-06-13.
-    private func send(_ command: MessageCommand, to id: UUID) async {
-        await peerOuts[id]?.send(.init(command, payload: .init(), network: network))
     }
 
     /// Sends a message.
