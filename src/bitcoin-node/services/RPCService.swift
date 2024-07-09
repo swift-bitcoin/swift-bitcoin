@@ -2,6 +2,9 @@ import Bitcoin
 import JSONRPC
 import ServiceLifecycle
 import NIO
+import Logging
+
+private let logger = Logger(label: "swift-bitcoin.rpc")
 
 actor RPCService: Service {
 
@@ -79,16 +82,15 @@ actor RPCService: Service {
         status.isRunning = true
 
         try await withGracefulShutdownHandler { @Sendable in
-            try await withThrowingDiscardingTaskGroup { group in
-                // TODO: Make sendable closure
-                try await serverChannel.executeThenClose {  serverChannelInbound in
+            try await withThrowingDiscardingTaskGroup { /* @Sendable */ group in
+                try await serverChannel.executeThenClose { /* @Sendable */ serverChannelInbound in
 
-                    print("RPC server accepting incoming connections on port \(host):\(port)…")
+                    logger.info("RPC server accepting incoming connections on port \(host):\(port)…")
                     await serviceUp()
 
                     for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
 
-                        print("Incoming RPC connection from client @ \(String(describing: connectionChannel.channel.remoteAddress))")
+                        logger.info("Incoming RPC connection from client @ \(String(describing: connectionChannel.channel.remoteAddress))")
                         await connectionMade()
 
                         group.addTask {
@@ -96,22 +98,21 @@ actor RPCService: Service {
                                 try await connectionChannel.executeThenClose {
                                     try await self.handleRPC($0, $1)
 
-                                    print("RPC server disconnected from client @ \(String(describing: connectionChannel.channel.remoteAddress)).")
+                                    logger.info("RPC server disconnected from client @ \(String(describing: connectionChannel.channel.remoteAddress)).")
 
                                 }
                             } catch {
-                                // TODO: Handle errors
-                                print("An unexpected error has occurred:\n\n\(error.localizedDescription)")
+                                logger.error("An unexpected error has occurred:\n\(error)")
                             }
                         }
                     }
-                    print("No more incoming RPC connections.")
+                    logger.info("No more incoming RPC connections.")
                 }
-                print("RPC server stopped (no longer listening for connections).")
+                logger.info("RPC server stopped (no longer listening for connections).")
             }
 
         } onGracefulShutdown: {
-            print("RPC server shutting down gracefully…")
+            logger.info("RPC server shutting down gracefully…")
         }
 
     }
