@@ -249,6 +249,11 @@ public actor BitcoinService: Sendable {
         return new.toCompact()
     }
 
+    // TODO: Pattern that the region based isolation checker does not understand how to check. Please file a bug
+    private func getMedianTimePast() -> Date {
+        getMedianTimePast(for: .none)
+    }
+
     private func getMedianTimePast(for height: Int? = .none) -> Date {
         let height = height ?? headers.count - 1
         precondition(height >= 0 && height < headers.count)

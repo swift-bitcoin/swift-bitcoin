@@ -3,6 +3,9 @@ import Bitcoin
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO
+import Logging
+
+private let logger = Logger(label: "swift-bitcoin.p2p-client")
 
 actor P2PClientService: Service {
 
@@ -37,7 +40,7 @@ actor P2PClientService: Service {
                 try await connectToPeer()
             }
         } onGracefulShutdown: {
-            print("P2P client shutting down gracefully…")
+            logger.info("P2P client shutting down gracefully…")
         }
     }
 
@@ -76,7 +79,7 @@ actor P2PClientService: Service {
         status.remoteHost = remoteHost
         status.remotePort = remotePort
         status.overallTotalConnections += 1
-        print("P2P client @\(status.localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
+        logger.info("P2P client @\(status.localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
 
         try await clientChannel.executeThenClose { @Sendable inbound, outbound in
             let peerID = await bitcoinNode.addPeer(host: remoteHost, port: remotePort, incoming: false)
@@ -84,7 +87,7 @@ actor P2PClientService: Service {
             try await withThrowingDiscardingTaskGroup { group in
                 group.addTask {
                     await self.bitcoinNode.connect(peerID)
-                    print("Connected \(peerID)")
+                    logger.info("Connected \(peerID)")
                 }
                 group.addTask {
                     for await message in await self.bitcoinNode.getChannel(for: peerID).cancelOnGracefulShutdown() {
@@ -95,7 +98,8 @@ actor P2PClientService: Service {
                     for try await message in inbound.cancelOnGracefulShutdown() {
                         do {
                             try await self.bitcoinNode.processMessage(message, from: peerID)
-                        } catch is NodeService.Error {
+                        } catch let error as NodeService.Error {
+                            logger.error("An error has occurred while processing message:\n\(error)")
                             try await clientChannel.channel.close()
                         }
                     }
@@ -108,7 +112,7 @@ actor P2PClientService: Service {
     }
 
     private func peerDisconnected() {
-        print("P2P client @\(status.localPort ?? -1) disconnected from remote peer @\(status.remoteHost ?? ""):\(status.remotePort ?? -1)…")
+        logger.info("P2P client @\(status.localPort ?? -1) disconnected from remote peer @\(status.remoteHost ?? ""):\(status.remotePort ?? -1)…")
         clientChannel = .none
         status.isConnected = false
         status.localPort = .none

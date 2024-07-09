@@ -13,6 +13,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-testing.git", from: "0.0.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
@@ -27,6 +28,7 @@ let package = Package(
                 "Bitcoin",
                 "BitcoinCrypto",
                 "JSONRPC",
+                .product(name: "Logging", package: "swift-log"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),

@@ -1,5 +1,8 @@
 import Bitcoin
 import ServiceLifecycle
+import Logging
+
+private let logger = Logger(label: "swift-bitcoin.node")
 
 extension NodeService: @retroactive Service {
     public func run() async throws {
@@ -8,11 +11,11 @@ extension NodeService: @retroactive Service {
         await withGracefulShutdownHandler {
             for await block in blocks.cancelOnGracefulShutdown() {
                 // If we have peers, send them the block
-                print("New block (might send to peer):\n\t\(block.hash.hex)]")
+                logger.info("New block (might send to peer):\n\t\(block.hash.hex)]")
             }
             await self.bitcoinService.unsubscribe(blocks)
         } onGracefulShutdown: {
-            print("BitcoinNode Service shutting down gracefully")
+            logger.info("BitcoinNode Service shutting down gracefully")
         }
     }
 }

@@ -102,6 +102,16 @@ public actor NodeService: Sendable {
         await send(.getheaders, payload: getHeaders.data, to: id)
     }
 
+    // TODO: Sending 'self'-isolated value of type 'Bool' with later accesses to actor-isolated context risks causing data races
+    public func addPeer(incoming: Bool) async -> UUID {
+        await addPeer(host: IPv4Address.empty.description, port: 0, incoming: incoming)
+    }
+
+    // TODO: Sending 'self'-isolated value of type 'String' with later accesses to actor-isolated context risks causing data races
+    public func addPeer() async -> UUID {
+        await addPeer(host: IPv4Address.empty.description, port: 0, incoming: true)
+    }
+
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
     public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) async -> UUID {
         let id = UUID()
@@ -193,6 +203,11 @@ public actor NodeService: Sendable {
         case .getaddr, .addrv2, .inv, .getdata, .notfound, .unknown:
             break
         }
+    }
+
+    // TODO: `Pattern that the region based isolation checker does not understand how to check. Please file a bug`
+    private func send(_ command: MessageCommand, to id: UUID) async {
+        await send(command, payload: .init(), to: id)
     }
 
     /// Sends a message.

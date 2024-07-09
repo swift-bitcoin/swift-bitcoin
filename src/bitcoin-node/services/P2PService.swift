@@ -3,6 +3,9 @@ import Bitcoin
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO
+import Logging
+
+private let logger = Logger(label: "swift-bitcoin.p2p")
 
 actor P2PService: Service {
 
@@ -39,7 +42,7 @@ actor P2PService: Service {
                 try await startListening()
             }
         } onGracefulShutdown: {
-            print("P2P server shutting down gracefully…")
+            logger.info("P2P server shutting down gracefully…")
         }
     }
 
@@ -98,13 +101,13 @@ actor P2PService: Service {
         try await withThrowingDiscardingTaskGroup { @Sendable group in
 
             try await serverChannel.executeThenClose { serverChannelInbound in
-                print("P2P server accepting incoming connections on \(host):\(port)…")
+                logger.info("P2P server accepting incoming connections on \(host):\(port)…")
 
                 await serviceUp(port)
 
                 for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
 
-                    print("P2P server received incoming connection from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
+                    logger.info("P2P server received incoming connection from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
                     let remoteHost = connectionChannel.channel.remoteAddress!.ipAddress!
                     let remotePort = connectionChannel.channel.remoteAddress!.port!
 
@@ -114,7 +117,8 @@ actor P2PService: Service {
                         do {
                             try await connectionChannel.executeThenClose { inbound, outbound in
 
-                                let peerID = await self.bitcoinNode.addPeer(host: remoteHost, port: remotePort)
+                                // TODO: Sending 'self'-isolated value of type 'Bool' with later accesses to actor-isolated context risks causing data races
+                                let peerID = await self.bitcoinNode.addPeer(host: remoteHost, port: remotePort, incoming: true)
 
                                 try await withThrowingDiscardingTaskGroup { group in
                                     group.addTask {
@@ -131,14 +135,13 @@ actor P2PService: Service {
                                             }
                                         }
                                         // Disconnected
-                                        print("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
+                                        logger.info("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
                                         await self.bitcoinNode.removePeer(peerID) // stop sibbling tasks
                                     }
                                 }
                             }
                         } catch {
-                            // TODO: Handle errors
-                            print("Unexpected error:\n\(error.localizedDescription)")
+                            logger.error("An unexpected error has occurred:\n\(error)")
                         }
                         await self.updateStats()
                     }
