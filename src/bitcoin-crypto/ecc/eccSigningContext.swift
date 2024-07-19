@@ -2,7 +2,9 @@ import Foundation
 import LibSECP256k1
 import ECCHelper
 
+//#if !os(Linux)
 extension OpaquePointer: @unchecked @retroactive Sendable { }
+//#endif
 
 let secp256k1_context_static = get_static_context()!
 

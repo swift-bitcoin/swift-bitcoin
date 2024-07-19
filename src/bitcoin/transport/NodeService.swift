@@ -154,11 +154,13 @@ public actor NodeService: Sendable {
         guard let peer = peers[id], peer.outgoing else { return }
 
         let versionMessage = await makeVersion(for: id)
-        print("Our version:")
-        debugPrint(versionMessage)
 
-        await send(.version, payload: versionMessage.data, to: id)
-        peers[id]?.versionSent = true
+        enqueue(.version, payload: versionMessage.data, to: id)
+        enqueue(.wtxidrelay, to: id)
+        enqueue(.sendaddrv2, to: id)
+
+        // await send(.version, payload: versionMessage.data, to: id)
+        // peers[id]?.versionSent = true
     }
 
     /// Sends a ping message to a peer. Creates a new child task.
@@ -168,9 +170,21 @@ public actor NodeService: Sendable {
         await send(.ping, payload: ping.data, to: id)
     }
 
+    /// Enqueues a ping message to a peer. Creates a new child task.
+    func enqueuePingTo(_ id: UUID) {
+        let ping = PingMessage()
+        peers[id]?.lastPingNonce = ping.nonce
+        enqueue(.ping, payload: ping.data, to: id)
+    }
+
+    public func popMessage(_ id: UUID) -> BitcoinMessage? {
+        guard let peer = peers[id] else { preconditionFailure() }
+        guard !peer.outbox.isEmpty else { return .none }
+        return peers[id]!.outbox.removeFirst()
+    }
+
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
     public func processMessage(_ message: BitcoinMessage, from id: UUID) async throws {
-        print("<- \(message.command) (\(message.payload.count))")
 
         guard let peer = peers[id] else { return }
 
@@ -212,8 +226,17 @@ public actor NodeService: Sendable {
 
     /// Sends a message.
     private func send(_ command: MessageCommand, payload: Data = .init(), to id: UUID) async {
-        print("-> \(command) (\(payload.count))")
         await peerOuts[id]?.send(.init(command, payload: payload, network: network))
+    }
+
+    // TODO: `Pattern that the region based isolation checker does not understand how to check. Please file a bug`
+    private func enqueue(_ command: MessageCommand, to id: UUID) {
+        enqueue(command, payload: .init(), to: id)
+    }
+
+    /// Queues a message.
+    private func enqueue(_ command: MessageCommand, payload: Data = .init(), to id: UUID) {
+        peers[id]?.outbox.append(.init(command, payload: payload, network: network))
     }
 
     /// Processes an incoming version message as part of the handshake.
@@ -240,9 +263,6 @@ public actor NodeService: Sendable {
             preconditionFailure()
         }
 
-        print("Peer version:")
-        debugPrint(peerVersion)
-
         if peerVersion.nonce == nonce {
             throw Error.connectionToSelf
         }
@@ -268,23 +288,24 @@ public actor NodeService: Sendable {
         if peer.incoming {
             let versionMessage = await makeVersion(for: id)
 
-            print("Our version:")
-            debugPrint(versionMessage)
+            // await send(.version, payload: versionMessage.data, to: id)
+            enqueue(.version, payload: versionMessage.data, to: id)
+            enqueue(.wtxidrelay, to: id)
+            enqueue(.sendaddrv2, to: id)
 
-            await send(.version, payload: versionMessage.data, to: id)
-            peers[id]?.versionSent = true
+            //peers[id]?.versionSent = true
         }
 
         // BIP339
-        await send(.wtxidrelay, to: id)
-        peers[id]?.witnessRelayPreferenceSent = true
+        // await send(.wtxidrelay, to: id)
+        // peers[id]?.witnessRelayPreferenceSent = true
 
         // BIP155
-        await send(.sendaddrv2, to: id)
-        peers[id]?.v2AddressPreferenceSent = true
+        // await send(.sendaddrv2, to: id)
+        // peers[id]?.v2AddressPreferenceSent = true
 
-        await send(.verack, to: id)
-        peers[id]?.versionAckSent = true
+        // await send(.verack, to: id)
+        // peers[id]?.versionAckSent = true
     }
 
     /// BIP339
@@ -298,6 +319,10 @@ public actor NodeService: Sendable {
         }
 
         peers[id]?.witnessRelayPreferenceReceived = true
+
+        if peer.v2AddressPreferenceReceived {
+            enqueue(.verack, to: id)
+        }
     }
 
     /// BIP155
@@ -311,6 +336,10 @@ public actor NodeService: Sendable {
         }
 
         peers[id]?.v2AddressPreferenceReceived = true
+
+        if peer.witnessRelayPreferenceReceived {
+            enqueue(.verack, to: id)
+        }
     }
 
     private func processVerack(_ message: BitcoinMessage, from id: UUID) async throws {
@@ -318,7 +347,6 @@ public actor NodeService: Sendable {
 
         if peer.versionAckReceived {
             // Ignore redundant verack.
-            print("Redundant verack.")
             return
         }
 
@@ -339,15 +367,15 @@ public actor NodeService: Sendable {
         }
 
         // BIP152 send a burst of supported compact block versions followed by a ping to lock it down.
-        await send(.sendcmpct, payload: SendCompactMessage().data, to: id)
+        enqueue(.sendcmpct, payload: SendCompactMessage().data, to: id)
         peers[id]?.compactBlocksPreferenceSent = true
         if let pong = peer.pongOnHoldUntilCompactBlocksPreference {
-            await send(.pong, payload: pong.data, to: id)
+            enqueue(.pong, payload: pong.data, to: id)
             peers[id]?.pongOnHoldUntilCompactBlocksPreference = .none
         }
-        await sendPingTo(id)
+        enqueuePingTo(id)
 
-        await send(.feefilter, payload: FeeFilterMessage(feeRate: feeFilterRate).data, to: id)
+        enqueue(.feefilter, payload: FeeFilterMessage(feeRate: feeFilterRate).data, to: id)
     }
 
     private func processPing(_ message: BitcoinMessage, from id: UUID) async throws {
@@ -356,14 +384,12 @@ public actor NodeService: Sendable {
         guard let ping = PingMessage(message.payload) else {
             throw Error.invalidPayload
         }
-        debugPrint(ping)
 
         let pong = PongMessage(nonce: ping.nonce)
-        debugPrint(pong)
 
         // BIP152 We need to hold the pong until the compact block version was sent.
         if peer.compactBlocksPreferenceSent {
-            await send(.pong, payload: pong.data, to: id)
+            enqueue(.pong, payload: pong.data, to: id)
         } else {
             peers[id]?.pongOnHoldUntilCompactBlocksPreference = pong
         }
@@ -376,7 +402,7 @@ public actor NodeService: Sendable {
         guard let pong = PongMessage(message.payload) else {
             throw Error.invalidPayload
         }
-        debugPrint(pong)
+
         guard let nonce = peers[id]?.lastPingNonce, pong.nonce == nonce else {
             throw Error.pingPongMismatch
         }
@@ -396,7 +422,7 @@ public actor NodeService: Sendable {
         guard let sendCompact = SendCompactMessage(message.payload) else {
             throw Error.invalidPayload
         }
-        debugPrint(sendCompact)
+
         // We let the negotiation play out for versions lower than our max supported. When version is finally locked we will enforce our minimum supported version as well.
         if peer.compactBlocksVersion == .none, sendCompact.version <= Self.maxCompactBlocksVersion {
             peers[id]?.highBandwidthCompactBlocks = sendCompact.highBandwidth
@@ -409,7 +435,7 @@ public actor NodeService: Sendable {
         guard let feeFilter = FeeFilterMessage(message.payload) else {
             throw Error.invalidPayload
         }
-        debugPrint(feeFilter)
+
         peers[id]?.feeFilterRate = feeFilter.feeRate
     }
 
@@ -419,11 +445,9 @@ public actor NodeService: Sendable {
         guard let getHeaders = GetHeadersMessage(message.payload) else {
             throw Error.invalidPayload
         }
-        debugPrint(getHeaders)
 
         let headers = await bitcoinService.findHeaders(using: getHeaders.locatorHashes)
         let headersMessage = HeadersMessage(items: headers)
-        debugPrint(headersMessage)
 
         await send(.headers, payload: headersMessage.data, to: id)
     }
@@ -460,7 +484,6 @@ public actor NodeService: Sendable {
         }
 
         // TODO: Request blocks
-
         debugPrint(headersMessage)
     }
 

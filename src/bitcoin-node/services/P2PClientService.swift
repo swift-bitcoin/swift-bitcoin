@@ -3,6 +3,7 @@ import Bitcoin
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO
+import NIOExtras
 import Logging
 
 private let logger = Logger(label: "swift-bitcoin.p2p-client")
@@ -67,7 +68,9 @@ actor P2PClientService: Service {
         ) { channel in
             channel.pipeline.addHandlers([
                 MessageToByteHandler(MessageCoder()),
-                ByteToMessageHandler(MessageCoder())
+                ByteToMessageHandler(MessageCoder()),
+                DebugInboundEventsHandler(),
+                DebugOutboundEventsHandler()
             ]).eventLoop.makeCompletedFuture {
                 try NIOAsyncChannel<BitcoinMessage, BitcoinMessage>(wrappingChannelSynchronously: channel)
             }
@@ -87,6 +90,9 @@ actor P2PClientService: Service {
             try await withThrowingDiscardingTaskGroup { group in
                 group.addTask {
                     await self.bitcoinNode.connect(peerID)
+                    while let message = await self.bitcoinNode.popMessage(peerID) {
+                        try await outbound.write(message)
+                    }
                     logger.info("Connected \(peerID)")
                 }
                 group.addTask {
@@ -101,6 +107,9 @@ actor P2PClientService: Service {
                         } catch let error as NodeService.Error {
                             logger.error("An error has occurred while processing message:\n\(error)")
                             try await clientChannel.channel.close()
+                        }
+                        while let message = await self.bitcoinNode.popMessage(peerID) {
+                            try await outbound.write(message)
                         }
                     }
                     // Channel was closed

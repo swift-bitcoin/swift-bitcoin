@@ -4,7 +4,7 @@ import Logging
 
 private let logger = Logger(label: "swift-bitcoin.node")
 
-extension NodeService: @retroactive Service {
+extension NodeService: Service {
     public func run() async throws {
         let blocks = await bitcoinService.subscribeToBlocks()
         self.blocks = blocks
