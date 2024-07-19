@@ -3,6 +3,7 @@ import Bitcoin
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO
+import NIOExtras
 import Logging
 
 private let logger = Logger(label: "swift-bitcoin.p2p")
@@ -90,7 +91,9 @@ actor P2PService: Service {
             // This closure is called for every inbound connection.
             channel.pipeline.addHandlers([
                 ByteToMessageHandler(MessageCoder()),
-                MessageToByteHandler(MessageCoder())
+                MessageToByteHandler(MessageCoder()),
+                DebugInboundEventsHandler(),
+                DebugOutboundEventsHandler()
             ]).eventLoop.makeCompletedFuture {
                 try NIOAsyncChannel<BitcoinMessage, BitcoinMessage>(wrappingChannelSynchronously: channel)
             }
@@ -133,6 +136,10 @@ actor P2PService: Service {
                                             } catch is NodeService.Error {
                                                 try await connectionChannel.channel.close()
                                             }
+                                            while let message = await self.bitcoinNode.popMessage(peerID) {
+                                                try await outbound.write(message)
+                                            }
+
                                         }
                                         // Disconnected
                                         logger.info("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")

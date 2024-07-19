@@ -13,6 +13,9 @@ extension NodeService {
         /// Whether this peer has initiated the connection to us.
         public let incoming: Bool
 
+
+        var outbox = [BitcoinMessage]()
+
         /// Whether our node has already sent the version message to this peer.
         var versionSent = false
 
@@ -65,13 +68,13 @@ extension NodeService {
 
         /// The connection has been established.
         public var handshakeComplete: Bool {
-            versionSent &&
+            // versionSent &&
             version != .none &&
-            witnessRelayPreferenceSent &&
+            // witnessRelayPreferenceSent &&
             witnessRelayPreferenceReceived &&
-            v2AddressPreferenceSent &&
+            // v2AddressPreferenceSent &&
             v2AddressPreferenceReceived &&
-            versionAckSent &&
+            // versionAckSent &&
             versionAckReceived
         }
     }
