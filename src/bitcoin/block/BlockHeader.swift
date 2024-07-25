@@ -39,8 +39,16 @@ public struct BlockHeader: Equatable, Sendable {
         hash256(data)
     }
 
+    public var hashHex: String {
+        hash.hex
+    }
+
     public var identifier: Data {
         Data(hash.reversed())
+    }
+
+    public var identifierHex: String {
+        identifier.hex
     }
 
     // MARK: - Instance Methods
