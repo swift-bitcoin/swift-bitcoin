@@ -14,9 +14,9 @@ jobs:
         uses: sersoft-gmbh/swifty-linux-action@v3
         with:
             branch-name: swift-6.0-branch
-            version-tag: swift-6.0-DEVELOPMENT-SNAPSHOT-2024-07-17-a
+            version-tag: swift-6.0-DEVELOPMENT-SNAPSHOT-2024-07-23-a
             # release-version: 6.0
       - name: Build
-        run: swift build --build-tests --disable-xctest
+        run: swift build --build-tests
       - name: Test
         run: swift test --disable-xctest

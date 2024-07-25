@@ -1,10 +1,12 @@
 import Foundation
 import LibSECP256k1
 
-/// Checks that a public key is valid.
-public func checkPublicKey(_ publicKeyData: Data) -> Bool {
-    let publicKeyBytes = [UInt8](publicKeyData)
+// TODO: Consider expanding this technique to other C function wrappers.
 
-    var pubkey = secp256k1_pubkey()
-    return secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, publicKeyBytes, publicKeyBytes.count) != 0
+/// Checks that a public key is valid.
+public func checkPublicKey(_ publicKey: Data) -> Bool {
+    // Alternatively `publicKey.withContiguousStorageIfAvailable { … }` can be sued.
+    let publicKey = [UInt8](publicKey)
+    var parsedPublicKey = secp256k1_pubkey()
+    return secp256k1_ec_pubkey_parse(secp256k1_context_static, &parsedPublicKey, publicKey, publicKey.count) != 0
 }
