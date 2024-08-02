@@ -1,6 +1,6 @@
 [
 {
-  "_comment": "Block 2 coinbase",
+  // "_comment": "Block 2 coinbase",
   "txid": "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098",
   "hash": "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098",
   "version": 1,

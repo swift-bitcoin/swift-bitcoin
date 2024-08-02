@@ -10,8 +10,8 @@ struct TransactionTests {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
 
-        // Linux Foundation does not support JSON5
-        // decoder.allowsJSON5 = true
+        // New Foundation on Linux now supports JSON5
+        decoder.allowsJSON5 = true
 
         let TxInfoItems = try decoder.decode([TxInfo].self, from: data)
         for txInfo in TxInfoItems {

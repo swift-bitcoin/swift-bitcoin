@@ -122,7 +122,7 @@ public actor BitcoinService: Sendable {
             }
 
             var calendar = Calendar(identifier: .iso8601)
-            calendar.timeZone = .init(secondsFromGMT: 0)!
+            calendar.timeZone = .gmt
             guard newHeader.time <= calendar.date(byAdding: .hour, value: 2, to: .now)! else {
                 throw Error.headerTooNew
             }
