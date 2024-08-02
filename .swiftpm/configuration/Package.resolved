@@ -114,8 +114,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio-http2.git",
       "state" : {
-        "revision" : "a0224f3d20438635dd59c9fcc593520d80d131d0",
-        "version" : "1.33.0"
+        "revision" : "b5f7062b60e4add1e8c343ba4eb8da2e324b3a94",
+        "version" : "1.34.0"
       }
     },
     {
@@ -132,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax.git",
       "state" : {
-        "revision" : "82a453c2dfa335c7e778695762438dfe72b328d2",
-        "version" : "600.0.0-prerelease-2024-07-24"
+        "revision" : "06b5cdc432e93b60e3bdf53aff2857c6b312991a",
+        "version" : "600.0.0-prerelease-2024-07-30"
       }
     },
     {
