@@ -1,6 +1,6 @@
 import Foundation
 
-public enum NodeNetwork: String, Sendable {
+public enum NodeNetwork: String, Sendable, CaseIterable, CustomStringConvertible, Identifiable {
     case main, test, signet, regtest
 
     /// Also known as block and message header.
@@ -29,6 +29,14 @@ public enum NodeNetwork: String, Sendable {
         case .signet: 38333
         case .regtest: 18444
         }
+    }
+
+    public var id: String {
+        rawValue
+    }
+
+    public var description: String {
+        rawValue.capitalized
     }
 }
 

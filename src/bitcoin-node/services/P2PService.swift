@@ -120,8 +120,7 @@ actor P2PService: Service {
                         do {
                             try await connectionChannel.executeThenClose { inbound, outbound in
 
-                                // TODO: Sending 'self'-isolated value of type 'Bool' with later accesses to actor-isolated context risks causing data races
-                                let peerID = await self.bitcoinNode.addPeer(host: remoteHost, port: remotePort, incoming: true)
+                                let peerID = await self.bitcoinNode.addPeer(host: remoteHost, port: remotePort)
 
                                 try await withThrowingDiscardingTaskGroup { group in
                                     group.addTask {
