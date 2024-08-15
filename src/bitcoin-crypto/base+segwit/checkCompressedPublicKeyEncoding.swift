@@ -3,7 +3,7 @@ import Foundation
 /// BIP143: Checks that the public key is  compressed.
 public func checkCompressedPublicKeyEncoding(_ publicKey: Data) -> Bool {
 
-    if publicKey.count != compressedKeySize {
+    if publicKey.count != compressedPublicKeySize {
         //  Non-canonical public key: invalid length for compressed key
         return false
     }

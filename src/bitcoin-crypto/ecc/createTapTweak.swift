@@ -2,7 +2,7 @@ import Foundation
 import LibSECP256k1
 
 /// Internal key is an x-only public key.
-public func createTapTweak(internalKey internalKeyData: Data, merkleRoot: Data?) -> (outputKey: Data, parity: Bool) {
+public func createTapTweak(internalKey internalKeyData: Data, merkleRoot: Data) -> (outputKey: Data, parity: Bool) {
 
     let internalKey = [UInt8](internalKeyData)
     let tweak = [UInt8](computeTapTweakHash(internalKey: internalKeyData, merkleRoot: merkleRoot))
@@ -36,7 +36,7 @@ public func createTapTweak(internalKey internalKeyData: Data, merkleRoot: Data?)
 }
 
 /// Requires global signing context to be initialized.
-public func createTapTweak(secretKey secretKeyData: Data, merkleRoot: Data?) -> Data {
+public func createTapTweak(secretKey secretKeyData: Data, merkleRoot: Data) -> Data {
 
     let secretKey = [UInt8](secretKeyData)
 

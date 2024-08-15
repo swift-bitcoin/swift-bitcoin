@@ -1,7 +1,7 @@
 import Foundation
 import LibSECP256k1
 
-public func checkTapTweak(internalKey internalKeyData: Data, outputKey outputKeyData: Data, merkleRoot: Data?, parity: Bool) -> Bool {
+public func checkTapTweak(internalKey internalKeyData: Data, outputKey outputKeyData: Data, merkleRoot: Data, parity: Bool) -> Bool {
     let internalKey = [UInt8](internalKeyData)
     let outputKey = [UInt8](outputKeyData)
 

@@ -13,11 +13,11 @@ public func tweakPublicKey(_ keyData: Data, tweak: Data) -> Data {
     result = secp256k1_ec_pubkey_tweak_add(secp256k1_context_static, &pubkey, &tweakBytes)
     assert(result != 0)
 
-    let tweakedKey: [UInt8] = .init(unsafeUninitializedCapacity: compressedKeySize) { buf, len in
-        len = compressedKeySize
+    let tweakedKey: [UInt8] = .init(unsafeUninitializedCapacity: compressedPublicKeySize) { buf, len in
+        len = compressedPublicKeySize
         result = secp256k1_ec_pubkey_serialize(secp256k1_context_static, buf.baseAddress!, &len, &pubkey, UInt32(SECP256K1_EC_COMPRESSED))
         assert(result != 0)
-        assert(len == compressedKeySize)
+        assert(len == compressedPublicKeySize)
 
     }
     return Data(tweakedKey)

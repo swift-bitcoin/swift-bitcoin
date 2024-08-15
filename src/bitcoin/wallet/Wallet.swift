@@ -61,8 +61,8 @@ extension Wallet {
         case .witnessV0:
             return try SegwitAddrCoder.encode(hrp: network.bech32HRP, version: 0, program: hash160(publicKey))
         case .witnessV1:
-            let internalKey = getInternalKey(publicKey: publicKey)
-            let outputKey = getOutputKey(internalKey: internalKey)
+            let internalKey = publicKeyToXOnly(publicKey)
+            let outputKey = getOutputKey(internalKey: internalKey, merkleRoot: .init())
             return try SegwitAddrCoder.encode(hrp: network.bech32HRP, version: 1, program: outputKey)
         }
     }

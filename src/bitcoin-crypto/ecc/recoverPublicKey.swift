@@ -1,9 +1,9 @@
 import Foundation
 import LibSECP256k1
 
-public func recoverCompact(message: Data, signature: Data) -> Data? {
+public func recoverPublicKey(message: Data, signature: Data) -> Data? {
 
-    precondition(signature.count == compactSignatureSize) // throw?
+    precondition(signature.count == recoverableSignatureSize) // throw?
 
     let hash = [UInt8](messageHash(message))
 
@@ -21,7 +21,7 @@ public func recoverCompact(message: Data, signature: Data) -> Data? {
         return .none
     }
 
-    var publen = comp ? compressedKeySize : uncompressedKeySize
+    var publen = comp ? compressedPublicKeySize : uncompressedPublicKeySize
     var pub = [UInt8](repeating: 0, count: publen)
     guard secp256k1_ec_pubkey_serialize(secp256k1_context_static, &pub, &publen, &pubkey, UInt32(comp ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED)) != 0 else {
         preconditionFailure()

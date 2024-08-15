@@ -2,7 +2,7 @@ import Foundation
 import LibSECP256k1
 
 /// Requires global signing context to be initialized.
-public func signSchnorr(msg msgData: Data, secretKey secretKeyData: Data, merkleRoot: Data?, skipTweak: Bool = false, aux auxData: Data?) -> Data {
+public func signSchnorr(msg msgData: Data, secretKey secretKeyData: Data, merkleRoot: Data? = .none, aux auxData: Data?) -> Data {
 
     let msg = [UInt8](msgData)
     let secretKey = [UInt8](secretKeyData)
@@ -13,7 +13,7 @@ public func signSchnorr(msg msgData: Data, secretKey secretKeyData: Data, merkle
         preconditionFailure()
     }
 
-    if !skipTweak {
+    if let merkleRoot {
         var pubKey = secp256k1_xonly_pubkey()
         guard secp256k1_keypair_xonly_pub(secp256k1_context_static, &pubKey, nil, &keypair) != 0 else {
             preconditionFailure()
@@ -37,7 +37,8 @@ public func signSchnorr(msg msgData: Data, secretKey secretKeyData: Data, merkle
         preconditionFailure()
     }
 
-    // Additional verification step to prevent using a potentially corrupted signature
+    // Additional verification step to prevent using a potentially corrupted signature.
+    // This public key will be tweaked if a tweak was added to the keypair earlier.
     var pubKeyVerify = secp256k1_xonly_pubkey()
     guard secp256k1_keypair_xonly_pub(secp256k1_context_static, &pubKeyVerify, nil, &keypair) != 0 else {
         preconditionFailure()

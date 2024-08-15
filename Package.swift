@@ -1,16 +1,9 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-let languageMode: SwiftSetting
-#if os(Linux)
-    languageMode = .swiftLanguageMode(.v6)
-#else
-    languageMode = .swiftLanguageVersion(.v6)
-#endif
-
 let package = Package(
     name: "swift-bitcoin",
-    platforms: [.macOS(.v14), .iOS(.v17), .macCatalyst(.v17), .tvOS(.v17), .watchOS(.v10)],
+    platforms: [.macOS(.v14), .iOS(.v17), .macCatalyst(.v17), .tvOS(.v17), .watchOS(.v10), .visionOS(.v1)],
     products: [
         .library(
             name: "Bitcoin",
@@ -44,7 +37,7 @@ let package = Package(
                 .product(name: "NIOExtras", package: "swift-nio-extras"),
                 ],
             path: "src/bitcoin-node",
-            swiftSettings: [languageMode]),
+            swiftSettings: [.swiftLanguageMode(.v6)]),
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
                 "Bitcoin",
@@ -52,7 +45,7 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "NIO", package: "swift-nio")],
             path: "src/bitcoin-utility",
-            swiftSettings: [languageMode]),
+            swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(
             name: "ECCHelper",
             dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")],
@@ -64,21 +57,21 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
             ],
             path: "src/bitcoin-crypto",
-            swiftSettings: [languageMode]),
+            swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(
             name: "Bitcoin",
             dependencies: [
                 "BitcoinCrypto",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
             path: "src/bitcoin",
-            swiftSettings: [languageMode]),
+            swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(
             name: "JSONRPC",
             dependencies: [
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
             path: "src/json-rpc",
-            swiftSettings: [languageMode]),
+            swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinTests",
             dependencies: [
@@ -88,6 +81,6 @@ let package = Package(
             resources: [
                 .copy("data")
             ],
-            swiftSettings: [languageMode])
+            swiftSettings: [.swiftLanguageMode(.v6)])
     ]
 )

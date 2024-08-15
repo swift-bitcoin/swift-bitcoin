@@ -27,7 +27,7 @@ struct BIP340Tests {
         let msgData = Data(msg)
         let sigData = Data(sig)
 
-        let newSignature = signSchnorr(msg: msgData, secretKey: secretKey, merkleRoot: .none, skipTweak: true, aux: auxData)
+        let newSignature = signSchnorr(msg: msgData, secretKey: secretKey, aux: auxData)
         #expect(newSignature == sigData)
         // Verify those sigs for good measure.
         #expect(verifySchnorr(sig: newSignature, msg: msgData, publicKey: internalKey))
@@ -36,7 +36,7 @@ struct BIP340Tests {
         // and compare against the resulting tweaked keys, with random aux.
         // In iteration i=0 we tweak with empty Merkle tree.
         for i in 0 ..< 10 {
-            let merkleRoot: Data? = i == 0 ? .none : insecureRand256()
+            let merkleRoot: Data = i == 0 ? .init() : insecureRand256()
             let auxRnd = insecureRand256()
             let (outputKey: outputKey, parity: parity) = createTapTweak(internalKey: internalKey, merkleRoot: merkleRoot)
             #expect(checkTapTweak(internalKey: internalKey, outputKey: outputKey, merkleRoot: merkleRoot, parity: parity))

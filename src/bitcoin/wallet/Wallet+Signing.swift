@@ -66,7 +66,7 @@ extension Wallet {
     }
 
     public static func sign(secretKey: Data, message: Data, compressedPublicKey: Bool) throws -> Data {
-        signCompact(message: message, secretKey: secretKey, compressedPublicKey: compressedPublicKey)
+        signRecoverable(message: message, secretKey: secretKey, compressedPublicKey: compressedPublicKey)
     }
 
     public static func verify(address: String, signature: String, message: String) throws -> Bool {
@@ -92,7 +92,7 @@ extension Wallet {
     }
 
     public static func verify(publicKeyHash: Data, signature: Data, message: Data) throws -> Bool {
-        guard let publicKey = recoverCompact(message: message, signature: signature) else {
+        guard let publicKey = recoverPublicKey(message: message, signature: signature) else {
             return false
         }
         return hash160(publicKey) == publicKeyHash

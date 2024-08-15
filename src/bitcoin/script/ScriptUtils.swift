@@ -99,7 +99,7 @@ func checkSignature(_ extendedSignature: Data, scriptConfig: ScriptConfig) throw
             throw ScriptError.invalidSignatureEncoding
         }
     }
-    if scriptConfig.contains(.lowS) && !isSignatureLowS(extendedSignature) {
+    if scriptConfig.contains(.lowS) && !isLowS(extendedSignature: extendedSignature) {
         throw ScriptError.nonLowSSignature
     }
     if scriptConfig.contains(.strictEncoding)  {

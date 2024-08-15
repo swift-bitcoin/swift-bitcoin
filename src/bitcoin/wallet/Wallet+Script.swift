@@ -47,7 +47,7 @@ extension Wallet {
             }
             let scriptTree = ScriptTree(scripts, leafVersion: 192)
             let (_, merkleRoot) = scriptTree.calcMerkleRoot()
-            let internalKey = getInternalKey(publicKey: publicKey)
+            let internalKey = publicKeyToXOnly(publicKey)
             let outputKey = getOutputKey(internalKey: internalKey, merkleRoot: merkleRoot)
             return try SegwitAddrCoder.encode(hrp: network.bech32HRP, version: 1, program: outputKey)
         }
