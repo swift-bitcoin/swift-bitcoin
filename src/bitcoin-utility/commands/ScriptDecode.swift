@@ -1,5 +1,6 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinBase
+import BitcoinWallet
 import Foundation
 
 /// Decodes a script into its assembly textual representation.

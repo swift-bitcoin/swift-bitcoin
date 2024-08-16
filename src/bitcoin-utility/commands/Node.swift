@@ -1,5 +1,5 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinBlockchain
 
 struct Node: AsyncParsableCommand {
 

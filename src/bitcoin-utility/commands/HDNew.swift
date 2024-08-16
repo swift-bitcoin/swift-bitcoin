@@ -1,5 +1,5 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinWallet
 import Foundation
 
 /// Generates a new HD wallet master key from seed.

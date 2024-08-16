@@ -2,7 +2,7 @@ import Foundation
 import LibSECP256k1
 
 /// Requires global signing context to be initialized.
-public func signSchnorr(msg msgData: Data, secretKey secretKeyData: Data, merkleRoot: Data? = .none, aux auxData: Data?) -> Data {
+public func signSchnorr(msg msgData: Data, secretKey secretKeyData: Data, tweak: Data? = .none, aux auxData: Data?) -> Data {
 
     let msg = [UInt8](msgData)
     let secretKey = [UInt8](secretKeyData)
@@ -13,19 +13,8 @@ public func signSchnorr(msg msgData: Data, secretKey secretKeyData: Data, merkle
         preconditionFailure()
     }
 
-    if let merkleRoot {
-        var pubKey = secp256k1_xonly_pubkey()
-        guard secp256k1_keypair_xonly_pub(secp256k1_context_static, &pubKey, nil, &keypair) != 0 else {
-            preconditionFailure()
-        }
-
-        var pubKeyBytes = [UInt8](repeating: 0, count: 32)
-        guard secp256k1_xonly_pubkey_serialize(secp256k1_context_static, &pubKeyBytes, &pubKey) != 0 else {
-            preconditionFailure()
-        }
-
-        let tweak = [UInt8](computeTapTweakHash(internalKey: Data(pubKeyBytes), merkleRoot: merkleRoot))
-
+    if let tweak {
+        let tweak = [UInt8](tweak)
         guard secp256k1_keypair_xonly_tweak_add(secp256k1_context_static, &keypair, tweak) != 0 else {
             preconditionFailure()
         }

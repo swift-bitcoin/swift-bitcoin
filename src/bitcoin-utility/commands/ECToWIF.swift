@@ -1,5 +1,5 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinWallet
 import Foundation
 
 /// Converts a raw private key to the Wallet Interchange Format (WIF).

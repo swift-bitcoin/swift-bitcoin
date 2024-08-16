@@ -1,5 +1,5 @@
 import Foundation
-import Bitcoin
+import BitcoinTransport
 import NIO
 
 final class MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {

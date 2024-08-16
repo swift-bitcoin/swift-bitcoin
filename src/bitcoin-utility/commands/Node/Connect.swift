@@ -1,6 +1,6 @@
 import ArgumentParser
-import JSONRPC
-import Bitcoin
+import BitcoinRPC
+import BitcoinBlockchain
 
 struct Connect: AsyncParsableCommand {
 

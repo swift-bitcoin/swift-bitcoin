@@ -1,5 +1,5 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinWallet
 import Foundation
 
 /// Converts a BIP32 extended private key into its corresponding extended public key, also known as a neutered key.
