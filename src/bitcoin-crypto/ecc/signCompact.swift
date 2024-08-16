@@ -1,43 +1,52 @@
 import Foundation
 import LibSECP256k1
 
-/// Requires global signing context to be initialized.
-public func signCompact(message: Data, secretKey secretKeyData: Data, compressedPublicKey: Bool) -> Data {
+/// Creates an ECDSA signature with low R value and returns its 64-byte compact (public key non-recoverable) serialization.
+///
+/// The generated signature will be verified before this function can return.
+///
+/// Note: This function requires global signing context to be initialized.
+///
+/// - Parameters:
+///   - messageHash: 32-byte message hash data.
+///   - secretKey: 32-byte secret key data.
+/// - Returns: 64-byte compact signature data.
+///
+public func signCompact(messageHash: Data, secretKey: Data) -> Data {
+    let messageHash = [UInt8](messageHash)
+    let secretKey = [UInt8](secretKey)
 
-    precondition(secretKeyData.count == secretKeySize)
+    precondition(messageHash.count == messageHashSize)
+    precondition(secretKey.count == secretKeySize)
 
-    let hash = [UInt8](messageHash(message))
-    let secretKey = [UInt8](secretKeyData)
-
-    var rsig = secp256k1_ecdsa_recoverable_signature()
-    guard secp256k1_ecdsa_sign_recoverable(eccSigningContext, &rsig, hash, secretKey, secp256k1_nonce_function_rfc6979, nil) != 0 else {
-        preconditionFailure()
+    let testCase = UInt32(0)
+    var extraEntropy = [UInt8](repeating: 0, count: 32)
+    writeLE32(&extraEntropy, testCase)
+    var signature = secp256k1_ecdsa_signature()
+    var counter = UInt32(0)
+    var success = secp256k1_ecdsa_sign(eccSigningContext, &signature, messageHash, secretKey, secp256k1_nonce_function_rfc6979, testCase != 0 ? extraEntropy : nil) != 0
+    // Grind for low R
+    while success && !isLowR(signature: &signature) {
+        counter += 1
+        writeLE32(&extraEntropy, counter)
+        success = secp256k1_ecdsa_sign(eccSigningContext,  &signature, messageHash, secretKey, secp256k1_nonce_function_rfc6979, extraEntropy) != 0
     }
-
-    var sig = [UInt8](repeating: 0, count: compactSignatureSize)
-    var rec: Int32 = -1
-    guard secp256k1_ecdsa_recoverable_signature_serialize_compact(eccSigningContext, &sig[1], &rec, &rsig) != 0 else {
-        preconditionFailure()
-    }
-
-    precondition(rec >= 0 && rec < UInt8.max - 27 - (compressedPublicKey ? 4 : 0))
-    sig[0] = UInt8(27 + rec + (compressedPublicKey ? 4 : 0))
+    precondition(success)
 
     // Additional verification step to prevent using a potentially corrupted signature
-
-    var epk = secp256k1_pubkey()
-    guard secp256k1_ec_pubkey_create(eccSigningContext, &epk, secretKey) != 0 else {
+    var publicKey = secp256k1_pubkey()
+    guard secp256k1_ec_pubkey_create(eccSigningContext, &publicKey, secretKey) != 0 else {
+        preconditionFailure()
+    }
+    guard secp256k1_ecdsa_verify(secp256k1_context_static, &signature, messageHash, &publicKey) != 0 else {
         preconditionFailure()
     }
 
-    var rpk = secp256k1_pubkey()
-    guard secp256k1_ecdsa_recover(secp256k1_context_static, &rpk, &rsig, hash) != 0 else {
+    var signatureBytes = [UInt8](repeating: 0, count: compactSignatureSize)
+    guard secp256k1_ecdsa_signature_serialize_compact(secp256k1_context_static, &signatureBytes, &signature) != 0 else {
         preconditionFailure()
     }
 
-    guard secp256k1_ec_pubkey_cmp(secp256k1_context_static, &epk, &rpk) == 0 else {
-        preconditionFailure()
-    }
-
-    return Data(sig)
+    precondition(signatureBytes.count == compactSignatureSize)
+    return Data(signatureBytes)
 }

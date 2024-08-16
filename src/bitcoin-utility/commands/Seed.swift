@@ -1,5 +1,5 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinWallet
 
 /// Generates a random seed (entropy) using the system's cryptographically secure algorithm.
 ///

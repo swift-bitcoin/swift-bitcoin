@@ -1,5 +1,5 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinWallet
 import Foundation
 
 /// Create a mnemonic seed (BIP39) from entropy.

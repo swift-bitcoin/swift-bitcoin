@@ -1,5 +1,6 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinBase
+import BitcoinWallet
 import Foundation
 
 /// Generates an address from a script..

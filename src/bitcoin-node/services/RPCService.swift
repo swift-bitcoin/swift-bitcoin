@@ -1,5 +1,6 @@
-import Bitcoin
-import JSONRPC
+import BitcoinTransport
+import BitcoinBlockchain
+import BitcoinRPC
 import ServiceLifecycle
 import NIO
 import Logging

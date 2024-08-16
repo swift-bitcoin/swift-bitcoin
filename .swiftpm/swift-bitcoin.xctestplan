@@ -1,0 +1,38 @@
+{
+  "configurations" : [
+    {
+      "id" : "BEEDD941-B549-4436-AB6E-32FA74B555F5",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "BitcoinCoreTests",
+        "name" : "BitcoinCoreTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "BitcoinBlockchainTests",
+        "name" : "BitcoinBlockchainTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "BitcoinCryptoTests",
+        "name" : "BitcoinCryptoTests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -1,5 +1,5 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinWallet
 import Foundation
 
 /// Derives a child HD (BIP32) private key from another HD private key.

@@ -1,4 +1,4 @@
-import Bitcoin
+import BitcoinTransport
 import ServiceLifecycle
 import Logging
 

@@ -1,5 +1,5 @@
 import Foundation
-import Bitcoin
+import BitcoinTransport
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIO

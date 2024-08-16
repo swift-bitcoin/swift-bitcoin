@@ -1,5 +1,6 @@
 import ArgumentParser
-import Bitcoin
+import BitcoinWallet
+import BitcoinBase
 import Foundation
 
 /// Creates an address from the provided public key.

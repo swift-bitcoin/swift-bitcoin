@@ -1,4 +1,5 @@
-import Bitcoin
+import BitcoinBlockchain
+import BitcoinTransport
 import ServiceLifecycle
 import NIO
 
