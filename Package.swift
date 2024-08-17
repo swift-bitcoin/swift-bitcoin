@@ -49,7 +49,6 @@ let package = Package(
         .target(
             name: "BitcoinBlockchain",
             dependencies: [
-                "BitcoinWallet",
                 "BitcoinBase",
                 "BitcoinCrypto",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
@@ -99,7 +98,7 @@ let package = Package(
         .testTarget(
             name: "BitcoinCryptoTests",
             dependencies: [
-                "BitcoinBase",
+                "BitcoinCrypto",
                 .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
             path: "test/bitcoin-crypto",
             swiftSettings: [.swiftLanguageMode(.v6)]),
@@ -143,7 +142,9 @@ let package = Package(
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
                 "BitcoinBlockchain",
+                "BitcoinWallet",
                 "BitcoinBase",
+                "BitcoinCrypto",
                 "BitcoinRPC",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "NIO", package: "swift-nio")],

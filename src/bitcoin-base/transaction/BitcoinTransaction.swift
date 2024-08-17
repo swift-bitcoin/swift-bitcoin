@@ -111,7 +111,7 @@ public struct BitcoinTransaction: Equatable, Sendable {
         return genesisTx
     }
 
-    public static func makeCoinbaseTransaction(blockHeight: Int, destinationPublicKeyHash: Data, witnessMerkleRoot: Data, blockSubsidy: Int) -> Self {
+    public static func makeCoinbaseTransaction(blockHeight: Int, destinationPublicKey: Data, witnessMerkleRoot: Data, blockSubsidy: Int) -> Self {
         // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
         let witnessReservedValue = Data(count: 32)
 
@@ -128,9 +128,10 @@ public struct BitcoinTransaction: Equatable, Sendable {
             .init(outpoint: .coinbase, sequence: .final, script: .init([.encodeMinimally(blockHeight), .zero]), witness: .init([witnessReservedValue]))
         ], outputs: [
             .init(value: blockSubsidy, script: .init([
+                // Standard p2pkh
                 .dup,
                 .hash160,
-                .pushBytes(destinationPublicKeyHash),
+                .pushBytes(hash160(destinationPublicKey)),
                 .equalVerify,
                 .checkSig
             ])),
