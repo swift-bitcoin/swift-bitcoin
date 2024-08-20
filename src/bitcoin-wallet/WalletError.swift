@@ -58,4 +58,7 @@ public enum WalletError: Error {
 
     /// The secret key is not valid.
     case invalidSecretKey
+
+    /// The secret key produced by the provided seed is not valid.
+    case invalidSeed
 }

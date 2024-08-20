@@ -80,7 +80,7 @@ public enum ScriptOperation: Equatable, Sendable {
         switch(self) {
         case .pushBytes(let data):
             if data.count == 1 {
-                if data[0] >= 1 && data[0] <= 16 {
+                if data.first! >= 1 && data.first! <= 16 {
                     return false
                 }
                 if data == ScriptNumber.negativeOne.data {

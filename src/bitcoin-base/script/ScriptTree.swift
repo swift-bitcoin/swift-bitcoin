@@ -126,8 +126,11 @@ public indirect enum ScriptTree: Equatable, Sendable {
         return taggedHash(tag: "TapLeaf", payload: leafVersionData + scriptData.varLenData)
     }
 
-    public func getOutputKey(secretKey: Data) -> Data {
+    public func getOutputKey(secretKey: SecretKey) -> Data {
         let (_, merkleRoot) = calcMerkleRoot()
-        return BitcoinBase.getOutputKey(secretKey: secretKey, merkleRoot: merkleRoot)
+        // TODO: We need a way to generate internal x-only keys from private keys that always have even y.
+        let internalKey = PublicKey(secretKey)
+        let outputKey = internalKey.taprootOutputKey(merkleRoot: merkleRoot)
+        return outputKey.xOnlyData.x
     }
 }

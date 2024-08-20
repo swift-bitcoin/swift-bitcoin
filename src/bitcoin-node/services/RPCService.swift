@@ -1,4 +1,5 @@
 import BitcoinTransport
+import BitcoinCrypto
 import BitcoinBlockchain
 import BitcoinRPC
 import ServiceLifecycle
@@ -204,7 +205,7 @@ actor RPCService: Service {
                     try await outbound.write(.init(id: request.id, error: .init(.invalidParams("publicKey"), description: "PublicKey (string) is required.")))
                     return
                 }
-                guard let publicKey = Data(hex: publicKey) else {
+                guard let publicKeyData = Data(hex: publicKey), let publicKey = PublicKey(compressed: publicKeyData) else {
                     try await outbound.write(.init(id: request.id, error: .init(.invalidParams("publicKey"), description: "PublicKey hex encoding is is invalid.")))
                     return
                 }

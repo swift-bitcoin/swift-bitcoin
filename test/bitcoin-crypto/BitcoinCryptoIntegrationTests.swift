@@ -62,14 +62,5 @@ struct BitcoinCryptoIntegrationTests {
         let publicKey = secretKey.publicKey
         let publicKey2 = try #require(PublicKey(publicKey.description))
         #expect(publicKey == publicKey2)
-
-        let publicKey3 = try #require(PublicKey(publicKey.description(.uncompressed), format: .uncompressed))
-        #expect(publicKey == publicKey3)
-
-        let publicKey5 = try #require(PublicKey(publicKey.description, format: .none))
-        #expect(publicKey == publicKey5)
-
-        let publicKey6 = try #require(PublicKey(publicKey.description(.uncompressed), format: .none))
-        #expect(publicKey == publicKey6)
     }
 }

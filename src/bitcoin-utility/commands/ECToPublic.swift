@@ -14,7 +14,7 @@ struct ECToPublic: ParsableCommand {
     var secretKey: String
 
     mutating func run() throws {
-        print(try Wallet.getPublicKey(secretKey: secretKey))
+        print(try Wallet.getPublicKey(secretKeyHex: secretKey))
         destroyECCSigningContext()
     }
 }

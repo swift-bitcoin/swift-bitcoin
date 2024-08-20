@@ -14,9 +14,9 @@ public struct Signature: Equatable, CustomStringConvertible {
         assert(messageHash.count == Self.hashLength)
         switch type {
         case .ecdsa:
-            data = signCompact(messageHash: messageHash, secretKey: secretKey.data)
+            data = signCompact(messageHash: messageHash, secretKey: secretKey)
         case .schnorr:
-            data = signSchnorr(msg: messageHash, secretKey: secretKey.data, aux: .none)
+            data = signSchnorr(msg: messageHash, secretKey: secretKey, aux: .none)
             assert(data.count == Self.signatureLength)
         }
         self.type = type
@@ -57,10 +57,9 @@ public struct Signature: Equatable, CustomStringConvertible {
         assert(messageHash.count == Self.hashLength)
         switch type {
         case .ecdsa:
-            return verifyCompact(signature: data, messageHash: messageHash, publicKey: publicKey.data)
+            return verifyCompact(signature: data, messageHash: messageHash, publicKey: publicKey)
         case .schnorr:
-            let xOnlyPublicKeyData = publicKey.xOnlyData
-            return verifySchnorr(sig: data, msg: messageHash, publicKey: xOnlyPublicKeyData)
+            return verifySchnorr(sig: data, msg: messageHash, publicKey: publicKey)
         }
     }
 

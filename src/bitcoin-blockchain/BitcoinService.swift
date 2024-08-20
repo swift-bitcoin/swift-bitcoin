@@ -136,7 +136,7 @@ public actor BitcoinService: Sendable {
         }
     }
 
-    public func generateTo(_ destinationPublicKey: Data, blockTime: Date = .now) {
+    public func generateTo(_ destinationPublicKey: PublicKey, blockTime: Date = .now) {
         if blockTransactions.isEmpty {
             createGenesisBlock()
         }

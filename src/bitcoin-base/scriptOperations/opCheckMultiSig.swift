@@ -45,7 +45,7 @@ func opCheckMultiSig(_ stack: inout [Data], context: inout ScriptContext) throws
             } else if context.sigVersion == .witnessV0 {
                 context.transaction.signatureHashSegwit(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
             } else { preconditionFailure() }
-            ok = verifyECDSA(sig: signature, msg: sighash, publicKey: publicKey)
+            ok = verifyECDSA(sig: signature, msg: sighash, publicKeyData: publicKey)
         }
 
         if ok {

@@ -1,7 +1,14 @@
 import Foundation
 import BitcoinCrypto
 
-/// Internal key is an x-only public key.
-public func computeTapTweakHash(internalKey: Data, merkleRoot: Data) -> Data {
-    taggedHash(tag: "TapTweak", payload: internalKey + merkleRoot)
+extension PublicKey {
+    /// Self is an x-only internal public key.
+    func tapTweak(merkleRoot: Data) -> Data {
+        taggedHash(tag: "TapTweak", payload: xOnlyData.x + merkleRoot)
+
+    }
+
+    public func taprootOutputKey(merkleRoot: Data = .init()) -> PublicKey {
+        tweakXOnly(tapTweak(merkleRoot: merkleRoot))
+    }
 }

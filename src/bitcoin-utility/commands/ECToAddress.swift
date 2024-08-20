@@ -20,6 +20,6 @@ struct ECToAddress: ParsableCommand {
     var publicKey: String
 
     mutating func run() throws {
-        print(try Wallet.getAddress(publicKey: publicKey, sigVersion: sigVersion, network: network))
+        print(try Wallet.getAddress(publicKeyHex: publicKey, sigVersion: sigVersion, network: network))
     }
 }

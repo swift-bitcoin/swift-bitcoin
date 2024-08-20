@@ -8,14 +8,18 @@ enum HDExtendedKeyError: Error {
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
 struct HDExtendedKey {
     let network: WalletNetwork
-    let isPrivate: Bool
-    let key: Data
+    let secretKey: SecretKey?
+    let publicKey: PublicKey?
     let chaincode: Data
     let fingerprint: Int
     let depth: Int
     let keyIndex: Int
 
-    init(network: WalletNetwork = .main, isPrivate: Bool, key: Data, chaincode: Data, fingerprint: Int, depth: Int, keyIndex: Int) throws {
+    init(network: WalletNetwork = .main, secretKey: SecretKey? = .none, publicKey: PublicKey? = .none, chaincode: Data, fingerprint: Int, depth: Int, keyIndex: Int) throws {
+        guard secretKey == .none && publicKey != .none || (secretKey != .none && publicKey == .none) else {
+            preconditionFailure()
+        }
+
         guard depth != 0 || fingerprint == 0 else {
             throw HDExtendedKeyError.zeroDepthNonZeroFingerprint
         }
@@ -23,8 +27,8 @@ struct HDExtendedKey {
             throw HDExtendedKeyError.zeroDepthNonZeroIndex
         }
         self.network = network
-        self.isPrivate = isPrivate
-        self.key = key
+        self.secretKey = secretKey
+        self.publicKey = publicKey
         self.chaincode = chaincode
         self.fingerprint = fingerprint
         self.depth = depth
@@ -36,6 +40,17 @@ struct HDExtendedKey {
             throw HDExtendedKeyError.invalidEncoding
         }
         try self.init(data)
+    }
+
+    // TODO: Rename to `hasSecretKey`.
+    var isPrivate: Bool {
+        if secretKey != nil && publicKey == nil {
+            true
+        } else if secretKey == nil && publicKey != nil {
+            false
+        } else {
+            fatalError()
+        }
     }
 
     var serialized: String {
@@ -53,8 +68,14 @@ struct HDExtendedKey {
     func derive(child: Int, harden: Bool = false) -> Self {
         let keyIndex = harden ? (1 << 31) + child : child
         let depth = depth + 1
-        let publicKey = isPrivate ? getPublicKey(secretKey: key) : key
-        let publicKeyIdentifier = hash160(publicKey)
+        let publicKey = if let secretKey {
+            PublicKey(secretKey)
+        } else if let publicKey {
+            publicKey
+        } else {
+            fatalError()
+        }
+        let publicKeyIdentifier = hash160(publicKey.data)
         let fingerprint = publicKeyIdentifier.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }
@@ -64,28 +85,31 @@ struct HDExtendedKey {
         let hmacResult: Data
         if keyIndex >> 31 == 0 {
             // Unhardened derivation
-            var publicKeyData = isPrivate ? publicKey : key
+            var publicKeyData = publicKey.data
             publicKeyData.appendBytes(UInt32(keyIndex).bigEndian)
             hmacResult = hmacSHA512(chaincode, data: publicKeyData)
-        } else {
+        } else if let secretKey {
             // Hardened derivation
-            precondition(isPrivate)
             var privateKeyData = Data([0x00])
-            privateKeyData.append(key)
+            privateKeyData.append(secretKey.data)
             privateKeyData.appendBytes(UInt32(keyIndex).bigEndian)
             hmacResult = hmacSHA512(chaincode, data: privateKeyData)
+        } else {
+            fatalError()
         }
 
         let chaincode = hmacResult[hmacResult.startIndex.advanced(by: 32)...]
 
         let tweak = hmacResult[..<hmacResult.startIndex.advanced(by: 32)]
-        let key = if isPrivate {
-            tweakSecretKey(key, tweak: tweak)
-        } else {
-            tweakPublicKey(key, tweak: tweak)
-        }
+        let newSecretKey: SecretKey? = if let secretKey {
+            secretKey.tweak(tweak)
+        } else { .none }
 
-        guard let ret = try? Self(isPrivate: isPrivate, key: key, chaincode: chaincode, fingerprint: Int(fingerprint), depth: depth, keyIndex: keyIndex) else {
+        let newPublicKey: PublicKey? = if let publicKey = self.publicKey {
+            publicKey.tweak(tweak)
+        } else { .none }
+
+        guard let ret = try? Self(secretKey: newSecretKey, publicKey: newPublicKey, chaincode: chaincode, fingerprint: Int(fingerprint), depth: depth, keyIndex: keyIndex) else {
             preconditionFailure()
         }
         return ret
@@ -93,8 +117,9 @@ struct HDExtendedKey {
 
     /// Turns a private key into a public key removing its ability to produce signatures.
     var neutered: Self {
-        let publicKey = getPublicKey(secretKey: key)
-        guard let ret = try? Self(isPrivate: false, key: publicKey, chaincode: chaincode, fingerprint: fingerprint, depth: depth, keyIndex: keyIndex) else {
+        guard let secretKey else { preconditionFailure() }
+        let publicKey = PublicKey(secretKey)
+        guard let ret = try? Self(secretKey: .none, publicKey: publicKey, chaincode: chaincode, fingerprint: fingerprint, depth: depth, keyIndex: keyIndex) else {
             preconditionFailure()
         }
         return ret
@@ -137,28 +162,30 @@ extension HDExtendedKey {
         let chaincode = data[..<data.startIndex.advanced(by: 32)]
         data = data.dropFirst(32)
 
+        var secretKey = SecretKey?.none
+        var publicKey = PublicKey?.none
         let isPrivate = version == network.hdKeyVersionPrivate
-
-        let key: Data
         if isPrivate {
             guard data[data.startIndex] == 0 else {
                 throw HDExtendedKeyError.invalidPrivateKeyLength
             }
-            key = data[data.startIndex.advanced(by: 1)..<data.startIndex.advanced(by: 33)]
-            guard checkSecretKey(key) else {
+            let secretKeyData = data[data.startIndex.advanced(by: 1)..<data.startIndex.advanced(by: PublicKey.compressedLength)]
+            guard let parsedSecretKey = SecretKey(secretKeyData) else {
                 throw HDExtendedKeyError.invalidSecretKey
             }
+            secretKey = parsedSecretKey
         } else {
-            key = data[..<data.startIndex.advanced(by: 33)]
-            guard checkPublicKeyEncoding(key) else {
+            let publicKeyData = data[..<data.startIndex.advanced(by: PublicKey.compressedLength)]
+            guard let parsedPublicKey = PublicKey(publicKeyData) else {
                 throw HDExtendedKeyError.invalidPublicKeyEncoding
             }
-            guard checkPublicKey(key) else {
+            guard parsedPublicKey.isPointOnCurve() else {
                 throw HDExtendedKeyError.invalidPublicKey
             }
+            publicKey = parsedPublicKey
         }
-        data = data.dropFirst(33)
-        try self.init(network: network, isPrivate: isPrivate, key: key, chaincode: chaincode, fingerprint: Int(fingerprint), depth: Int(depth), keyIndex: Int(keyIndex))
+        data = data.dropFirst(PublicKey.compressedLength)
+        try self.init(network: network, secretKey: secretKey, publicKey: publicKey, chaincode: chaincode, fingerprint: Int(fingerprint), depth: Int(depth), keyIndex: Int(keyIndex))
     }
 
     var versionData: Data {
@@ -179,10 +206,14 @@ extension HDExtendedKey {
         offset = ret.addBytes(UInt32(fingerprint), at: offset)
         offset = ret.addBytes(UInt32(keyIndex).bigEndian, at: offset)
         offset = ret.addData(chaincode, at: offset)
-        if isPrivate {
+        if let secretKey {
             offset = ret.addData([0], at: offset)
+            ret.addData(secretKey.data, at: offset)
+        } else if let publicKey {
+            ret.addData(publicKey.data, at: offset)
+        } else {
+            fatalError()
         }
-        ret.addData(key, at: offset)
         return ret
     }
 

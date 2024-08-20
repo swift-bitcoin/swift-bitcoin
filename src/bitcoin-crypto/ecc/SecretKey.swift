@@ -1,16 +1,23 @@
 import Foundation
+import LibSECP256k1
 
 public struct SecretKey: Equatable, CustomStringConvertible {
 
+    /// Uses global secp256k1 signing context.
     public init() {
-        data = createSecretKey()
+        var bytes: [UInt8]
+        repeat {
+            bytes = getRandBytes(32)
+        } while secp256k1_ec_seckey_verify(eccSigningContext, bytes) == 0
+        self.data = Data(bytes)
     }
 
+    /// Uses global secp256k1 signing context.
     public init?(_ data: Data) {
         guard data.count == Self.keyLength else {
             return nil
         }
-        guard checkSecretKey(data) else {
+        guard secp256k1_ec_seckey_verify(eccSigningContext, [UInt8](data)) != 0 else {
             return nil
         }
         self.data = data
@@ -37,5 +44,42 @@ public struct SecretKey: Equatable, CustomStringConvertible {
         .init(for: message, using: self, type: signatureType)
     }
 
-    static let keyLength = 32
+    /// BIP32: Used to derive private keys. Requires global signing context to be initialized.
+    public func tweak(_ tweak: Data) -> SecretKey {
+        var secretKeyBytes = [UInt8](data)
+        var tweak = [UInt8](tweak)
+
+        let result = secp256k1_ec_seckey_tweak_add(eccSigningContext, &secretKeyBytes, &tweak)
+        assert(result != 0)
+
+        return SecretKey(Data(secretKeyBytes))!
+    }
+
+    /// There is no such thing as an x-only _secret_ key. This is to differenciate taproot x-only tweaking from BIP32 derivation EC tweaking. This functions is used in BIP341 tests.
+    ///
+    /// Requires global signing context to be initialized.
+    ///
+    public func tweakXOnly(_ tweak: Data) -> SecretKey {
+        let secretKeyBytes = [UInt8](data)
+        let tweak = [UInt8](tweak)
+
+        var keypair = secp256k1_keypair()
+        guard secp256k1_keypair_create(eccSigningContext, &keypair, secretKeyBytes) != 0 else {
+            preconditionFailure()
+        }
+
+        // Tweak the keypair
+        guard secp256k1_keypair_xonly_tweak_add(secp256k1_context_static, &keypair, tweak) != 0 else {
+            preconditionFailure()
+        }
+
+        var tweakedSecretKey = [UInt8](repeating: 0, count: 32)
+        guard secp256k1_keypair_sec(secp256k1_context_static, &tweakedSecretKey, &keypair) != 0 else {
+            preconditionFailure()
+        }
+        // Result output
+        return SecretKey(Data(tweakedSecretKey))!
+    }
+
+    public static let keyLength = 32
 }

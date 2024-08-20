@@ -113,15 +113,16 @@ func checkSignature(_ extendedSignature: Data, scriptConfig: ScriptConfig) throw
     }
 }
 
-func checkPublicKey(_ publicKey: Data, scriptVersion: SigVersion, scriptConfig: ScriptConfig) throws {
-    if scriptConfig.contains(.strictEncoding)  {
-        guard checkPublicKeyEncoding(publicKey) else {
+func checkPublicKey(_ publicKeyData: Data, scriptVersion: SigVersion, scriptConfig: ScriptConfig) throws {
+    if scriptConfig.contains(.strictEncoding) {
+        // TODO: This may actually be checking that the uncompressed key is valid (as we convert it to compressed)
+        guard let _ = PublicKey(publicKeyData) else {
             throw ScriptError.invalidPublicKeyEncoding
         }
     }
     // Only compressed keys are accepted in segwit
     if scriptVersion == .witnessV0 && scriptConfig.contains(.witnessCompressedPublicKey) {
-        guard checkCompressedPublicKeyEncoding(publicKey) else {
+        guard let _ = PublicKey(compressed: publicKeyData) else {
             throw ScriptError.invalidPublicKeyEncoding
         }
     }
