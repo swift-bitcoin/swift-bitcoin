@@ -1,5 +1,7 @@
 import Foundation
 
+// TODO: Move this function into Signature struct somehow (use in initializer).
+
 /**
  * A canonical signature exists of: <30> <total len> <02> <len R> <R> <02> <len S> <S> <hashtype>
  * Where R and S are not negative (their first byte has its highest bit not set), and not

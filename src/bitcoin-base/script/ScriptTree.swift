@@ -128,8 +128,7 @@ public indirect enum ScriptTree: Equatable, Sendable {
 
     public func getOutputKey(secretKey: SecretKey) -> Data {
         let (_, merkleRoot) = calcMerkleRoot()
-        // TODO: We need a way to generate internal x-only keys from private keys that always have even y.
-        let internalKey = PublicKey(secretKey)
+        let internalKey = PublicKey(secretKey, requireEvenY: true)
         let outputKey = internalKey.taprootOutputKey(merkleRoot: merkleRoot)
         return outputKey.xOnlyData.x
     }

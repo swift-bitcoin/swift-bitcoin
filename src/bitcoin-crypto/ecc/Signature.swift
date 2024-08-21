@@ -1,5 +1,6 @@
 import Foundation
 import LibSECP256k1
+import ECCHelper // For `ecdsa_signature_parse_der_lax()`
 
 public enum SignatureType: Equatable {
     case ecdsa, compact, recoverable(Bool?), schnorr
@@ -48,17 +49,14 @@ public struct Signature: Equatable, CustomStringConvertible {
     public init?(_ data: Data, type: SignatureType = .schnorr) {
         switch type {
         case .ecdsa:
-            guard data.count > Self.ecdsaSignatureMaxLength else {
-                return nil
-            }
-            guard data.count < Self.compactSignatureLength else {
+            guard data.count >= Self.compactSignatureLength && data.count <= Self.ecdsaSignatureMaxLength else {
                 return nil
             }
         case .compact:
             guard data.count == Self.compactSignatureLength else {
                 return nil // This check covers high R because there would be 1 extra byte.
             }
-            guard isLowS(compactSignature: data) else {
+            guard isLowS(compactSignatureData: data) else {
                 return nil
             }
         case .recoverable(_):
@@ -96,8 +94,7 @@ public struct Signature: Equatable, CustomStringConvertible {
         assert(messageHash.count == Self.hashLength)
         switch type {
         case .ecdsa:
-            // TODO: make verifyECDSA private and normalize its API
-            return verifyECDSA(sig: data, msg: messageHash, publicKeyData: publicKey.data)
+            return verifyECDSA(signatureData: data, messageHash: messageHash, publicKey: publicKey)
         case .compact:
             return verifyCompact(signatureData: data, messageHash: messageHash, publicKey: publicKey)
         case .recoverable(_):
@@ -396,3 +393,52 @@ private func signECDSA(messageHash: Data, secretKey: SecretKey, requireLowR: Boo
     return signatureShrunken
 }
 
+/// Verifies a signature using a public key.
+private func verifyECDSA(signatureData: Data, messageHash: Data, publicKey: PublicKey) -> Bool {
+
+    // TODO: Verify the assumption below
+    // guard !publicKey.data.isEmpty else { return false }
+
+    let signatureBytes = [UInt8](signatureData)
+    let publicKeyBytes = [UInt8](publicKey.data)
+    let messageHashBytes = [UInt8](messageHash)
+
+    var signature = secp256k1_ecdsa_signature()
+    guard ECCHelper.ecdsa_signature_parse_der_lax(&signature, signatureBytes, signatureBytes.count) != 0 else {
+        preconditionFailure()
+    }
+
+    var signatureNormalized = secp256k1_ecdsa_signature()
+    secp256k1_ecdsa_signature_normalize(secp256k1_context_static, &signatureNormalized, &signature)
+
+    var pubkey = secp256k1_pubkey()
+    guard secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, publicKeyBytes, publicKeyBytes.count) != 0 else {
+        preconditionFailure()
+    }
+
+    return secp256k1_ecdsa_verify(secp256k1_context_static, &signatureNormalized, messageHashBytes, &pubkey) != 0
+}
+
+// Check that the sig has a low R value and will be less than 71 bytes
+private func isLowR(signature: inout secp256k1_ecdsa_signature) -> Bool {
+    var compactSig = [UInt8](repeating: 0, count: 64)
+    secp256k1_ecdsa_signature_serialize_compact(secp256k1_context_static, &compactSig, &signature);
+
+    // In DER serialization, all values are interpreted as big-endian, signed integers. The highest bit in the integer indicates
+    // its signed-ness; 0 is positive, 1 is negative. When the value is interpreted as a negative integer, it must be converted
+    // to a positive value by prepending a 0x00 byte so that the highest bit is 0. We can avoid this prepending by ensuring that
+    // our highest bit is always 0, and thus we must check that the first byte is less than 0x80.
+    return compactSig[0] < 0x80
+}
+
+private func isLowS(compactSignatureData: Data) -> Bool {
+    let signatureBytes = [UInt8](compactSignatureData)
+
+    var signature = secp256k1_ecdsa_signature()
+    guard secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, &signature, signatureBytes) != 0 else {
+        preconditionFailure()
+    }
+
+    let normalizationOccurred = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, .none, &signature)
+    return normalizationOccurred == 0
+}

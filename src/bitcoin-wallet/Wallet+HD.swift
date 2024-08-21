@@ -41,7 +41,7 @@ extension Wallet {
         guard let hdKey = try? HDExtendedKey(keyHex) else {
             throw WalletError.invalidExtendedKey
         }
-        if isPrivate && !hdKey.isPrivate || (!isPrivate && hdKey.isPrivate) {
+        if isPrivate && !hdKey.hasSecretKey || (!isPrivate && hdKey.hasSecretKey) {
             throw WalletError.invalidExtendedKeyType
         }
         if !isPrivate && harden {
@@ -57,6 +57,6 @@ extension Wallet {
         guard let hdKey = try? HDExtendedKey(keyHex) else {
             throw WalletError.invalidExtendedKey
         }
-        return (hdKey.isPrivate ? hdKey.neutered : hdKey).serialized
+        return (hdKey.hasSecretKey ? hdKey.neutered : hdKey).serialized
     }
 }

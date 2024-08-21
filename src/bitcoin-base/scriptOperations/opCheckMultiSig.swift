@@ -25,27 +25,32 @@ func opCheckMultiSig(_ stack: inout [Data], context: inout ScriptContext) throws
     var sigIndex = sigs.startIndex
     var success = true
     while success && sigsCount > 0 {
-        let sig = sigs[sigIndex]
-        let publicKey =  publicKeys[keyIndex]
+        let extendedSignatureData = sigs[sigIndex]
+        let publicKeyData =  publicKeys[keyIndex]
 
         // Note how this makes the exact order of pubkey/signature evaluation
         // distinguishable by CHECKMULTISIG NOT if the STRICTENC flag is set.
         // See the script_(in)valid tests for details.
-        try checkPublicKey(publicKey, scriptVersion: context.sigVersion, scriptConfig: context.config)
+        // TODO: Could this be refactored into generic PublicKey struct?
+        try checkPublicKey(publicKeyData, scriptVersion: context.sigVersion, scriptConfig: context.config)
 
         // Check signature
-        try checkSignature(sig, scriptConfig: context.config)
+        try checkSignature(extendedSignatureData, scriptConfig: context.config)
         let ok: Bool
-        if sig.isEmpty {
+        if extendedSignatureData.isEmpty {
             ok = false
         } else {
-            let (signature, sighashType) = splitECDSASignature(sig)
+            let (signatureData, sighashType) = splitECDSASignature(extendedSignatureData)
             let sighash = if context.sigVersion == .base {
                 context.transaction.signatureHash(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
             } else if context.sigVersion == .witnessV0 {
                 context.transaction.signatureHashSegwit(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
             } else { preconditionFailure() }
-            ok = verifyECDSA(sig: signature, msg: sighash, publicKeyData: publicKey)
+            if let publicKey = PublicKey(publicKeyData), let signature = Signature(signatureData, type: .ecdsa) {
+                ok = signature.verify(messageHash: sighash, publicKey: publicKey)
+            } else {
+                ok = false
+            }
         }
 
         if ok {

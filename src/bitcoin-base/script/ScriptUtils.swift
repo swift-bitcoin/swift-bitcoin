@@ -90,6 +90,7 @@ func getCheckMultiSigParams(_ stack: inout [Data], config: ScriptConfig) throws 
     return (n, publicKeys, m, sigs)
 }
 
+// TODO: Move this logic into Signature struct somehow.
 func checkSignature(_ extendedSignature: Data, scriptConfig: ScriptConfig) throws {
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG

@@ -18,13 +18,17 @@ func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
         if sig.isEmpty {
             result = false
         } else {
-            let (signature, sighashType) = splitECDSASignature(sig)
+            let (signatureData, sighashType) = splitECDSASignature(sig)
             let sighash = if context.sigVersion == .base {
                 context.transaction.signatureHash(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
             } else if context.sigVersion == .witnessV0 {
                 context.transaction.signatureHashSegwit(sighashType: sighashType, inputIndex: context.inputIndex, previousOutput: context.previousOutput, scriptCode: scriptCode)
             } else { preconditionFailure() }
-            result = verifyECDSA(sig: signature, msg: sighash, publicKeyData: publicKeyData)
+            if let publicKey = PublicKey(publicKeyData), let signature = Signature(signatureData, type: .ecdsa) {
+                result = signature.verify(messageHash: sighash, publicKey: publicKey)
+            } else {
+                result = false
+            }
         }
     case .witnessV1:
         guard let tapLeafHash = context.tapLeafHash, let keyVersion = context.keyVersion else { preconditionFailure() }

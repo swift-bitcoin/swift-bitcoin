@@ -42,8 +42,7 @@ struct HDExtendedKey {
         try self.init(data)
     }
 
-    // TODO: Rename to `hasSecretKey`.
-    var isPrivate: Bool {
+    var hasSecretKey: Bool {
         if secretKey != nil && publicKey == nil {
             true
         } else if secretKey == nil && publicKey != nil {
@@ -190,7 +189,7 @@ extension HDExtendedKey {
 
     var versionData: Data {
         var ret = Data(count: Self.versionSize)
-        let version = if isPrivate {
+        let version = if hasSecretKey {
             network.hdKeyVersionPrivate
         } else {
             network.hdKeyVersionPublic

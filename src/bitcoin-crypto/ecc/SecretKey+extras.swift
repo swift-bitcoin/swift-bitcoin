@@ -1,6 +1,7 @@
 import Foundation
 import LibSECP256k1
 
+// TODO: Take what's useful and clear this file up.
 /// These extensions are not currently used although they might be useful some day.
 private extension SecretKey {
 
@@ -22,28 +23,5 @@ private extension SecretKey {
         assert(compress && publicKeyBytesCount == PublicKey.compressedLength || (!compress && publicKeyBytesCount == PublicKey.uncompressedLength))
 
         return Data(publicKeyBytes)
-    }
-
-    /// Gets the internal (x-only) public key for the specified secret key. Requires global signing context to be initialized.
-    func getXOnlyPublicKey() -> Data {
-
-        let secretKey = [UInt8](data)
-
-        var keypair = secp256k1_keypair()
-        guard secp256k1_keypair_create(eccSigningContext, &keypair, secretKey) != 0 else {
-            preconditionFailure()
-        }
-
-        var xonlyPubkey = secp256k1_xonly_pubkey()
-        guard secp256k1_keypair_xonly_pub(secp256k1_context_static, &xonlyPubkey, nil, &keypair) != 0 else {
-            preconditionFailure()
-        }
-
-        var xonlyPubkeyBytes = [UInt8](repeating: 0, count: 32)
-        guard secp256k1_xonly_pubkey_serialize(secp256k1_context_static, &xonlyPubkeyBytes, &xonlyPubkey) != 0 else {
-            preconditionFailure()
-        }
-
-        return Data(xonlyPubkeyBytes)
     }
 }

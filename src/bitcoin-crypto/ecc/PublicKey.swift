@@ -2,15 +2,37 @@ import Foundation
 import LibSECP256k1
 
 public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
+    
+    /// Derives a public key from a secret key.
+    /// - Parameters:
+    ///   - secretKey: The secret key.
+    ///   - requireEvenY: Gets the internal (x-only) public key for the specified secret key.
+    ///
+    ///   Requires global signing context to be initialized.
+    public init(_ secretKey: SecretKey, requireEvenY: Bool = false) {
+        let secretKeyBytes = [UInt8](secretKey.data)
 
-    public init(_ secretKey: SecretKey) {
-        let secretKey = [UInt8](secretKey.data)
-
-        var pubkey = secp256k1_pubkey()
-        guard secp256k1_ec_pubkey_create(eccSigningContext, &pubkey, secretKey) != 0 else {
-            preconditionFailure()
+        if requireEvenY {
+            var keypair = secp256k1_keypair()
+            guard secp256k1_keypair_create(eccSigningContext, &keypair, secretKeyBytes) != 0 else {
+                preconditionFailure()
+            }
+            var xonlyPubkey = secp256k1_xonly_pubkey()
+            guard secp256k1_keypair_xonly_pub(secp256k1_context_static, &xonlyPubkey, nil, &keypair) != 0 else {
+                preconditionFailure()
+            }
+            var xonlyPubkeyBytes = [UInt8](repeating: 0, count: PublicKey.xOnlyLength)
+            guard secp256k1_xonly_pubkey_serialize(secp256k1_context_static, &xonlyPubkeyBytes, &xonlyPubkey) != 0 else {
+                preconditionFailure()
+            }
+            data = Data([Self.publicKeySerializationTagEven] + xonlyPubkeyBytes)
+            return
         }
 
+        var pubkey = secp256k1_pubkey()
+        guard secp256k1_ec_pubkey_create(eccSigningContext, &pubkey, secretKeyBytes) != 0 else {
+            preconditionFailure()
+        }
         var publicKeyBytes = [UInt8](repeating: 0, count: Self.compressedLength)
         var publicKeyBytesCount = publicKeyBytes.count
         guard secp256k1_ec_pubkey_serialize(secp256k1_context_static, &publicKeyBytes, &publicKeyBytesCount, &pubkey, UInt32(SECP256K1_EC_COMPRESSED)) != 0 else {
@@ -32,13 +54,13 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
             return nil
         }
         // precondition(checkXOnly(data)) // TODO: Just remove if this fails sometimes during taproot witness verification.
-        self.data = [hasEvenY ? publicKeySerializationTagEven : publicKeySerializationTagOdd] + data
+        self.data = [hasEvenY ? Self.publicKeySerializationTagEven : Self.publicKeySerializationTagOdd] + data
     }
 
     /// BIP143: Checks that the public key is  compressed.
     public init?<D: DataProtocol>(compressed data: D) {
         guard data.count == PublicKey.compressedLength &&
-            (data.first! == publicKeySerializationTagEven || data.first! == publicKeySerializationTagOdd) else {
+            (data.first! == Self.publicKeySerializationTagEven || data.first! == Self.publicKeySerializationTagOdd) else {
             return nil
         }
         self.data = Data(data)
@@ -49,7 +71,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     public init?<D: DataProtocol>(uncompressed data: D) {
         guard
             data.count == PublicKey.uncompressedLength &&
-            data.first! == publicKeySerializationTagUncompressed,
+            data.first! == Self.publicKeySerializationTagUncompressed,
             let compressedData = uncompressedToCompressed(Data(data))
         else { return nil }
         self.data = compressedData
@@ -59,10 +81,10 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     public init?(_ data: Data) {
         guard (
             data.count == PublicKey.compressedLength &&
-            (data.first! == publicKeySerializationTagEven || data.first! == publicKeySerializationTagOdd)
+            (data.first! == Self.publicKeySerializationTagEven || data.first! == Self.publicKeySerializationTagOdd)
         ) || (
             data.count == PublicKey.uncompressedLength &&
-            data.first! == publicKeySerializationTagUncompressed
+            data.first! == Self.publicKeySerializationTagUncompressed
         ) else {
             return nil
         }
@@ -96,7 +118,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     }
 
     public var xOnlyData: (x: Data, parity: Bool) {
-        (data[(data.startIndex + 1)..<data.endIndex], data.first! == publicKeySerializationTagOdd)
+        (data[(data.startIndex + 1) ..< data.endIndex], data.first! == Self.publicKeySerializationTagOdd)
     }
 
     private var xOnlyDataChecked: (x: Data, parity: Bool) {
@@ -133,11 +155,11 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     }
 
     public var hasEvenY: Bool {
-        data.first! == publicKeySerializationTagEven
+        data.first! == Self.publicKeySerializationTagEven
     }
 
     public var hasOddY: Bool {
-        data.first! == publicKeySerializationTagOdd
+        data.first! == Self.publicKeySerializationTagOdd
     }
 
     /// BIP32: Used to derive public keys.
@@ -204,6 +226,10 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     public static let uncompressedLength = 65
     public static let compressedLength = 33
     public static let xOnlyLength = 32
+
+    public static let publicKeySerializationTagEven = UInt8(SECP256K1_TAG_PUBKEY_EVEN)
+    public static let publicKeySerializationTagOdd = UInt8(SECP256K1_TAG_PUBKEY_ODD)
+    public static let publicKeySerializationTagUncompressed = UInt8(SECP256K1_TAG_PUBKEY_UNCOMPRESSED)
 
     public static let satoshi = PublicKey(uncompressed: [0x04, 0x67, 0x8a, 0xfd, 0xb0, 0xfe, 0x55, 0x48, 0x27, 0x19, 0x67, 0xf1, 0xa6, 0x71, 0x30, 0xb7, 0x10, 0x5c, 0xd6, 0xa8, 0x28, 0xe0, 0x39, 0x09, 0xa6, 0x79, 0x62, 0xe0, 0xea, 0x1f, 0x61, 0xde, 0xb6, 0x49, 0xf6, 0xbc, 0x3f, 0x4c, 0xef, 0x38, 0xc4, 0xf3, 0x55, 0x04, 0xe5, 0x1e, 0xc1, 0x12, 0xde, 0x5c, 0x38, 0x4d, 0xf7, 0xba, 0x0b, 0x8d, 0x57, 0x8a, 0x4c, 0x70, 0x2b, 0x6b, 0xf1, 0x1d, 0x5f])!
 }
