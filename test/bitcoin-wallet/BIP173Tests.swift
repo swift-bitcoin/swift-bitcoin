@@ -19,28 +19,27 @@ struct BIP173Tests {
         "?1ezyfcl"
     ])
     func validChecksum(valid: String) throws {
-        let decoded = try Bech32.decode(valid)
+        let decoded = try Bech32Decoder(bech32m: false).decode(valid)
         #expect(!decoded.hrp.isEmpty, "Empty result for \"\(valid)\"")
-        let recoded = Bech32.encode(decoded.hrp, values: decoded.checksum)
+        let recoded = Bech32Encoder(bech32m: false).encode(decoded.hrp, values: decoded.checksum)
         #expect(valid.lowercased() == recoded.lowercased(), "Roundtrip encoding failed: \(valid) != \(recoded)")
     }
 
     @Test("Invalid checksum", arguments: [
-        (" 1nwldj5", Bech32.DecodingError.nonPrintableCharacter),
-        ("\u{7f}1axkwrx", Bech32.DecodingError.nonPrintableCharacter),
-        ("an84characterslonghumanreadablepartthatcontainsthenumber1andtheexcludedcharactersbio1569pvx", Bech32.DecodingError.stringLengthExceeded),
-        ("pzry9x0s0muk", Bech32.DecodingError.noChecksumMarker),
-        ("1pzry9x0s0muk", Bech32.DecodingError.incorrectHrpSize),
-        ("x1b4n0q5v", Bech32.DecodingError.invalidCharacter),
-        ("li1dgmt3", Bech32.DecodingError.incorrectChecksumSize),
-        ("de1lg7wt\u{ff}", Bech32.DecodingError.nonPrintableCharacter),
-        ("10a06t8", Bech32.DecodingError.incorrectHrpSize),
-        ("1qzzfhee", Bech32.DecodingError.incorrectHrpSize)
+        (" 1nwldj5", Bech32Decoder.Error.nonPrintableCharacter),
+        ("\u{7f}1axkwrx", .nonPrintableCharacter),
+        ("an84characterslonghumanreadablepartthatcontainsthenumber1andtheexcludedcharactersbio1569pvx", .stringLengthExceeded),
+        ("pzry9x0s0muk", .noChecksumMarker),
+        ("1pzry9x0s0muk", .incorrectHrpSize),
+        ("x1b4n0q5v", .invalidCharacter),
+        ("li1dgmt3", .incorrectChecksumSize),
+        ("de1lg7wt\u{ff}", .nonPrintableCharacter),
+        ("10a06t8", .incorrectHrpSize),
+        ("1qzzfhee", .incorrectHrpSize)
     ])
-    func invalidChecksum(invalid: (String, Bech32.DecodingError)) throws {
-        let (checksum, reason) = invalid
+    func invalidChecksum(encoded: String, reason: Bech32Decoder.Error) {
         #expect(throws: reason) {
-            try Bech32.decode(checksum)
+            try Bech32Decoder(bech32m: false).decode(encoded)
         }
     }
 

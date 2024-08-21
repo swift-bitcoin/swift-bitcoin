@@ -20,12 +20,12 @@ extension Wallet {
         if compressedPublicKeys {
             data.appendBytes(UInt8(0x01))
         }
-        return Base58.base58CheckEncode(data)
+        return Base58Encoder().encode(data)
     }
 
     public static func wifToEC(secretKeyWIF: String) throws -> (secretKey: SecretKey, compressedPublicKeys: Bool) {
 
-        guard var secretKeyData = Base58.base58CheckDecode(secretKeyWIF) else {
+        guard var secretKeyData = Base58Decoder().decode(secretKeyWIF) else {
             throw WalletError.invalidSecretKeyEncoding
         }
 
@@ -71,7 +71,7 @@ extension Wallet {
     public static func verify(address: String, signature: String, message: String) throws -> Bool {
 
         // Decode P2PKH address
-        guard let addressData = Base58.base58CheckDecode(address),
+        guard let addressData = Base58Decoder().decode(address),
               let first = addressData.first,
               first == WalletNetwork.main.base58Version || first == WalletNetwork.test.base58Version
         else {
@@ -79,7 +79,7 @@ extension Wallet {
         }
         let publicKeyHash = addressData[addressData.startIndex.advanced(by: 1)...]
 
-        guard let signatureData = signature.data(using: .utf8), let signatureData = Data(base64Encoded: signatureData) else {
+        guard let signatureData = Data(base64Encoded: signature) else {
             throw WalletError.invalidSignatureEncoding
         }
 

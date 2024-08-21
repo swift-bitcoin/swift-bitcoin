@@ -54,7 +54,7 @@ extension Wallet {
             var data = Data()
             data.appendBytes(UInt8(network.base58Version))
             data.append(hash160(publicKey.data))
-            return Base58.base58CheckEncode(data)
+            return Base58Encoder().encode(data)
         case .witnessV0:
             return try SegwitAddrCoder.encode(hrp: network.bech32HRP, version: 0, program: hash160(publicKey.data))
         case .witnessV1:

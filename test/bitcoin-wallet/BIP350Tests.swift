@@ -17,32 +17,31 @@ struct BIP350Tests {
         "?1v759aa"
     ])
     func validChecksum(valid: String) throws {
-        let decoded = try Bech32.decode(valid)
+        let decoded = try Bech32Decoder(bech32m: true).decode(valid)
         #expect(!decoded.hrp.isEmpty, "Empty result.")
-        #expect(decoded.isBech32m)
-        let recoded = Bech32.encode(decoded.hrp, values: decoded.checksum, useBech32m: true)
+        let recoded = Bech32Encoder(bech32m: true).encode(decoded.hrp, values: decoded.checksum)
         #expect(valid.lowercased() == recoded.lowercased(), "Roundtrip encoding failed.")
     }
 
     @Test("Invalid checksum", arguments: [
-        (" 1xj0phk", Bech32.DecodingError.nonPrintableCharacter),
-        ("\u{7f}1g6xzxy", Bech32.DecodingError.nonPrintableCharacter),
-        ("\u{80}1vctc34", Bech32.DecodingError.nonPrintableCharacter),
-        ("an84characterslonghumanreadablepartthatcontainsthetheexcludedcharactersbioandnumber11d6pts4", Bech32.DecodingError.stringLengthExceeded),
-        ("qyrz8wqd2c9m", Bech32.DecodingError.noChecksumMarker),
-        ("1qyrz8wqd2c9m", Bech32.DecodingError.incorrectHrpSize),
-        ("y1b0jsk6g", Bech32.DecodingError.invalidCharacter),
-        ("lt1igcx5c0", Bech32.DecodingError.invalidCharacter),
-        ("in1muywd", Bech32.DecodingError.incorrectChecksumSize),
-        ("mm1crxm3i", Bech32.DecodingError.invalidCharacter),
-        ("au1s5cgom", Bech32.DecodingError.invalidCharacter),
-        ("M1VUXWEZ", Bech32.DecodingError.checksumMismatch),
-        ("16plkw9", Bech32.DecodingError.incorrectHrpSize),
-        ("1p2gdwpf", Bech32.DecodingError.incorrectHrpSize)
+        (" 1xj0phk", Bech32Decoder.Error.nonPrintableCharacter),
+        ("\u{7f}1g6xzxy", .nonPrintableCharacter),
+        ("\u{80}1vctc34", .nonPrintableCharacter),
+        ("an84characterslonghumanreadablepartthatcontainsthetheexcludedcharactersbioandnumber11d6pts4", .stringLengthExceeded),
+        ("qyrz8wqd2c9m", .noChecksumMarker),
+        ("1qyrz8wqd2c9m", .incorrectHrpSize),
+        ("y1b0jsk6g", .invalidCharacter),
+        ("lt1igcx5c0", .invalidCharacter),
+        ("in1muywd", .incorrectChecksumSize),
+        ("mm1crxm3i", .invalidCharacter),
+        ("au1s5cgom", .invalidCharacter),
+        ("M1VUXWEZ", .checksumMismatch),
+        ("16plkw9", .incorrectHrpSize),
+        ("1p2gdwpf", .incorrectHrpSize)
     ])
-    func invalidChecksum(checksum: String, reason: Bech32.DecodingError) {
+    func invalidChecksum(encoded: String, reason: Bech32Decoder.Error) {
         #expect(throws: reason) {
-            try Bech32.decode(checksum)
+            try Bech32Decoder(bech32m: true).decode(encoded)
         }
     }
 
@@ -109,7 +108,7 @@ struct BIP350Tests {
             _ = try SegwitAddrCoder.decode(hrp: "bc", addr: invalid)
             _ = try SegwitAddrCoder.decode(hrp: "tb", addr: invalid)
         } throws: {
-            $0 is Bech32.DecodingError || $0 is SegwitAddrCoder.CoderError
+            $0 is Bech32Decoder.Error || $0 is SegwitAddrCoder.Error
         }
     }
 
@@ -121,7 +120,7 @@ struct BIP350Tests {
         ("bc", 16, 41)
     ])
     func invalidAddressEncoding(hrp: String, version: Int, programLen: Int) {
-        #expect(throws: SegwitAddrCoder.CoderError.self) {
+        #expect(throws: SegwitAddrCoder.Error.self) {
             let zeroData = Data(repeating: 0x00, count: programLen)
             _ = try SegwitAddrCoder.encode(hrp: hrp, version: version, program: zeroData)
         }

@@ -36,7 +36,7 @@ struct HDExtendedKey {
     }
 
     init(_ serialized: String) throws {
-        guard let data = Base58.base58CheckDecode(serialized) else {
+        guard let data = Base58Decoder().decode(serialized) else {
             throw HDExtendedKeyError.invalidEncoding
         }
         try self.init(data)
@@ -53,7 +53,7 @@ struct HDExtendedKey {
     }
 
     var serialized: String {
-        Base58.base58CheckEncode(data)
+        Base58Encoder().encode(data)
     }
     
     /// Derives either a child private key from a parent private key, or a child public key form a parent public key.
