@@ -14,12 +14,12 @@ private extension SecretKey {
             preconditionFailure()
         }
 
-        var publicKeyBytes = [UInt8](repeating: 0, count: compress ? compressedPublicKeySize : uncompressedPublicKeySize)
+        var publicKeyBytes = [UInt8](repeating: 0, count: compress ? PublicKey.compressedLength : PublicKey.uncompressedLength)
         var publicKeyBytesCount = publicKeyBytes.count
         guard secp256k1_ec_pubkey_serialize(secp256k1_context_static, &publicKeyBytes, &publicKeyBytesCount, &pubkey, UInt32(compress ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED)) != 0 else {
             preconditionFailure()
         }
-        assert(compress && publicKeyBytesCount == compressedPublicKeySize || (!compress && publicKeyBytesCount == uncompressedPublicKeySize))
+        assert(compress && publicKeyBytesCount == PublicKey.compressedLength || (!compress && publicKeyBytesCount == PublicKey.uncompressedLength))
 
         return Data(publicKeyBytes)
     }

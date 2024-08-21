@@ -11,12 +11,12 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
             preconditionFailure()
         }
 
-        var publicKeyBytes = [UInt8](repeating: 0, count: compressedPublicKeySize)
+        var publicKeyBytes = [UInt8](repeating: 0, count: Self.compressedLength)
         var publicKeyBytesCount = publicKeyBytes.count
         guard secp256k1_ec_pubkey_serialize(secp256k1_context_static, &publicKeyBytes, &publicKeyBytesCount, &pubkey, UInt32(SECP256K1_EC_COMPRESSED)) != 0 else {
             preconditionFailure()
         }
-        assert(publicKeyBytesCount == compressedPublicKeySize)
+        assert(publicKeyBytesCount == Self.compressedLength)
         data = Data(publicKeyBytes)
     }
 
@@ -153,7 +153,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
         assert(result != 0)
 
         let tweakedKey: [UInt8] = .init(unsafeUninitializedCapacity: PublicKey.compressedLength) { buf, len in
-            len = compressedPublicKeySize
+            len = Self.compressedLength
             result = secp256k1_ec_pubkey_serialize(secp256k1_context_static, buf.baseAddress!, &len, &pubkey, UInt32(SECP256K1_EC_COMPRESSED))
             assert(result != 0)
             assert(len == PublicKey.compressedLength)
@@ -178,7 +178,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
         }
 
         let publicKeyBytes: [UInt8] = .init(unsafeUninitializedCapacity: PublicKey.compressedLength) { buf, len in
-            len = compressedPublicKeySize
+            len = Self.compressedLength
             let result = secp256k1_ec_pubkey_serialize(secp256k1_context_static, buf.baseAddress!, &len, &pubkey, UInt32(SECP256K1_EC_COMPRESSED))
             assert(result != 0)
             assert(len == PublicKey.compressedLength)

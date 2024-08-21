@@ -51,7 +51,8 @@ struct BitcoinServiceTests {
         let sigHash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, previousOutput: previousOutput, scriptCode: previousOutput.script.data)
 
         // Obtain the signature using our secret key and append the signature hash type.
-        let sig = signECDSA(message: sigHash, secretKey: secretKey) + [SighashType.all.value]
+        let signature = try #require(Signature(messageHash: sigHash, secretKey: secretKey, type: .ecdsa))
+        let sig = signature.data + [SighashType.all.value]
 
         // Sign our input by including the signature and public key.
         let signedInput = TransactionInput(
