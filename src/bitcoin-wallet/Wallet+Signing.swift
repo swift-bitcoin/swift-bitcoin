@@ -64,7 +64,7 @@ extension Wallet {
     }
 
     public static func sign(secretKey: SecretKey, messageData: Data, compressedPublicKeys: Bool) throws -> Data {
-        let signature = Signature(messageData: messageData, secretKey: secretKey, type: .recoverable(compressedPublicKeys))
+        let signature = Signature(messageData: messageData, secretKey: secretKey, type: .recoverable, recoverCompressedKeys: compressedPublicKeys)
         return signature.data
     }
 
@@ -91,7 +91,7 @@ extension Wallet {
     }
 
     public static func verify(publicKeyHash: Data, signatureData: Data, messageData: Data) throws -> Bool {
-        guard let signature = Signature(signatureData, type: .recoverable(.none)) else {
+        guard let signature = Signature(signatureData, type: .recoverable) else {
             throw WalletError.invalidSignatureData
         }
         guard let publicKey = signature.recoverPublicKey(from: messageData) else {

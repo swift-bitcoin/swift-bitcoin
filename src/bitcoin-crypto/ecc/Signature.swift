@@ -2,35 +2,32 @@ import Foundation
 import LibSECP256k1
 import ECCHelper // For `ecdsa_signature_parse_der_lax()`
 
-public enum SignatureType: Equatable {
-    case ecdsa, compact, recoverable(Bool?), schnorr
+public enum SignatureType: Equatable, Sendable {
+    case ecdsa, compact, recoverable, schnorr
 }
 
-public struct Signature: Equatable, CustomStringConvertible {
+public struct Signature: Equatable, Sendable, CustomStringConvertible {
 
-    public init?(message: String, secretKey: SecretKey, type: SignatureType = .schnorr) {
+    public init?(message: String, secretKey: SecretKey, type: SignatureType = .schnorr, recoverCompressedKeys: Bool = true) {
         guard let messageData = message.data(using: .utf8) else {
             return nil
         }
-        self.init(messageData: messageData, secretKey: secretKey, type: type)
+        self.init(messageData: messageData, secretKey: secretKey, type: type, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public init(messageData: Data, secretKey: SecretKey, type: SignatureType, additionalEntropy: Data? = .none) {
-        self.init(messageHash: getMessageHash(messageData: messageData, type: type), secretKey: secretKey, type: type, additionalEntropy: additionalEntropy)
+    public init(messageData: Data, secretKey: SecretKey, type: SignatureType, additionalEntropy: Data? = .none, recoverCompressedKeys: Bool = true) {
+        self.init(messageHash: getMessageHash(messageData: messageData, type: type), secretKey: secretKey, type: type, additionalEntropy: additionalEntropy, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public init(messageHash: Data, secretKey: SecretKey, type: SignatureType, additionalEntropy: Data? = .none) {
+    public init(messageHash: Data, secretKey: SecretKey, type: SignatureType, additionalEntropy: Data? = .none, recoverCompressedKeys: Bool = true) {
         precondition(messageHash.count == Self.hashLength)
         switch type {
         case .ecdsa:
             data = signECDSA(messageHash: messageHash, secretKey: secretKey)
         case .compact:
             data = signCompact(messageHash: messageHash, secretKey: secretKey)
-        case .recoverable(let compressedPublicKeys):
-            guard let compressedPublicKeys else {
-                preconditionFailure()
-            }
-            data = signRecoverable(messageHash: messageHash, secretKey: secretKey, compressedPublicKeys: compressedPublicKeys)
+        case .recoverable:
+            data = signRecoverable(messageHash: messageHash, secretKey: secretKey, compressedPublicKeys: recoverCompressedKeys)
             assert(data.count == Self.recoverableSignatureLength)
         case .schnorr:
             data = signSchnorr(messageHash: messageHash, secretKey: secretKey, additionalEntropy: additionalEntropy)
@@ -59,7 +56,7 @@ public struct Signature: Equatable, CustomStringConvertible {
             guard internalIsLowS(compactSignatureData: data) else {
                 return nil
             }
-        case .recoverable(_):
+        case .recoverable:
             guard data.count == Self.recoverableSignatureLength else {
                 return nil
             }
@@ -82,9 +79,9 @@ public struct Signature: Equatable, CustomStringConvertible {
     public var isLowS: Bool {
         switch type {
         case .ecdsa:
-            return internalIsLowS(laxSignatureData: data)
+            internalIsLowS(laxSignatureData: data)
         case .compact:
-            return internalIsLowS(compactSignatureData: data)
+            internalIsLowS(compactSignatureData: data)
         default:
             preconditionFailure()
         }
@@ -108,7 +105,7 @@ public struct Signature: Equatable, CustomStringConvertible {
             return verifyECDSA(signatureData: data, messageHash: messageHash, publicKey: publicKey)
         case .compact:
             return verifyCompact(signatureData: data, messageHash: messageHash, publicKey: publicKey)
-        case .recoverable(_):
+        case .recoverable:
             return internalRecoverPublicKey(signatureData: data, messageHash: messageHash) != .none
         case .schnorr:
             return verifySchnorr(signatureData: data, messageHash: messageHash, publicKey: publicKey)
@@ -116,10 +113,8 @@ public struct Signature: Equatable, CustomStringConvertible {
     }
 
     public func recoverPublicKey(from messageData: Data) -> PublicKey? {
-        guard case .recoverable(_) = type else {
-            preconditionFailure()
-        }
-        guard let publicKeyData = internalRecoverPublicKey(signatureData: data, messageHash: getMessageHash(messageData: messageData, type: .recoverable(.none))) else {
+        precondition(type == .recoverable)
+        guard let publicKeyData = internalRecoverPublicKey(signatureData: data, messageHash: getMessageHash(messageData: messageData, type: .recoverable)) else {
             return .none
         }
         return PublicKey(publicKeyData)
@@ -143,61 +138,60 @@ public struct Signature: Equatable, CustomStringConvertible {
         //   the start, except a single one when the next byte has its highest bit set).
         // * S-length: 1-byte length descriptor of the S value that follows.
         // * S: arbitrary-length big-endian encoded S value. The same rules apply.
-
-        let sig = data
+        precondition(type == .ecdsa)
 
         // Minimum and maximum size constraints.
-        guard sig.count >= Signature.ecdsaSignatureMinLength &&
-                sig.count <= Signature.ecdsaSignatureMaxLength else {
+        guard data.count >= Signature.ecdsaSignatureMinLength &&
+                data.count <= Signature.ecdsaSignatureMaxLength else {
             return false
         }
 
-        let start = sig.startIndex
+        let start = data.startIndex
 
         // A signature is of type 0x30 (compound).
-        if sig[start] != 0x30 { return false }
+        if data[start] != 0x30 { return false }
 
         // Make sure the length covers the entire signature.
-        if sig[start + 1] != sig.count - 2 { return false }
+        if data[start + 1] != data.count - 2 { return false }
 
         // Extract the length of the R element.
-        let lenR = Int(sig[start + 3])
+        let lenR = Int(data[start + 3])
 
         // Make sure the length of the S element is still inside the signature.
-        if 4 + lenR >= sig.count { return false }
+        if 4 + lenR >= data.count { return false }
 
         // Extract the length of the S element.
-        let lenS = Int(sig[start + 5 + lenR])
+        let lenS = Int(data[start + 5 + lenR])
 
         // Verify that the length of the signature matches the sum of the length
         // of the elements.
-        if lenR + lenS + 6 != sig.count { return false }
+        if lenR + lenS + 6 != data.count { return false }
 
         // Check whether the R element is an integer.
-        if sig[start + 2] != 0x02 { return false }
+        if data[start + 2] != 0x02 { return false }
 
         // Zero-length integers are not allowed for R.
         if lenR == 0 { return false }
 
         // Negative numbers are not allowed for R.
-        if sig[start + 4] & 0x80 != 0 { return false }
+        if data[start + 4] & 0x80 != 0 { return false }
 
         // Null bytes at the start of R are not allowed, unless R would
         // otherwise be interpreted as a negative number.
-        if lenR > 1 && sig[start + 4] == 0x00 && sig[start + 5] & 0x80 == 0 { return false }
+        if lenR > 1 && data[start + 4] == 0x00 && data[start + 5] & 0x80 == 0 { return false }
 
         // Check whether the S element is an integer.
-        if sig[start + lenR + 4] != 0x02 { return false }
+        if data[start + lenR + 4] != 0x02 { return false }
 
         // Zero-length integers are not allowed for S.
         if lenS == 0 { return false }
 
         // Negative numbers are not allowed for S.
-        if sig[start + lenR + 6] & 0x80 != 0 { return false }
+        if data[start + lenR + 6] & 0x80 != 0 { return false }
 
         // Null bytes at the start of S are not allowed, unless S would otherwise be
         // interpreted as a negative number.
-        if lenS > 1 && sig[start + lenR + 6] == 0x00 && sig[start + lenR + 7] & 0x80 == 0 { return false }
+        if lenS > 1 && data[start + lenR + 6] == 0x00 && data[start + lenR + 7] & 0x80 == 0 { return false }
         return true
     }
 
@@ -227,7 +221,7 @@ private func getMessageHash(messageData: Data, type: SignatureType) -> Data {
     switch type {
     case .ecdsa, .compact, .schnorr:
         newMessageData = messageData
-    case .recoverable(_):
+    case .recoverable:
         newMessageData = compactRecoverableMessage(messageData)
     }
     return hash256(newMessageData)
