@@ -129,7 +129,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     }
 
     public func verify(_ signature: Signature, for message: String) -> Bool {
-        signature.verify(for: message, using: self)
+        signature.verify(message: message, publicKey: self)
     }
 
     public var hasEvenY: Bool {

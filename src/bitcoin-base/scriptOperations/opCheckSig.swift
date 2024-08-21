@@ -41,10 +41,13 @@ func opCheckSig(_ stack: inout [Data], context: inout ScriptContext) throws {
                 // If the signature is not the empty vector, the signature is validated against the public key (see the next subsection).
                 // Tapscript semantics
                 let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition)
-                let (signature, sighashType) = try splitSchnorrSignature(sig)
+                let (signatureData, sighashType) = try splitSchnorrSignature(sig)
                 var cache = SighashCache() // TODO: Hold on to cache.
                 let sighash = context.transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
-                result = verifySchnorr(sig: signature, msg: sighash, publicKey: publicKey)
+                guard let signature = Signature(signatureData, type: .schnorr) else {
+                    throw ScriptError.invalidSchnorrSignature
+                }
+                result = signature.verify(messageHash: sighash, publicKey: publicKey)
                 // Validation failure in this case immediately terminates script execution with failure.
                 guard result else { throw ScriptError.invalidSchnorrSignature }
             } else {

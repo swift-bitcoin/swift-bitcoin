@@ -47,6 +47,9 @@ public enum WalletError: Error {
     /// The  address could not be decoded.
     case invalidAddress
 
+    /// The signature could not be decoded.
+    case invalidSignatureData
+
     /// The signature could not be decoded as Base64.
     case invalidSignatureEncoding
 

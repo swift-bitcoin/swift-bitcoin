@@ -187,13 +187,16 @@ extension BitcoinTransaction {
 
         // If there is exactly one element left in the witness stack, key path spending is used:
         if stack.count == 1 {
-            let (signature, sighashType) = try splitSchnorrSignature(stack[0])
+            let (signatureData, sighashType) = try splitSchnorrSignature(stack[0])
             var cache = SighashCache() // TODO: Hold on to cache.
             let sighash = self.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: .none, sighashCache: &cache)
             guard let publicKey = PublicKey(xOnly: witnessProgram) else {
                 fatalError()
             }
-            guard verifySchnorr(sig: signature, msg: sighash, publicKey: publicKey) else {
+            guard let signature = Signature(signatureData, type: .schnorr) else {
+                throw ScriptError.invalidSchnorrSignatureFormat
+            }
+            guard signature.verify(messageHash: sighash, publicKey: publicKey) else {
                 throw ScriptError.invalidSchnorrSignature
             }
             return

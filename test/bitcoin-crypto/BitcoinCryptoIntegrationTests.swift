@@ -20,9 +20,9 @@ struct BitcoinCryptoIntegrationTests {
         #expect(isSignatureValid)
 
         // ECDSA signature
-        let signatureECDSA = try #require(secretKey.sign(message, signatureType: .ecdsa))
+        let signatureECDSA = try #require(secretKey.sign(message, signatureType: .compact))
 
-        let isECDSASignatureValid = signatureECDSA.verify(for: message, using: publicKey)
+        let isECDSASignatureValid = signatureECDSA.verify(message: message, publicKey: publicKey)
         #expect(isECDSASignatureValid)
     }
 
@@ -45,12 +45,12 @@ struct BitcoinCryptoIntegrationTests {
         #expect(signature == signatureCopy)
 
         // ECDSA signature
-        let signatureECDSA = try #require(Signature("151756497fb7ad7b910341814aed135e5835b8fa3c6b63132cb36f4b453bdc3c61defc72d99ef44170bd130ef66a9ef4122c96e623d20bff79d0b740c29af2af", type: .ecdsa))
+        let signatureECDSA = try #require(Signature("151756497fb7ad7b910341814aed135e5835b8fa3c6b63132cb36f4b453bdc3c61defc72d99ef44170bd130ef66a9ef4122c96e623d20bff79d0b740c29af2af", type: .compact))
 
-        let isECDSASignatureValid = signatureECDSA.verify(for: message, using: publicKey)
+        let isECDSASignatureValid = signatureECDSA.verify(message: message, publicKey: publicKey)
         #expect(isECDSASignatureValid)
 
-        let signatureECDSACopy = try #require(secretKey.sign(message, signatureType: .ecdsa))
+        let signatureECDSACopy = try #require(secretKey.sign(message, signatureType: .compact))
         #expect(signatureECDSA == signatureECDSACopy)
     }
 

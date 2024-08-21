@@ -483,8 +483,8 @@ struct BIP341Tests {
             let tweak = internalPublicKey.tapTweak(merkleRoot: merkleRoot)
             #expect(tweak == expectedTweak)
 
-            let tweakedSecretKey = secretKey.tweakXOnly(tweak).data
-            #expect(tweakedSecretKey == expectedTweakedSecretKey)
+            let tweakedSecretKey = secretKey.tweakXOnly(tweak)
+            #expect(tweakedSecretKey.data == expectedTweakedSecretKey)
 
             let sigMsg = tx.signatureMessageSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: utxosSpent, sighashCache: &cache)
 
@@ -504,7 +504,8 @@ struct BIP341Tests {
             } else {
                 hashTypeSuffix = Data()
             }
-            let sig = signSchnorr(msg: sighash, secretKey: secretKey, tweak: tweak, aux: Data(repeating: 0, count: 256)) + hashTypeSuffix
+            let signature = Signature(messageHash: sighash, secretKey: tweakedSecretKey, type: .schnorr)
+            let sig = signature.data + hashTypeSuffix
             #expect([sig] == expectedWitness)
         }
 

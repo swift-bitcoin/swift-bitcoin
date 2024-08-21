@@ -60,11 +60,12 @@ extension Wallet {
             throw WalletError.invalidMessageEncoding
         }
 
-        return try sign(secretKey: secretKey, message: messageData, compressedPublicKeys: compressedPublicKeys).base64EncodedString()
+        return try sign(secretKey: secretKey, messageData: messageData, compressedPublicKeys: compressedPublicKeys).base64EncodedString()
     }
 
-    public static func sign(secretKey: SecretKey, message: Data, compressedPublicKeys: Bool) throws -> Data {
-        signRecoverable(message: message, secretKey: secretKey, compressedPublicKeys: compressedPublicKeys)
+    public static func sign(secretKey: SecretKey, messageData: Data, compressedPublicKeys: Bool) throws -> Data {
+        let signature = Signature(messageData: messageData, secretKey: secretKey, type: .recoverable(compressedPublicKeys))
+        return signature.data
     }
 
     public static func verify(address: String, signature: String, message: String) throws -> Bool {
@@ -78,21 +79,24 @@ extension Wallet {
         }
         let publicKeyHash = addressData[addressData.startIndex.advanced(by: 1)...]
 
-        guard let signature = signature.data(using: .utf8), let signature = Data(base64Encoded: signature) else {
+        guard let signatureData = signature.data(using: .utf8), let signatureData = Data(base64Encoded: signatureData) else {
             throw WalletError.invalidSignatureEncoding
         }
 
-        guard let message = message.data(using: .utf8) else {
+        guard let messageData = message.data(using: .utf8) else {
             throw WalletError.invalidMessageEncoding
         }
 
-        return try verify(publicKeyHash: publicKeyHash, signature: signature, message: message)
+        return try verify(publicKeyHash: publicKeyHash, signatureData: signatureData, messageData: messageData)
     }
 
-    public static func verify(publicKeyHash: Data, signature: Data, message: Data) throws -> Bool {
-        guard let publicKey = recoverPublicKey(message: message, signature: signature) else {
+    public static func verify(publicKeyHash: Data, signatureData: Data, messageData: Data) throws -> Bool {
+        guard let signature = Signature(signatureData, type: .recoverable(.none)) else {
+            throw WalletError.invalidSignatureData
+        }
+        guard let publicKey = signature.recoverPublicKey(from: messageData) else {
             return false
         }
-        return hash160(publicKey) == publicKeyHash
+        return hash160(publicKey.data) == publicKeyHash
     }
 }
