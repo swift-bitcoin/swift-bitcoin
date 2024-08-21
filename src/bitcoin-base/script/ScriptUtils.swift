@@ -91,21 +91,33 @@ func getCheckMultiSigParams(_ stack: inout [Data], config: ScriptConfig) throws 
 }
 
 // TODO: Move this logic into Signature struct somehow.
-func checkSignature(_ extendedSignature: Data, scriptConfig: ScriptConfig) throws {
+func checkSignature(_ extendedSignatureData: Data, scriptConfig: ScriptConfig) throws {
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
-    if extendedSignature.isEmpty { return }
+    if extendedSignatureData.isEmpty { return }
+
+    let signatureData = extendedSignatureData.dropLast()
+
     if scriptConfig.contains(.strictDER) || scriptConfig.contains(.lowS) || scriptConfig.contains(.strictEncoding) {
-        guard checkSignatureEncoding(extendedSignature) else {
+        guard let signature = Signature(signatureData, type: .ecdsa) else {
+            fatalError()
+        }
+        guard signature.isEncodingValid else {
             throw ScriptError.invalidSignatureEncoding
         }
     }
-    if scriptConfig.contains(.lowS) && !isLowS(extendedSignature: extendedSignature) {
-        throw ScriptError.nonLowSSignature
+    if scriptConfig.contains(.lowS) {
+        guard let signature = Signature(signatureData, type: .ecdsa) else {
+            fatalError()
+        }
+        guard signature.isLowS else {
+            throw ScriptError.nonLowSSignature
+        }
     }
     if scriptConfig.contains(.strictEncoding)  {
-        let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
-        guard let sighashType = SighashType(sighashTypeData) else {
+
+        // TODO: Initialize SighashType with byte value instead of Data but be careful to allow undefined values!
+        guard let sighashTypeByte = extendedSignatureData.last, let sighashType = SighashType(Data([sighashTypeByte])) else {
             preconditionFailure()
         }
         guard sighashType.isDefined else {
