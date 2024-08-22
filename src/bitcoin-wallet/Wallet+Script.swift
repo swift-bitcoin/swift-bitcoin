@@ -5,17 +5,17 @@ import BitcoinBase
 extension Wallet {
 
     /// BIP13
-    public static func getAddress(scripts: [String], publicKey: String?, sigVersion: SigVersion, network: WalletNetwork) throws -> String {
+    public static func getAddress(scripts: [String], publicKeyHex: String?, sigVersion: SigVersion, network: WalletNetwork) throws -> String {
 
-        let publicKey = if let publicKey {
-            if let publicKey = Data(hex: publicKey) {
+        let publicKey = if let publicKeyHex {
+            if let publicKeyData = Data(hex: publicKeyHex), let publicKey = PublicKey(compressed: publicKeyData) {
                 publicKey
             } else {
                 throw WalletError.invalidHexString
             }
         }  else {
             if sigVersion != .witnessV1 {
-                Data?.none
+                PublicKey?.none
             } else {
                 throw WalletError.publicKeyRequired
             }
@@ -31,14 +31,14 @@ extension Wallet {
     /// Decodes a script into its assembly textual representation.
     ///
     /// Part of BIP13.
-    public static func getAddress(scripts: [Data], publicKey: Data?, sigVersion: SigVersion = .base, network: WalletNetwork = .main) throws -> String {
+    public static func getAddress(scripts: [Data], publicKey: PublicKey?, sigVersion: SigVersion = .base, network: WalletNetwork = .main) throws -> String {
         precondition( (sigVersion != .witnessV1 && publicKey == .none) || (sigVersion == .witnessV1 && publicKey != .none))
         switch sigVersion {
         case .base:
             var data = Data()
             data.appendBytes(UInt8(network.base58VersionScript))
             data.append(hash160(scripts[0]))
-            return Base58.base58CheckEncode(data)
+            return Base58Encoder().encode(data)
         case .witnessV0:
             return try SegwitAddrCoder.encode(hrp: network.bech32HRP, version: 0, program: sha256(scripts[0]))
         case .witnessV1:
@@ -48,9 +48,9 @@ extension Wallet {
             }
             let scriptTree = ScriptTree(scripts, leafVersion: 192)
             let (_, merkleRoot) = scriptTree.calcMerkleRoot()
-            let internalKey = publicKeyToXOnly(publicKey)
-            let outputKey = getOutputKey(internalKey: internalKey, merkleRoot: merkleRoot)
-            return try SegwitAddrCoder.encode(hrp: network.bech32HRP, version: 1, program: outputKey)
+            let outputKey = publicKey.taprootOutputKey(merkleRoot: merkleRoot)
+            let outputKeyData = outputKey.xOnlyData.x
+            return try SegwitAddrCoder.encode(hrp: network.bech32HRP, version: 1, program: outputKeyData)
         }
     }
 

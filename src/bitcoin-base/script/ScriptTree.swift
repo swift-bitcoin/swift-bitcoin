@@ -126,8 +126,10 @@ public indirect enum ScriptTree: Equatable, Sendable {
         return taggedHash(tag: "TapLeaf", payload: leafVersionData + scriptData.varLenData)
     }
 
-    public func getOutputKey(secretKey: Data) -> Data {
+    public func getOutputKey(secretKey: SecretKey) -> Data {
         let (_, merkleRoot) = calcMerkleRoot()
-        return BitcoinBase.getOutputKey(secretKey: secretKey, merkleRoot: merkleRoot)
+        let internalKey = PublicKey(secretKey, requireEvenY: true)
+        let outputKey = internalKey.taprootOutputKey(merkleRoot: merkleRoot)
+        return outputKey.xOnlyData.x
     }
 }

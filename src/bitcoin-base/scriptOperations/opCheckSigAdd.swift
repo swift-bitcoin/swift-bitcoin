@@ -9,7 +9,7 @@ func opCheckSigAdd(_ stack: inout [Data], context: inout ScriptContext) throws {
     }
 
     // If fewer than 3 elements are on the stack, the script MUST fail and terminate immediately.
-    let (sig, nData, publicKey) = try getTernaryParams(&stack)
+    let (extendedSignatureData, nData, publicKeyData) = try getTernaryParams(&stack)
 
     var n = try ScriptNumber(nData, minimal: context.config.contains(.minimalData))
     guard n.size <= 4 else {
@@ -17,26 +17,30 @@ func opCheckSigAdd(_ stack: inout [Data], context: inout ScriptContext) throws {
         throw ScriptError.invalidCheckSigAddArgument
     }
 
-    if publicKey.isEmpty {
+    if publicKeyData.isEmpty {
         // - If the public key size is zero, the script MUST fail and terminate immediately.
         throw ScriptError.emptyPublicKey
     }
 
-    if !sig.isEmpty { try context.checkSigopBudget() }
+    if !extendedSignatureData.isEmpty { try context.checkSigopBudget() }
 
-    if publicKey.count == 32 && !sig.isEmpty {
+    if /* publicKeyData.count == 32 */ let publicKey = PublicKey(xOnly: publicKeyData), !extendedSignatureData.isEmpty {
 
         // If the public key size is 32 bytes, it is considered to be a public key as described in BIP340:
         // If the signature is not the empty vector, the signature is validated against the public key (see the next subsection). Validation failure in this case immediately terminates script execution with failure.
 
         // Tapscript semantics
         let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: context.codeSeparatorPosition)
-        let (signature, sighashType) = try splitSchnorrSignature(sig)
+        let (signatureData, sighashType) = try splitSchnorrSignature(extendedSignatureData)
         var cache = SighashCache() // TODO: Hold on to cache.
         let sighash = context.transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: context.inputIndex, previousOutputs: context.previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
-        let result = verifySchnorr(sig: signature, msg: sighash, publicKey: publicKey)
+
+        guard let signature = Signature(signatureData, type: .schnorr) else {
+            throw ScriptError.invalidSchnorrSignature
+        }
+        let result = signature.verify(messageHash: sighash, publicKey: publicKey)
         if !result { throw ScriptError.invalidSchnorrSignature }
-    } else if publicKey.isEmpty {
+    } else if publicKeyData.isEmpty {
         throw ScriptError.emptyPublicKey
     } else {
         // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
@@ -46,7 +50,7 @@ func opCheckSigAdd(_ stack: inout [Data], context: inout ScriptContext) throws {
     }
 
     // If the script did not fail and terminate before this step, regardless of the public key type:
-    if sig.isEmpty {
+    if extendedSignatureData.isEmpty {
         // If the signature is the empty vector:
         // For OP_CHECKSIGADD, a CScriptNum with value n is pushed onto the stack, and execution continues with the next opcode.
         stack.append(nData)

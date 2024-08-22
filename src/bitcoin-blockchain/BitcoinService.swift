@@ -2,7 +2,6 @@ import Foundation
 import AsyncAlgorithms
 import BitcoinCrypto
 import BitcoinBase
-import BitcoinWallet
 
 public actor BitcoinService: Sendable {
 
@@ -137,19 +136,17 @@ public actor BitcoinService: Sendable {
         }
     }
 
-    public func generateTo(_ address: String, blockTime: Date = .now) {
+    public func generateTo(_ publicKey: PublicKey, blockTime: Date = .now) {
+        generateTo(hash160(publicKey.data), blockTime: blockTime)
+    }
+
+    public func generateTo(_ publicKeyHash: Data, blockTime: Date = .now) {
         if blockTransactions.isEmpty {
             createGenesisBlock()
         }
 
-        guard let addressData = Base58.base58CheckDecode(address),
-              addressData[addressData.startIndex] == Int8(WalletNetwork.regtest.base58Version)
-        else { return }
-
-        let destinationPublicKeyHash = addressData[addressData.startIndex.advanced(by: 1)...]
-
         let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool)
-        let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: blockTransactions.count, destinationPublicKeyHash: destinationPublicKeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: consensusParams.blockSubsidy)
+        let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: blockTransactions.count, publicKeyHash: publicKeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: consensusParams.blockSubsidy)
 
         let previousBlockHash = headers.last!.identifier
         let transactions = [coinbaseTx] + mempool

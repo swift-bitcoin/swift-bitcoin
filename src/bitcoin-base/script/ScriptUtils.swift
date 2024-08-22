@@ -90,21 +90,34 @@ func getCheckMultiSigParams(_ stack: inout [Data], config: ScriptConfig) throws 
     return (n, publicKeys, m, sigs)
 }
 
-func checkSignature(_ extendedSignature: Data, scriptConfig: ScriptConfig) throws {
+// TODO: Move this logic into Signature struct somehow.
+func checkSignature(_ extendedSignatureData: Data, scriptConfig: ScriptConfig) throws {
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
-    if extendedSignature.isEmpty { return }
+    if extendedSignatureData.isEmpty { return }
+
+    let signatureData = extendedSignatureData.dropLast()
+
     if scriptConfig.contains(.strictDER) || scriptConfig.contains(.lowS) || scriptConfig.contains(.strictEncoding) {
-        guard checkSignatureEncoding(extendedSignature) else {
+        guard let signature = Signature(signatureData, type: .ecdsa) else {
+            fatalError()
+        }
+        guard signature.isEncodingValid else {
             throw ScriptError.invalidSignatureEncoding
         }
     }
-    if scriptConfig.contains(.lowS) && !isLowS(extendedSignature: extendedSignature) {
-        throw ScriptError.nonLowSSignature
+    if scriptConfig.contains(.lowS) {
+        guard let signature = Signature(signatureData, type: .ecdsa) else {
+            fatalError()
+        }
+        guard signature.isLowS else {
+            throw ScriptError.nonLowSSignature
+        }
     }
     if scriptConfig.contains(.strictEncoding)  {
-        let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
-        guard let sighashType = SighashType(sighashTypeData) else {
+
+        // TODO: Initialize SighashType with byte value instead of Data but be careful to allow undefined values!
+        guard let sighashTypeByte = extendedSignatureData.last, let sighashType = SighashType(Data([sighashTypeByte])) else {
             preconditionFailure()
         }
         guard sighashType.isDefined else {
@@ -113,15 +126,16 @@ func checkSignature(_ extendedSignature: Data, scriptConfig: ScriptConfig) throw
     }
 }
 
-func checkPublicKey(_ publicKey: Data, scriptVersion: SigVersion, scriptConfig: ScriptConfig) throws {
-    if scriptConfig.contains(.strictEncoding)  {
-        guard checkPublicKeyEncoding(publicKey) else {
+func checkPublicKey(_ publicKeyData: Data, scriptVersion: SigVersion, scriptConfig: ScriptConfig) throws {
+    if scriptConfig.contains(.strictEncoding) {
+        // TODO: This may actually be checking that the uncompressed key is valid (as we convert it to compressed)
+        guard let _ = PublicKey(publicKeyData) else {
             throw ScriptError.invalidPublicKeyEncoding
         }
     }
     // Only compressed keys are accepted in segwit
     if scriptVersion == .witnessV0 && scriptConfig.contains(.witnessCompressedPublicKey) {
-        guard checkCompressedPublicKeyEncoding(publicKey) else {
+        guard let _ = PublicKey(compressed: publicKeyData) else {
             throw ScriptError.invalidPublicKeyEncoding
         }
     }
@@ -140,10 +154,10 @@ func splitECDSASignature(_ extendedSignature: Data) -> (Data, SighashType) {
 func splitSchnorrSignature(_ extendedSignature: Data) throws -> (Data, SighashType?) {
     var sigTmp = extendedSignature
     let sighashType: SighashType?
-    if sigTmp.count == 65, let rawValue = sigTmp.popLast(), let maybeHashType = SighashType(rawValue) {
+    if sigTmp.count == Signature.extendedSchnorrSignatureLength, let rawValue = sigTmp.popLast(), let maybeHashType = SighashType(rawValue) {
         // If the sig is 64 bytes long, return Verify(q, hashTapSighash(0x00 || SigMsg(0x00, 0)), sig), where Verify is defined in BIP340.
         sighashType = maybeHashType
-    } else if sigTmp.count == 64 {
+    } else if sigTmp.count == Signature.schnorrSignatureLength {
         // If the sig is 65 bytes long, return sig[64] ≠ 0x00 and Verify(q, hashTapSighash(0x00 || SigMsg(sig[64], 0)), sig[0:64]).
         sighashType = SighashType?.none
     } else {

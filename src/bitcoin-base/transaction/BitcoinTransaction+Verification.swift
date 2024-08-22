@@ -179,17 +179,24 @@ extension BitcoinTransaction {
         // Fail if the witness stack has 0 elements.
         if stack.count == 0 { throw ScriptError.missingTaprootWitness }
 
-        let outputKey = witnessProgram // In this case it is the key (aka taproot output key q)
+        // In this case it is the key (aka taproot output key q)
+        let outputKeyData = witnessProgram
 
         // this last element is called annex a and is removed from the witness stack
         if witness.taprootAnnex != .none { stack.removeLast() }
 
         // If there is exactly one element left in the witness stack, key path spending is used:
         if stack.count == 1 {
-            let (signature, sighashType) = try splitSchnorrSignature(stack[0])
+            let (signatureData, sighashType) = try splitSchnorrSignature(stack[0])
             var cache = SighashCache() // TODO: Hold on to cache.
             let sighash = self.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: .none, sighashCache: &cache)
-            guard verifySchnorr(sig: signature, msg: sighash, publicKey: outputKey) else {
+            guard let publicKey = PublicKey(xOnly: witnessProgram) else {
+                fatalError()
+            }
+            guard let signature = Signature(signatureData, type: .schnorr) else {
+                throw ScriptError.invalidSchnorrSignatureFormat
+            }
+            guard signature.verify(messageHash: sighash, publicKey: publicKey) else {
                 throw ScriptError.invalidSchnorrSignature
             }
             return
@@ -210,10 +217,10 @@ extension BitcoinTransaction {
 
         // Let p = c[1:33] and let P = lift_x(int(p)) where lift_x and [:] are defined as in BIP340. Fail if this point is not on the curve.
         // q is referred to as taproot output key and p as taproot internal key.
-        let internalKey = control[1...32]
+        let internalKeyData = control[1...32]
 
         // Fail if this point is not on the curve.
-        guard checkXOnlyPublicKey(internalKey) else { throw ScriptError.invalidTaprootPublicKey }
+        guard let internalKey = PublicKey(xOnly: internalKeyData), internalKey.isPointOnCurve(useXOnly: true) else { throw ScriptError.invalidTaprootPublicKey }
 
         // Let v = c[0] & 0xfe and call it the leaf version
         let leafVersion = control[0] & 0xfe
@@ -224,11 +231,13 @@ extension BitcoinTransaction {
         // Compute the Merkle root from the leaf and the provided path.
         let merkleRoot = computeMerkleRoot(controlBlock: control, tapLeafHash: tapLeafHash)
 
-        let tweak = computeTapTweakHash(internalKey: internalKey, merkleRoot: merkleRoot)
+        let tweak = internalKey.tapTweak(merkleRoot: merkleRoot)
 
         // Verify that the output pubkey matches the tweaked internal pubkey, after correcting for parity.
-        let parity = (control[0] & 0x01) != 0
-        guard checkTapTweak(internalKey: internalKey, outputKey: outputKey, tweak: tweak, parity: parity) else {
+        //let parity = (control[0] & 0x01) != 0
+        let hasEvenY = (control[0] & 0x01) == 0
+        let outputKey = PublicKey(xOnly: outputKeyData, hasEvenY: hasEvenY)! // TODO: Check if this could fail somehow when witness data contains an invalid public key.
+        guard internalKey.checkTweak(tweak, outputKey: outputKey) else {
             throw ScriptError.invalidTaprootTweak
         }
 

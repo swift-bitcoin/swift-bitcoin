@@ -10,14 +10,14 @@ struct MessageSign: ParsableCommand {
         abstract: "Signs a message with a private key.The signature is encoded in Base64 format."
     )
 
-    @Argument(help: "The secret key in raw hex format.")
+    @Argument(help: "The secret key in WIF format.")
     var secretKey: String
 
     @Argument(help: "The message to sign.")
     var message: String
 
     mutating func run() throws {
-        print(try Wallet.sign(secretKey: secretKey, message: message))
+        print(try Wallet.sign(secretKeyWIF: secretKey, message: message))
         destroyECCSigningContext()
     }
 }

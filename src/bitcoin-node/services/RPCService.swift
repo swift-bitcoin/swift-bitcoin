@@ -1,9 +1,11 @@
 import BitcoinTransport
+import BitcoinCrypto
 import BitcoinBlockchain
 import BitcoinRPC
 import ServiceLifecycle
 import NIO
 import Logging
+import Foundation
 
 private let logger = Logger(label: "swift-bitcoin.rpc")
 
@@ -199,11 +201,15 @@ actor RPCService: Service {
                     try await outbound.write(.init(id: request.id, error: .init(.invalidParams("Port (integer) is required."))))
                 }
             case "generate-to":
-                guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(address) = first else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("address"), description: "Address (string) is required.")))
+                guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(publicKey) = first else {
+                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("publicKey"), description: "PublicKey (string) is required.")))
                     return
                 }
-                await bitcoinService.generateTo(address)
+                guard let publicKeyData = Data(hex: publicKey), let publicKey = PublicKey(compressed: publicKeyData) else {
+                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("publicKey"), description: "PublicKey hex encoding is is invalid.")))
+                    return
+                }
+                await bitcoinService.generateTo(publicKey)
                 try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.headers.last!.hash.hex) as JSONObject))
             case "ping-all":
                 await bitcoinNode.pingAll()

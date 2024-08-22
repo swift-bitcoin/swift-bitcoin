@@ -3,7 +3,6 @@ import Foundation
 @testable import BitcoinBlockchain // @testable for signatureHash(), SigHashType
 import BitcoinCrypto
 import BitcoinBase
-import BitcoinWallet
 
 struct BitcoinServiceTests {
 
@@ -12,10 +11,9 @@ struct BitcoinServiceTests {
     func mineAndSpend() async throws {
 
         // Generate a secret key, corresponding public key, hash and address.
-        let secretKey = Wallet.createSecretKey() as Data
-        let publicKey = Wallet.getPublicKey(secretKey: secretKey)
-        let publicKeyHash = hash160(publicKey)
-        let address = try Wallet.getAddress(publicKey: publicKey, sigVersion: .base, network: .regtest)
+        let secretKey = SecretKey()
+        let publicKey = secretKey.publicKey
+        let publicKeyHash = hash160(publicKey.data)
 
         // Instantiate a fresh Bitcoin service (regtest).
         let service = BitcoinService()
@@ -25,7 +23,7 @@ struct BitcoinServiceTests {
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         for _ in 0 ..< 100 {
-            await service.generateTo(address)
+            await service.generateTo(publicKey)
         }
 
         // Grab block 1's coinbase transaction and output.
@@ -53,7 +51,8 @@ struct BitcoinServiceTests {
         let sigHash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, previousOutput: previousOutput, scriptCode: previousOutput.script.data)
 
         // Obtain the signature using our secret key and append the signature hash type.
-        let sig = signECDSA(message: sigHash, secretKey: secretKey) + [SighashType.all.value]
+        let signature = try #require(Signature(messageHash: sigHash, secretKey: secretKey, type: .ecdsa))
+        let sig = signature.data + [SighashType.all.value]
 
         // Sign our input by including the signature and public key.
         let signedInput = TransactionInput(
@@ -61,7 +60,7 @@ struct BitcoinServiceTests {
             sequence: unsignedInput.sequence,
             script: .init([
                 .pushBytes(sig),
-                .pushBytes(publicKey)
+                .pushBytes(publicKey.data)
             ]),
             witness: unsignedInput.witness)
 
@@ -81,7 +80,7 @@ struct BitcoinServiceTests {
         #expect(mempoolBefore == 1)
 
         // Let's mine another block to confirm our transaction.
-        await service.generateTo(address)
+        await service.generateTo(publicKey)
         let mempoolAfter = await service.mempool.count
 
         // Verify the mempool is empty once again.
@@ -132,10 +131,11 @@ struct BitcoinServiceTests {
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = .gmt
 
+        let publicKey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         for i in 1...15 {
             let minutes = if i < 5 { 4 } else if i < 10 { 2 } else { 4 }
             date = calendar.date(byAdding: .minute, value: minutes, to: date)!
-            await service.generateTo("miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5", blockTime: date)
+            await service.generateTo(publicKey, blockTime: date)
             let header = await service.headers.last!
             let expectedTarget = if (1...4).contains(i) {
                 0x207fffff // 0x7fffff0000000000000000000000000000000000000000000000000000000000 DifficultyTarget(compact: block.header.target).data.reversed().hex

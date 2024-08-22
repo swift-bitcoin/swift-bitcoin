@@ -19,9 +19,12 @@ extension Wallet {
         }
         precondition(seed.count >= 16 && seed.count <= 64)
         let result = hmacSHA512("Bitcoin seed", data: seed)
-        let key = result[...result.startIndex.advanced(by: 31)]
+        let secretKeyData = result[...result.startIndex.advanced(by: 31)]
         let chaincode = result[result.startIndex.advanced(by: 32)...]
-        guard let hdKey = try? HDExtendedKey(isPrivate: true, key: key, chaincode: chaincode, fingerprint: 0, depth: 0, keyIndex: 0) else {
+        guard let secretKey = SecretKey(secretKeyData) else {
+            throw WalletError.invalidSeed
+        }
+        guard let hdKey = try? HDExtendedKey(secretKey: secretKey, chaincode: chaincode, fingerprint: 0, depth: 0, keyIndex: 0) else {
             preconditionFailure()
         }
         return hdKey.serialized
@@ -38,7 +41,7 @@ extension Wallet {
         guard let hdKey = try? HDExtendedKey(keyHex) else {
             throw WalletError.invalidExtendedKey
         }
-        if isPrivate && !hdKey.isPrivate || (!isPrivate && hdKey.isPrivate) {
+        if isPrivate && !hdKey.hasSecretKey || (!isPrivate && hdKey.hasSecretKey) {
             throw WalletError.invalidExtendedKeyType
         }
         if !isPrivate && harden {
@@ -54,6 +57,6 @@ extension Wallet {
         guard let hdKey = try? HDExtendedKey(keyHex) else {
             throw WalletError.invalidExtendedKey
         }
-        return (hdKey.isPrivate ? hdKey.neutered : hdKey).serialized
+        return (hdKey.hasSecretKey ? hdKey.neutered : hdKey).serialized
     }
 }

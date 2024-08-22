@@ -23,6 +23,6 @@ struct ScriptToAddress: ParsableCommand {
     var scripts: [String]
 
     mutating func run() throws {
-        print(try Wallet.getAddress(scripts: scripts, publicKey: publicKey, sigVersion: sigVersion, network: network))
+        print(try Wallet.getAddress(scripts: scripts, publicKeyHex: publicKey, sigVersion: sigVersion, network: network))
     }
 }
