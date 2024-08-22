@@ -112,7 +112,14 @@ public struct Signature: Equatable, Sendable, CustomStringConvertible {
         }
     }
 
-    public func recoverPublicKey(from messageData: Data) -> PublicKey? {
+    public func recoverPublicKey(from message: String) -> PublicKey? {
+        guard let messageData = message.data(using: .utf8) else {
+            return .none
+        }
+        return recoverPublicKey(messageData: messageData)
+    }
+
+    public func recoverPublicKey(messageData: Data) -> PublicKey? {
         precondition(type == .recoverable)
         guard let publicKeyData = internalRecoverPublicKey(signatureData: data, messageHash: getMessageHash(messageData: messageData, type: .recoverable)) else {
             return .none

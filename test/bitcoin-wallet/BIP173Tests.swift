@@ -19,9 +19,9 @@ struct BIP173Tests {
         "?1ezyfcl"
     ])
     func validChecksum(valid: String) throws {
-        let decoded = try Bech32Decoder(bech32m: false).decode(valid)
+        let decoded = try Bech32Decoder(.bech32).decode(valid)
         #expect(!decoded.hrp.isEmpty, "Empty result for \"\(valid)\"")
-        let recoded = Bech32Encoder(bech32m: false).encode(decoded.hrp, values: decoded.checksum)
+        let recoded = Bech32Encoder(.bech32).encode(decoded.hrp, values: decoded.checksum)
         #expect(valid.lowercased() == recoded.lowercased(), "Roundtrip encoding failed: \(valid) != \(recoded)")
     }
 
@@ -39,7 +39,7 @@ struct BIP173Tests {
     ])
     func invalidChecksum(encoded: String, reason: Bech32Decoder.Error) {
         #expect(throws: reason) {
-            try Bech32Decoder(bech32m: false).decode(encoded)
+            try Bech32Decoder(.bech32).decode(encoded)
         }
     }
 

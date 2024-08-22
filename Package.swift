@@ -123,6 +123,13 @@ let package = Package(
                 .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
             path: "test/bitcoin-blockchain",
             swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(
+            name: "BitcoinTests",
+            dependencies: [
+                "Bitcoin",
+                .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
+            path: "test/bitcoin",
+            swiftSettings: [.swiftLanguageMode(.v6)]),
         .executableTarget(
             name: "BitcoinNode", dependencies: [
                 "BitcoinTransport",

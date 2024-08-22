@@ -136,13 +136,17 @@ public actor BitcoinService: Sendable {
         }
     }
 
-    public func generateTo(_ destinationPublicKey: PublicKey, blockTime: Date = .now) {
+    public func generateTo(_ publicKey: PublicKey, blockTime: Date = .now) {
+        generateTo(hash160(publicKey.data), blockTime: blockTime)
+    }
+
+    public func generateTo(_ publicKeyHash: Data, blockTime: Date = .now) {
         if blockTransactions.isEmpty {
             createGenesisBlock()
         }
 
         let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool)
-        let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: blockTransactions.count, destinationPublicKey: destinationPublicKey, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: consensusParams.blockSubsidy)
+        let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: blockTransactions.count, publicKeyHash: publicKeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: consensusParams.blockSubsidy)
 
         let previousBlockHash = headers.last!.identifier
         let transactions = [coinbaseTx] + mempool

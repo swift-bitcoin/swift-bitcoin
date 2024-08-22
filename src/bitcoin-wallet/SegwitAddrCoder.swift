@@ -31,34 +31,35 @@ enum SegwitAddrCoder {
 
     /// Decode segwit address
     static func decode(hrp: String, addr: String) throws -> (version: Int, program: Data) {
-        let dec = try Bech32Decoder().decode(addr)
-        guard dec.hrp == hrp else {
-            throw Error.hrpMismatch(dec.hrp, hrp)
+        let decoded = try Bech32Decoder().decode(addr)
+        guard decoded.hrp == hrp else {
+            throw Error.hrpMismatch(decoded.hrp, hrp)
         }
-        guard !dec.checksum.isEmpty else {
+        guard !decoded.checksum.isEmpty else {
             throw Error.checksumSizeTooLow
         }
-        let conv = try convertBits(from: 5, to: 8, pad: false, idata: dec.checksum.advanced(by: 1))
+        let conv = try convertBits(from: 5, to: 8, pad: false, idata: decoded.checksum.advanced(by: 1))
         guard conv.count >= 2 && conv.count <= 40 else {
             throw Error.dataSizeMismatch(conv.count)
         }
-        guard dec.checksum[0] <= 16 else {
-            throw Error.segwitVersionNotSupported(dec.checksum[0])
+        let segwitVersion = decoded.checksum[0]
+        guard segwitVersion <= 16 else {
+            throw Error.segwitVersionNotSupported(segwitVersion)
         }
-        if dec.checksum[0] == 0 && conv.count != 20 && conv.count != 32 {
+        if segwitVersion == 0 && conv.count != 20 && conv.count != 32 {
             throw Error.segwitV0ProgramSizeMismatch(conv.count)
         }
-        guard dec.checksum[0] == 0 && !dec.bech32m || (dec.checksum[0] > 0 && dec.bech32m) else {
-            throw Error.invalidBech32Variant(dec.bech32m ? "bech32m" : "bech32")
+        guard segwitVersion == 0 && decoded.detectedVariant == .bech32 || (segwitVersion > 0 && decoded.detectedVariant == .m) else {
+            throw Error.invalidBech32Variant(decoded.detectedVariant)
         }
-        return (Int(dec.checksum[0]), conv)
+        return (Int(segwitVersion), conv)
     }
 
     /// Encode segwit address
     static func encode(hrp: String, version: Int, program: Data) throws -> String {
         var enc = Data([UInt8(version)])
         enc.append(try convertBits(from: 8, to: 5, pad: true, idata: program))
-        let result = Bech32Encoder(bech32m: version > 0).encode(hrp, values: enc)
+        let result = Bech32Encoder(version > 0 ? .m : .bech32).encode(hrp, values: enc)
         guard let _ = try? decode(hrp: hrp, addr: result) else {
             throw Error.encodingCheckFailed
         }
@@ -75,7 +76,7 @@ extension SegwitAddrCoder {
              segwitVersionNotSupported(UInt8),
              segwitV0ProgramSizeMismatch(Int),
              encodingCheckFailed,
-             invalidBech32Variant(String)
+             invalidBech32Variant(Bech32Variant)
 
         var errorDescription: String {
             switch self {
@@ -93,8 +94,8 @@ extension SegwitAddrCoder {
                 "Segwit program size \(size) does not meet version 0 requirments"
             case .segwitVersionNotSupported(let version):
                 "Segwit version \(version) is not supported by this decoder"
-            case .invalidBech32Variant(let version):
-                "The variant used (Bech32 vs Bech32m) is invalid for the decoded witness version \(version)."
+            case .invalidBech32Variant(let variant):
+                "The variant \(variant.description) is invalid for the decoded witness version."
             }
         }
     }

@@ -1,8 +1,5 @@
 import Foundation
 
-private let bech32mConstant = UInt32(0x2bc830a3)
-private let bech32Constant = UInt32(1)
-
 private let gen: [UInt32] = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
 
 /// Bech32 checksum delimiter
@@ -23,34 +20,51 @@ private let decCharset: [Int8] = [
      1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1
 ]
 
-public struct Bech32Encoder {
+public enum Bech32Variant: Sendable, CustomStringConvertible {
 
-    public init(bech32m: Bool) {
-        self.bech32m = bech32m
+    case bech32, m
+
+    public var description: String {
+        switch self {
+        case .bech32: "bech32"
+        case .m: "bech32m"
+        }
     }
 
-    public let bech32m: Bool
+    var constant: UInt32 {
+        switch self {
+        case .bech32: 1
+        case .m: 0x2bc830a3
+        }
+    }
+}
+
+public struct Bech32Encoder: Sendable {
+
+    public init(_ variant: Bech32Variant) {
+        self.variant = variant
+    }
+
+    public let variant: Bech32Variant
 
     public func encode(_ hrp: String, values: Data) -> String {
         let checksum = createChecksum(hrp: hrp, values: values)
         var combined = values
         combined.append(checksum)
-        guard let hrpBytes = hrp.data(using: .utf8) else { return "" }
+        let hrpBytes = hrp.data(using: .utf8)!
         var ret = hrpBytes
         ret.append("1".data(using: .utf8)!)
         for i in combined {
             ret.append(encCharset[Int(i)])
         }
-        return String(data: ret, encoding: .utf8) ?? ""
+        return String(data: ret, encoding: .utf8)!
     }
 
     private func createChecksum(hrp: String, values: Data) -> Data {
-        // If nothing specified we assume bech32 (not bech32m).
-        let checksumConst = bech32m ? bech32mConstant : bech32Constant
         var enc = expandHRP(hrp)
         enc.append(values)
         enc.append(Data(repeating: 0x00, count: 6))
-        let mod: UInt32 = polymod(enc) ^ checksumConst
+        let mod: UInt32 = polymod(enc) ^ variant.constant
         var ret: Data = Data(repeating: 0x00, count: 6)
         for i in 0..<6 {
             ret[i] = UInt8((mod >> (5 * (5 - i))) & 31)
@@ -59,16 +73,16 @@ public struct Bech32Encoder {
     }
 }
 
-public struct Bech32Decoder {
+public struct Bech32Decoder: Sendable {
 
-    public init(bech32m: Bool? = .none) {
-        self.bech32m = bech32m
+    public init(_ variant: Bech32Variant? = .none) {
+        self.variant = variant
     }
 
-    public let bech32m: Bool?
+    public let variant: Bech32Variant?
 
     /// Decode Bech32 string
-    public func decode(_ str: String) throws -> (hrp: String, checksum: Data, bech32m: Bool) {
+    public func decode(_ str: String) throws -> (hrp: String, checksum: Data, detectedVariant: Bech32Variant) {
         guard let strBytes = str.data(using: .utf8) else {
             throw Error.nonUTF8String
         }
@@ -115,27 +129,25 @@ public struct Bech32Decoder {
             values[i] = UInt8(decInt)
         }
         let hrp = String(str[..<pos]).lowercased()
-        let (checksumOk, checksumBech32m) = verifyChecksum(hrp: hrp, checksum: values)
-        guard checksumOk else {
+        let verificationResult = verifyChecksum(hrp: hrp, checksum: values)
+        guard verificationResult.checksumValid, let detectedVariant = verificationResult.detectedVariant else {
             throw Error.checksumMismatch
         }
-        return (hrp, Data(values[..<(vSize - 6)]), checksumBech32m)
+        return (hrp, Data(values[..<(vSize - 6)]), detectedVariant)
     }
 
-    private func verifyChecksum(hrp: String, checksum: Data) -> (result: Bool, bech32m: Bool) {
+    private func verifyChecksum(hrp: String, checksum: Data) -> (checksumValid: Bool, detectedVariant: Bech32Variant?) {
         var data = expandHRP(hrp)
         data.append(checksum)
         let result = polymod(data)
-        guard result == bech32Constant || result == bech32mConstant else {
-            return (false, false)
+        guard result == Bech32Variant.bech32.constant || result == Bech32Variant.m.constant else {
+            return (false, .none)
         }
-        if let bech32m {
-            return (
-                bech32m && result == bech32mConstant || (!bech32m && result == bech32Constant),
-                result == bech32mConstant
-            )
+        guard let variant else {
+            // Decoder configuration does not specify a variant so we auto-detect.
+            return (true, result == Bech32Variant.bech32.constant ? .bech32 : .m)
         }
-        return (true, result == bech32mConstant)
+        return (result == variant.constant, variant)
     }
 }
 

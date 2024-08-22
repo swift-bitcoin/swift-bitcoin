@@ -94,7 +94,7 @@ extension Wallet {
         guard let signature = Signature(signatureData, type: .recoverable) else {
             throw WalletError.invalidSignatureData
         }
-        guard let publicKey = signature.recoverPublicKey(from: messageData) else {
+        guard let publicKey = signature.recoverPublicKey(messageData: messageData) else {
             return false
         }
         return hash160(publicKey.data) == publicKeyHash
