@@ -32,7 +32,7 @@ extension GetBlockTransactionsMessage {
         var data = data
 
         guard data.count >= 32 else { return nil }
-        let blockHash = data[..<data.startIndex.advanced(by: 32)]
+        let blockHash = data.prefix(32)
         self.blockHash = Data(blockHash)
         data = data.dropFirst(blockHash.count)
 

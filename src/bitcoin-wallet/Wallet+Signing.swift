@@ -77,7 +77,7 @@ extension Wallet {
         else {
             throw WalletError.invalidAddress
         }
-        let publicKeyHash = addressData[addressData.startIndex.advanced(by: 1)...]
+        let publicKeyHash = addressData.dropFirst()
 
         guard let signatureData = Data(base64Encoded: signature) else {
             throw WalletError.invalidSignatureEncoding

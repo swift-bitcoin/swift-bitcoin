@@ -6,7 +6,7 @@ extension TransactionOutpoint {
         guard data.count >= Self.size else { return nil }
 
         var data = data
-        let transaction = Data(data[..<data.startIndex.advanced(by: BitcoinTransaction.identifierSize)].reversed())
+        let transaction = Data(data.prefix(BitcoinTransaction.identifierSize).reversed())
         data = data.dropFirst(BitcoinTransaction.identifierSize)
 
         let output = Int(data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) })

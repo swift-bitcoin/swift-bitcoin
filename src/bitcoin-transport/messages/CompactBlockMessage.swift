@@ -93,7 +93,7 @@ extension CompactBlockMessage {
                 Data($0)
             }
             // Keep only 6 less significant bytes.
-            offset = ret.addData(data[..<data.startIndex.advanced(by: 6)], at: offset)
+            offset = ret.addData(data.prefix(6), at: offset)
         }
 
         offset = ret.addData(Data(varInt: UInt64(transactionIdentifiers.count)), at: offset)

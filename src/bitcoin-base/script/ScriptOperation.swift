@@ -10,7 +10,7 @@ public enum ScriptOperation: Equatable, Sendable {
         case 0x01 ... 0x4b:
             let byteCount = Int(opCode)
             guard data.count >= byteCount else { return nil }
-            let d = Data(data[..<(data.startIndex + byteCount)])
+            let d = data.prefix(byteCount)
             self = .pushBytes(d)
         case 0x4c ... 0x4e:
             let byteCount: Int
@@ -29,7 +29,7 @@ public enum ScriptOperation: Equatable, Sendable {
                 byteCount = Int(pushSize)
             }
             guard data.count >= byteCount else { return nil }
-            let d = Data(data[..<(data.startIndex + byteCount)])
+            let d = data.prefix(byteCount)
             self = if opCode == 0x4c {
                 .pushData1(d)
             } else if opCode == 0x4d {

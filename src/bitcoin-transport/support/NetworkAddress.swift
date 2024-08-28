@@ -37,7 +37,7 @@ extension NetworkAddress {
         data = data.dropFirst(TransportNetwork.size)
 
         guard data.count >= networkID.addressLength else { return nil }
-        addressData = Data(data[..<data.startIndex.advanced(by: networkID.addressLength)])
+        addressData = data.prefix(networkID.addressLength)
         data = data.dropFirst(networkID.addressLength)
 
         guard data.count >= MemoryLayout<UInt16>.size else { return nil }

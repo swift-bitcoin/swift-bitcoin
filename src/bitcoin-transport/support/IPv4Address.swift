@@ -13,11 +13,7 @@ public struct IPv4Address: Equatable, Sendable, CustomStringConvertible, CustomD
     }
 
     public init(_ rawValue: Data) {
-        let rawValue1 = if rawValue.count > length {
-            rawValue[..<rawValue.startIndex.advanced(by: length)]
-        } else {
-            rawValue
-        }
+        let rawValue1 = rawValue.prefix(length)
         let rawValue2 = if rawValue1.count < length {
             Data(repeating: 0, count: length - rawValue1.count) + rawValue1
         } else {

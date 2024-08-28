@@ -28,7 +28,7 @@ extension InventoryItem {
         data = data.dropFirst(InventoryType.size)
 
         guard data.count >= 32 else { return nil }
-        self.hash = Data(data[..<data.startIndex.advanced(by: 32)])
+        self.hash = data.prefix(32)
     }
 
     var data: Data {

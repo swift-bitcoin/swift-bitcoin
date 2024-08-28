@@ -118,7 +118,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     }
 
     public var xOnlyData: (x: Data, parity: Bool) {
-        (data[(data.startIndex + 1) ..< data.endIndex], data.first! == Self.publicKeySerializationTagOdd)
+        (data.dropFirst(), data.first! == Self.publicKeySerializationTagOdd)
     }
 
     private var xOnlyDataChecked: (x: Data, parity: Bool) {

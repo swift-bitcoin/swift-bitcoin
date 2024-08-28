@@ -38,14 +38,14 @@ extension GetHeadersMessage {
         var locatorHashes = [Data]()
         for _ in 0 ..< hashCount {
             guard data.count >= hashLength else { return nil }
-            let hash = Data(data[..<data.startIndex.advanced(by: hashLength)])
+            let hash = data.prefix(hashLength)
             locatorHashes.append(hash)
             data = data.dropFirst(hashLength)
         }
         self.locatorHashes = locatorHashes
 
         guard data.count >= hashLength else { return nil }
-        self.stopHash = Data(data[..<data.startIndex.advanced(by: hashLength)])
+        self.stopHash = data.prefix(hashLength)
 
     }
 

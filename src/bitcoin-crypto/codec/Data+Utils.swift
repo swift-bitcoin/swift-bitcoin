@@ -139,7 +139,7 @@ public extension Data {
         var data = varLenData
         guard let contentLen = data.varInt else { return nil }
         data = data.dropFirst(contentLen.varIntSize)
-        self = data[..<(data.startIndex + Int(contentLen))]
+        self = data.prefix(Int(contentLen))
     }
 
     var varLenData: Data {

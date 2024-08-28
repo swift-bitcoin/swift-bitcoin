@@ -97,9 +97,8 @@ struct HDExtendedKey {
             fatalError()
         }
 
-        let chaincode = hmacResult[hmacResult.startIndex.advanced(by: 32)...]
-
-        let tweak = hmacResult[..<hmacResult.startIndex.advanced(by: 32)]
+        let chaincode = hmacResult.dropFirst(32)
+        let tweak = hmacResult.prefix(32)
         let newSecretKey: SecretKey? = if let secretKey {
             secretKey.tweak(tweak)
         } else { .none }
@@ -158,23 +157,23 @@ extension HDExtendedKey {
         }.byteSwapped // Convert to little-endian
         data = data.dropFirst(MemoryLayout<UInt32>.size)
 
-        let chaincode = data[..<data.startIndex.advanced(by: 32)]
+        let chaincode = data.prefix(32)
         data = data.dropFirst(32)
 
         var secretKey = SecretKey?.none
         var publicKey = PublicKey?.none
         let isPrivate = version == network.hdKeyVersionPrivate
         if isPrivate {
-            guard data[data.startIndex] == 0 else {
+            guard let len = data.first, len == 0 else {
                 throw HDExtendedKeyError.invalidPrivateKeyLength
             }
-            let secretKeyData = data[data.startIndex.advanced(by: 1)..<data.startIndex.advanced(by: PublicKey.compressedLength)]
+            let secretKeyData = data.dropFirst().prefix(SecretKey.keyLength)
             guard let parsedSecretKey = SecretKey(secretKeyData) else {
                 throw HDExtendedKeyError.invalidSecretKey
             }
             secretKey = parsedSecretKey
         } else {
-            let publicKeyData = data[..<data.startIndex.advanced(by: PublicKey.compressedLength)]
+            let publicKeyData = data.prefix(PublicKey.compressedLength)
             guard let parsedPublicKey = PublicKey(publicKeyData) else {
                 throw HDExtendedKeyError.invalidPublicKeyEncoding
             }

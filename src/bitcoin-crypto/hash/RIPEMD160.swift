@@ -30,7 +30,7 @@ public struct RIPEMD160 {
         // Process remaining bytes from last call:
         if buffer.count > 0 && buffer.count + length >= 64 {
             let amount = 64 - buffer.count
-            buffer.append(data[..<amount])
+            buffer.append(data.prefix(amount))
             X.withUnsafeMutableBytes {
                 _ = buffer.copyBytes(to: $0)
             }
@@ -42,7 +42,7 @@ public struct RIPEMD160 {
         // Process 64 byte chunks:
         while length >= 64 {
             X.withUnsafeMutableBytes {
-                _ = data[pos..<pos+64].copyBytes(to: $0)
+                _ = data[pos ..< (pos + 64)].copyBytes(to: $0)
             }
             compress(X)
             pos += 64

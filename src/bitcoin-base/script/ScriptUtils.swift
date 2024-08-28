@@ -75,10 +75,10 @@ func getCheckMultiSigParams(_ stack: inout [Data], config: ScriptConfig) throws 
         throw ScriptError.missingMultiSigArgument
     }
     let n = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
-    let publicKeys = Array(stack[(stack.endIndex - n)...].reversed())
+    let publicKeys = Array(stack.suffix(n).reversed())
     stack.removeLast(n)
     let m = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
-    let sigs = Array(stack[(stack.endIndex - m)...].reversed())
+    let sigs = Array(stack.suffix(m).reversed())
     stack.removeLast(m)
     guard stack.count > 0 else {
         throw ScriptError.missingDummyValue

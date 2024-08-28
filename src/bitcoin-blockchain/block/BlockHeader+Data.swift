@@ -12,9 +12,9 @@ extension BlockHeader {
         var data = data
         version = Int(data.withUnsafeBytes { $0.loadUnaligned(as: Int32.self) })
         data = data.dropFirst(MemoryLayout<Int32>.size)
-        previous = Data(data[..<data.startIndex.advanced(by: 32)].reversed())
+        previous = Data(data.prefix(32).reversed())
         data = data.dropFirst(previous.count)
-        merkleRoot = Data(data[..<data.startIndex.advanced(by: 32)].reversed())
+        merkleRoot = Data(data.prefix(32).reversed())
         data = data.dropFirst(merkleRoot.count)
         let seconds = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
         time = Date(timeIntervalSince1970: TimeInterval(seconds))
