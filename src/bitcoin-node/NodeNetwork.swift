@@ -1,4 +1,5 @@
 import ArgumentParser
 import BitcoinBlockchain
 
-extension NodeNetwork: @retroactive Decodable, @retroactive ExpressibleByArgument { }
+// TODO: Add `@retroactive` back once Swift on Linux is fixed.
+extension NodeNetwork: /* @retroactive */ Decodable, /* @retroactive */ ExpressibleByArgument { }
