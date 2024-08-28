@@ -6,10 +6,12 @@ import BitcoinBlockchain
 /// Manages connection with peers, process incoming messages and sends responses.
 public actor NodeService: Sendable {
 
-    /// Creates an instance of a bitcoin node service.
+    ///  Creates an instance of a bitcoin node service.
     /// - Parameters:
     ///   - bitcoinService: The bitcoin service actor instance backing this node.
     ///   - network: The type of bitcoin network this node is part of.
+    ///   - version: Protocol version number.
+    ///   - services: Supported services.
     ///   - feeFilterRate: An arbitrary fee rate by which to filter transactions.
     public init(bitcoinService: BitcoinService, network: NodeNetwork = .regtest, version: ProtocolVersion = .latest, services: ProtocolServices = .all, feeFilterRate: BitcoinAmount? = .none) {
         self.bitcoinService = bitcoinService

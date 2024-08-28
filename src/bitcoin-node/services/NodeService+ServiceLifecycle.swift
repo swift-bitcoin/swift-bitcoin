@@ -4,8 +4,7 @@ import Logging
 
 private let logger = Logger(label: "swift-bitcoin.node")
 
-// TODO: Add `@retroactive` back once Swift on Linux is fixed.
-extension NodeService: /* @retroactive */ Service {
+extension NodeService: @retroactive Service {
     public func run() async throws {
         let blocks = await bitcoinService.subscribeToBlocks()
         self.blocks = blocks

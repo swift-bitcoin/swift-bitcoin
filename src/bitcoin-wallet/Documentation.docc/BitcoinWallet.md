@@ -1,32 +1,33 @@
-# ``Bitcoin``
+# ``BitcoinWallet``
 
 @Metadata {
-    @DisplayName("Swift Bitcoin")
-    @TitleHeading("Pure-Swift Bitcoin Toolkit")
-    @CallToAction(url: "https://github.com/swift-bitcoin/swift-bitcoin/archive/refs/heads/develop.zip", purpose: download)
+    @DisplayName("Bitcoin Wallet")
+    @TitleHeading("Swift Bitcoin Library")
 }
 
-Pure-Swift Bitcoin client implementation with full node capabilities.
+Bitcoin Wallet
 
 ## Overview
 
-The Swift Bitcoin package contains:
-- The _Bitcoin_ Swift umbrella library.
-- The _Crypto_, _Base_, _Wallet_, _Blockchain_ and _Transport_ area-specific libraries.
-- The Bitcoin Utility (`bcutil`) command line too.
-- The Bitcoin Node (`bcnode`) full node service.
+_BitcoinWallet_ usage example:
+
+```swift
+import BitcoinWallet
+
+let address = try Wallet.getAddress(publicKey: publicKey, sigVersion: .base, network: .regtest)
+…
+```
 
 ## Topics
 
 ### Essentials
 
-- <doc:GettingStarted>
 
 ## See Also
 
+- [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
 - [Crypto Library][crypto]
 - [Base Library][base]
-- [Wallet Library][wallet]
 - [Blockchain Library][blockchain]
 - [Transport Library][transport]
 - [Bitcoin Utility (bcutil) Command][bcutil]
@@ -34,9 +35,9 @@ The Swift Bitcoin package contains:
 
 <!-- links -->
 
+[swiftbitcoin]: https://swift-bitcoin.github.io/docc/documentation/bitcoin/
 [crypto]: https://swift-bitcoin.github.io/docc/crypto/documentation/bitcoincrypto/
 [base]: https://swift-bitcoin.github.io/docc/base/documentation/bitcoinbase/
-[wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
 [blockchain]: https://swift-bitcoin.github.io/docc/blockchain/documentation/bitcoinblockchain/
 [transport]: https://swift-bitcoin.github.io/docc/transport/documentation/bitcointransport/
 [bcnode]: https://swift-bitcoin.github.io/docc/bcnode/documentation/bitcoinnode/

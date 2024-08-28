@@ -17,7 +17,7 @@ extension TransactionInput {
 
     // MARK: - Instance Properties
 
-    /// Used by ``Transaction/data``.
+    /// Used by ``BitcoinTransaction/data``.
     var data: Data {
         var ret = Data(count: size)
         var offset = ret.addData(outpoint.data)
@@ -26,7 +26,7 @@ extension TransactionInput {
         return ret
     }
 
-    /// Used by ``Transaction/size``.
+    /// Used by ``BitcoinTransaction/size``.
     var size: Int {
         TransactionOutpoint.size + script.prefixedSize + InputSequence.size
     }

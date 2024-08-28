@@ -16,9 +16,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
-        .package(url: "https://github.com/apple/swift-testing.git", from: "0.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
@@ -88,8 +87,7 @@ let package = Package(
         .testTarget(
             name: "BitcoinBaseTests",
             dependencies: [
-                "BitcoinBase",
-                .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
+                "BitcoinBase"],
             path: "test/bitcoin-base",
             resources: [
                 .copy("data")
@@ -98,36 +96,31 @@ let package = Package(
         .testTarget(
             name: "BitcoinCryptoTests",
             dependencies: [
-                "BitcoinCrypto",
-                .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
+                "BitcoinCrypto"],
             path: "test/bitcoin-crypto",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinWalletTests",
             dependencies: [
-                "BitcoinWallet",
-                .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
+                "BitcoinWallet"],
             path: "test/bitcoin-wallet",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinTransportTests",
             dependencies: [
-                "BitcoinTransport",
-                .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
+                "BitcoinTransport"],
             path: "test/bitcoin-transport",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinBlockchainTests",
             dependencies: [
-                "BitcoinBlockchain",
-                .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
+                "BitcoinBlockchain"],
             path: "test/bitcoin-blockchain",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinTests",
             dependencies: [
-                "Bitcoin",
-                .product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))],
+                "Bitcoin"],
             path: "test/bitcoin",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .executableTarget(

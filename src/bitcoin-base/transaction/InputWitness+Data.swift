@@ -18,7 +18,7 @@ extension InputWitness {
         }
     }
 
-    /// Used by ``Transaction/data`` to support the serialization format specified in BIP144.
+    /// Used by ``BitcoinTransaction/data`` to support the serialization format specified in BIP144.
     var data: Data {
         var ret = Data(count: size)
         let offset = ret.addData(Data(varInt: UInt64(elements.count)))

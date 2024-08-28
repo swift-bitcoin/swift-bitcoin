@@ -12,7 +12,7 @@ extension BitcoinTransaction {
     // MARK: - Instance Methods
 
     /// This function is called when validating a transaction and it's consensus critical.
-    func check() throws {
+    public func check() throws {
         // Basic checks that don't depend on any context
         guard !inputs.isEmpty else {
             throw TransactionError.noInputs
@@ -66,7 +66,7 @@ extension BitcoinTransaction {
         }
     }
 
-    /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``Transaction.check()``.
+    /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``check()``
     func checkInputs(coins: [TransactionOutpoint : UnspentOutput], spendHeight: Int) throws {
         // are the actual inputs available?
         if !isCoinbase {
@@ -155,7 +155,7 @@ extension BitcoinTransaction {
     }
 
     /// BIP68 - Untested. Entrypoint 2.
-    func sequenceLocks(verifyLockTimeSequence: Bool, previousHeights: inout [Int], blockHeight: Int, previousBlockMedianTimePast: Int) throws {
+    public func sequenceLocks(verifyLockTimeSequence: Bool, previousHeights: inout [Int], blockHeight: Int, previousBlockMedianTimePast: Int) throws {
         try evaluateSequenceLocks(blockHeight: blockHeight, previousBlockMedianTimePast: previousBlockMedianTimePast, lockPair: calculateSequenceLocks(verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights, blockHeight: blockHeight))
     }
 
@@ -164,7 +164,7 @@ extension BitcoinTransaction {
     /// which the transaction will be considered final in the context of BIP 68.
     /// Also removes from the vector of input heights any entries which did not
     /// correspond to sequence locked inputs as they do not affect the calculation.
-    /// Called from ``Transaction.sequenceLocks()``.
+    /// Called from ``sequenceLocks()``.
     func calculateSequenceLocks(verifyLockTimeSequence: Bool, previousHeights: inout [Int], blockHeight: Int) -> (Int, Int) {
 
         precondition(previousHeights.count == inputs.count);

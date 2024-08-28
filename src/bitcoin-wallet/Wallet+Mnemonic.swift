@@ -11,6 +11,7 @@ extension Wallet {
 
     /// Creates a BIP39 mnemonic phrase.
     /// - Parameter entropyHex: The Base16 entropy from which the mnemonic is created. The length must be evenly divisible by 32 bits.
+    /// - Parameter language: Language ISO code (e.g. "en", "es", "jp")
     /// - Returns: The generated sequence of words, each separated by a space character.
     public static func mnemonicNew(withEntropy entropyHex: String, language: String = "en") throws -> String {
         guard let entropy = Data(hex: entropyHex) else {
