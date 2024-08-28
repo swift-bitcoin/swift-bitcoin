@@ -68,7 +68,7 @@ extension Wallet {
 
     /// Decodes script data into its assembly textual representation.
     /// - Parameters:
-    ///   - script: The script's data.
+    ///   - scriptData: The script's data.
     ///   - sigVersion: The signature version.
     /// - Returns: The script's assembly code.
     public static func decodeScript(_ scriptData: Data, sigVersion: SigVersion = .base) -> String {

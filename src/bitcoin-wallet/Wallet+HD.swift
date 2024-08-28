@@ -20,7 +20,7 @@ extension Wallet {
         precondition(seed.count >= 16 && seed.count <= 64)
         let result = hmacSHA512("Bitcoin seed", data: seed)
         let secretKeyData = result[...result.startIndex.advanced(by: 31)]
-        let chaincode = result[result.startIndex.advanced(by: 32)...]
+        let chaincode = result.dropFirst(32)
         guard let secretKey = SecretKey(secretKeyData) else {
             throw WalletError.invalidSeed
         }

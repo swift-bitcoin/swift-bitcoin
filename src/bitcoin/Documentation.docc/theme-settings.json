@@ -1,0 +1,23 @@
+{
+    "meta": {
+        "title": "Swift Bitcoin"
+    },
+    "theme": {
+        "color": {
+            "coin-orange": "#f2a900",
+            "coin-orange-dark": "#b27d00",
+            "link": {
+                "dark": "var(--color-coin-orange-dark)",
+                "light": "var(--color-coin-orange)"
+            },
+            "documentation-border": {
+                "dark": "var(--color-coin-orange-dark)",
+                "light": "var(--color-coin-orange)"
+            },
+            "documentation-intro-fill": {
+                "dark": "var(--color-coin-orange-dark)",
+                "light": "var(--color-coin-orange)"
+            }
+        }
+    }
+}

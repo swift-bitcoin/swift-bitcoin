@@ -60,7 +60,7 @@ extension BitcoinMessage {
         data = data.dropFirst(MemoryLayout<UInt32>.size)
 
         guard data.count >= payloadSize else { return nil }
-        self.payload = Data(data[..<data.startIndex.advanced(by: payloadSize)])
+        self.payload = data.prefix(payloadSize)
     }
 
     var size: Int {

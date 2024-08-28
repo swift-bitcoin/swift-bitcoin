@@ -293,7 +293,7 @@ private func internalRecoverPublicKey(signatureData: Data, messageHash: Data) ->
     let recid = Int32((signatureData[0] - 27) & 3)
     let comp = ((signatureData[0] - 27) & 4) != 0
 
-    let signatureSansPrefix = [UInt8](signatureData[1...])
+    let signatureSansPrefix = [UInt8](signatureData.dropFirst())
     var sig = secp256k1_ecdsa_recoverable_signature()
     guard secp256k1_ecdsa_recoverable_signature_parse_compact(secp256k1_context_static, &sig, signatureSansPrefix, recid) != 0 else {
         preconditionFailure() // throw?

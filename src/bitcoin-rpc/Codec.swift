@@ -234,7 +234,7 @@ public final class CodableCodec<In, Out>: ChannelInboundHandler, ChannelOutbound
         var buffer = unwrapInboundIn(data)
         let data = buffer.readData(length: buffer.readableBytes)!
         do {
-            //print("--> decoding \(String(decoding: data[data.startIndex ..< min(data.startIndex + 100, data.endIndex)], as: UTF8.self))")
+            //print("--> decoding \(String(decoding: data[..<min(data.startIndex + 100, data.endIndex)], as: UTF8.self))")
             let decodable = try self.decoder.decode(In.self, from: data)
             // call next handler
             context.fireChannelRead(wrapInboundOut(decodable))

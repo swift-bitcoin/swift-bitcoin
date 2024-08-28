@@ -120,7 +120,7 @@ public struct Bech32Decoder: Sendable {
         }
         let vSize: Int = str.count - 1 - intPos
         var values: Data = Data(repeating: 0x00, count: vSize)
-        for i in 0..<vSize {
+        for i in 0 ..< vSize {
             let c = strBytes[i + intPos + 1]
             let decInt = decCharset[Int(c)]
             if decInt == -1 {
@@ -133,7 +133,7 @@ public struct Bech32Decoder: Sendable {
         guard verificationResult.checksumValid, let detectedVariant = verificationResult.detectedVariant else {
             throw Error.checksumMismatch
         }
-        return (hrp, Data(values[..<(vSize - 6)]), detectedVariant)
+        return (hrp, values.prefix(vSize - 6), detectedVariant)
     }
 
     private func verifyChecksum(hrp: String, checksum: Data) -> (checksumValid: Bool, detectedVariant: Bech32Variant?) {

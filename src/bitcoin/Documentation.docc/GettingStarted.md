@@ -6,7 +6,7 @@ To start using Swift Bitcoin just add it as a dependency to your package manifes
 
 ### Add the package
 
-In your `Package.swift` dependencies add the package's URL [https://github.com/swift-bitcoin/swift-bitcoin](https://github.com/swift-bitcoin/swift-bitcoin).
+In your `Package.swift` dependencies add the package's URL `https://github.com/swift-bitcoin/swift-bitcoin`.
 
 ### Import the framework
 

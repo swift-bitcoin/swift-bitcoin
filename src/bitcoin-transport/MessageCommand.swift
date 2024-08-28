@@ -35,7 +35,7 @@ extension MessageCommand {
 
     init?(_ data: Data) {
         guard data.count >= Self.size else { return nil }
-        let commandDataUntrimmed = data[data.startIndex ..< data.startIndex.advanced(by: Self.size)]
+        let commandDataUntrimmed = data.dropFirst(Self.size)
         let commandData = commandDataUntrimmed.reversed().trimmingPrefix(while: { $0 == 0x00 }).reversed()
         let commandRawValue = String(decoding: commandData, as: Unicode.ASCII.self)
         self.init(tentativeRawValue: commandRawValue)

@@ -1,6 +1,6 @@
 import Foundation
 
-/// ``BitcoinScript`` data extensions.
+/// Data extensions.
 extension BitcoinScript {
 
     /// Creates a script from raw data.

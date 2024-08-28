@@ -20,7 +20,7 @@ extension Wallet {
     }
     
     /// Computes the public key corresponding to the provided secret key.
-    /// - Parameter secretKey: The secret key in hex format.
+    /// - Parameter secretKeyHex: The secret key in hex format.
     /// - Returns: The public key in hex format.
     public static func getPublicKey(secretKeyHex: String) throws -> String {
         guard let secretKeyData = Data(hex: secretKeyHex) else {
@@ -34,7 +34,7 @@ extension Wallet {
 
     /// Creates an address from the provided public key.
     /// - Parameters:
-    ///   - publicKey: A valid DER-encoded compressed/uncompressed public key in hex format.
+    ///   - publicKeyHex: A valid DER-encoded compressed/uncompressed public key in hex format.
     ///   - sigVersion: The signature version which  determines the address type.
     ///   - network: The network for which the produced address will be valid.
     /// - Returns: The generated address in hex format.

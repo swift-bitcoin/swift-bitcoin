@@ -60,7 +60,7 @@ extension VersionMessage {
         self.receiverServices = receiverServices
         data = data.dropFirst(ProtocolServices.size)
 
-        let receiverAddress = IPv6Address(data[..<data.startIndex.advanced(by: 16)])
+        let receiverAddress = IPv6Address(data.prefix(16))
         self.receiverAddress = receiverAddress
         data = data.dropFirst(16)
 
@@ -75,7 +75,7 @@ extension VersionMessage {
         self.transmitterServices = transmitterServices
         data = data.dropFirst(ProtocolServices.size)
 
-        let transmitterAddress = IPv6Address(data[..<data.startIndex.advanced(by: 16)])
+        let transmitterAddress = IPv6Address(data.prefix(16))
         self.transmitterAddress = transmitterAddress
         data = data.dropFirst(16)
 
