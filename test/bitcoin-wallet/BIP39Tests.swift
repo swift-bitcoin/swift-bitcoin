@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 import BitcoinWallet
 
 struct BIP39Tests {
@@ -7,16 +8,18 @@ struct BIP39Tests {
     func allLanguages(language: String) throws {
         let passphrase = "TREZOR"
         for testCase in testVector[language]! {
-            let entropy = testCase[0]
+            let entropy = try #require(Data(hex: testCase[0]))
             let expectedMnemonic = testCase[1]
             let expectedSeed = testCase[2]
             let expectedXPriv = testCase[3]
-            let mnemonic = try Wallet.mnemonicNew(withEntropy: entropy, language: language)
-            #expect(mnemonic == expectedMnemonic)
-            let seed = try Wallet.mnemonicToSeed(mnemonic: mnemonic, passphrase: passphrase, language: language)
+
+            let mnemonicPhrase = try MnemonicPhrase(entropy: entropy, language: language)
+            #expect(mnemonicPhrase.mnemonic == expectedMnemonic)
+            let seed = try mnemonicPhrase.toSeed(passphrase: passphrase)
             #expect(seed == expectedSeed)
-            let xpriv = try Wallet.computeHDMasterKey(seed)
-            #expect(xpriv == expectedXPriv)
+            let seedData = try #require(Data(hex: seed))
+            let xpriv = try HDExtendedKey(seed: seedData)
+            #expect(xpriv.serialized == expectedXPriv)
         }
     }
 }

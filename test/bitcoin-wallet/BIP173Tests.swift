@@ -66,12 +66,12 @@ struct BIP173Tests {
         let script = Data(valid.script)
         var hrp = "bc"
 
-        let decodedMainnet = try? SegwitAddrCoder.decode(hrp: hrp, addr: address)
+        let decodedMainnet = try? SegwitAddressDecoder(hrp: hrp).decode(address)
 
         let decodedTestnet: (version: Int, program: Data)?
         if decodedMainnet == nil {
             hrp = "tb"
-            decodedTestnet = try SegwitAddrCoder.decode(hrp: hrp, addr: address)
+            decodedTestnet = try SegwitAddressDecoder(hrp: hrp).decode(address)
         } else {
             decodedTestnet = .none
         }
@@ -83,7 +83,7 @@ struct BIP173Tests {
 
         #expect(scriptPk == script, "Decoded script mismatch: \(scriptPk.hex) != \(script.hex)")
 
-        let recoded = try SegwitAddrCoder.encode(hrp: hrp, version: decoded.version, program: decoded.program)
+        let recoded = try SegwitAddressEncoder(hrp: hrp, version: decoded.version).encode(decoded.program)
         #expect(!recoded.isEmpty, "Recoded string is empty for \(address)")
     }
 
@@ -101,10 +101,10 @@ struct BIP173Tests {
     ])
     func invalidAddress(invalid: String) {
         #expect(throws: Error.self) {
-            _ = try SegwitAddrCoder.decode(hrp: "bc", addr: invalid)
+            _ = try SegwitAddressDecoder(hrp: "bc").decode(invalid)
         }
         #expect(throws: Error.self) {
-            _ = try SegwitAddrCoder.decode(hrp: "tb", addr: invalid)
+            _ = try SegwitAddressDecoder(hrp: "tb").decode(invalid)
         }
     }
 
@@ -118,7 +118,7 @@ struct BIP173Tests {
     func invalidAddressEncoding(invalid: InvalidAddressData) {
         let zeroData = Data(repeating: 0x00, count: invalid.programLen)
         #expect(throws: Error.self) {
-            let _ = try SegwitAddrCoder.encode(hrp: invalid.hrp, version: invalid.version, program: zeroData)
+            let _ = try SegwitAddressEncoder(hrp: invalid.hrp, version: invalid.version).encode(zeroData)
         }
     }
 
@@ -127,8 +127,8 @@ struct BIP173Tests {
         let addressToCode = "BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4"
         // self.measure { ... }
         for _ in 0..<10 {
-            let decoded = try SegwitAddrCoder.decode(hrp: "bc", addr: addressToCode)
-            let _ = try SegwitAddrCoder.encode(hrp: "bc", version: decoded.version, program: decoded.program)
+            let decoded = try SegwitAddressDecoder(hrp: "bc").decode(addressToCode)
+            let _ = try SegwitAddressEncoder(hrp: "bc", version: decoded.version).encode(decoded.program)
         }
     }
 }

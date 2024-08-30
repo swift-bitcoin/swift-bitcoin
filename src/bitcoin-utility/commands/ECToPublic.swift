@@ -14,7 +14,14 @@ struct ECToPublic: ParsableCommand {
     var secretKey: String
 
     mutating func run() throws {
-        print(try Wallet.getPublicKey(secretKeyHex: secretKey))
+        guard let secretKeyData = Data(hex: secretKey) else {
+            throw ValidationError("Invalid hexadecimal value: secretKey")
+        }
+        guard let secretKey = SecretKey(secretKeyData) else {
+            throw ValidationError("Invalid secret key data: secretKey")
+        }
+        let result = PublicKey(secretKey).data.hex
+        print(result)
         destroyECCSigningContext()
     }
 }

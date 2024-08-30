@@ -19,6 +19,14 @@ struct HDPrivate: ParsableCommand {
     var privateKey: String
 
     mutating func run() throws {
-        print(try Wallet.deriveHDKey(key: privateKey, index: index, harden: harden))
+        let extendedKeySerialized = privateKey
+        guard let extendedKey = try? HDExtendedKey(extendedKeySerialized) else {
+            throw ValidationError("Invalid extended private key format: extendedKey")
+        }
+        guard extendedKey.hasSecretKey else {
+            throw ValidationError("Invalid extended private key type: privateKey")
+        }
+        let result = extendedKey.derive(child: index, harden: harden).serialized
+        print(result)
     }
 }

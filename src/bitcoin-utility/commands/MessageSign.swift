@@ -17,7 +17,20 @@ struct MessageSign: ParsableCommand {
     var message: String
 
     mutating func run() throws {
-        print(try Wallet.sign(secretKeyWIF: secretKey, message: message))
+        let secretKeyWIF = secretKey
+        var metadataOptional = SecretKey.WIFMetadata?.none
+        guard let secretKey = SecretKey(wif: secretKeyWIF, metadata: &metadataOptional) else {
+            throw ValidationError("Invalid WIF-encoded secret key: secretKey")
+        }
+        guard let metadata = metadataOptional else {
+            fatalError("Could not obtain WIF metadata")
+        }
+        guard let messageData = message.data(using: .utf8) else {
+            throw ValidationError("Invalid UTF8-encoded message: message")
+        }
+        let signature = Signature(messageData: messageData, secretKey: secretKey, type: .recoverable, recoverCompressedKeys: metadata.compressedPublicKeys)
+        let result = signature.base64
+        print(result)
         destroyECCSigningContext()
     }
 }

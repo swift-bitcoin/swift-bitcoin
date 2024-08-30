@@ -20,6 +20,17 @@ struct MnemonicNew: ParsableCommand {
     var entropy: String
 
     mutating func run() throws {
-        print(try Wallet.mnemonicNew(withEntropy: entropy, language: language))
+        let entropyHex = entropy
+        guard let entropy = Data(hex: entropyHex) else {
+            throw ValidationError("Invalid hexadecimal value: entropy")
+        }
+        let mnemonicPhrase: MnemonicPhrase
+        do {
+            mnemonicPhrase = try MnemonicPhrase(entropy: entropy, language: language)
+        } catch {
+            throw ValidationError("Invalid value: entropy / language")
+        }
+        let result = mnemonicPhrase.mnemonic
+        print(result)
     }
 }
