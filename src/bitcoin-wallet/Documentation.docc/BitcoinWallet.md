@@ -14,7 +14,7 @@ _BitcoinWallet_ usage example:
 ```swift
 import BitcoinWallet
 
-let address = BitcoinAddress(publicKey, network: .regtest).description
+let address = BitcoinAddress(publicKey, mainnet: false).description
 …
 ```
 

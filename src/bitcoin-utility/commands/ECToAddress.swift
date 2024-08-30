@@ -30,7 +30,7 @@ struct ECToAddress: ParsableCommand {
         }
         let result = switch sigVersion {
         case .base:
-            BitcoinAddress(publicKey, network: network).description
+            BitcoinAddress(publicKey, mainnet: network == .main).description
         case .witnessV0:
             SegwitAddress(publicKey, network: network).description
         case .witnessV1:

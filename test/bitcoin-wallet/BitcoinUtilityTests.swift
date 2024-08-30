@@ -31,7 +31,7 @@ struct BitcoinUtilityTests {
         // Decode P2PKH address
         let addressDecoded = try #require(BitcoinAddress(address))
         let result = if let publicKey = signature.recoverPublicKey(messageData: messageData) {
-            hash160(publicKey.data) == addressDecoded.publicKeyHash
+            hash160(publicKey.data) == addressDecoded.hash
         } else {
             false
         }

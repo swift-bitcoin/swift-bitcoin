@@ -9,7 +9,7 @@ struct DocumentationExamples {
         let secretKey = SecretKey()
         let publicKey = secretKey.publicKey
         let publicKeyHash = hash160(publicKey.data)
-        let address = BitcoinAddress(publicKey, network: .regtest).description
+        let address = BitcoinAddress(publicKey, mainnet: false).description
 
         // # Prepare the Bitcoin service.
 
@@ -97,7 +97,7 @@ struct DocumentationExamples {
         // In this case we can use the address we created before.
 
         // Decode the address to get the public key hash.
-        let decodedPublicKeyHash = BitcoinAddress(address)!.publicKeyHash
+        let decodedPublicKeyHash = BitcoinAddress(address)!.hash
         #expect(publicKeyHash == decodedPublicKeyHash)
 
         // Minde to the public key hash

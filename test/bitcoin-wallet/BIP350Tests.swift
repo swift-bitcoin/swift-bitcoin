@@ -72,17 +72,17 @@ struct BIP350Tests {
         let script = Data(script)
         var hrp = "bc"
 
-        var decoded = try? SegwitAddrCoder.decode(hrp: hrp, addr: address)
+        var decoded = try? SegwitAddressDecoder(hrp: hrp).decode(address)
 
         if decoded == nil {
             hrp = "tb"
-            decoded = try SegwitAddrCoder.decode(hrp: hrp, addr: address)
+            decoded = try SegwitAddressDecoder(hrp: hrp).decode(address)
         }
 
         let scriptPk = BitcoinScript([decoded!.version == 0 ? .zero : .constant(UInt8(decoded!.version)), .pushBytes(decoded!.program)]).data
         #expect(scriptPk == script, "Decoded script mismatch.")
 
-        let recoded = try SegwitAddrCoder.encode(hrp: hrp, version: decoded!.version, program: decoded!.program)
+        let recoded = try SegwitAddressEncoder(hrp: hrp, version: decoded!.version).encode(decoded!.program)
         #expect(!recoded.isEmpty, "Decoded string is empty.")
     }
 
@@ -105,10 +105,10 @@ struct BIP350Tests {
     ])
     func invalidAddress(invalid: String) {
         #expect {
-            _ = try SegwitAddrCoder.decode(hrp: "bc", addr: invalid)
-            _ = try SegwitAddrCoder.decode(hrp: "tb", addr: invalid)
+            _ = try SegwitAddressDecoder(hrp: "bc").decode(invalid)
+            _ = try SegwitAddressDecoder(hrp: "tb").decode(invalid)
         } throws: {
-            $0 is Bech32Decoder.Error || $0 is SegwitAddrCoder.Error
+            $0 is Bech32Decoder.Error || $0 is SegwitAddressDecoder.Error
         }
     }
 
@@ -120,9 +120,9 @@ struct BIP350Tests {
         ("bc", 16, 41)
     ])
     func invalidAddressEncoding(hrp: String, version: Int, programLen: Int) {
-        #expect(throws: SegwitAddrCoder.Error.self) {
+        #expect(throws: SegwitAddressEncoder.Error.self) {
             let zeroData = Data(repeating: 0x00, count: programLen)
-            _ = try SegwitAddrCoder.encode(hrp: hrp, version: version, program: zeroData)
+            _ = try SegwitAddressEncoder(hrp: hrp, version: version).encode(zeroData)
         }
     }
 
@@ -139,7 +139,13 @@ struct BIP350Tests {
     @Test("Script to Addresss")
     func scriptToAddressCommand() throws {
         // Adding 0x02 to the internal public key here to make it a standard public key.
-        let address = try Wallet.getAddress(scripts: ["2044b178d64c32c4a05cc4f4d1407268f764c940d20ce97abfd44db5c3592b72fdac", "07546170726f6f74"], publicKeyHex: "02f9f400803e683727b14f463836e1e78e1c64417638aa066919291a225f0e8dd8", sigVersion: .witnessV1, network: .main)
+        let publicKeyData = try #require(Data(hex: "02f9f400803e683727b14f463836e1e78e1c64417638aa066919291a225f0e8dd8"))
+        let publicKey = try #require(PublicKey(compressed: publicKeyData))
+        let script1Data = try #require(Data(hex: "2044b178d64c32c4a05cc4f4d1407268f764c940d20ce97abfd44db5c3592b72fdac"))
+        let script2Data = try #require(Data(hex: "07546170726f6f74"))
+        let script1 = try #require(BitcoinScript(script1Data, sigVersion: .witnessV1))
+        let script2 = try #require(BitcoinScript(script2Data, sigVersion: .witnessV1))
+        let address = TaprootAddress(publicKey, scripts: [script1, script2]).description
         #expect(address == "bc1pwl3s54fzmk0cjnpl3w9af39je7pv5ldg504x5guk2hpecpg2kgsqaqstjq")
     }
 }

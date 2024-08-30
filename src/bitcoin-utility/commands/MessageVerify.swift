@@ -34,7 +34,7 @@ struct MessageVerify: ParsableCommand {
             throw ValidationError("Invalid signature data: signature")
         }
         let result = if let publicKey = signature.recoverPublicKey(messageData: messageData) {
-            hash160(publicKey.data) == address.publicKeyHash
+            hash160(publicKey.data) == address.hash
         } else {
             false
         }

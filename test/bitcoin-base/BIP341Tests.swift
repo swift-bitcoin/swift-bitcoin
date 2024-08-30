@@ -206,7 +206,7 @@ struct BIP341Tests {
         // BIP350
         // TODO: Restore address checking after moving this test up in the module hierarchy
         /*
-        guard let bip350Address = try? SegwitAddrCoder.encode(hrp: WalletNetwork.main.bech32HRP, version: 1, program: tweakedPubkey) else {
+        guard let bip350Address = try? SegwitAddressEncoder(hrp: WalletNetwork.main.bech32HRP, version: 1).encode(tweakedPubkey) else {
             Issue.record("Could not encode BIP350 address")
             return
         }
