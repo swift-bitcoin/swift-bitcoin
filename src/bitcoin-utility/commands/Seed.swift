@@ -1,5 +1,5 @@
 import ArgumentParser
-import BitcoinWallet
+import BitcoinCrypto
 
 /// Generates a random seed (entropy) using the system's cryptographically secure algorithm.
 ///
@@ -15,6 +15,6 @@ struct Seed: ParsableCommand {
     var bytes = 32
 
     mutating func run() throws {
-        print(Wallet.generateSeed(bytes: bytes))
+        print(getRandBytes(bytes).hex)
     }
 }

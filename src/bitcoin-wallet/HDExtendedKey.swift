@@ -6,16 +6,29 @@ enum HDExtendedKeyError: Error {
 }
 
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
-struct HDExtendedKey {
-    let network: WalletNetwork
-    let secretKey: SecretKey?
-    let publicKey: PublicKey?
-    let chaincode: Data
-    let fingerprint: Int
-    let depth: Int
-    let keyIndex: Int
+public struct HDExtendedKey {
+    public let network: WalletNetwork
+    public let secretKey: SecretKey?
+    public let publicKey: PublicKey?
+    public let chaincode: Data
+    public let fingerprint: Int
+    public let depth: Int
+    public let keyIndex: Int
 
-    init(network: WalletNetwork = .main, secretKey: SecretKey? = .none, publicKey: PublicKey? = .none, chaincode: Data, fingerprint: Int, depth: Int, keyIndex: Int) throws {
+    public init(seed: Data) throws {
+        guard seed.count >= 16, seed.count <= 64 else {
+            throw WalletError.invalidSeed
+        }
+        let result = hmacSHA512("Bitcoin seed", data: seed)
+        let secretKeyData = result.prefix(32)
+        let chaincode = result.dropFirst(32)
+        guard let secretKey = SecretKey(secretKeyData) else {
+            throw WalletError.invalidSeed
+        }
+        try self.init(secretKey: secretKey, chaincode: chaincode, fingerprint: 0, depth: 0, keyIndex: 0)
+    }
+
+    private init(network: WalletNetwork = .main, secretKey: SecretKey? = .none, publicKey: PublicKey? = .none, chaincode: Data, fingerprint: Int, depth: Int, keyIndex: Int) throws {
         guard secretKey == .none && publicKey != .none || (secretKey != .none && publicKey == .none) else {
             preconditionFailure()
         }
@@ -35,14 +48,14 @@ struct HDExtendedKey {
         self.keyIndex = keyIndex
     }
 
-    init(_ serialized: String) throws {
+    public init(_ serialized: String) throws {
         guard let data = Base58Decoder().decode(serialized) else {
             throw HDExtendedKeyError.invalidEncoding
         }
         try self.init(data)
     }
 
-    var hasSecretKey: Bool {
+    public var hasSecretKey: Bool {
         if secretKey != nil && publicKey == nil {
             true
         } else if secretKey == nil && publicKey != nil {
@@ -52,7 +65,7 @@ struct HDExtendedKey {
         }
     }
 
-    var serialized: String {
+    public var serialized: String {
         Base58Encoder().encode(data)
     }
     
@@ -64,7 +77,9 @@ struct HDExtendedKey {
     ///   - child: The child index.
     ///   - harden: Whether to apply hardened derivation. Only applicable to private keys.
     /// - Returns: The derived child key.
-    func derive(child: Int, harden: Bool = false) -> Self {
+    public func derive(child: Int, harden: Bool = false) -> Self {
+        precondition(!harden || hasSecretKey)
+
         let keyIndex = harden ? (1 << 31) + child : child
         let depth = depth + 1
         let publicKey = if let secretKey {
@@ -94,7 +109,7 @@ struct HDExtendedKey {
             privateKeyData.appendBytes(UInt32(keyIndex).bigEndian)
             hmacResult = hmacSHA512(chaincode, data: privateKeyData)
         } else {
-            fatalError()
+            preconditionFailure()
         }
 
         let chaincode = hmacResult.dropFirst(32)
@@ -114,7 +129,7 @@ struct HDExtendedKey {
     }
 
     /// Turns a private key into a public key removing its ability to produce signatures.
-    var neutered: Self {
+    public var neutered: Self {
         guard let secretKey else { preconditionFailure() }
         let publicKey = PublicKey(secretKey)
         guard let ret = try? Self(secretKey: .none, publicKey: publicKey, chaincode: chaincode, fingerprint: fingerprint, depth: depth, keyIndex: keyIndex) else {
@@ -124,7 +139,7 @@ struct HDExtendedKey {
     }
 }
 
-extension HDExtendedKey {
+public extension HDExtendedKey {
 
     init(_ data: Data) throws {
         guard data.count == Self.size else {

@@ -1,5 +1,6 @@
 import ArgumentParser
 import BitcoinWallet
+import BitcoinCrypto
 import Foundation
 
 /// Converts a raw private key to the Wallet Interchange Format (WIF).
@@ -19,6 +20,13 @@ struct ECToWIF: ParsableCommand {
     var network = WalletNetwork.main
 
     mutating func run() throws {
-        print(try Wallet.convertToWIF(secretKeyHex: secretKey, compressedPublicKeys: compressedPublicKeys, network: network))
+        guard let secretKeyData = Data(hex: secretKey) else {
+            throw ValidationError("Invalid hexadecimal value: secretKey")
+        }
+        guard let secretKey = SecretKey(secretKeyData) else {
+            throw ValidationError("Invalid secret key data: secretKey")
+        }
+        let result = secretKey.toWIF(compressedPublicKeys: compressedPublicKeys, mainnet: network == .main)
+        print(result)
     }
 }

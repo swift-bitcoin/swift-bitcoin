@@ -76,6 +76,10 @@ public struct Signature: Equatable, Sendable, CustomStringConvertible {
         data.hex
     }
 
+    public var base64: String {
+        data.base64EncodedString()
+    }
+
     public var isLowS: Bool {
         switch type {
         case .ecdsa:

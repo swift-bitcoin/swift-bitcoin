@@ -131,10 +131,8 @@ struct BIP350Tests {
     func ecToAddressCommand() throws {
         // Adding 0x02 to the internal public key here to make it a standard public key.
         let publicKey = try #require(PublicKey(compressed: [0x02, 0xd6, 0x88, 0x9c, 0xb0, 0x81, 0x03, 0x6e, 0x0f, 0xae, 0xfa, 0x3a, 0x35, 0x15, 0x7a, 0xd7, 0x10, 0x86, 0xb1, 0x23, 0xb2, 0xb1, 0x44, 0xb6, 0x49, 0x79, 0x8b, 0x49, 0x4c, 0x30, 0x0a, 0x96, 0x1d]))
-        let address = try Wallet.getAddress(publicKey: publicKey, sigVersion: .witnessV1, network: .main)
+        let address = TaprootAddress(publicKey).description
         #expect(address == "bc1p2wsldez5mud2yam29q22wgfh9439spgduvct83k3pm50fcxa5dps59h4z5")
-        let address2 = try Wallet.getAddress(publicKeyHex: publicKey.description, sigVersion: .witnessV1, network: .main)
-        #expect(address == address2)
     }
 
     /// From BIP341 [test vectors](https://github.com/bitcoin/bips/blob/master/bip-0341/wallet-test-vectors.json).

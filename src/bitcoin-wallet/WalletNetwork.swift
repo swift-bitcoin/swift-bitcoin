@@ -16,7 +16,7 @@ public enum WalletNetwork: String {
     public var base58Version: Int {
         switch self {
         case .main: 0x00
-        case .test,.regtest: 0x6f // 111
+        case .test, .regtest: 0x6f // 111
         }
     }
 
@@ -25,14 +25,6 @@ public enum WalletNetwork: String {
         switch self {
         case .main: 0x05
         case .test, .regtest: 0xc4 // 196
-        }
-    }
-
-    /// For use when encoding/decoding secret keys.
-    var base58VersionPrivate: Int {
-        switch self {
-        case .main: 0x80 // 128
-        case .test,.regtest: 0xef // 239
         }
     }
 

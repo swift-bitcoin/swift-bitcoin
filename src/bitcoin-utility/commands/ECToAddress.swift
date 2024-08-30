@@ -1,6 +1,7 @@
 import ArgumentParser
 import BitcoinWallet
 import BitcoinBase
+import BitcoinCrypto
 import Foundation
 
 /// Creates an address from the provided public key.
@@ -20,6 +21,21 @@ struct ECToAddress: ParsableCommand {
     var publicKey: String
 
     mutating func run() throws {
-        print(try Wallet.getAddress(publicKeyHex: publicKey, sigVersion: sigVersion, network: network))
+        let publicKeyHex = publicKey
+        guard let publicKeyData = Data(hex: publicKeyHex) else {
+            throw ValidationError("Invalid hexadecimal value: publicKey")
+        }
+        guard let publicKey = PublicKey(publicKeyData) else {
+            throw ValidationError("Invalid public key data: publicKey")
+        }
+        let result = switch sigVersion {
+        case .base:
+            BitcoinAddress(publicKey, network: network).description
+        case .witnessV0:
+            SegwitAddress(publicKey, network: network).description
+        case .witnessV1:
+            TaprootAddress(publicKey, network: network).description
+        }
+        print(result)
     }
 }

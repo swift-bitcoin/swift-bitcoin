@@ -13,6 +13,17 @@ struct HDNew: ParsableCommand {
     var seed: String
 
     mutating func run() throws {
-        print(try Wallet.computeHDMasterKey(seed))
+        let seedHex = seed
+        guard let seed = Data(hex: seed) else {
+            throw ValidationError("Invalid hexadecimal value: seed")
+        }
+        let extendedKey: HDExtendedKey
+        do {
+            extendedKey = try HDExtendedKey(seed: seed)
+        } catch {
+            throw ValidationError("Invalid value: seed")
+        }
+        let result = extendedKey.serialized
+        print(result)
     }
 }

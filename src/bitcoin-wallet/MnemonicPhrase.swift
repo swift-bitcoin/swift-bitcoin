@@ -1,22 +1,41 @@
 import Foundation
 import BitcoinCrypto
 
-fileprivate let bitsPerByte = UInt8.bitWidth
-fileprivate let bitsPerMnemonicWord = 11
-fileprivate let mnemonicEntropyMin = 16 // Bytes
-fileprivate let mnemonicEntropyMax = 32 // Bytes
-fileprivate let mnemonicEntropyMultiple = 4 // Bytes
+private let bitsPerByte = UInt8.bitWidth
+private let bitsPerMnemonicWord = 11
+private let mnemonicEntropyMin = 16 // Bytes
+private let mnemonicEntropyMax = 32 // Bytes
+private let mnemonicEntropyMultiple = 4 // Bytes
 
-extension Wallet {
+private let mnemonicSeparators = [ "jp": "\u{3000}" /* "　" */]
+
+private let mnemonicWordLists = ["cs": mnemonicWordList_cs, "fr": mnemonicWordList_fr, "it": mnemonicWordList_it, "ko": mnemonicWordList_ko, "pt": mnemonicWordList_pt, "en": mnemonicWordList_en, "es": mnemonicWordList_es, "jp": mnemonicWordList_jp, "zh": mnemonicWordList_zh, "zh-Hant": mnemonicWordList_zhHant]
+
+public struct MnemonicPhrase {
+
+    public let mnemonic: String
+    public let language: String
+
+    // TODO: Throw instead
+    public init?(_ mnemonic: String, passphrase: String = "", language: String = "en") {
+        self.mnemonic = mnemonic
+        self.language = language
+        do {
+            try check(passphrase: passphrase)
+        } catch {
+            return nil
+        }
+    }
 
     /// Creates a BIP39 mnemonic phrase.
     /// - Parameter entropyHex: The Base16 entropy from which the mnemonic is created. The length must be evenly divisible by 32 bits.
     /// - Parameter language: Language ISO code (e.g. "en", "es", "jp")
     /// - Returns: The generated sequence of words, each separated by a space character.
-    public static func mnemonicNew(withEntropy entropyHex: String, language: String = "en") throws -> String {
-        guard let entropy = Data(hex: entropyHex) else {
-            throw WalletError.invalidHexString
-        }
+    public init(entropy: Data, language: String = "en") throws {
+//        guard let entropy = Data(hex: entropyHex) else {
+//            throw WalletError.invalidHexString
+//        }
+        self.language = language
         guard let wordlist = mnemonicWordLists[language] else {
             throw WalletError.languageNotSupported
         }
@@ -50,12 +69,10 @@ extension Wallet {
             wordIndices.append(Int(wordIndex))
             wordNumber += 1
         }
-        return wordIndices.map { wordlist[$0] }.joined(separator: mnemonicSeparators[language] ?? " ")
+        mnemonic = wordIndices.map { wordlist[$0] }.joined(separator: mnemonicSeparators[language] ?? " ")
     }
 
-    public static func mnemonicToSeed(mnemonic: String, passphrase: String = "", language: String = "en") throws -> String {
-        try mnemonicCheck(mnemonic: mnemonic, passphrase: passphrase, language: language)
-
+    public func toSeed(passphrase: String = "") throws -> String {
         guard
             let password = mnemonic.decomposedStringWithCompatibilityMapping.data(using: .utf8),
             let salt = ("mnemonic" + passphrase).decomposedStringWithCompatibilityMapping.data(using: .utf8)
@@ -66,11 +83,12 @@ extension Wallet {
             let keyDerivation = try PBKDF2SHA512(password: password, salt: salt, iterations: 2048, keyLength: 64)
             return Data(try keyDerivation.calculate()).hex
         } catch _ as PBKDF2Error {
+            // TODO: Throw MnemonicPhrase-specific errors
             throw WalletError.invalidMnemonicOrPassphraseEncoding
         }
     }
 
-    private static func mnemonicCheck(mnemonic: String, passphrase: String = "", language: String = "en") throws {
+    private func check(passphrase: String = "") throws {
         guard let wordlist = mnemonicWordLists[language] else {
             throw WalletError.languageNotSupported
         }

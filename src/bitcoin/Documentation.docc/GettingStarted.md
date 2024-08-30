@@ -27,7 +27,7 @@ Let's start by generating a key pair and derive an address for our test.
 let secretKey = SecretKey()
 let publicKey = secretKey.publicKey
 let publicKeyHash = hash160(publicKey.data)
-let address = try Wallet.getAddress(publicKey: publicKey, sigVersion: .base, network: .regtest)
+let address = BitcoinAddress(publicKey, network: .regtest).description
 ```
 
 Prepare the Bitcoin service.
@@ -127,7 +127,7 @@ After confirming the transaction was accepted we can mine a block and get it con
 // In this case we can use the address we created before.
 
 // Decode the address to get the public key hash.
-let decodedPublicKeyHash = Base58Decoder().decode(address)!.dropFirst()
+let decodedPublicKeyHash = BitcoinAddress(address)!.publicKeyHash
 #expect(publicKeyHash == decodedPublicKeyHash)
 
 // Minde to the public key hash

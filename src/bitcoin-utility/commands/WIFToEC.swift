@@ -14,7 +14,11 @@ struct WIFToEC: ParsableCommand {
     var secretKey: String
 
     mutating func run() throws {
-        print(try Wallet.wifToEC(secretKeyWIF: secretKey).secretKey.data.hex)
+        let secretKeyWIF = secretKey
+        guard let secretKey = SecretKey(wif: secretKeyWIF) else {
+            throw ValidationError("Invalid WIF-encoded secret key: secretKey")
+        }
+        print(secretKey.data.hex)
         destroyECCSigningContext()
     }
 }

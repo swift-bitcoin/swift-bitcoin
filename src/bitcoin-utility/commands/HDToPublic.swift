@@ -6,13 +6,18 @@ import Foundation
 struct HDToPublic: ParsableCommand {
 
     static let configuration = CommandConfiguration(
-        abstract: "Converts a BIP32 extended private key into its corresponding extended public key, also known as a neutered key."
+        abstract: "Converts a BIP32 extended key into its corresponding extended public key, also known as a neutered key. For public keys the result will be the original key itself."
     )
 
-    @Argument(help: "A serialized extended private key.")
-    var privateKey: String
+    @Argument(help: "A serialized extended public/private key.")
+    var extendedKey: String
 
     mutating func run() throws {
-        print(try Wallet.neuterHDPrivateKey(key: privateKey))
+        let extendedKeySerialized = extendedKey
+        guard let extendedKey = try? HDExtendedKey(extendedKeySerialized) else {
+            throw ValidationError("Invalid extended key format: extendedKey")
+        }
+        let result = (extendedKey.hasSecretKey ? extendedKey.neutered : extendedKey).serialized
+        print(result)
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 import BitcoinBase
 
-extension Wallet {
+public enum Wallet {
 
     /// BIP13
     public static func getAddress(scripts: [String], publicKeyHex: String?, sigVersion: SigVersion, network: WalletNetwork) throws -> String {
@@ -52,27 +52,5 @@ extension Wallet {
             let outputKeyData = outputKey.xOnlyData.x
             return try SegwitAddrCoder.encode(hrp: network.bech32HRP, version: 1, program: outputKeyData)
         }
-    }
-
-    /// Decodes a script into its assembly textual representation.
-    /// - Parameters:
-    ///   - script: The script in hex format.
-    ///   - sigVersion: The signature version.
-    /// - Returns: The script's assembly code.
-    public static func decodeScript(script: String, sigVersion: SigVersion) throws -> String {
-        guard let script = Data(hex: script) else {
-            throw WalletError.invalidHexString
-        }
-        return decodeScript(script, sigVersion: sigVersion)
-    }
-
-    /// Decodes script data into its assembly textual representation.
-    /// - Parameters:
-    ///   - scriptData: The script's data.
-    ///   - sigVersion: The signature version.
-    /// - Returns: The script's assembly code.
-    public static func decodeScript(_ scriptData: Data, sigVersion: SigVersion = .base) -> String {
-        let script = BitcoinScript(scriptData, sigVersion: sigVersion)
-        return script.asm
     }
 }
