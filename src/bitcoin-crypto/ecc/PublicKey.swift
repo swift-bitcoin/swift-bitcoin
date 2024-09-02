@@ -1,6 +1,7 @@
 import Foundation
 import LibSECP256k1
 
+/// Elliptic curve SECP256K1 public key.
 public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     
     /// Derives a public key from a secret key.
@@ -106,7 +107,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
 
     public func isPointOnCurve(useXOnly: Bool = false) -> Bool {
         if useXOnly {
-            checkXOnly(xOnlyData.x)
+            checkXOnly(xOnlyData)
         } else {
             checkPublicKey(data)
         }
@@ -117,9 +118,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
         compressedToUncompressed(data)
     }
 
-    public var xOnlyData: (x: Data, parity: Bool) {
-        (data.dropFirst(), data.first! == Self.publicKeySerializationTagOdd)
-    }
+    public var xOnlyData: Data { data.dropFirst() }
 
     private var xOnlyDataChecked: (x: Data, parity: Bool) {
         let publicKeyBytes = [UInt8](data)
@@ -185,7 +184,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
 
     /// Internal key is an x-only public key.
     public func tweakXOnly(_ tweak: Data) -> PublicKey {
-        let xOnlyPublicKeyBytes = [UInt8](xOnlyData.x)
+        let xOnlyPublicKeyBytes = [UInt8](xOnlyData)
         let tweakBytes = [UInt8](tweak)
 
         // Base point (x)
@@ -210,8 +209,8 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     }
 
     package func checkTweak(_ tweakData: Data, outputKey: PublicKey) -> Bool {
-        let internalKeyBytes = [UInt8](xOnlyData.x)
-        let outputKeyBytes = [UInt8](outputKey.xOnlyData.x)
+        let internalKeyBytes = [UInt8](xOnlyData)
+        let outputKeyBytes = [UInt8](outputKey.xOnlyData)
         let tweakBytes = [UInt8](tweakData)
 
         var xonlyPubkey = secp256k1_xonly_pubkey()
@@ -219,7 +218,7 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
             preconditionFailure()
         }
 
-        let parity = Int32(outputKey.hasOddY /* outputKey.xOnlyData.parity */ ? 1 : 0)
+        let parity = Int32(outputKey.hasOddY ? 1 : 0)
         return secp256k1_xonly_pubkey_tweak_add_check(secp256k1_context_static, outputKeyBytes, parity, &xonlyPubkey, tweakBytes) != 0
     }
 

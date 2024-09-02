@@ -17,12 +17,12 @@ struct HDNew: ParsableCommand {
 
     mutating func run() throws {
         let seedHex = seed
-        guard let seed = Data(hex: seed) else {
+        guard let seed = Data(hex: seedHex) else {
             throw ValidationError("Invalid hexadecimal value: seed")
         }
-        let extendedKey: HDExtendedKey
+        let extendedKey: ExtendedKey
         do {
-            extendedKey = try HDExtendedKey(seed: seed, mainnet: network == .main)
+            extendedKey = try ExtendedKey(seed: seed, mainnet: network == .main)
         } catch {
             throw ValidationError("Invalid value: seed")
         }

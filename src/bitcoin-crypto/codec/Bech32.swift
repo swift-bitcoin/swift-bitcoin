@@ -39,6 +39,7 @@ public enum Bech32Variant: Sendable, CustomStringConvertible {
     }
 }
 
+/// Encodes raw data into Bech32 and Bech32m strings used in BIP173 and BIP350 address formats.
 public struct Bech32Encoder: Sendable {
 
     public init(_ variant: Bech32Variant) {
@@ -73,6 +74,7 @@ public struct Bech32Encoder: Sendable {
     }
 }
 
+/// Decodes raw data from Bech32 and Bech32m strings.
 public struct Bech32Decoder: Sendable {
 
     public init(_ variant: Bech32Variant? = .none) {
@@ -151,6 +153,7 @@ public struct Bech32Decoder: Sendable {
     }
 }
 
+/// Decodes raw data from Bech32 and Bech32m strings.
 extension Bech32Decoder {
     public enum Error: LocalizedError {
         case nonUTF8String,

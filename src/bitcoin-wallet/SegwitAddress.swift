@@ -9,13 +9,13 @@ public struct SegwitAddress: CustomStringConvertible {
 
     public init(_ publicKey: PublicKey, network: WalletNetwork = .main) {
         self.network = network
-        hash = hash160(publicKey.data)
+        hash = Data(Hash160.hash(data: publicKey.data))
     }
 
     public init(_ script: BitcoinScript, network: WalletNetwork = .main) {
         precondition(script.sigVersion == .witnessV0)
         self.network = network
-        hash = sha256(script.data)
+        hash = Data(SHA256.hash(data: script.data))
     }
 
     public var description: String {

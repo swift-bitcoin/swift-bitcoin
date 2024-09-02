@@ -1,10 +1,5 @@
 import Foundation
-
-#if canImport(CryptoKit)
-import CryptoKit
-#elseif canImport(Crypto)
 import Crypto
-#endif
 
 #if canImport(Darwin)
 import Darwin
@@ -16,15 +11,16 @@ import ucrt
 import WASILibc
 #endif
 
-public enum PBKDF2Error: Error {
-    case invalidInput
-    case derivedKeyTooLong
-}
-
-public typealias PBKDF2SHA512 = PBKDF2<SHA512>
-
-/// https://www.ietf.org/rfc/rfc2898.txt
+/// Implementation of the Password-Based Key Derivation Function Version 2 (PBKDF2)  used by BIP39 seed generation from mnemonic.
+///
+/// See [RFC2898](https://www.ietf.org/rfc/rfc2898.txt) for more information.
+/// 
 public struct PBKDF2<H: HashFunction> {
+
+    public enum Error: Swift.Error {
+        case invalidInput
+        case derivedKeyTooLong
+    }
 
     /// S
     private let salt: Data
@@ -49,14 +45,14 @@ public struct PBKDF2<H: HashFunction> {
         precondition(iterations > 0)
 
         guard iterations > 0 && !salt.isEmpty else {
-            throw PBKDF2Error.invalidInput
+            throw Error.invalidInput
         }
 
         self.dkLen = keyLength ?? H.Digest.byteCount
         let keyLengthFinal = Double(dkLen)
         let hLen = Double(H.Digest.byteCount)
         if keyLengthFinal > (pow(2, 32) - 1) * hLen {
-            throw PBKDF2Error.derivedKeyTooLong
+            throw Error.derivedKeyTooLong
         }
 
         self.salt = salt

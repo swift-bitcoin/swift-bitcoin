@@ -74,3 +74,21 @@ public struct InputSequence: Equatable, Sendable {
     private static let granularity = 9 // Base 2 exponent: pow(2, 9) = 512 seconds
     private static let maxSeconds = locktimeMask << granularity
 }
+
+/// Data extensions.
+extension InputSequence {
+
+    init?(_ data: Data) {
+        guard data.count >= Self.size else {
+            return nil
+        }
+        let rawValue = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
+        self.init(Int(rawValue))
+    }
+
+    var data: Data {
+        Data(value: rawValue)
+    }
+
+    static let size = MemoryLayout<UInt32>.size
+}

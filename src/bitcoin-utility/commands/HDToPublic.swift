@@ -14,7 +14,7 @@ struct HDToPublic: ParsableCommand {
 
     mutating func run() throws {
         let extendedKeySerialized = extendedKey
-        guard let extendedKey = try? HDExtendedKey(extendedKeySerialized) else {
+        guard let extendedKey = try? ExtendedKey(extendedKeySerialized) else {
             throw ValidationError("Invalid extended key format: extendedKey")
         }
         let result = (extendedKey.hasSecretKey ? extendedKey.neutered : extendedKey).serialized

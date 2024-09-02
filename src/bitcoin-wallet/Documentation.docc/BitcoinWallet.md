@@ -1,27 +1,33 @@
 # ``BitcoinWallet``
 
 @Metadata {
-    @DisplayName("Bitcoin Wallet")
+    @DisplayName("BitcoinWallet")
     @TitleHeading("Swift Bitcoin Library")
 }
 
-Bitcoin Wallet
+Generate and decode Bitcoin addresses. Manage mnemonic seeds and derive Hierarchically Deterministic (HD) keys.
 
 ## Overview
 
-_BitcoinWallet_ usage example:
+Use BitcoinWallet to generate addresses from public keys or scripts and to decode either legacy, segregated witness or taproot addresses.
 
-```swift
-import BitcoinWallet
-
-let address = BitcoinAddress(publicKey, mainnet: false).description
-…
-```
+Create private (_xpriv_) and public (_xpub_) master keys from BIP32 seeds and use them to derive output keys. Manage BIP39 mnemonic phrases in multiple languages.
 
 ## Topics
 
-### Essentials
+### Addresses
 
+- ``BitcoinAddress``
+- ``SegwitAddress``
+- ``TaprootAddress``
+
+### Hierarchically Deterministic (HD) extended keys
+
+- ``ExtendedKey``
+
+### Mnemonic
+
+- ``MnemonicPhrase`` 
 
 ## See Also
 

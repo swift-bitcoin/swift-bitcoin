@@ -100,14 +100,12 @@ public indirect enum ScriptTree: Equatable, Sendable {
             let invertHashes = rightHash.hex < leftHash.hex
             let newLeftHash = invertHashes ? rightHash : leftHash
             let newRightHash = invertHashes ? leftHash : rightHash
-            let branchHash = taggedHash(tag: "TapBranch", payload: newLeftHash + newRightHash)
+            let branchHash = Data(SHA256.hash(data: newLeftHash + newRightHash, tag: "TapBranch"))
             return (ret, branchHash)
         }
     }
 
-    var leafs: [ScriptTree] {
-        leafs()
-    }
+    public var leafs: [ScriptTree] { leafs() }
 
     private func leafs(_ partial: [ScriptTree] = []) -> [ScriptTree] {
         switch self {
@@ -123,13 +121,13 @@ public indirect enum ScriptTree: Equatable, Sendable {
             preconditionFailure("Needs to be a leaf.")
         }
         let leafVersionData = withUnsafeBytes(of: UInt8(version)) { Data($0) }
-        return taggedHash(tag: "TapLeaf", payload: leafVersionData + scriptData.varLenData)
+        return Data(SHA256.hash(data: leafVersionData + scriptData.varLenData, tag: "TapLeaf"))
     }
 
     public func getOutputKey(secretKey: SecretKey) -> Data {
         let (_, merkleRoot) = calcMerkleRoot()
         let internalKey = PublicKey(secretKey, requireEvenY: true)
         let outputKey = internalKey.taprootOutputKey(merkleRoot: merkleRoot)
-        return outputKey.xOnlyData.x
+        return outputKey.xOnlyData
     }
 }

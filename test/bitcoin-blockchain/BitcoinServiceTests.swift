@@ -13,7 +13,7 @@ struct BitcoinServiceTests {
         // Generate a secret key, corresponding public key, hash and address.
         let secretKey = SecretKey()
         let publicKey = secretKey.publicKey
-        let publicKeyHash = hash160(publicKey.data)
+        let publicKeyHash = Data(Hash160.hash(data: publicKey.data))
 
         // Instantiate a fresh Bitcoin service (regtest).
         let service = BitcoinService()

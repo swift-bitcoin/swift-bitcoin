@@ -137,7 +137,7 @@ public actor BitcoinService: Sendable {
     }
 
     public func generateTo(_ publicKey: PublicKey, blockTime: Date = .now) {
-        generateTo(hash160(publicKey.data), blockTime: blockTime)
+        generateTo(Data(Hash160.hash(data: publicKey.data)), blockTime: blockTime)
     }
 
     public func generateTo(_ publicKeyHash: Data, blockTime: Date = .now) {

@@ -8,7 +8,7 @@ public struct BitcoinMessage: Equatable, Sendable {
         self.network = network
         self.command = command
         self.payloadSize = payload.count
-        let payloadHash = hash256(payload)
+        let payloadHash = Data(Hash256.hash(data: payload))
         self.checksum = payloadHash.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }
@@ -22,7 +22,7 @@ public struct BitcoinMessage: Equatable, Sendable {
     public let payload: Data
 
     public var isChecksumOk: Bool {
-        let hash = hash256(payload)
+        let hash = Data(Hash256.hash(data: payload))
         let realChecksum = hash.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }

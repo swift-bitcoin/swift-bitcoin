@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Serialization helper functions
 
 /// Helper functions for serialization.
-public extension Data {
+package extension Data {
 
     init<T>(value: T) {
         self.init(count: MemoryLayout.size(ofValue: value))
@@ -42,34 +42,15 @@ public extension Data {
     }
 }
 
-// MARK: - Hexadecimal encoding/decoding
-
-public extension Data {
-
-    /// Create instance from string containing hex digits.
-    init?(hex: String) {
-        guard let regex = try? NSRegularExpression(pattern: "([0-9a-fA-F]{2})", options: []) else {
-            return nil
-        }
-        let range = NSRange(location: 0, length: hex.count)
-        let bytes = regex.matches(in: hex, options: [], range: range)
-            .compactMap { Range($0.range(at: 1), in: hex) }
-            .compactMap { UInt8(hex[$0], radix: 16) }
-        self.init(bytes)
-    }
-}
-
-public extension DataProtocol {
-
-    /// Hexadecimal (Base-16) string representation of data.
-    var hex: String {
-        map { String(format: "%02x", $0) }.joined()
+extension MutableDataProtocol {
+    mutating func appendByte(_ byte: UInt64) {
+        withUnsafePointer(to: byte.littleEndian, { self.append(contentsOf: UnsafeRawBufferPointer(start: $0, count: 8)) })
     }
 }
 
 // MARK: - Variable Integer (Compact Integer)
 
-public extension Data {
+package extension Data {
 
     /// Converts a 64-bit integer into its compact integer representation – i.e. variable length data.
     init(varInt value: UInt64) {
@@ -113,7 +94,7 @@ public extension Data {
     }
 }
 
-public extension UInt64 {
+package extension UInt64 {
 
     var varIntSize: Int {
         switch self {
@@ -133,7 +114,7 @@ public extension UInt64 {
 
 // MARK: - Variable length array
 
-public extension Data {
+package extension Data {
 
     init?(varLenData: Data) {
         var data = varLenData
@@ -152,7 +133,7 @@ public extension Data {
     }
 }
 
-public extension Array where Element == Data {
+package extension Array where Element == Data {
 
     /// Memory size as multiple variable length arrays.
     var varLenSize: Int {

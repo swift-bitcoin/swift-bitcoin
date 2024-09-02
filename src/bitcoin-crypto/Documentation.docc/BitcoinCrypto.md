@@ -1,46 +1,50 @@
 # ``BitcoinCrypto``
 
 @Metadata {
-    @DisplayName("Bitcoin Crypto")
+    @DisplayName("BitcoinCrypto")
     @TitleHeading("Swift Bitcoin Library")
 }
 
-Bitcoin cryptography helpers. ECC signing and verfying. Hash functions.
+Elliptic curve cryptography, hash function library and Bitcoin-specific coders.
 
 ## Overview
 
-Use this library to directly sign and verify messages and hashes.
+Use BitcoinCrypto to perform Bitcoin-related cryptographic operations:
 
-_BitcoinCrypto_ usage example:
+- Use public-key cryptography to create and evaluate ECDSA and Schnorr signatures.
+- Generate any of the cryptographically secure hashes used by the Bitcoin Protocol.
 
-```swift
-import BitcoinCrypto
-
-// Generate a secret key, corresponding public key, hash and address.
-let secretKey = SecretKey()
-let publicKey = secretKey.publicKey
-let publicKeyHash = hash160(publicKey.data)
-…
-
-// Obtain the signature using our secret key and append the signature hash type.
-let signature = Signature(messageHash: sigHash, secretKey: secretKey, type: .ecdsa)
-let signatureData = signature.data
-…
-```
+Encode and decode binary data into and from strings using Base58 or Bech32 encoding.
 
 ## Topics
 
-### Essentials
+### Public-key cryptography
 
 - ``SecretKey``
 - ``PublicKey``
 - ``Signature``
-- ``hash256(_:)``
-- ``hash160(_:)``
+
+### Hash functions
+
+- ``RIPEMD160``
+- ``SipHash``
+- ``Hash256``
+- ``Hash160``
+- ``PBKDF2``
+- ``SHA1``
+- ``SHA256``
+- ``SHA512``
+- ``HMAC``
+- ``SHA256/init(tag:)``
+
+### Data/string coders
+
 - ``Base58Encoder``
 - ``Base58Decoder``
 - ``Bech32Encoder``
 - ``Bech32Decoder``
+- ``Base16Encoder``
+- ``Base16Decoder``
 
 ## See Also
 

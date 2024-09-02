@@ -18,7 +18,7 @@ func calculateMerkleRoot(_ hashes: [Data]) -> Data {
     }
     var nextHashes = [Data]()
     for i in stride(from: hashes.startIndex, to: hashes.endIndex, by: 2) {
-        nextHashes.append(hash256(hashes[i] + hashes[i + 1]))
+        nextHashes.append(Data(Hash256.hash(data: hashes[i] + hashes[i + 1])))
     }
     return calculateMerkleRoot(nextHashes)
 }

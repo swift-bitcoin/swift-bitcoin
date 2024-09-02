@@ -175,32 +175,10 @@ struct BIP341Tests {
         expectedBIP350Address: String,
         expectedScriptPathControlBlocks: [[UInt8]]
     ) throws {
-        let merkleRoot: Data
-        let leafHashes: [Data]
-        let controlBlocks: [Data]
-        if let givenScriptTree {
-            let treeInfo: [(ScriptTree, Data)]
-            (treeInfo, merkleRoot) = givenScriptTree.calcMerkleRoot()
-            leafHashes = treeInfo.map {
-                let (leaf, _) = $0
-                return leaf.leafHash
-            }
-
-            controlBlocks = treeInfo.map { leafInfo in
-                let (scriptLeaf, path) = leafInfo
-                guard case .leaf(let leafVersion, _) = scriptLeaf else {
-                    preconditionFailure()
-                }
-                return computeControlBlock(internalKey: Data(givenInternalPubkey), merkleRoot: merkleRoot, leafVersion: leafVersion, path: path)
-            }
-        } else {
-            merkleRoot = .init()
-            leafHashes = []
-            controlBlocks = []
-        }
         let internalKey = try #require(PublicKey(xOnly: Data(givenInternalPubkey)))
+        let (merkleRoot, leafHashes, controlBlocks) = internalKey.computeControlBlocks(givenScriptTree)
         let tweak = internalKey.tapTweak(merkleRoot: merkleRoot)
-        let tweakedPubkeyData = internalKey.tweakXOnly(tweak).xOnlyData.x
+        let tweakedPubkeyData = internalKey.tweakXOnly(tweak).xOnlyData
         let scriptPubKey = BitcoinScript([.constant(1), .pushBytes(tweakedPubkeyData)]).data
 
         // BIP350
@@ -477,7 +455,7 @@ struct BIP341Tests {
 
             let secretKey = try #require(SecretKey(secretKeyData))
             let internalPublicKey = secretKey.publicKey
-            let internalPublicKeyData = internalPublicKey.xOnlyData.x
+            let internalPublicKeyData = internalPublicKey.xOnlyData
             #expect(internalPublicKeyData == expectedInternalPublicKey)
 
             let tweak = internalPublicKey.tapTweak(merkleRoot: merkleRoot)

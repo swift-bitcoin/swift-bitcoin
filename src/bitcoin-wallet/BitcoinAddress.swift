@@ -11,14 +11,14 @@ public struct BitcoinAddress: CustomStringConvertible {
     public init(_ publicKey: PublicKey, mainnet: Bool = true) {
         isMainnet = mainnet
         isScript = false
-        hash = hash160(publicKey.data)
+        hash = Data(Hash160.hash(data: publicKey.data))
     }
 
     public init(_ script: BitcoinScript, mainnet: Bool = true) {
         precondition(script.sigVersion == .base)
         isMainnet = mainnet
         isScript = true
-        hash = hash160(script.data)
+        hash = Data(Hash160.hash(data: script.data))
     }
 
     public init?(_ address: String) {
