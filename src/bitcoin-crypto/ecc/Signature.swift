@@ -242,6 +242,11 @@ private func getMessageHash(messageData: Data, type: SignatureType) -> Data {
 
 // MARK: - ECDSA Compact with Recoverable Public Key
 
+/// Text used to signify that a signed message follows and to prevent inadvertently signing a transaction.
+///
+/// Used by `compactRecoverableMessage()`.
+private let messageMagic = "\u{18}Bitcoin Signed Message:\n"
+
 /// Used for original Bitcoin message signing protocol.
 private func compactRecoverableMessage(_ messageData: Data) -> Data {
     messageMagic.data(using: .utf8)! + messageData.varLenData
