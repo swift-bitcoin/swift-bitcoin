@@ -19,4 +19,4 @@ jobs:
       - name: Build
         run: swift build --build-tests --disable-xctest
       - name: Test
-        run: swift test --disable-xctest
+        run: swift test --quiet --disable-xctest
