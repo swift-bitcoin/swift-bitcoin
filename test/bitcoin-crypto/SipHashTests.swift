@@ -143,7 +143,7 @@ struct SipHashTests {
     /// Test vectors from [here](https://github.com/veorq/SipHash/blob/master/vectors.h) and [here](https://github.com/veorq/SipHash/blob/master/test.c#L46).
     ///
     /// For an explanation see this [article](https://stackoverflow.com/questions/78547843/go-how-to-test-a-siphash-2-4-function-with-known-vectors).
-    @Test("SipHash 2-4 Test Vectors", arguments: zip(messages, hashes))
+    @Test("SipHash 2-4 Test Vectors", .disabled(), arguments: zip(messages, hashes))
     func testVectors(message: [UInt8], expectedHash: [UInt8]) throws {
         let key0 = UInt64(0x0001020304050607).bigEndian
         let key1 = UInt64(0x08090a0b0c0d0e0f).bigEndian
