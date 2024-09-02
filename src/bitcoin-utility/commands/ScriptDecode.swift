@@ -18,7 +18,7 @@ struct ScriptDecode: ParsableCommand {
 
     mutating func run() throws {
         let scriptHex = script
-        guard let scriptData = Data(hex: script) else {
+        guard let scriptData = Data(hex: scriptHex) else {
             throw ValidationError("Invalid hex format: script")
         }
         let script = BitcoinScript(scriptData, sigVersion: version)

@@ -36,7 +36,7 @@ public struct BlockHeader: Equatable, Sendable {
     // MARK: - Computed Properties
 
     public var hash: Data {
-        hash256(data)
+        Data(Hash256.hash(data: data))
     }
 
     public var hashHex: String {

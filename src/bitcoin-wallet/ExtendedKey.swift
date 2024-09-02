@@ -1,12 +1,8 @@
 import Foundation
 import BitcoinCrypto
 
-enum HDExtendedKeyError: Error {
-    case invalidEncoding, wrongDataLength, unknownNetwork, invalidPrivateKeyLength, invalidSecretKey, invalidPublicKeyEncoding, invalidPublicKey, zeroDepthNonZeroFingerprint, zeroDepthNonZeroIndex
-}
-
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
-public struct HDExtendedKey {
+public struct ExtendedKey {
     public let isMainnet: Bool
     public let secretKey: SecretKey?
     public let publicKey: PublicKey?
@@ -17,13 +13,15 @@ public struct HDExtendedKey {
 
     public init(seed: Data, mainnet: Bool = true) throws {
         guard seed.count >= 16, seed.count <= 64 else {
-            throw WalletError.invalidSeed
+            throw Error.invalidSeed
         }
-        let result = hmacSHA512("Bitcoin seed", data: seed)
+        var hmac = HMAC<SHA512>(key: .init(data: "Bitcoin seed".data(using: .ascii)!))
+        hmac.update(data: seed)
+        let result = Data(hmac.finalize())
         let secretKeyData = result.prefix(32)
         let chaincode = result.dropFirst(32)
         guard let secretKey = SecretKey(secretKeyData) else {
-            throw WalletError.invalidSeed
+            throw Error.invalidSeed
         }
         try self.init(secretKey: secretKey, chaincode: chaincode, fingerprint: 0, depth: 0, keyIndex: 0, mainnet: mainnet)
     }
@@ -34,10 +32,10 @@ public struct HDExtendedKey {
         }
 
         guard depth != 0 || fingerprint == 0 else {
-            throw HDExtendedKeyError.zeroDepthNonZeroFingerprint
+            throw Error.zeroDepthNonZeroFingerprint
         }
         guard depth != 0 || keyIndex == 0 else {
-            throw HDExtendedKeyError.zeroDepthNonZeroIndex
+            throw Error.zeroDepthNonZeroIndex
         }
         self.isMainnet = mainnet
         self.secretKey = secretKey
@@ -50,7 +48,7 @@ public struct HDExtendedKey {
 
     public init(_ serialized: String) throws {
         guard let data = Base58Decoder().decode(serialized) else {
-            throw HDExtendedKeyError.invalidEncoding
+            throw Error.invalidEncoding
         }
         try self.init(data)
     }
@@ -89,29 +87,29 @@ public struct HDExtendedKey {
         } else {
             fatalError()
         }
-        let publicKeyIdentifier = hash160(publicKey.data)
+        let publicKeyIdentifier = Data(Hash160.hash(data: publicKey.data))
         let fingerprint = publicKeyIdentifier.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }
 
         // assert(IsValid());
         // assert(IsCompressed());
-        let hmacResult: Data
+        var hmac = HMAC<SHA512>(key: .init(data: chaincode))
         if keyIndex >> 31 == 0 {
             // Unhardened derivation
             var publicKeyData = publicKey.data
             publicKeyData.appendBytes(UInt32(keyIndex).bigEndian)
-            hmacResult = hmacSHA512(chaincode, data: publicKeyData)
+            hmac.update(data: publicKeyData)
         } else if let secretKey {
             // Hardened derivation
             var privateKeyData = Data([0x00])
             privateKeyData.append(secretKey.data)
             privateKeyData.appendBytes(UInt32(keyIndex).bigEndian)
-            hmacResult = hmacSHA512(chaincode, data: privateKeyData)
+            hmac.update(data: privateKeyData)
         } else {
             preconditionFailure()
         }
-
+        let hmacResult = Data(hmac.finalize())
         let chaincode = hmacResult.dropFirst(32)
         let tweak = hmacResult.prefix(32)
         let newSecretKey: SecretKey? = if let secretKey {
@@ -139,11 +137,18 @@ public struct HDExtendedKey {
     }
 }
 
-public extension HDExtendedKey {
+/// Error
+public extension ExtendedKey {
+    enum Error: Swift.Error {
+        case invalidEncoding, wrongDataLength, unknownNetwork, invalidPrivateKeyLength, invalidSecretKey, invalidPublicKeyEncoding, invalidPublicKey, zeroDepthNonZeroFingerprint, zeroDepthNonZeroIndex, invalidSeed
+    }
+}
+
+public extension ExtendedKey {
 
     init(_ data: Data) throws {
         guard data.count == Self.size else {
-            throw HDExtendedKeyError.wrongDataLength
+            throw Error.wrongDataLength
         }
 
         var data = data
@@ -152,7 +157,7 @@ public extension HDExtendedKey {
         }.byteSwapped // Convert to little-endian
 
         guard version == mainHDKeyVersionPrivate || version == mainHDKeyVersionPublic || version == testHDKeyVersionPrivate || version == testHDKeyVersionPublic else {
-            throw HDExtendedKeyError.unknownNetwork
+            throw Error.unknownNetwork
         }
         let mainnet = version == mainHDKeyVersionPrivate || version == mainHDKeyVersionPublic
         let isPrivate = version == mainHDKeyVersionPrivate || version == testHDKeyVersionPrivate
@@ -181,20 +186,20 @@ public extension HDExtendedKey {
         var publicKey = PublicKey?.none
         if isPrivate {
             guard let len = data.first, len == 0 else {
-                throw HDExtendedKeyError.invalidPrivateKeyLength
+                throw Error.invalidPrivateKeyLength
             }
             let secretKeyData = data.dropFirst().prefix(SecretKey.keyLength)
             guard let parsedSecretKey = SecretKey(secretKeyData) else {
-                throw HDExtendedKeyError.invalidSecretKey
+                throw Error.invalidSecretKey
             }
             secretKey = parsedSecretKey
         } else {
             let publicKeyData = data.prefix(PublicKey.compressedLength)
             guard let parsedPublicKey = PublicKey(publicKeyData) else {
-                throw HDExtendedKeyError.invalidPublicKeyEncoding
+                throw Error.invalidPublicKeyEncoding
             }
             guard parsedPublicKey.isPointOnCurve() else {
-                throw HDExtendedKeyError.invalidPublicKey
+                throw Error.invalidPublicKey
             }
             publicKey = parsedPublicKey
         }

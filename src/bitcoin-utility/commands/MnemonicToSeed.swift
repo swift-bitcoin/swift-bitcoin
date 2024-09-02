@@ -22,14 +22,21 @@ struct MnemonicToSeed: ParsableCommand {
     var mnemonic: String
 
     mutating func run() throws {
-        guard let mnemonicPhrase = MnemonicPhrase(mnemonic, passphrase: passphrase, language: language) else {
-            throw ValidationError("Invalid value: mnemonic / language")
+        let mnemonicPhrase: MnemonicPhrase
+        do {
+            mnemonicPhrase = try MnemonicPhrase(mnemonic, passphrase: passphrase, language: language)
+        } catch MnemonicPhrase.Error.languageNotSupported {
+            throw ValidationError("Invalid language value: language")
+        } catch MnemonicPhrase.Error.mnemonicWordNotOnList, MnemonicPhrase.Error.mnemonicInvalidLength, MnemonicPhrase.Error.invalidMnemonicChecksum  {
+            throw ValidationError("Invalid mnemonic value: mnemonic")
+        } catch {
+            throw error
         }
         let result: String
         do {
-            result = try mnemonicPhrase.toSeed()
+            result = try mnemonicPhrase.toSeed(passphrase: passphrase)
         } catch {
-            throw ValidationError("Invalid value: mnemonic")
+            throw ValidationError("Invalid UTF-8 passphrase encoding: passphrase")
         }
         print(result)
     }

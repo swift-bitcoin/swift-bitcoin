@@ -1,6 +1,9 @@
 import Foundation
 import BitcoinCrypto
 
+private let taprootControlBaseSize = 33
+private let taprootControlNodeSize = 32
+
 /// Transaction inputs/scripts verification.
 extension BitcoinTransaction {
 
@@ -152,7 +155,7 @@ extension BitcoinTransaction {
             }
 
             // SHA256 of the witnessScript must match the 32-byte witness program.
-            guard sha256(witnessScriptRaw) == witnessProgram else {
+            guard Data(SHA256.hash(data: witnessScriptRaw)) == witnessProgram else {
                 throw ScriptError.wrongWitnessScriptHash
             }
 
@@ -207,7 +210,7 @@ extension BitcoinTransaction {
         let control = stack.removeLast()
 
         // control block c, and must have length 33 + 32m, for a value of m that is an integer between 0 and 128, inclusive. Fail if it does not have such a length.
-        guard control.count >= 33 && (control.count - 33) % 32 == 0 && (control.count - 33) / 32 < 129 else {
+        guard control.count >= taprootControlBaseSize && (control.count - taprootControlBaseSize) % taprootControlNodeSize == 0 && (control.count - taprootControlBaseSize) / taprootControlNodeSize <= 128 else {
             throw ScriptError.invalidTapscriptControlBlock
         }
 
@@ -217,7 +220,7 @@ extension BitcoinTransaction {
 
         // Let p = c[1:33] and let P = lift_x(int(p)) where lift_x and [:] are defined as in BIP340. Fail if this point is not on the curve.
         // q is referred to as taproot output key and p as taproot internal key.
-        let internalKeyData = control[1...32]
+        let internalKeyData = control.dropFirst().prefix(PublicKey.xOnlyLength)
 
         // Fail if this point is not on the curve.
         guard let internalKey = PublicKey(xOnly: internalKeyData), internalKey.isPointOnCurve(useXOnly: true) else { throw ScriptError.invalidTaprootPublicKey }
@@ -226,7 +229,7 @@ extension BitcoinTransaction {
         let leafVersion = control[0] & 0xfe
 
         // Let k0 = hashTapLeaf(v || compact_size(size of s) || s); also call it the tapleaf hash.
-        let tapLeafHash = taggedHash(tag: "TapLeaf", payload: Data([leafVersion]) + tapscriptData.varLenData)
+        let tapLeafHash = Data(SHA256.hash(data: [leafVersion] + tapscriptData.varLenData, tag: "TapLeaf"))
 
         // Compute the Merkle root from the leaf and the provided path.
         let merkleRoot = computeMerkleRoot(controlBlock: control, tapLeafHash: tapLeafHash)
@@ -270,7 +273,7 @@ extension BitcoinTransaction {
             return Data([0x01]) + Data(repeating: 0, count: 31)
         }
         let sigMsg = signatureMessage(sighashType: sighashType, inputIndex: inputIndex, scriptCode: scriptCode)
-        return hash256(sigMsg)
+        return Data(Hash256.hash(data: sigMsg))
     }
 
     /// Aka sigMsg. See https://en.bitcoin.it/wiki/OP_CHECKSIG
@@ -328,7 +331,7 @@ extension BitcoinTransaction {
 
     /// BIP143
     func signatureHashSegwit(sighashType: SighashType, inputIndex: Int, previousOutput: TransactionOutput, scriptCode: Data) -> Data {
-        hash256(signatureMessageSegwit(sighashType: sighashType, inputIndex: inputIndex, scriptCode: scriptCode, amount: previousOutput.value))
+        Data(Hash256.hash(data: signatureMessageSegwit(sighashType: sighashType, inputIndex: inputIndex, scriptCode: scriptCode, amount: previousOutput.value)))
     }
 
     /// BIP143: SegWit v0 signature message (sigMsg).
@@ -340,7 +343,7 @@ extension BitcoinTransaction {
             hashPrevouts = Data(repeating: 0, count: 32)
         } else {
             let prevouts = inputs.reduce(Data()) { $0 + $1.outpoint.data }
-            hashPrevouts = hash256(prevouts)
+            hashPrevouts = Data(Hash256.hash(data: prevouts))
         }
 
         // If none of the ANYONECANPAY, SINGLE, NONE sighash type is set, hashSequence is the double SHA256 of the serialization of nSequence of all inputs;
@@ -350,7 +353,7 @@ extension BitcoinTransaction {
             let sequence = inputs.reduce(Data()) {
                 $0 + $1.sequence.data
             }
-            hashSequence = hash256(sequence)
+            hashSequence = Data(Hash256.hash(data: sequence))
         } else {
             hashSequence = Data(repeating: 0, count: 32)
         }
@@ -361,9 +364,9 @@ extension BitcoinTransaction {
         let hashOuts: Data
         if !sighashType.isSingle && !sighashType.isNone {
             let outsData = outputs.reduce(Data()) { $0 + $1.data }
-            hashOuts = hash256(outsData)
+            hashOuts = Data(Hash256.hash(data: outsData))
         } else if sighashType.isSingle && inputIndex < outputs.count {
-            hashOuts = hash256(outputs[inputIndex].data)
+            hashOuts = Data(Hash256.hash(data: outputs[inputIndex].data))
         } else {
             hashOuts = Data(repeating: 0, count: 32)
         }
@@ -385,11 +388,12 @@ extension BitcoinTransaction {
 
     /// BIP341
     func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [TransactionOutput], tapscriptExtension: TapscriptExtension? = .none, sighashCache: inout SighashCache) -> Data {
-        var payload = signatureMessageSchnorr(sighashType: sighashType, extFlag: tapscriptExtension == .none ? 0 : 1, inputIndex: inputIndex, previousOutputs: previousOutputs, sighashCache: &sighashCache)
+        var hasher = SHA256(tag: "TapSighash")
+        hasher.update(data: signatureMessageSchnorr(sighashType: sighashType, extFlag: tapscriptExtension == .none ? 0 : 1, inputIndex: inputIndex, previousOutputs: previousOutputs, sighashCache: &sighashCache))
         if let tapscriptExtension {
-            payload += tapscriptExtension.data
+            hasher.update(data: tapscriptExtension.data)
         }
-        return taggedHash(tag: "TapSighash", payload: payload)
+        return Data(hasher.finalize())
     }
 
     /// BIP341: SegWit v1 (Schnorr / TapRoot) signature message (sigMsg). More at https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#common-signature-message .
@@ -425,7 +429,7 @@ extension BitcoinTransaction {
                 shaPrevouts = cached
             } else {
                 let prevouts = inputs.reduce(Data()) { $0 + $1.outpoint.data }
-                shaPrevouts = sha256(prevouts)
+                shaPrevouts = Data(SHA256.hash(data: prevouts))
                 sighashCache.shaPrevouts = shaPrevouts
             }
             sighashCache.shaPrevoutsUsed = true
@@ -437,7 +441,7 @@ extension BitcoinTransaction {
                 shaAmounts = cached
             } else {
                 let amounts = previousOutputs.reduce(Data()) { $0 + $1.valueData }
-                shaAmounts = sha256(amounts)
+                shaAmounts = Data(SHA256.hash(data: amounts))
                 sighashCache.shaAmounts = shaAmounts
             }
             sighashCache.shaAmountsUsed = true
@@ -449,7 +453,7 @@ extension BitcoinTransaction {
                 shaScriptPubKeys = cached
             } else {
                 let scriptPubKeys = previousOutputs.reduce(Data()) { $0 + $1.script.prefixedData }
-                shaScriptPubKeys = sha256(scriptPubKeys)
+                shaScriptPubKeys = Data(SHA256.hash(data: scriptPubKeys))
                 sighashCache.shaScriptPubKeys = shaScriptPubKeys
             }
             sighashCache.shaScriptPubKeysUsed = true
@@ -461,7 +465,7 @@ extension BitcoinTransaction {
                 shaSequences = cached
             } else {
                 let sequences = inputs.reduce(Data()) { $0 + $1.sequence.data }
-                shaSequences = sha256(sequences)
+                shaSequences = Data(SHA256.hash(data: sequences))
                 sighashCache.shaSequences = shaSequences
             }
             sighashCache.shaSequencesUsed = true
@@ -481,7 +485,7 @@ extension BitcoinTransaction {
                 shaOuts = cached
             } else {
                 let outsData = outputs.reduce(Data()) { $0 + $1.data }
-                shaOuts = sha256(outsData)
+                shaOuts = Data(SHA256.hash(data: outsData))
                 sighashCache.shaOuts = shaOuts
             }
             sighashCache.shaOutsUsed = true
@@ -519,7 +523,7 @@ extension BitcoinTransaction {
         if let annex {
             //sha_annex (32): the SHA256 of (compact_size(size of annex) || annex), where annex includes the mandatory 0x50 prefix.
             // TODO: Review and make sure it includes the varInt prefix (length)
-            let shaAnnex = sha256(annex)
+            let shaAnnex = Data(SHA256.hash(data: annex))
             inputData.append(shaAnnex)
         }
 
@@ -528,11 +532,24 @@ extension BitcoinTransaction {
         var outputData = Data()
         if sighashType.isSingle {
             //sha_single_output (32): the SHA256 of the corresponding output in CTxOut format.
-            let shaSingleOutput = sha256(outputs[inputIndex].data)
+            let shaSingleOutput = Data(SHA256.hash(data: outputs[inputIndex].data))
             outputData.append(shaSingleOutput)
         }
 
         let sigMsg = epochData + controlData + txData + inputData + outputData
         return sigMsg
     }
+}
+
+private func computeMerkleRoot(controlBlock: Data, tapLeafHash: Data) -> Data {
+    let pathLen = (controlBlock.count - taprootControlBaseSize) / taprootControlNodeSize
+    var k = tapLeafHash
+    for i in 0 ..< pathLen {
+        let startIndex = controlBlock.startIndex.advanced(by: taprootControlBaseSize + taprootControlNodeSize * i)
+        let endIndex = startIndex.advanced(by: taprootControlNodeSize)
+        let node = controlBlock[startIndex ..< endIndex]
+        let payload = k.lexicographicallyPrecedes(node) ? k + node : node + k
+        k = Data(SHA256.hash(data: payload, tag: "TapBranch"))
+    }
+    return k
 }

@@ -2,10 +2,12 @@ import Foundation
 import LibSECP256k1
 import ECCHelper // For `ecdsa_signature_parse_der_lax()`
 
+/// Supported types of signature and signature encodings.
 public enum SignatureType: Equatable, Sendable {
     case ecdsa, compact, recoverable, schnorr
 }
 
+/// Elliptic curve SECP256K1 signature supporting both ECDSA and Schnorr algorithms.
 public struct Signature: Equatable, Sendable, CustomStringConvertible {
 
     public init?(message: String, secretKey: SecretKey, type: SignatureType = .schnorr, recoverCompressedKeys: Bool = true) {
@@ -235,7 +237,7 @@ private func getMessageHash(messageData: Data, type: SignatureType) -> Data {
     case .recoverable:
         newMessageData = compactRecoverableMessage(messageData)
     }
-    return hash256(newMessageData)
+    return Data(Hash256.hash(data: newMessageData))
 }
 
 // MARK: - ECDSA Compact with Recoverable Public Key
@@ -431,7 +433,7 @@ private func verifySchnorr(signatureData: Data, messageHash: Data, publicKey: Pu
     // guard !publicKeyData.isEmpty else { return false }
 
     let signatureBytes = [UInt8](signatureData)
-    let publicKeyBytes = [UInt8](publicKey.xOnlyData.x)
+    let publicKeyBytes = [UInt8](publicKey.xOnlyData)
     let messageHashBytes = [UInt8](messageHash)
 
     var xonlyPubkey = secp256k1_xonly_pubkey()

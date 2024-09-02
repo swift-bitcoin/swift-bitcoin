@@ -12,16 +12,16 @@ extension TransactionBlock {
 
         // single-SHA256 hashing the block header with the nonce appended (in little-endian)
         let headerData = header.data + Data(value: nonce)
-        let headerHash = sha256(headerData)
+        let headerHash = Data(SHA256.hash(data: headerData))
 
         // Running SipHash-2-4 with the input being the transaction ID and the keys (k0/k1) set to the first two little-endian 64-bit integers from the above hash, respectively.
         let firstInt = headerHash.withUnsafeBytes { $0.load(as: UInt64.self) }
         let secondInt = headerHash.dropFirst(MemoryLayout.size(ofValue: firstInt)).withUnsafeBytes { $0.load(as: UInt64.self) }
-        var sipHasher = SipHasher(k0: firstInt, k1: secondInt)
+        var sipHasher = SipHash(k0: firstInt, k1: secondInt)
 
         let transactionID = transactions[transactionIndex].witnessIdentifier
-        transactionID.withUnsafeBytes { sipHasher.append($0) }
-        let sipHash = sipHasher.finalize()
+        transactionID.withUnsafeBytes { sipHasher.update(bufferPointer: $0) }
+        let sipHash = sipHasher.finalize().value
 
         // Dropping the 2 most significant bytes from the SipHash output to make it 6 bytes.
         return Int((sipHash << 16) >> 16)

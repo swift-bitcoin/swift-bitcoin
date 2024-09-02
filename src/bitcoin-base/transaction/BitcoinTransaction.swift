@@ -44,11 +44,11 @@ public struct BitcoinTransaction: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var identifier: Data { Data(hash256(identifierData).reversed()) }
+    public var identifier: Data { Data(Hash256.hash(data: identifierData).reversed()) }
 
     /// BIP141
     /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
-    public var witnessIdentifier: Data { Data(hash256(data).reversed()) }
+    public var witnessIdentifier: Data { Data(Hash256.hash(data: data).reversed()) }
 
     /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
     public var weight: Int { baseSize * 4 + witnessSize }
@@ -111,7 +111,7 @@ public struct BitcoinTransaction: Equatable, Sendable {
     }
 
     public static func makeCoinbaseTransaction(blockHeight: Int, publicKey: PublicKey, witnessMerkleRoot: Data, blockSubsidy: Int) -> Self {
-        makeCoinbaseTransaction(blockHeight: blockHeight, publicKeyHash: hash160(publicKey.data), witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: blockSubsidy)
+        makeCoinbaseTransaction(blockHeight: blockHeight, publicKeyHash: Data(Hash160.hash(data: publicKey.data)), witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: blockSubsidy)
     }
 
     public static func makeCoinbaseTransaction(blockHeight: Int, publicKeyHash: Data, witnessMerkleRoot: Data, blockSubsidy: Int) -> Self {
@@ -120,7 +120,7 @@ public struct BitcoinTransaction: Equatable, Sendable {
 
         let witnessCommitmentHeader = Data([0xaa, 0x21, 0xa9, 0xed])
         let witnessRootHash = witnessMerkleRoot
-        let witnessCommitmentHash = hash256(witnessRootHash + witnessReservedValue)
+        let witnessCommitmentHash = Data(Hash256.hash(data: witnessRootHash + witnessReservedValue))
 
         let witnessCommitmentScript = BitcoinScript([
             .return,

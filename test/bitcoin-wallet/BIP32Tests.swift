@@ -9,13 +9,12 @@ struct BIP32Tests {
     @Test func vector1() throws {
 
         // Seed (hex)
-        let seed = "000102030405060708090a0b0c0d0e0f"
+        let seedData = Data([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f])
 
         // Chain m
         var expectedXpub = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
         var expectedXprv = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
-        let seedData = try #require(Data(hex: seed))
-        let xprvM = try HDExtendedKey(seed: seedData)
+        let xprvM = try ExtendedKey(seed: seedData)
         #expect(xprvM.serialized == expectedXprv)
         let xpubM = xprvM.neutered
         #expect(xpubM.serialized == expectedXpub)
@@ -43,9 +42,8 @@ struct BIP32Tests {
         expectedXprv = "xprv9z4pot5VBttmtdRTWfWQmoH1taj2axGVzFqSb8C9xaxKymcFzXBDptWmT7FwuEzG3ryjH4ktypQSAewRiNMjANTtpgP4mLTj34bhnZX7UiM"
         let xprvM0h12h = xprvM0h1.derive(child: 2, harden: true)
         #expect(xprvM0h12h.serialized == expectedXprv)
-        var xpubM0h12h = xprvM0h12h.neutered
+        let xpubM0h12h = xprvM0h12h.neutered
         #expect(xpubM0h12h.serialized == expectedXpub)
-        // #expect(throws: WalletError.attemptToDeriveHardenedPublicKey) { xpubM0h12h = xpubM0h1.derive(child: 2, harden: true) }
 
         // Chain m/0H/1/2H/2
         expectedXpub = "xpub6FHa3pjLCk84BayeJxFW2SP4XRrFd1JYnxeLeU8EqN3vDfZmbqBqaGJAyiLjTAwm6ZLRQUMv1ZACTj37sR62cfN7fe5JnJ7dh8zL4fiyLHV"
@@ -73,13 +71,12 @@ struct BIP32Tests {
     @Test func vector2() throws {
 
         // Seed (hex)
-        let seed = "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
+        let seedData = Data([0xff, 0xfc, 0xf9, 0xf6, 0xf3, 0xf0, 0xed, 0xea, 0xe7, 0xe4, 0xe1, 0xde, 0xdb, 0xd8, 0xd5, 0xd2, 0xcf, 0xcc, 0xc9, 0xc6, 0xc3, 0xc0, 0xbd, 0xba, 0xb7, 0xb4, 0xb1, 0xae, 0xab, 0xa8, 0xa5, 0xa2, 0x9f, 0x9c, 0x99, 0x96, 0x93, 0x90, 0x8d, 0x8a, 0x87, 0x84, 0x81, 0x7e, 0x7b, 0x78, 0x75, 0x72, 0x6f, 0x6c, 0x69, 0x66, 0x63, 0x60, 0x5d, 0x5a, 0x57, 0x54, 0x51, 0x4e, 0x4b, 0x48, 0x45, 0x42])
 
         // Chain m
         var expectedXpub = "xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB"
         var expectedXprv = "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U"
-        let seedData = try #require(Data(hex: seed))
-        let xprvM = try HDExtendedKey(seed: seedData)
+        let xprvM = try ExtendedKey(seed: seedData)
         #expect(xprvM.serialized == expectedXprv)
         let xpubM = xprvM.neutered
         #expect(xpubM.serialized == expectedXpub)
@@ -134,13 +131,12 @@ struct BIP32Tests {
     @Test func vector3() throws {
 
         // Seed (hex)
-        let seed = "4b381541583be4423346c643850da4b320e46a87ae3d2a4e6da11eba819cd4acba45d239319ac14f863b8d5ab5a0d0c64d2e8a1e7d1457df2e5a3c51c73235be"
+        let seedData = Data([0x4b, 0x38, 0x15, 0x41, 0x58, 0x3b, 0xe4, 0x42, 0x33, 0x46, 0xc6, 0x43, 0x85, 0x0d, 0xa4, 0xb3, 0x20, 0xe4, 0x6a, 0x87, 0xae, 0x3d, 0x2a, 0x4e, 0x6d, 0xa1, 0x1e, 0xba, 0x81, 0x9c, 0xd4, 0xac, 0xba, 0x45, 0xd2, 0x39, 0x31, 0x9a, 0xc1, 0x4f, 0x86, 0x3b, 0x8d, 0x5a, 0xb5, 0xa0, 0xd0, 0xc6, 0x4d, 0x2e, 0x8a, 0x1e, 0x7d, 0x14, 0x57, 0xdf, 0x2e, 0x5a, 0x3c, 0x51, 0xc7, 0x32, 0x35, 0xbe])
 
         // Chain m
         var expectedXpub = "xpub661MyMwAqRbcEZVB4dScxMAdx6d4nFc9nvyvH3v4gJL378CSRZiYmhRoP7mBy6gSPSCYk6SzXPTf3ND1cZAceL7SfJ1Z3GC8vBgp2epUt13"
         var expectedXprv = "xprv9s21ZrQH143K25QhxbucbDDuQ4naNntJRi4KUfWT7xo4EKsHt2QJDu7KXp1A3u7Bi1j8ph3EGsZ9Xvz9dGuVrtHHs7pXeTzjuxBrCmmhgC6"
-        let seedData = try #require(Data(hex: seed))
-        let xprvM = try HDExtendedKey(seed: seedData)
+        let xprvM = try ExtendedKey(seed: seedData)
         #expect(xprvM.serialized == expectedXprv)
         let xpubM = xprvM.neutered
         #expect(xpubM.serialized == expectedXpub)
@@ -159,13 +155,12 @@ struct BIP32Tests {
     @Test func vector4() throws {
 
         // Seed (hex)
-        let seed = "3ddd5602285899a946114506157c7997e5444528f3003f6134712147db19b678"
+        let seedData = Data([0x3d, 0xdd, 0x56, 0x02, 0x28, 0x58, 0x99, 0xa9, 0x46, 0x11, 0x45, 0x06, 0x15, 0x7c, 0x79, 0x97, 0xe5, 0x44, 0x45, 0x28, 0xf3, 0x00, 0x3f, 0x61, 0x34, 0x71, 0x21, 0x47, 0xdb, 0x19, 0xb6, 0x78])
 
         // Chain m
         var expectedXpub = "xpub661MyMwAqRbcGczjuMoRm6dXaLDEhW1u34gKenbeYqAix21mdUKJyuyu5F1rzYGVxyL6tmgBUAEPrEz92mBXjByMRiJdba9wpnN37RLLAXa"
         var expectedXprv = "xprv9s21ZrQH143K48vGoLGRPxgo2JNkJ3J3fqkirQC2zVdk5Dgd5w14S7fRDyHH4dWNHUgkvsvNDCkvAwcSHNAQwhwgNMgZhLtQC63zxwhQmRv"
-        let seedData = try #require(Data(hex: seed))
-        let xprvM = try HDExtendedKey(seed: seedData)
+        let xprvM = try ExtendedKey(seed: seedData)
         #expect(xprvM.serialized == expectedXprv)
         let xpubM = xprvM.neutered
         #expect(xpubM.serialized == expectedXpub)
@@ -193,98 +188,98 @@ struct BIP32Tests {
 
         // (pubkey version / prvkey mismatch)
         var invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6LBpB85b3D2yc8sfvZU521AAwdZafEz7mnzBBsz4wKY5fTtTQBm"
-        #expect(throws: HDExtendedKeyError.invalidPublicKeyEncoding) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidPublicKeyEncoding) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (prvkey version / pubkey mismatch)
         invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGTQQD3dC4H2D5GBj7vWvSQaaBv5cxi9gafk7NF3pnBju6dwKvH"
-        #expect(throws: HDExtendedKeyError.invalidPrivateKeyLength) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidPrivateKeyLength) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (invalid pubkey prefix 04)
         invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Txnt3siSujt9RCVYsx4qHZGc62TG4McvMGcAUjeuwZdduYEvFn"
-        #expect(throws: HDExtendedKeyError.invalidPublicKeyEncoding) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidPublicKeyEncoding) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (invalid prvkey prefix 04)
         invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGpWnsj83BHtEy5Zt8CcDr1UiRXuWCmTQLxEK9vbz5gPstX92JQ"
-        #expect(throws: HDExtendedKeyError.invalidPrivateKeyLength) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidPrivateKeyLength) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (invalid pubkey prefix 01)
         invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6N8ZMMXctdiCjxTNq964yKkwrkBJJwpzZS4HS2fxvyYUA4q2Xe4"
-        #expect(throws: HDExtendedKeyError.invalidPublicKeyEncoding) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidPublicKeyEncoding) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (invalid prvkey prefix 01)
         invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD9y5gkZ6Eq3Rjuahrv17fEQ3Qen6J"
-        #expect(throws: HDExtendedKeyError.invalidPrivateKeyLength) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidPrivateKeyLength) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (zero depth with non-zero parent fingerprint)
         invalidKey = "xprv9s2SPatNQ9Vc6GTbVMFPFo7jsaZySyzk7L8n2uqKXJen3KUmvQNTuLh3fhZMBoG3G4ZW1N2kZuHEPY53qmbZzCHshoQnNf4GvELZfqTUrcv"
-        #expect(throws: HDExtendedKeyError.zeroDepthNonZeroFingerprint) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.zeroDepthNonZeroFingerprint) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (zero depth with non-zero parent fingerprint)
         invalidKey = "xpub661no6RGEX3uJkY4bNnPcw4URcQTrSibUZ4NqJEw5eBkv7ovTwgiT91XX27VbEXGENhYRCf7hyEbWrR3FewATdCEebj6znwMfQkhRYHRLpJ"
-        #expect(throws: HDExtendedKeyError.zeroDepthNonZeroFingerprint) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.zeroDepthNonZeroFingerprint) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (zero depth with non-zero index)
         invalidKey = "xprv9s21ZrQH4r4TsiLvyLXqM9P7k1K3EYhA1kkD6xuquB5i39AU8KF42acDyL3qsDbU9NmZn6MsGSUYZEsuoePmjzsB3eFKSUEh3Gu1N3cqVUN"
-        #expect(throws: HDExtendedKeyError.zeroDepthNonZeroIndex) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.zeroDepthNonZeroIndex) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (zero depth with non-zero index)
         invalidKey = "xpub661MyMwAuDcm6CRQ5N4qiHKrJ39Xe1R1NyfouMKTTWcguwVcfrZJaNvhpebzGerh7gucBvzEQWRugZDuDXjNDRmXzSZe4c7mnTK97pTvGS8"
-        #expect(throws: HDExtendedKeyError.zeroDepthNonZeroIndex) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.zeroDepthNonZeroIndex) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (unknown extended key version)
         invalidKey = "DMwo58pR1QLEFihHiXPVykYB6fJmsTeHvyTp7hRThAtCX8CvYzgPcn8XnmdfHGMQzT7ayAmfo4z3gY5KfbrZWZ6St24UVf2Qgo6oujFktLHdHY4"
-        #expect(throws: HDExtendedKeyError.unknownNetwork) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.unknownNetwork) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (unknown extended key version)
         invalidKey = "DMwo58pR1QLEFihHiXPVykYB6fJmsTeHvyTp7hRThAtCX8CvYzgPcn8XnmdfHPmHJiEDXkTiJTVV9rHEBUem2mwVbbNfvT2MTcAqj3nesx8uBf9"
-        #expect(throws: HDExtendedKeyError.unknownNetwork) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.unknownNetwork) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (private key 0 not in 1..n-1)
         invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzF93Y5wvzdUayhgkkFoicQZcP3y52uPPxFnfoLZB21Teqt1VvEHx"
-        #expect(throws: HDExtendedKeyError.invalidSecretKey) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidSecretKey) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (private key n not in 1..n-1)
         invalidKey = "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD5SDKr24z3aiUvKr9bJpdrcLg1y3G"
-        #expect(throws: HDExtendedKeyError.invalidSecretKey) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidSecretKey) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // (invalid pubkey 020000000000000000000000000000000000000000000000000000000000000007)
         invalidKey = "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Q5JXayek4PRsn35jii4veMimro1xefsM58PgBMrvdYre8QyULY"
-        #expect(throws: HDExtendedKeyError.invalidPublicKey) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidPublicKey) {
+            _ = try ExtendedKey(invalidKey)
         }
 
         // GBxrMPHL (invalid checksum)
         invalidKey = "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yu"
-        #expect(throws: HDExtendedKeyError.invalidEncoding) {
-            _ = try HDExtendedKey(invalidKey)
+        #expect(throws: ExtendedKey.Error.invalidEncoding) {
+            _ = try ExtendedKey(invalidKey)
         }
     }
 }

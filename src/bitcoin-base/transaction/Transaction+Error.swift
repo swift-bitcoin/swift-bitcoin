@@ -1,6 +1,6 @@
 import Foundation
 
-/// An error while executing a bitcoin script.
+/// An error while checking a bitcoin transaction.
 enum TransactionError: Error {
     case noInputs,
          noOutputs,

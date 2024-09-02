@@ -18,12 +18,13 @@ struct BIP39Tests {
             let seed = try mnemonicPhrase.toSeed(passphrase: passphrase)
             #expect(seed == expectedSeed)
             let seedData = try #require(Data(hex: seed))
-            let xpriv = try HDExtendedKey(seed: seedData)
+            let xpriv = try ExtendedKey(seed: seedData)
             #expect(xpriv.serialized == expectedXPriv)
         }
     }
 }
 
+// TODO: Replace hex strings with byte array literals
 let testVector: [String: [[String]]] = [
     "cs": [
         [

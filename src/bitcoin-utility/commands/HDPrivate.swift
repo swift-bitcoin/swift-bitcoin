@@ -20,7 +20,7 @@ struct HDPrivate: ParsableCommand {
 
     mutating func run() throws {
         let extendedKeySerialized = privateKey
-        guard let extendedKey = try? HDExtendedKey(extendedKeySerialized) else {
+        guard let extendedKey = try? ExtendedKey(extendedKeySerialized) else {
             throw ValidationError("Invalid extended private key format: extendedKey")
         }
         guard extendedKey.hasSecretKey else {

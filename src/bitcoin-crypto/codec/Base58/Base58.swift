@@ -6,6 +6,7 @@ private let checksumLength = 4
 private let alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz".data(using: .ascii)!
 private let radix = BigUInt(alphabet.count)
 
+/// Produces checksumed Base58 strings used for legacy Bitcoin addresses.
 public struct Base58Encoder {
 
     public init(withChecksum: Bool = true) {
@@ -24,6 +25,7 @@ public struct Base58Encoder {
     }
 }
 
+/// Decodes raw data from Base58 strings.
 public struct Base58Decoder {
 
     public init(withChecksum: Bool = true) {
@@ -85,5 +87,5 @@ private func base58Decode(_ string: String) -> Data? {
 }
 
 private func calculateChecksum(_ data: Data) -> Data {
-    hash256(data).prefix(checksumLength)
+    Data(Hash256.hash(data: data)).prefix(checksumLength)
 }

@@ -73,7 +73,7 @@ let package = Package(
             name: "BitcoinCrypto",
             dependencies: [
                 "ECCHelper",
-                .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
+                .product(name: "Crypto", package: "swift-crypto")
             ],
             path: "src/bitcoin-crypto",
             swiftSettings: [.swiftLanguageMode(.v6)]),
@@ -145,6 +145,7 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
+                "BitcoinTransport",
                 "BitcoinBlockchain",
                 "BitcoinWallet",
                 "BitcoinBase",

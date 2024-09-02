@@ -1,6 +1,6 @@
 import ArgumentParser
 import BitcoinRPC
-import BitcoinBlockchain
+import BitcoinTransport
 
 struct StartP2P: AsyncParsableCommand {
 
