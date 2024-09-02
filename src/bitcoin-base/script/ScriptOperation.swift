@@ -6,7 +6,7 @@ public enum ScriptOperation: Equatable, Sendable {
 
     init?(pushOpCode opCode: UInt8, _ data: Data) {
         var data = data
-        switch(opCode) {
+        switch opCode {
         case 0x01 ... 0x4b:
             let byteCount = Int(opCode)
             guard data.count >= byteCount else { return nil }
@@ -43,41 +43,15 @@ public enum ScriptOperation: Equatable, Sendable {
         }
     }
 
-    func operationPreconditions() {
-        switch(self) {
-        case .pushBytes(let d):
-            precondition(d.count > 0 && d.count <= 75)
-            break
-        case .pushData1(let d):
-            precondition(d.count >= 0 && d.count <= UInt8.max)
-            break
-        case .pushData2(let d):
-            precondition(d.count >= 0 && d.count <= UInt16.max)
-            break
-        case .pushData4(let d):
-            precondition(d.count >= 0 && d.count <= UInt32.max)
-            break
-        case .reserved(let k):
-            precondition(k == 80 || (k >= 137 && k <= 138))
-        case .success(let k):
-            precondition(k == 80 || k == 98 || (k >= 126 && k <= 129) || (k >= 131 && k <= 134) || (k >= 137 && k <= 138) || (k >= 141 && k <= 142) || (k >= 149 && k <= 153) || (k >= 187 && k <= 254))
-        case .constant(let k):
-            precondition(k > 0 && k < 17)
-        case .unknown(let k):
-            precondition(k >= 0xbb && k <= 0xfc)
-        default: break
-        }
-    }
-
     var isPush: Bool {
-        switch(self) {
+        switch self {
         case .zero, .oneNegate, .constant(_), .pushBytes(_), .pushData1(_), .pushData2(_), .pushData4(_): true
         default: false
         }
     }
 
     var isMinimalPush: Bool {
-        switch(self) {
+        switch self {
         case .pushBytes(let data):
             if data.count == 1 {
                 if data.first! >= 1 && data.first! <= 16 {
@@ -100,7 +74,7 @@ public enum ScriptOperation: Equatable, Sendable {
 
     var opCode: UInt8 {
         operationPreconditions()
-        return switch(self) {
+        return switch self {
         case .zero: 0x00
         case .pushBytes(let d): UInt8(d.count)
         case .pushData1(_): 0x4c
@@ -150,8 +124,8 @@ public enum ScriptOperation: Equatable, Sendable {
         case .xor: 0x86
         case .equal: 0x87
         case .equalVerify: 0x88
-        // case .reserved1: 0x89
-        // case .reserved2: 0x8a
+            // case .reserved1: 0x89
+            // case .reserved2: 0x8a
         case .oneAdd: 0x8b
         case .oneSub: 0x8c
         case .twoMul: 0x8d
@@ -209,7 +183,7 @@ public enum ScriptOperation: Equatable, Sendable {
 
     var keyword: String {
         operationPreconditions()
-        return switch(self) {
+        return switch self {
         case .zero: "OP_0"
         case .pushBytes(_): "OP_PUSHBYTES"
         case .pushData1(_): "OP_PUSHDATA1"
@@ -314,120 +288,29 @@ public enum ScriptOperation: Equatable, Sendable {
         }
     }
 
-    func execute(stack: inout [Data], context: inout ScriptContext) throws {
-        operationPreconditions()
-
-        // If branch consideration
-        if !context.evaluateBranch {
-            switch(self) {
-            case .if, .notIf, .else, .endIf, .verIf, .verNotIf, .codeSeparator, .success(_):
-                break
-            default: return
-            }
-        }
-
-        switch(self) {
-        case .zero: opConstant(0, stack: &stack)
-        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): try opPushBytes(data: d, stack: &stack, context: context)
-        case .oneNegate: op1Negate(&stack)
-        case .reserved(_): throw ScriptError.disabledOperation
-        case .success(_): preconditionFailure()
-        case .constant(let k): opConstant(k, stack: &stack)
-        case .noOp: break
-        case .ver: throw ScriptError.disabledOperation
-        case .if: try opIf(&stack, context: &context)
-        case .notIf: try opIf(&stack, isNotIf: true, context: &context)
-        case .verIf, .verNotIf: throw ScriptError.disabledOperation
-        case .else: try opElse(context: &context)
-        case .endIf: try opEndIf(context: &context)
-        case .verify: try opVerify(&stack)
-        case .return: throw ScriptError.disabledOperation
-        case .toAltStack: try opToAltStack(&stack, context: &context)
-        case .fromAltStack: try opFromAltStack(&stack, context: &context)
-        case .twoDrop: try op2Drop(&stack)
-        case .twoDup: try op2Dup(&stack)
-        case .threeDup: try op3Dup(&stack)
-        case .twoOver: try op2Over(&stack)
-        case .twoRot: try op2Rot(&stack)
-        case .twoSwap: try op2Swap(&stack)
-        case .ifDup: try opIfDup(&stack)
-        case .depth: try opDepth(&stack)
-        case .drop: try opDrop(&stack)
-        case .dup: try opDup(&stack)
-        case .nip: try opNip(&stack)
-        case .over: try opOver(&stack)
-        case .pick: try opPick(&stack, context: &context)
-        case .roll: try opRoll(&stack, context: &context)
-        case .rot: try opRot(&stack)
-        case .swap: try opSwap(&stack)
-        case .tuck: try opTuck(&stack)
-        case .cat: throw ScriptError.disabledOperation
-        case .subStr: throw ScriptError.disabledOperation
-        case .left: throw ScriptError.disabledOperation
-        case .right: throw ScriptError.disabledOperation
-        case .size: try opSize(&stack)
-        case .invert: throw ScriptError.disabledOperation
-        case .and: throw ScriptError.disabledOperation
-        case .or: throw ScriptError.disabledOperation
-        case .xor: throw ScriptError.disabledOperation
-        case .equal: try opEqual(&stack)
-        case .equalVerify: try opEqualVerify(&stack)
-        case .oneAdd: try op1Add(&stack, context: &context)
-        case .oneSub:  try op1Sub(&stack, context: &context)
-        case .twoMul: throw ScriptError.disabledOperation
-        case .twoDiv: throw ScriptError.disabledOperation
-        case .negate: try opNegate(&stack, context: &context)
-        case .abs: try opAbs(&stack, context: &context)
-        case .not: try opNot(&stack, context: &context)
-        case .zeroNotEqual: try op0NotEqual(&stack, context: &context)
-        case .add: try opAdd(&stack, context: &context)
-        case .sub: try opSub(&stack, context: &context)
-        case .mul: throw ScriptError.disabledOperation
-        case .div: throw ScriptError.disabledOperation
-        case .mod: throw ScriptError.disabledOperation
-        case .lShift: throw ScriptError.disabledOperation
-        case .rShift: throw ScriptError.disabledOperation
-        case .boolAnd: try opBoolAnd(&stack, context: &context)
-        case .boolOr: try opBoolOr(&stack, context: &context)
-        case .numEqual: try opNumEqual(&stack, context: &context)
-        case .numEqualVerify: try opNumEqualVerify(&stack, context: &context)
-        case .numNotEqual: try opNumNotEqual(&stack, context: &context)
-        case .lessThan: try opLessThan(&stack, context: &context)
-        case .greaterThan: try opGreaterThan(&stack, context: &context)
-        case .lessThanOrEqual: try opLessThanOrEqual(&stack, context: &context)
-        case .greaterThanOrEqual: try opGreaterThanOrEqual(&stack, context: &context)
-        case .min: try opMin(&stack, context: &context)
-        case .max: try opMax(&stack, context: &context)
-        case .within: try opWithin(&stack, context: &context)
-        case .ripemd160: try opRIPEMD160(&stack)
-        case .sha1: try opSHA1(&stack)
-        case .sha256: try opSHA256(&stack)
-        case .hash160: try opHash160(&stack)
-        case .hash256: try opHash256(&stack)
-        case .codeSeparator: try opCodeSeparator(context: &context)
-        case .checkSig: try opCheckSig(&stack, context: &context)
-        case .checkSigVerify: try opCheckSigVerify(&stack, context: &context)
-        case .checkMultiSig:
-            guard context.sigVersion == .base || context.sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
-            try opCheckMultiSig(&stack, context: &context)
-        case .checkMultiSigVerify:
-            guard context.sigVersion == .base || context.sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
-            try opCheckMultiSigVerify(&stack, context: &context)
-        case .noOp1: if context.config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
-        case .checkLockTimeVerify:
-            guard context.config.contains(.checkLockTimeVerify) else { break }
-            try opCheckLockTimeVerify(&stack, context: context)
-        case .checkSequenceVerify:
-            guard context.config.contains(.checkSequenceVerify) else { break }
-            try opCheckSequenceVerify(&stack, context: context)
-        case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: if context.config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
-        case .checkSigAdd:
-            guard context.sigVersion == .witnessV1 else { throw ScriptError.unknownOperation }
-            try opCheckSigAdd(&stack, context: &context)
-        case .unknown(_): throw ScriptError.unknownOperation
-        case .pubKeyHash: throw ScriptError.disabledOperation
-        case .pubKey:  throw ScriptError.disabledOperation
-        case .invalidOpCode: throw ScriptError.disabledOperation
+    func operationPreconditions() {
+        switch self {
+        case .pushBytes(let d):
+            precondition(d.count > 0 && d.count <= 75)
+            break
+        case .pushData1(let d):
+            precondition(d.count >= 0 && d.count <= UInt8.max)
+            break
+        case .pushData2(let d):
+            precondition(d.count >= 0 && d.count <= UInt16.max)
+            break
+        case .pushData4(let d):
+            precondition(d.count >= 0 && d.count <= UInt32.max)
+            break
+        case .reserved(let k):
+            precondition(k == 80 || (k >= 137 && k <= 138))
+        case .success(let k):
+            precondition(k == 80 || k == 98 || (k >= 126 && k <= 129) || (k >= 131 && k <= 134) || (k >= 137 && k <= 138) || (k >= 141 && k <= 142) || (k >= 149 && k <= 153) || (k >= 187 && k <= 254))
+        case .constant(let k):
+            precondition(k > 0 && k < 17)
+        case .unknown(let k):
+            precondition(k >= 0xbb && k <= 0xfc)
+        default: break
         }
     }
 
@@ -435,7 +318,7 @@ public enum ScriptOperation: Equatable, Sendable {
         if case .pushBytes(let d) = self {
             return d.hex
         }
-        return switch(self) {
+        return switch self {
         case .zero:
             "0"
         case .pushData1(let d), .pushData2(let d), .pushData4(let d):
@@ -456,5 +339,191 @@ public enum ScriptOperation: Equatable, Sendable {
             let data = Data(value: value)
             return .pushBytes(data)
         }
+    }
+}
+
+extension ScriptOperation {
+
+    init?(_ data: Data, sigVersion: SigVersion = .base) {
+        var data = data
+        guard data.count > 0 else {
+            return nil
+        }
+        let opCode = data.withUnsafeBytes {  $0.load(as: UInt8.self) }
+        data = data.dropFirst(MemoryLayout.size(ofValue: opCode))
+        switch opCode {
+
+            // OP_ZERO
+        case Self.zero.opCode: self = .zero
+
+            // OP_PUSHBYTES, OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
+        case 0x01 ... 0x4e: self.init(pushOpCode: opCode, data)
+
+        case Self.reserved(80).opCode,
+            Self.reserved(137).opCode ... Self.reserved(138).opCode:
+            self = if sigVersion == .base || sigVersion == .witnessV0 {
+                .reserved(opCode)
+            } else {
+                .success(opCode)
+            }
+
+            // If any opcode numbered 80, 98, 126-129, 131-134, 137-138, 141-142, 149-153, 187-254 is encountered, validation succeeds
+        case Self.success(126).opCode ... Self.success(129).opCode,
+            Self.success(131).opCode ... Self.success(134).opCode,
+            Self.success(141).opCode ... Self.success(142).opCode,
+            Self.success(149).opCode ... Self.success(153).opCode,
+            Self.success(187).opCode ... Self.success(254).opCode:
+            self = .success(opCode)
+
+        case Self.oneNegate.opCode: self = .oneNegate
+
+            // Constants
+        case Self.constant(1).opCode ... Self.constant(16).opCode:
+            self = .constant(opCode - 0x50)
+
+        case Self.noOp.opCode: self = .noOp
+
+            // OP_VER / OP_SUCCESS
+        case Self.ver.opCode:
+            self = if sigVersion == .base || sigVersion == .witnessV0 {
+                .ver
+            } else {
+                .success(opCode)
+            }
+
+        case Self.if.opCode: self = .if
+        case Self.notIf.opCode: self = .notIf
+        case Self.verIf.opCode: self = .verIf
+        case Self.verNotIf.opCode: self = .verNotIf
+        case Self.else.opCode: self = .else
+        case Self.endIf.opCode: self = .endIf
+        case Self.verify.opCode: self = .verify
+        case Self.return.opCode: self = .return
+        case Self.toAltStack.opCode: self = .toAltStack
+        case Self.fromAltStack.opCode: self = .fromAltStack
+        case Self.twoDrop.opCode: self = .twoDrop
+        case Self.twoDup.opCode: self = .twoDup
+        case Self.threeDup.opCode: self = .threeDup
+        case Self.twoOver.opCode: self = .twoOver
+        case Self.twoRot.opCode: self = .twoRot
+        case Self.twoSwap.opCode: self = .twoSwap
+        case Self.ifDup.opCode: self = .ifDup
+        case Self.depth.opCode: self = .depth
+        case Self.drop.opCode: self = .drop
+        case Self.dup.opCode: self = .dup
+        case Self.nip.opCode: self = .nip
+        case Self.over.opCode: self = .over
+        case Self.pick.opCode: self = .pick
+        case Self.roll.opCode: self = .roll
+        case Self.rot.opCode: self = .rot
+        case Self.swap.opCode: self = .swap
+        case Self.tuck.opCode: self = .tuck
+        case Self.cat.opCode: self = .cat
+        case Self.subStr.opCode: self = .subStr
+        case Self.left.opCode: self = .left
+        case Self.right.opCode: self = .right
+        case Self.size.opCode: self = .size
+        case Self.invert.opCode: self = .invert
+        case Self.and.opCode: self = .and
+        case Self.or.opCode: self = .or
+        case Self.xor.opCode: self = .xor
+        case Self.equal.opCode: self = .equal
+        case Self.equalVerify.opCode: self = .equalVerify
+        case Self.oneAdd.opCode: self = .oneAdd
+        case Self.oneSub.opCode: self = .oneSub
+        case Self.twoMul.opCode: self = .twoMul
+        case Self.twoDiv.opCode: self = .twoDiv
+        case Self.negate.opCode: self = .negate
+        case Self.abs.opCode: self = .abs
+        case Self.not.opCode: self = .not
+        case Self.zeroNotEqual.opCode: self = .zeroNotEqual
+        case Self.add.opCode: self = .add
+        case Self.sub.opCode: self = .sub
+        case Self.mul.opCode: self = .mul
+        case Self.div.opCode: self = .div
+        case Self.mod.opCode: self = .mod
+        case Self.lShift.opCode: self = .lShift
+        case Self.rShift.opCode: self = .rShift
+        case Self.boolAnd.opCode: self = .boolAnd
+        case Self.boolOr.opCode: self = .boolOr
+        case Self.numEqual.opCode: self = .numEqual
+        case Self.numEqualVerify.opCode: self = .numEqualVerify
+        case Self.numNotEqual.opCode: self = .numNotEqual
+        case Self.lessThan.opCode: self = .lessThan
+        case Self.greaterThan.opCode: self = .greaterThan
+        case Self.lessThanOrEqual.opCode: self = .lessThanOrEqual
+        case Self.greaterThanOrEqual.opCode: self = .greaterThanOrEqual
+        case Self.min.opCode: self = .min
+        case Self.max.opCode: self = .max
+        case Self.within.opCode: self = .within
+        case Self.ripemd160.opCode: self = .ripemd160
+        case Self.sha1.opCode: self = .sha1
+        case Self.sha256.opCode: self = .sha256
+        case Self.hash160.opCode: self = .hash160
+        case Self.hash256.opCode: self = .hash256
+        case Self.codeSeparator.opCode: self = .codeSeparator
+        case Self.checkSig.opCode: self = .checkSig
+        case Self.checkSigVerify.opCode: self = .checkSigVerify
+        case Self.checkMultiSig.opCode: self = .checkMultiSig
+        case Self.checkMultiSigVerify.opCode: self = .checkMultiSigVerify
+        case Self.noOp1.opCode: self = .noOp1
+        case Self.checkLockTimeVerify.opCode: self = .checkLockTimeVerify
+        case Self.checkSequenceVerify.opCode: self = .checkSequenceVerify
+        case Self.noOp4.opCode: self = .noOp4
+        case Self.noOp5.opCode: self = .noOp5
+        case Self.noOp6.opCode: self = .noOp6
+        case Self.noOp7.opCode: self = .noOp7
+        case Self.noOp8.opCode: self = .noOp8
+        case Self.noOp9.opCode: self = .noOp9
+        case Self.noOp10.opCode: self = .noOp10
+        case Self.checkSigAdd.opCode: self = .checkSigAdd
+        case Self.unknown(0xbb).opCode ... Self.unknown(0xfc).opCode: self = .unknown(opCode)
+        case Self.pubKeyHash.opCode: self = .pubKeyHash
+        case Self.pubKey.opCode: self = .pubKey
+        case Self.invalidOpCode.opCode: self = .invalidOpCode
+
+        default: preconditionFailure()
+        }
+    }
+
+    var data: Data {
+        let opCodeData = withUnsafeBytes(of: opCode) { Data($0) }
+        let lengthData: Data
+        switch self {
+        case .pushData1(let d):
+            lengthData = withUnsafeBytes(of: UInt8(d.count)) { Data($0) }
+        case .pushData2(let d):
+            lengthData = withUnsafeBytes(of: UInt16(d.count)) { Data($0) }
+        case .pushData4(let d):
+            lengthData = withUnsafeBytes(of: UInt32(d.count)) { Data($0) }
+        default:
+            lengthData = Data()
+        }
+        let rawData: Data
+        switch self {
+        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
+            rawData = d
+        default:
+            rawData = Data()
+        }
+        return opCodeData + lengthData + rawData
+    }
+
+    var size: Int {
+        operationPreconditions()
+        let additionalSize: Int
+        switch self {
+        case .pushBytes(let d):
+            additionalSize = d.count
+        case .pushData1(let d):
+            additionalSize = MemoryLayout<UInt8>.size + d.count
+        case .pushData2(let d):
+            additionalSize = MemoryLayout<UInt16>.size + d.count
+        case .pushData4(let d):
+            additionalSize = MemoryLayout<UInt32>.size + d.count
+        default:
+            additionalSize = 0
+        }
+        return MemoryLayout<UInt8>.size + additionalSize
     }
 }

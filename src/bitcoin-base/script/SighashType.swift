@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 public struct SighashType: Sendable {
 
@@ -30,6 +31,23 @@ public struct SighashType: Sendable {
         case Self.sighashAll, Self.sighashNone, Self.sighashSingle: true
         default: false
         }
+    }
+
+    static func splitSchnorrSignature(_ extendedSignature: Data) throws -> (Data, SighashType?) {
+        var sigTmp = extendedSignature
+        let sighashType: SighashType?
+        if sigTmp.count == Signature.extendedSchnorrSignatureLength, let rawValue = sigTmp.popLast(), let maybeHashType = SighashType(rawValue) {
+            // If the sig is 64 bytes long, return Verify(q, hashTapSighash(0x00 || SigMsg(0x00, 0)), sig), where Verify is defined in BIP340.
+            sighashType = maybeHashType
+        } else if sigTmp.count == Signature.schnorrSignatureLength {
+            // If the sig is 65 bytes long, return sig[64] ≠ 0x00 and Verify(q, hashTapSighash(0x00 || SigMsg(sig[64], 0)), sig[0:64]).
+            sighashType = SighashType?.none
+        } else {
+            // Otherwise, fail.
+            throw ScriptError.invalidSchnorrSignatureFormat
+        }
+        let signature = sigTmp
+        return (signature, sighashType)
     }
 
     private static let sighashAll = UInt8(0x01)

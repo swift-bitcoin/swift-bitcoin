@@ -1,16 +1,6 @@
 import Foundation
 import Crypto
 
-#if canImport(Darwin)
-import Darwin
-#elseif canImport(Glibc)
-import Glibc
-#elseif canImport(ucrt)
-import ucrt
-#elseif canImport(WASILibc)
-import WASILibc
-#endif
-
 /// Implementation of the Password-Based Key Derivation Function Version 2 (PBKDF2)  used by BIP39 seed generation from mnemonic.
 ///
 /// See [RFC2898](https://www.ietf.org/rfc/rfc2898.txt) for more information.

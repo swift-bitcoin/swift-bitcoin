@@ -54,19 +54,19 @@ extension BitcoinTransaction {
             witnessProgram = scriptPubKey.witnessProgram
         } else {
             // Execute scriptSig
-            var stack = [Data]()
-            try scriptSig.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
-            let stackTmp = stack // BIP16
+            var context = ScriptContext(transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
+            try context.run(scriptSig)
+            let stackTmp = context.stack // BIP16
 
             // scriptSig and scriptPubKey must be evaluated sequentially on the same stack rather than being simply concatenated (see CVE-2010-5141)
-            try scriptPubKey.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
-            if let last = stack.last, !ScriptBoolean(last).value {
+            try context.run(scriptPubKey, stack: stackTmp)
+            if let last = context.stack.last, !ScriptBoolean(last).value {
                 throw ScriptError.falseReturned
             }
 
             // BIP16
             if isPayToScriptHash {
-                stack = stackTmp
+                var stack = stackTmp
                 guard let data = stack.popLast() else { preconditionFailure() }
 
                 let redeemScript = BitcoinScript(data)
@@ -87,8 +87,8 @@ extension BitcoinTransaction {
                     witnessVersion = .none
                     witnessProgram = .none
 
-                    try redeemScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
-                    if let last = stack.last, !ScriptBoolean(last).value {
+                    try context.run(redeemScript, stack: stack)
+                    if let last = context.stack.last, !ScriptBoolean(last).value {
                         throw ScriptError.falseReturned
                     }
                 }
@@ -99,7 +99,7 @@ extension BitcoinTransaction {
                 witnessProgram = .none
             }
 
-            if !isSegwit && config.contains(.cleanStack) && stack.count != 1 { // BIP62, BIP16
+            if !isSegwit && config.contains(.cleanStack) && context.stack.count != 1 { // BIP62, BIP16
                 throw ScriptError.uncleanStack
             }
         }
@@ -136,17 +136,18 @@ extension BitcoinTransaction {
                 .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
             ], sigVersion: .witnessV0)
 
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
+            var context = ScriptContext(transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
+            try context.run(witnessScript, stack: stack)
 
             // The verification must result in a single TRUE on the stack.
-            guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
+            guard context.stack.count == 1, let last = context.stack.last, ScriptBoolean(last).value else {
                 throw ScriptError.falseReturned
             }
         } else if witnessProgram.count == 32 {
             // If the version byte is 0, and the witness program is 32 bytes: It is interpreted as a pay-to-witness-script-hash (P2WSH) program.
 
             // BIP141: The witnessScript (≤ 10,000 bytes) is popped off the initial witness stack.
-            guard var stack = inputs[inputIndex].witness?.elements, let witnessScriptRaw = stack.popLast() else {
+            guard let witnessScriptRaw = stack.popLast() else {
                 preconditionFailure()
             }
             // This check is repeated inside ``Script.run()``.
@@ -159,11 +160,12 @@ extension BitcoinTransaction {
                 throw ScriptError.wrongWitnessScriptHash
             }
 
+            var context = ScriptContext(transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
             let witnessScript = BitcoinScript(witnessScriptRaw, sigVersion: .witnessV0)
-            try witnessScript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
+            try context.run(witnessScript, stack: stack)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
-            guard stack.count == 1, let last = stack.last, ScriptBoolean(last).value else {
+            guard context.stack.count == 1, let last = context.stack.last, ScriptBoolean(last).value else {
                 throw ScriptError.falseReturned
             }
         } else {
@@ -190,7 +192,7 @@ extension BitcoinTransaction {
 
         // If there is exactly one element left in the witness stack, key path spending is used:
         if stack.count == 1 {
-            let (signatureData, sighashType) = try splitSchnorrSignature(stack[0])
+            let (signatureData, sighashType) = try SighashType.splitSchnorrSignature(stack[0])
             var cache = SighashCache() // TODO: Hold on to cache.
             let sighash = self.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: .none, sighashCache: &cache)
             guard let publicKey = PublicKey(xOnly: witnessProgram) else {
@@ -253,8 +255,9 @@ extension BitcoinTransaction {
             return
         }
 
+        var context = ScriptContext(transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config, tapLeafHash: tapLeafHash)
         let tapscript = BitcoinScript(tapscriptData, sigVersion: .witnessV1)
-        try tapscript.run(&stack, transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: tapLeafHash, config: config)
+        try context.run(tapscript, stack: stack)
     }
 
     /// Signature hash for legacy inputs.

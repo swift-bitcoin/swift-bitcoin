@@ -77,64 +77,6 @@ public struct BitcoinScript: Equatable, Sendable {
 
     // MARK: - Instance Methods
 
-    /// Evaluates the script.
-    public func run(_ stack: inout [Data], transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], tapLeafHash: Data?, config: ScriptConfig) throws {
-
-        // BIP141
-        if (sigVersion == .base || sigVersion == .witnessV0) && size > Self.maxScriptSize {
-            throw ScriptError.scriptSizeLimitExceeded
-        }
-
-        // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains. It is extended to also apply to the size of initial stack.
-        if (sigVersion != .base && sigVersion != .witnessV0) && stack.count > Self.maxStackElements {
-            throw ScriptError.initialStackLimitExceeded
-        }
-
-        // BIP141: The witnessScript is deserialized, and executed after normal script evaluation with the remaining witness stack (≤ 520 bytes for each stack item).
-        // BIP342: Stack element size limit The existing limit of maximum 520 bytes per stack element remains, both in the initial stack and in push opcodes.
-        guard sigVersion == .base || stack.allSatisfy({ $0.count <= Self.maxStackElementSize }) else {
-            throw ScriptError.initialStackMaxElementSizeExceeded
-        }
-
-        var context = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config, script: self, tapLeafHash: tapLeafHash)
-
-        // BIP342: `OP_SUCCESS`
-        if sigVersion != .base && sigVersion != .witnessV0 &&
-           operations.contains(where: { if case .success(_) = $0 { true } else { false }}) {
-            if config.contains(.discourageOpSuccess) {
-                throw ScriptError.disallowedOpSuccess
-            }
-            return // Do not run the script.
-        }
-
-
-        for operation in operations {
-            if (sigVersion == .base || sigVersion == .witnessV0) && !operation.isPush && operation != .reserved(80) {
-                context.nonPushOperations += 1
-                guard context.nonPushOperations <= Self.maxOperations else {
-                    throw ScriptError.operationsLimitExceeded
-                }
-            }
-
-            try operation.execute(stack: &stack, context: &context)
-
-            // BIP141
-            // BIP342: Stack + altstack element count limit The existing limit of 1000 elements in the stack and altstack together after every executed opcode remains.
-            if sigVersion != .base && stack.count + context.altStack.count > Self.maxStackElements {
-                throw ScriptError.stacksLimitExceeded
-            }
-            context.programCounter += operation.size
-            context.operationIndex += 1
-        }
-        guard context.pendingIfOperations.isEmpty, context.pendingElseOperations == 0 else {
-            throw ScriptError.malformedIfElseEndIf
-        }
-    }
-
-    public func run(_ stack: inout [Data], transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], config: ScriptConfig) throws {
-        try run(&stack, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, tapLeafHash: .none, config: config)
-    }
-
     // BIP62
     func checkPushOnly() throws {
         guard operations.allSatisfy(\.isPush), unparsable.isEmpty else {
@@ -161,7 +103,7 @@ public struct BitcoinScript: Equatable, Sendable {
     static let sigopBudgetDecrement = 50
 
     /// BIP342
-    private static let maxStackElements = 1_000
+    static let maxStackElements = 1_000
 
     // MARK: - Type Methods
 
@@ -173,5 +115,53 @@ extension BitcoinScript: ExpressibleByArrayLiteral {
 
     public init(arrayLiteral operations: ScriptOperation...) {
         self.init(operations)
+    }
+}
+
+/// Data extensions.
+extension BitcoinScript {
+
+    /// Creates a script from raw data.
+    ///
+    /// The script will be fully parsed – if possble. Any unparsable data will be stored separately.
+    public init(_ data: Data, sigVersion: SigVersion = .base) {
+        var data = data
+        var operations = [ScriptOperation]()
+        while data.count > 0 {
+            guard let operation = ScriptOperation(data, sigVersion: sigVersion) else {
+                break
+            }
+            operations.append(operation)
+            data = data.dropFirst(operation.size)
+        }
+        self.sigVersion = sigVersion
+        self.operations = operations
+        self.unparsable = data
+    }
+
+    init?(prefixedData: Data, sigVersion: SigVersion = .base) {
+        guard let data = Data(varLenData: prefixedData) else {
+            return nil
+        }
+        self.init(data)
+    }
+
+    // MARK: - Computed Properties
+
+    /// Serialization of the script's operations into raw data. May include unparsable data.
+    public var data: Data {
+        operations.reduce(Data()) { $0 + $1.data } + unparsable
+    }
+
+    var size: Int {
+        operations.reduce(0) { $0 + $1.size } + unparsable.count
+    }
+
+    var prefixedData: Data {
+        data.varLenData
+    }
+
+    var prefixedSize: Int {
+        UInt64(size).varIntSize + size
     }
 }
