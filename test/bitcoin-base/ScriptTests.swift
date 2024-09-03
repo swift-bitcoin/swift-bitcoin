@@ -54,8 +54,9 @@ struct ScriptTests {
         } else if test.expectedErrors.isEmpty {
             #expect(!result)
         } else {
+            var context = ScriptContext(test.flags, transaction: txSpend, inputIndex: 0, previousOutputs: [txCredit.outputs[0]])
             #expect {
-                try txSpend.verifyScript(inputIndex: 0, previousOutputs: [txCredit.outputs[0]], config: test.flags)
+                try txSpend.verifyScript(&context)
             } throws: { error in
                 guard let error = error as? ScriptError else {
                     return false

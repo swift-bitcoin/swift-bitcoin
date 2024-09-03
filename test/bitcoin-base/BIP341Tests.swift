@@ -466,11 +466,11 @@ struct BIP341Tests {
 
             let sigMsg = tx.signatureMessageSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: utxosSpent, sighashCache: &cache)
 
-            #expect(cache.shaAmountsUsed == testCase.intermediary.precomputedUsed.hashAmounts)
-            #expect(cache.shaOutsUsed == testCase.intermediary.precomputedUsed.hashOutputs)
-            #expect(cache.shaPrevoutsUsed == testCase.intermediary.precomputedUsed.hashPrevouts)
-            #expect(cache.shaSequencesUsed == testCase.intermediary.precomputedUsed.hashSequences)
-            #expect(cache.shaScriptPubKeysUsed == testCase.intermediary.precomputedUsed.hashScriptPubkeys)
+            #expect(cache.shaAmountsHit == testCase.intermediary.precomputedUsed.hashAmounts)
+            #expect(cache.shaOutsHit == testCase.intermediary.precomputedUsed.hashOutputs)
+            #expect(cache.shaPrevoutsHit == testCase.intermediary.precomputedUsed.hashPrevouts)
+            #expect(cache.shaSequencesHit == testCase.intermediary.precomputedUsed.hashSequences)
+            #expect(cache.shaScriptPubKeysHit == testCase.intermediary.precomputedUsed.hashScriptPubkeys)
             #expect(sigMsg == expectedSigMsg)
 
             let sighash = tx.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: utxosSpent, sighashCache: &cache)
