@@ -1,22 +1,33 @@
 import Foundation
 
-/// SCRIPT execution context.
+/// Bitcoin SCRIPT execution context.
+///
+/// Use a single `ScriptContext` instance to run multiple scripts sequentially.
 struct ScriptContext {
 
-    init(transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput], config: ScriptConfig, tapLeafHash: Data? = .none) {
+    init(_ config: ScriptConfig, transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput]) {
         self.transaction = transaction
         self.inputIndex = inputIndex
         self.previousOutputs = previousOutputs
         self.config = config
-        self.tapLeafHash = tapLeafHash
     }
 
-    let transaction: BitcoinTransaction
-    let inputIndex: Int
-    let previousOutputs: [TransactionOutput]
     let config: ScriptConfig
+    let transaction: BitcoinTransaction
+    let previousOutputs: [TransactionOutput]
 
     // Internal state
+    var inputIndex: Int {
+        didSet {
+            reset()
+        }
+    }
+
+     /// BIP341
+    var tapLeafHash = Data?.none
+    var leafVersion = UInt8?.none
+    let keyVersion: UInt8? = 0
+
     var script: BitcoinScript = .empty
     var stack: [Data] = []
 
@@ -31,6 +42,9 @@ struct ScriptContext {
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`.
     var lastCodeSeparatorOffset = Int?.none
 
+    /// BIP342
+    var lastCodeSeparatorIndex = Int?.none
+
     /// Support for `OP_TOALTSTACK` and `OP_FROMALTSTACK`.
     var altStack = [Data]()
 
@@ -38,12 +52,8 @@ struct ScriptContext {
     var pendingIfOperations = [Bool?]()
     var pendingElseOperations = 0
 
-    /// BIP342
-    var lastCodeSeparatorIndex = Int?.none
-
-    /// BIP341
-    let tapLeafHash: Data?
-    let keyVersion: UInt8? = 0
+    /// We keep the sighash cache instance inbetween resets / runs / input index updates.
+    var sighashCache = SighashCache()
 
     var previousOutput: TransactionOutput {
         previousOutputs[inputIndex]
@@ -55,12 +65,39 @@ struct ScriptContext {
         script.operations[operationIndex]
     }
 
-    /// Evaluates the script.
-    public mutating func run(_ newScript: BitcoinScript, stack newStack: [Data] = []) throws {
+    /// Support for `OP_IF`, `OP_NOTIF`, `OP_ELSE` and `OP_ENDIF`.
+    var evaluateBranch: Bool {
+        guard let lastEvaluatedIfResult = pendingIfOperations.last(where: { $0 != .none }), let lastEvaluatedIfResult else {
+            return true
+        }
+        return lastEvaluatedIfResult
+    }
+
+    /// BIP143
+    var segwitScriptCode: Data {
+        var scriptData = script.data
+        // if the witnessScript contains any OP_CODESEPARATOR, the scriptCode is the witnessScript but removing everything up to and including the last executed OP_CODESEPARATOR before the signature checking opcode being executed, serialized as scripts inside CTxOut.
+        if let codesepOffset = lastCodeSeparatorOffset {
+            scriptData.removeFirst(codesepOffset + 1)
+        }
+        return scriptData
+    }
+
+    /// BIP342
+    var codeSeparatorPosition: UInt32 {
+        // https://bitcoin.stackexchange.com/questions/115695/what-are-the-last-bytes-for-in-a-taproot-script-path-sighash
+        if let index = lastCodeSeparatorIndex { UInt32(index) } else { UInt32(0xffffffff) }
+    }
+
+    /// Evaluates the script with a new stack. All previous mutable state is reset.
+    public mutating func run(_ newScript: BitcoinScript, stack newStack: [Data] = [], leafVersion: UInt8? = .none, tapLeafHash: Data? = .none) throws {
 
         reset()
         script = newScript
         stack = newStack
+        self.leafVersion = leafVersion
+        self.tapLeafHash = tapLeafHash
+
         if script.sigVersion == .witnessV1 {
             if let witness = transaction.inputs[inputIndex].witness {
                 sigopBudget = BitcoinScript.sigopBudgetBase + witness.size
@@ -92,7 +129,6 @@ struct ScriptContext {
             return // Do not run the script.
         }
 
-
         for operation in script.operations {
             if (sigVersion == .base || sigVersion == .witnessV0) && !operation.isPush && operation != .reserved(80) {
                 nonPushOperations += 1
@@ -101,6 +137,7 @@ struct ScriptContext {
                 }
             }
 
+            // Execute the operation.
             try execute(operation)
 
             // BIP141
@@ -117,25 +154,16 @@ struct ScriptContext {
     }
 
     private mutating func reset() {
-        let copy = ScriptContext(transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config, tapLeafHash: tapLeafHash)
+        let copy = ScriptContext(config, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs)
         programCounter = copy.programCounter
         operationIndex = copy.operationIndex
         nonPushOperations = copy.nonPushOperations
+        sigopBudget = copy.sigopBudget
         lastCodeSeparatorOffset = copy.lastCodeSeparatorOffset
+        lastCodeSeparatorIndex = copy.lastCodeSeparatorIndex
         altStack = copy.altStack
-        programCounter = copy.programCounter
         pendingIfOperations = copy.pendingIfOperations
         pendingElseOperations = copy.pendingElseOperations
-        lastCodeSeparatorIndex = copy.lastCodeSeparatorIndex
-        sigopBudget = copy.sigopBudget
-    }
-
-    /// Support for `OP_IF`, `OP_NOTIF`, `OP_ELSE` and `OP_ENDIF`.
-    var evaluateBranch: Bool {
-        guard let lastEvaluatedIfResult = pendingIfOperations.last(where: { $0 != .none }), let lastEvaluatedIfResult else {
-            return true
-        }
-        return lastEvaluatedIfResult
     }
 
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`. Legacy scripts only.
@@ -175,29 +203,14 @@ struct ScriptContext {
         return scriptCode
     }
 
-    /// BIP143
-    var segwitScriptCode: Data {
-        var scriptData = script.data
-        // if the witnessScript contains any OP_CODESEPARATOR, the scriptCode is the witnessScript but removing everything up to and including the last executed OP_CODESEPARATOR before the signature checking opcode being executed, serialized as scripts inside CTxOut.
-        if let codesepOffset = lastCodeSeparatorOffset {
-            scriptData.removeFirst(codesepOffset + 1)
-        }
-        return scriptData
-    }
-
-    /// BIP342
-    var codeSeparatorPosition: UInt32 {
-        // https://bitcoin.stackexchange.com/questions/115695/what-are-the-last-bytes-for-in-a-taproot-script-path-sighash
-        if let index = lastCodeSeparatorIndex { UInt32(index) } else { UInt32(0xffffffff) }
-    }
-
     /// BIP342
     mutating func checkSigopBudget() throws {
         sigopBudget -= BitcoinScript.sigopBudgetDecrement
         if sigopBudget < 0 { throw ScriptError.sigopBudgetExceeded }
     }
 
-    mutating func execute(_ op: ScriptOperation) throws {
+    // TODO: A public version of this method should check limits as run() does.
+    private mutating func execute(_ op: ScriptOperation) throws {
         op.operationPreconditions()
 
         // If branch consideration
@@ -381,25 +394,5 @@ struct ScriptContext {
         let fifth = stack.removeLast()
         let (first, second, third, fourth) = try getQuaternaryParams()
         return (first, second, third, fourth, fifth, sixth)
-    }
-
-    mutating func getCheckMultiSigParams() throws -> (Int, [Data], Int, [Data]) {
-        guard stack.count > 4 else {
-            throw ScriptError.missingMultiSigArgument
-        }
-        let n = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
-        let publicKeys = Array(stack.suffix(n).reversed())
-        stack.removeLast(n)
-        let m = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
-        let sigs = Array(stack.suffix(m).reversed())
-        stack.removeLast(m)
-        guard stack.count > 0 else {
-            throw ScriptError.missingDummyValue
-        }
-        let dummyValue = stack.removeLast()
-        if config.contains(.nullDummy), dummyValue.count > 0 {
-            throw ScriptError.dummyValueNotNull
-        }
-        return (n, publicKeys, m, sigs)
     }
 }

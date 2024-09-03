@@ -47,8 +47,7 @@ extension ScriptContext {
                     // Tapscript semantics
                     let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
                     let (signatureData, sighashType) = try SighashType.splitSchnorrSignature(sig)
-                    var cache = SighashCache() // TODO: Hold on to cache.
-                    let sighash = transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
+                    let sighash = transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: ext, sighashCache: &sighashCache)
                     guard let signature = Signature(signatureData, type: .schnorr) else {
                         throw ScriptError.invalidSchnorrSignature
                     }
@@ -195,8 +194,7 @@ extension ScriptContext {
             // Tapscript semantics
             let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
             let (signatureData, sighashType) = try SighashType.splitSchnorrSignature(extendedSignatureData)
-            var cache = SighashCache() // TODO: Hold on to cache.
-            let sighash = transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: ext, sighashCache: &cache)
+            let sighash = transaction.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: ext, sighashCache: &sighashCache)
 
             guard let signature = Signature(signatureData, type: .schnorr) else {
                 throw ScriptError.invalidSchnorrSignature
@@ -253,6 +251,26 @@ extension ScriptContext {
     mutating func opSHA256() throws {
         let first = try getUnaryParam()
         stack.append(Data(SHA256.hash(data: first)))
+    }
+
+    private mutating func getCheckMultiSigParams() throws -> (Int, [Data], Int, [Data]) {
+        guard stack.count > 4 else {
+            throw ScriptError.missingMultiSigArgument
+        }
+        let n = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
+        let publicKeys = Array(stack.suffix(n).reversed())
+        stack.removeLast(n)
+        let m = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
+        let sigs = Array(stack.suffix(m).reversed())
+        stack.removeLast(m)
+        guard stack.count > 0 else {
+            throw ScriptError.missingDummyValue
+        }
+        let dummyValue = stack.removeLast()
+        if config.contains(.nullDummy), dummyValue.count > 0 {
+            throw ScriptError.dummyValueNotNull
+        }
+        return (n, publicKeys, m, sigs)
     }
 }
 

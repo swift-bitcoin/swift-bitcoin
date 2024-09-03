@@ -10,9 +10,11 @@ extension BitcoinTransaction {
     // MARK: - Instance Methods
 
     public func verifyScript(previousOutputs: [TransactionOutput], config: ScriptConfig = .standard) -> Bool {
+        var context = ScriptContext(config, transaction: self, inputIndex: 0, previousOutputs: previousOutputs)
         for i in inputs.indices {
+            context.inputIndex = i
             do {
-                try verifyScript(inputIndex: i, previousOutputs: previousOutputs, config: config)
+                try verifyScript(&context)
             } catch {
                 print("\(error) \(error.localizedDescription)")
                 return false
@@ -22,7 +24,10 @@ extension BitcoinTransaction {
     }
 
     /// Initial simplified version of transaction verification that allows for script execution.
-    func verifyScript(inputIndex: Int, previousOutputs: [TransactionOutput], config: ScriptConfig) throws {
+    func verifyScript(_ context: inout ScriptContext) throws {
+        let inputIndex = context.inputIndex
+        let previousOutputs = context.previousOutputs
+        let config = context.config
 
         precondition(previousOutputs.count == inputs.count)
 
@@ -54,7 +59,6 @@ extension BitcoinTransaction {
             witnessProgram = scriptPubKey.witnessProgram
         } else {
             // Execute scriptSig
-            var context = ScriptContext(transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
             try context.run(scriptSig)
             let stackTmp = context.stack // BIP16
 
@@ -108,10 +112,10 @@ extension BitcoinTransaction {
         if isSegwit {
             guard let witnessVersion, let witnessProgram else { preconditionFailure() }
             if witnessVersion == 0 {
-                try verifyWitness(inputIndex: inputIndex, witnessVersion: witnessVersion, witnessProgram: witnessProgram, previousOutputs: previousOutputs, config: config)
+                try verifyWitness(&context, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
             } else if witnessVersion == 1 && witnessProgram.count == 32 && !isPayToScriptHash {
                 // BIP341
-                try verifyTaproot(inputIndex: inputIndex, witnessVersion: witnessVersion, witnessProgram: witnessProgram, previousOutputs: previousOutputs, config: config)
+                try verifyTaproot(&context, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
             } else if config.contains(.discourageUpgradableWitnessProgram) {
                 throw ScriptError.disallowedWitnessVersion
             }
@@ -119,7 +123,9 @@ extension BitcoinTransaction {
         }
     }
 
-    private func verifyWitness(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [TransactionOutput], config: ScriptConfig) throws {
+    private func verifyWitness(_ context: inout ScriptContext, witnessVersion: Int, witnessProgram: Data) throws {
+        let inputIndex = context.inputIndex
+
         guard var stack = inputs[inputIndex].witness?.elements else { preconditionFailure() }
 
         if witnessProgram.count == 20 {
@@ -136,7 +142,6 @@ extension BitcoinTransaction {
                 .dup, .hash160, .pushBytes(witnessProgram), .equalVerify, .checkSig
             ], sigVersion: .witnessV0)
 
-            var context = ScriptContext(transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
             try context.run(witnessScript, stack: stack)
 
             // The verification must result in a single TRUE on the stack.
@@ -160,7 +165,6 @@ extension BitcoinTransaction {
                 throw ScriptError.wrongWitnessScriptHash
             }
 
-            var context = ScriptContext(transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config)
             let witnessScript = BitcoinScript(witnessScriptRaw, sigVersion: .witnessV0)
             try context.run(witnessScript, stack: stack)
 
@@ -175,7 +179,10 @@ extension BitcoinTransaction {
     }
 
     /// BIP341, BIP342
-    private func verifyTaproot(inputIndex: Int, witnessVersion: Int, witnessProgram: Data, previousOutputs: [TransactionOutput], config: ScriptConfig) throws {
+    private func verifyTaproot(_ context: inout ScriptContext, witnessVersion: Int, witnessProgram: Data) throws {
+        let inputIndex = context.inputIndex
+        let previousOutputs = context.previousOutputs
+        let config = context.config
 
         guard let witness = inputs[inputIndex].witness else { preconditionFailure() }
         guard config.contains(.taproot) else { return }
@@ -193,8 +200,7 @@ extension BitcoinTransaction {
         // If there is exactly one element left in the witness stack, key path spending is used:
         if stack.count == 1 {
             let (signatureData, sighashType) = try SighashType.splitSchnorrSignature(stack[0])
-            var cache = SighashCache() // TODO: Hold on to cache.
-            let sighash = self.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: .none, sighashCache: &cache)
+            let sighash = self.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: .none, sighashCache: &context.sighashCache)
             guard let publicKey = PublicKey(xOnly: witnessProgram) else {
                 fatalError()
             }
@@ -255,9 +261,8 @@ extension BitcoinTransaction {
             return
         }
 
-        var context = ScriptContext(transaction: self, inputIndex: inputIndex, previousOutputs: previousOutputs, config: config, tapLeafHash: tapLeafHash)
         let tapscript = BitcoinScript(tapscriptData, sigVersion: .witnessV1)
-        try context.run(tapscript, stack: stack)
+        try context.run(tapscript, stack: stack, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
     }
 
     /// Signature hash for legacy inputs.
@@ -384,12 +389,6 @@ extension BitcoinTransaction {
     }
 
     /// BIP341
-    func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [TransactionOutput], tapscriptExtension: TapscriptExtension? = .none) -> Data {
-        var cache = SighashCache()
-        return signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
-    }
-
-    /// BIP341
     func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, previousOutputs: [TransactionOutput], tapscriptExtension: TapscriptExtension? = .none, sighashCache: inout SighashCache) -> Data {
         var hasher = SHA256(tag: "TapSighash")
         hasher.update(data: signatureMessageSchnorr(sighashType: sighashType, extFlag: tapscriptExtension == .none ? 0 : 1, inputIndex: inputIndex, previousOutputs: previousOutputs, sighashCache: &sighashCache))
@@ -406,6 +405,9 @@ extension BitcoinTransaction {
 
         precondition(previousOutputs.count == inputs.count, "The corresponding (aligned) UTXO for each transaction input is required.")
         precondition(!sighashType.isSingle || inputIndex < outputs.count, "For single hash type, the selected input needs to have a matching output.")
+
+        // For testing purposes we reset the hit count on each precomputed hash
+        sighashCache.resetHits()
 
         // (the original witness stack has two or more witness elements, and the first byte of the last element is 0x50)
         let annex = inputs[inputIndex].witness?.taprootAnnex
@@ -430,54 +432,49 @@ extension BitcoinTransaction {
             let shaPrevouts: Data
             if let cached = sighashCache.shaPrevouts {
                 shaPrevouts = cached
+                sighashCache.shaPrevoutsHit = true
             } else {
                 let prevouts = inputs.reduce(Data()) { $0 + $1.outpoint.data }
                 shaPrevouts = Data(SHA256.hash(data: prevouts))
                 sighashCache.shaPrevouts = shaPrevouts
             }
-            sighashCache.shaPrevoutsUsed = true
             txData.append(shaPrevouts)
 
             // sha_amounts (32): the SHA256 of the serialization of all spent output amounts.
             let shaAmounts: Data
             if let cached = sighashCache.shaAmounts {
                 shaAmounts = cached
+                sighashCache.shaAmountsHit = true
             } else {
                 let amounts = previousOutputs.reduce(Data()) { $0 + $1.valueData }
                 shaAmounts = Data(SHA256.hash(data: amounts))
                 sighashCache.shaAmounts = shaAmounts
             }
-            sighashCache.shaAmountsUsed = true
             txData.append(shaAmounts)
 
             // sha_scriptpubkeys (32): the SHA256 of all spent outputs' scriptPubKeys, serialized as script inside CTxOut.
             let shaScriptPubKeys: Data
             if let cached = sighashCache.shaScriptPubKeys {
                 shaScriptPubKeys = cached
+                sighashCache.shaScriptPubKeysHit = true
             } else {
                 let scriptPubKeys = previousOutputs.reduce(Data()) { $0 + $1.script.prefixedData }
                 shaScriptPubKeys = Data(SHA256.hash(data: scriptPubKeys))
                 sighashCache.shaScriptPubKeys = shaScriptPubKeys
             }
-            sighashCache.shaScriptPubKeysUsed = true
             txData.append(shaScriptPubKeys)
 
             // sha_sequences (32): the SHA256 of the serialization of all input nSequence.
             let shaSequences: Data
             if let cached = sighashCache.shaSequences {
                 shaSequences = cached
+                sighashCache.shaSequencesHit = true
             } else {
                 let sequences = inputs.reduce(Data()) { $0 + $1.sequence.data }
                 shaSequences = Data(SHA256.hash(data: sequences))
                 sighashCache.shaSequences = shaSequences
             }
-            sighashCache.shaSequencesUsed = true
             txData.append(shaSequences)
-        } else {
-            sighashCache.shaPrevoutsUsed = false
-            sighashCache.shaAmountsUsed = false
-            sighashCache.shaScriptPubKeysUsed = false
-            sighashCache.shaSequencesUsed = false
         }
 
         // If hash_type & 3 does not equal SIGHASH_NONE or SIGHASH_SINGLE:
@@ -486,15 +483,13 @@ extension BitcoinTransaction {
             let shaOuts: Data
             if let cached = sighashCache.shaOuts {
                 shaOuts = cached
+                sighashCache.shaOutsHit = true
             } else {
                 let outsData = outputs.reduce(Data()) { $0 + $1.data }
                 shaOuts = Data(SHA256.hash(data: outsData))
                 sighashCache.shaOuts = shaOuts
             }
-            sighashCache.shaOutsUsed = true
             txData.append(shaOuts)
-        } else {
-            sighashCache.shaOutsUsed = false
         }
 
         // Data about this input:
