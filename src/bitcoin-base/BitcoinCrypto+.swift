@@ -2,6 +2,13 @@ import Foundation
 import BitcoinCrypto
 
 /// Extensions for BIP341 taproot.
+extension SecretKey {
+    public var taprootInternalKey: PublicKey {
+        PublicKey(self, requireEvenY: true)
+    }
+}
+
+/// Extensions for BIP341 taproot.
 extension PublicKey {
 
     /// Self is an x-only internal public key.
@@ -43,4 +50,9 @@ extension PublicKey {
         let controlByte = withUnsafeBytes(of: UInt8(leafVersion) + outputKeyYParityBit) { Data($0) }
         return controlByte + xOnlyData + path
     }
+}
+
+extension Signature {
+    /// Standard Schnorr signature extended with the sighash type byte.
+    public static let schnorrSignatureExtendedLength = 65
 }

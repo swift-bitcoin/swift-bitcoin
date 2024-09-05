@@ -51,7 +51,7 @@ Prepare our transaction.
 // Grab block 1's coinbase transaction and output.
 let previousTransaction = await service.blockTransactions[1][0]
 let previousOutput = previousTransaction.outputs[0]
-let outpoint = previousTransaction.outpoint(for: 0)!
+let outpoint = previousTransaction.outpoint(0)!
 
 // Create a new transaction spending from the previous transaction's outpoint.
 let unsignedInput = TransactionInput(outpoint: outpoint, sequence: .final)
