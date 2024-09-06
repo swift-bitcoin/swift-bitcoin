@@ -48,13 +48,13 @@ struct ScriptTests {
                 .init(value: txCredit.outputs[0].value, script: .empty)
             ]
         )
-        let result = txSpend.verifyScript(previousOutputs: [txCredit.outputs[0]], config: test.flags)
+        let result = txSpend.verifyScript(prevouts: [txCredit.outputs[0]], config: test.flags)
         if test.evalTrue {
             #expect(result)
         } else if test.expectedErrors.isEmpty {
             #expect(!result)
         } else {
-            var context = ScriptContext(test.flags, transaction: txSpend, inputIndex: 0, previousOutputs: [txCredit.outputs[0]])
+            var context = ScriptContext(test.flags, transaction: txSpend, inputIndex: 0, prevouts: [txCredit.outputs[0]])
             #expect {
                 try txSpend.verifyScript(&context)
             } throws: { error in

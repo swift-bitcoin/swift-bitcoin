@@ -2,7 +2,8 @@ import Foundation
 
 /// An error while executing a bitcoin script.
 enum ScriptError: Error {
-    case malformedIfElseEndIf,
+    case missingPrevouts,
+         malformedIfElseEndIf,
          missingStackArgument,
          missingAltStackArgument,
          missingMultiSigArgument,

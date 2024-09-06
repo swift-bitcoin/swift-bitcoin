@@ -85,6 +85,13 @@ public struct BitcoinScript: Equatable, Sendable {
         }
     }
 
+    /// Simple script execution ``ScriptContext``
+    public func run(_ config: ScriptConfig = .standard, transaction: BitcoinTransaction = .dummy, inputIndex: Int = 0, prevouts: [TransactionOutput] = [], stack: [Data] = []) throws -> [Data] {
+        var context = ScriptContext(config, transaction: transaction, inputIndex: inputIndex, prevouts: prevouts)
+        try context.run(self, stack: stack)
+        return context.stack
+    }
+
     // MARK: - Type Properties
 
     public static let empty = Self([])
@@ -117,6 +124,12 @@ public struct BitcoinScript: Equatable, Sendable {
         return [.dup, .hash160, .pushBytes(hash), .equalVerify, .checkSig]
     }
 
+    /// This is the script code for signing Pay-to-Witness-Public-Key-Hash inputs. It contains the same operations as a Pay-to-Public-Key-Hash output script but the signature version is bumped to Witness V0.
+    static func segwitPKHScriptCode(_ hash: Data) -> Self {
+        precondition(hash.count == Hash160.Digest.byteCount)
+        return .init([.dup, .hash160, .pushBytes(hash), .equalVerify, .checkSig], sigVersion: .witnessV0)
+    }
+
     public static func payToMultiSignature(_ threshold: Int, of keys: PublicKey...) -> Self {
         precondition(keys.count <= 20 && threshold >= 0 && threshold <= keys.count)
         let keyOps = keys.map { key in
@@ -147,12 +160,17 @@ public struct BitcoinScript: Equatable, Sendable {
 
     public static func payToTaproot(_ publicKey: PublicKey, script: ScriptTree? = .none) -> Self {
         precondition(publicKey.hasEvenY)
-        let outputKey = if let script {
-            publicKey.taprootOutputKey(merkleRoot: script.calcMerkleRoot().1)
-        } else {
-            publicKey.taprootOutputKey()
-        }
+        let outputKey = publicKey.taprootOutputKey(script)
         return [.constant(1), .pushBytes(outputKey.xOnlyData)]
+    }
+
+    public static func dataCarrier(_ message: String) -> Self {
+        let messageData = message.data(using: .utf8)!
+        precondition(messageData.count <= UInt32.max)
+        return [
+            .return,
+            ScriptOperation.encodeMinimally(messageData)
+        ]
     }
 }
 

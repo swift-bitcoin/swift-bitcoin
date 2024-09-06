@@ -160,9 +160,9 @@ extension ScriptContext {
 
         let (signatureData, sighashType) = splitECDSASignature(sig)
         let sighash = if sigVersion == .base {
-            transaction.signatureHash(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
+            transaction.signatureHash(sighashType: sighashType, inputIndex: inputIndex, prevout: prevout, scriptCode: scriptCode)
         } else /* if sigVersion == .witnessV0 */ {
-            transaction.signatureHashSegwit(sighashType: sighashType, inputIndex: inputIndex, previousOutput: previousOutput, scriptCode: scriptCode)
+            transaction.signatureHashSegwit(sighashType: sighashType, inputIndex: inputIndex, prevout: prevout, scriptCode: scriptCode)
         }
         if let publicKey = PublicKey(publicKeyData), let signature = Signature(signatureData, type: .ecdsa) {
             return signature.verify(messageHash: sighash, publicKey: publicKey)
@@ -190,7 +190,7 @@ extension ScriptContext {
 
             let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
             let extendedSignature = try ExtendedSignature(schnorrData: sig)
-            let sighash = transaction.signatureHashSchnorr(sighashType: extendedSignature.sighashType, inputIndex: inputIndex, previousOutputs: previousOutputs, tapscriptExtension: ext, sighashCache: &sighashCache)
+            let sighash = transaction.signatureHashSchnorr(sighashType: extendedSignature.sighashType, inputIndex: inputIndex, prevouts: prevouts, tapscriptExtension: ext, sighashCache: &sighashCache)
 
             // Validation failure in this case immediately terminates script execution with failure.
             guard extendedSignature.signature.verify(messageHash: sighash, publicKey: publicKey) else {

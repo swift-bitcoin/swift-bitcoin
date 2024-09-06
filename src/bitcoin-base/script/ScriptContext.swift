@@ -3,37 +3,44 @@ import Foundation
 /// Bitcoin SCRIPT execution context.
 ///
 /// Use a single `ScriptContext` instance to run multiple scripts sequentially.
-struct ScriptContext {
+public struct ScriptContext {
 
-    init(_ config: ScriptConfig, transaction: BitcoinTransaction, inputIndex: Int, previousOutputs: [TransactionOutput]) {
-        self.transaction = transaction
-        self.inputIndex = inputIndex
-        self.previousOutputs = previousOutputs
-        self.config = config
+    init?(_ config: ScriptConfig = .standard, transaction: BitcoinTransaction, inputIndex: Int = 0, prevout: TransactionOutput) {
+        guard transaction.inputs.count > 0, inputIndex < transaction.inputs.count else {
+            return nil
+        }
+        self.init(config, transaction: transaction, inputIndex: inputIndex, prevouts: [prevout])
     }
 
-    let config: ScriptConfig
-    let transaction: BitcoinTransaction
-    let previousOutputs: [TransactionOutput]
+    public init(_ config: ScriptConfig = .standard, transaction: BitcoinTransaction = .dummy, inputIndex: Int = 0, prevouts: [TransactionOutput] = []) {
+        self.config = config
+        self.transaction = transaction
+        self.inputIndex = inputIndex
+        self.prevouts = prevouts
+    }
+
+    public let config: ScriptConfig
+    public let transaction: BitcoinTransaction
+    public let prevouts: [TransactionOutput]
 
     // Internal state
-    var inputIndex: Int {
+    public internal(set) var inputIndex: Int {
         didSet {
             reset()
         }
     }
 
      /// BIP341
-    var tapLeafHash = Data?.none
-    var leafVersion = UInt8?.none
+    private(set) var tapLeafHash = Data?.none
+    private(set) var leafVersion = UInt8?.none
     let keyVersion: UInt8? = 0
 
-    var script: BitcoinScript = .empty
-    var stack: [Data] = []
+    public private(set) var script: BitcoinScript = .empty
+    public internal(set) var stack: [Data] = []
 
-    var programCounter = 0
-    var operationIndex = 0
-    var nonPushOperations = 0
+    public private(set) var programCounter = 0
+    public private(set) var operationIndex = 0
+    public internal(set) var nonPushOperations = 0
 
     /// BIP342: Tapscript signature operations budget.
     /// Sigops limit The sigops in tapscripts do not count towards the block-wide limit of 80000 (weighted). Instead, there is a per-script sigops budget. The budget equals 50 + the total serialized size in bytes of the transaction input's witness (including the CompactSize prefix). Executing a signature opcode (OP_CHECKSIG, OP_CHECKSIGVERIFY, or OP_CHECKSIGADD) with a non-empty signature decrements the budget by 50. If that brings the budget below zero, the script fails immediately. Signature opcodes with unknown public key type and non-empty signature are also counted.
@@ -55,8 +62,8 @@ struct ScriptContext {
     /// We keep the sighash cache instance inbetween resets / runs / input index updates.
     var sighashCache = SighashCache()
 
-    var previousOutput: TransactionOutput {
-        previousOutputs[inputIndex]
+    var prevout: TransactionOutput {
+        prevouts[inputIndex]
     }
 
     var sigVersion: SigVersion { script.sigVersion }
@@ -101,7 +108,9 @@ struct ScriptContext {
         if script.sigVersion == .witnessV1 {
             if let witness = transaction.inputs[inputIndex].witness {
                 sigopBudget = BitcoinScript.sigopBudgetBase + witness.size
-            } else { preconditionFailure() }
+            } else {
+                sigopBudget = BitcoinScript.sigopBudgetBase
+            }
         }
 
         // BIP141
@@ -153,8 +162,9 @@ struct ScriptContext {
         }
     }
 
+    /// Except stack, cache and input index
     private mutating func reset() {
-        let copy = ScriptContext(config, transaction: transaction, inputIndex: inputIndex, previousOutputs: previousOutputs)
+        let copy = ScriptContext(config, transaction: transaction, prevouts: prevouts)
         programCounter = copy.programCounter
         operationIndex = copy.operationIndex
         nonPushOperations = copy.nonPushOperations

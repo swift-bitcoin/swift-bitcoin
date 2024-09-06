@@ -28,7 +28,7 @@ struct DocumentationExamples {
 
         // Grab block 1's coinbase transaction and output.
         let previousTransaction = await service.blockTransactions[1][0]
-        let previousOutput = previousTransaction.outputs[0]
+        let prevout = previousTransaction.outputs[0]
         let outpoint = previousTransaction.outpoint(0)!
 
         // Create a new transaction spending from the previous transaction's outpoint.
@@ -50,10 +50,10 @@ struct DocumentationExamples {
         // # We now need to sign the transaction using our secret key.
 
         // Sign the transaction by first calculating the signature hash.
-        let sigHash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, previousOutput: previousOutput, scriptCode: previousOutput.script.data)
+        let sighash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, prevout: prevout, scriptCode: prevout.script.data)
 
         // Obtain the signature using our secret key and append the signature hash type.
-        let signature = Signature(messageHash: sigHash, secretKey: secretKey, type: .ecdsa)
+        let signature = Signature(messageHash: sighash, secretKey: secretKey, type: .ecdsa)
         let signatureData = signature.data + [SighashType.all.value]
 
         // Sign our input by including the signature and public key.
@@ -76,7 +76,7 @@ struct DocumentationExamples {
         // # We can verify that the transaction was signed correctly.
 
         // Make sure the transaction was signed correctly by verifying the scripts.
-        let isVerified = signedTransaction.verifyScript(previousOutputs: [previousOutput])
+        let isVerified = signedTransaction.verifyScript(prevouts: [prevout])
 
         #expect(isVerified)
         // Yay! Our transaction is valid.

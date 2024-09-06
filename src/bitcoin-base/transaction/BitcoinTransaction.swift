@@ -82,11 +82,11 @@ public struct BitcoinTransaction: Equatable, Sendable {
         return .init(version: version, locktime: locktime, inputs: .init(newInputs), outputs: outputs)
     }
 
-    public func withWitness(_ witness: InputWitness, input inputIndex: Int) -> Self {
+    public func withWitness(_ witnessElements: [Data], input inputIndex: Int) -> Self {
         precondition(inputs.indices.contains(inputIndex))
         let oldInput = inputs[inputIndex]
         precondition(oldInput.script == .empty)
-        let newInput = TransactionInput(outpoint: oldInput.outpoint, sequence: oldInput.sequence, script: oldInput.script, witness: witness)
+        let newInput = TransactionInput(outpoint: oldInput.outpoint, sequence: oldInput.sequence, script: oldInput.script, witness: .init(witnessElements))
         let newInputs = inputs[..<inputIndex] + [newInput] + inputs[inputIndex.advanced(by: 1)...]
         return .init(version: version, locktime: locktime, inputs: .init(newInputs), outputs: outputs)
     }
@@ -160,6 +160,8 @@ public struct BitcoinTransaction: Equatable, Sendable {
         ])
         return coinbaseTx
     }
+
+    public static let dummy = Self(inputs: [.init(outpoint: .coinbase, sequence: .final)], outputs: [])
 }
 
 extension BitcoinTransaction {

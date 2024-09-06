@@ -3,8 +3,15 @@ import BitcoinCrypto
 
 /// Extensions for BIP341 taproot.
 extension SecretKey {
+
     public var taprootInternalKey: PublicKey {
         PublicKey(self, requireEvenY: true)
+    }
+
+    public func taprootSecretKey(_ scriptTree: ScriptTree? = .none) -> Self {
+        let merkleRoot = if let scriptTree { scriptTree.calcMerkleRoot().1 } else { Data() }
+        let tweak = taprootInternalKey.tapTweak(merkleRoot: merkleRoot)
+        return tweakXOnly(tweak)
     }
 }
 
@@ -18,9 +25,15 @@ extension PublicKey {
         return Data(SHA256.hash(data: xOnlyData + merkleRoot, tag: "TapTweak"))
     }
 
-    /// Used in BitcoinWallet/TaprootAddress as well as internally.
-    package func taprootOutputKey(merkleRoot: Data = .init()) -> PublicKey {
-        tweakXOnly(tapTweak(merkleRoot: merkleRoot))
+    /// Used in BitcoinWallet/TaprootAddress.
+    package func taprootOutputKey(_ scriptTree: ScriptTree? = .none) -> PublicKey {
+        let merkleRoot = if let scriptTree { scriptTree.calcMerkleRoot().1 } else { Data() }
+        return taprootOutputKey(merkleRoot: merkleRoot)
+    }
+
+    /// Used in BIP341 tests as well as internally.
+    package func taprootOutputKey(merkleRoot: Data) -> PublicKey {
+        return tweakXOnly(tapTweak(merkleRoot: merkleRoot))
     }
 
     /// Used exclusively  in `BIP341Tests`.

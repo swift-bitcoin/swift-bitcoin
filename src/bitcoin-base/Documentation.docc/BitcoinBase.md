@@ -15,7 +15,7 @@ _BitcoinBase_ basic usage:
 import BitcoinBase
 
 let previousTransaction: BitcoinTransaction = …
-let previousOutput = previousTransaction.outputs[0]
+let prevout = previousTransaction.outputs[0]
 let outpoint = previousTransaction.outpoint(0)!
 
 // Create a new transaction spending from the previous transaction's outpoint.
@@ -35,7 +35,7 @@ let unsignedTransaction = BitcoinTransaction(
     ])
 
 // Sign the transaction by first calculating the signature hash.
-let sigHash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, previousOutput: previousOutput, scriptCode: previousOutput.script.data)
+let sighash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, prevout: prevout, scriptCode: prevout.script.data)
 …
 ```
 

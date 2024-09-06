@@ -1,7 +1,7 @@
 import Foundation
 import BitcoinCrypto
 
-public struct SighashType: Sendable {
+public struct SighashType: Equatable, Sendable {
 
     init?(_ value: UInt8) {
         self.value = value
@@ -10,19 +10,19 @@ public struct SighashType: Sendable {
 
     public let value: UInt8
 
-    var isAll: Bool {
+    public var isAll: Bool {
         value & Self.maskAnyCanPay == Self.sighashAll
     }
 
-    var isNone: Bool {
+    public var isNone: Bool {
         value & Self.maskAnyCanPay == Self.sighashNone
     }
 
-    var isSingle: Bool {
+    public var isSingle: Bool {
         value & Self.maskAnyCanPay == Self.sighashSingle
     }
 
-    var isAnyCanPay: Bool {
+    public var isAnyCanPay: Bool {
         value & Self.sighashAnyCanPay == Self.sighashAnyCanPay
     }
 
@@ -48,38 +48,38 @@ public struct SighashType: Sendable {
 }
 
 /// BIP341: Used to represent the `default` signature hash type.
-extension Optional where Wrapped == SighashType {
-
-    private var assumed: SighashType { .all }
-
-    var isNone: Bool {
-        if case let .some(wrapped) = self {
-            return wrapped.isNone
-        }
-        return assumed.isNone
-    }
-
-    var isAll: Bool {
-        if case let .some(wrapped) = self {
-            return wrapped.isAll
-        }
-        return assumed.isAll
-    }
-
-    var isSingle: Bool {
-        if case let .some(wrapped) = self {
-            return wrapped.isSingle
-        }
-        return assumed.isSingle
-    }
-
-    var isAnyCanPay: Bool {
-        if case let .some(wrapped) = self {
-            return wrapped.isAnyCanPay
-        }
-        return assumed.isAnyCanPay
-    }
-}
+//extension Optional where Wrapped == SighashType {
+//
+//    private var assumed: SighashType { .all }
+//
+//    var isNone: Bool {
+//        if case let .some(wrapped) = self {
+//            return wrapped.isNone
+//        }
+//        return assumed.isNone
+//    }
+//
+//    var isAll: Bool {
+//        if case let .some(wrapped) = self {
+//            return wrapped.isAll
+//        }
+//        return assumed.isAll
+//    }
+//
+//    var isSingle: Bool {
+//        if case let .some(wrapped) = self {
+//            return wrapped.isSingle
+//        }
+//        return assumed.isSingle
+//    }
+//
+//    var isAnyCanPay: Bool {
+//        if case let .some(wrapped) = self {
+//            return wrapped.isAnyCanPay
+//        }
+//        return assumed.isAnyCanPay
+//    }
+//}
 
 extension SighashType {
 
@@ -100,9 +100,6 @@ extension SighashType {
 extension Optional where Wrapped == SighashType {
 
     var data: Data {
-        if case let .some(wrapped) = self {
-            return wrapped.data
-        }
-        return Data([0x00])
+        return if case let .some(wrapped) = self { wrapped.data } else { Data([0x00]) }
     }
 }
