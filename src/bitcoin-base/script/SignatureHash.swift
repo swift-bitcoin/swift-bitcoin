@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 public struct SignatureHash {
 
@@ -59,6 +60,9 @@ public struct SignatureHash {
         } else {
             sigVersion = .base
         }
+        if (sigVersion == .base || sigVersion == .witnessV0) && sighashType == Optional.none {
+            sighashType = .all
+        }
     }
 
     public mutating func set(input: Int, prevouts newPrevouts: [TransactionOutput]? = .none) {
@@ -79,6 +83,9 @@ public struct SignatureHash {
         } else {
             // This will eventually fail to produce a sighash since we are setting too many outputs
             sigVersion = .base
+        }
+        if (sigVersion == .base || sigVersion == .witnessV0) && sighashType == Optional.none {
+            sighashType = .all
         }
     }
 
@@ -116,7 +123,7 @@ extension BitcoinTransaction {
     ///   - prevout: Previous unspent transaction output corresponding to the transaction input being signed/verified.
     ///   - scriptCode: The executed script. For Pay-to-Script-Hash outputs it should correspond to the redeem script.
     /// - Returns: A hash value for use while either signing or verifying a transaction input.
-    public func signatureHash(sighashType: SighashType, inputIndex: Int, prevout: TransactionOutput, scriptCode: Data? = .none) -> Data {
+    func signatureHash(sighashType: SighashType, inputIndex: Int, prevout: TransactionOutput, scriptCode: Data? = .none) -> Data {
         if sighashType.isSingle && inputIndex >= outputs.count {
             // Note: The transaction that uses SIGHASH_SINGLE type of signature should not have more inputs than outputs. However if it does (because of the pre-existing implementation), it shall not be rejected, but instead for every "illegal" input (meaning: an input that has an index bigger than the maximum output index) the node should still verify it, though assuming the hash of 0000000000000000000000000000000000000000000000000000000000000001
             //
@@ -130,7 +137,7 @@ extension BitcoinTransaction {
     }
 
     /// Aka sigMsg. See https://en.bitcoin.it/wiki/OP_CHECKSIG
-    public func signatureMessage(sighashType: SighashType, inputIndex: Int, scriptCode: Data) -> Data {
+    func signatureMessage(sighashType: SighashType, inputIndex: Int, scriptCode: Data) -> Data {
         var newIns = [TransactionInput]()
         if sighashType.isAnyCanPay {
             // Procedure for Hashtype SIGHASH_ANYONECANPAY
@@ -183,7 +190,7 @@ extension BitcoinTransaction {
     }
 
     /// BIP143
-    public func signatureHashSegwit(sighashType: SighashType, inputIndex: Int, prevout: TransactionOutput, scriptCode scriptCodeCandidate: Data? = .none) -> Data {
+    func signatureHashSegwit(sighashType: SighashType, inputIndex: Int, prevout: TransactionOutput, scriptCode scriptCodeCandidate: Data? = .none) -> Data {
         let scriptCode: Data
         if prevout.script.isSegwit, prevout.script.witnessProgram.count == Hash160.Digest.byteCount {
             scriptCode = BitcoinScript.segwitPKHScriptCode(prevout.script.witnessProgram).data
@@ -197,7 +204,7 @@ extension BitcoinTransaction {
     }
 
     /// BIP143: SegWit v0 signature message (sigMsg).
-    public func signatureMessageSegwit(sighashType: SighashType, inputIndex: Int, scriptCode: Data, amount: BitcoinAmount) -> Data {
+    func signatureMessageSegwit(sighashType: SighashType, inputIndex: Int, scriptCode: Data, amount: BitcoinAmount) -> Data {
         //If the ANYONECANPAY flag is not set, hashPrevouts is the double SHA256 of the serialization of all input outpoints;
         // Otherwise, hashPrevouts is a uint256 of 0x0000......0000.
         var hashPrevouts: Data
@@ -243,7 +250,7 @@ extension BitcoinTransaction {
     }
 
     /// BIP341
-    public func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, prevouts: [TransactionOutput]) -> Data {
+    func signatureHashSchnorr(sighashType: SighashType?, inputIndex: Int, prevouts: [TransactionOutput]) -> Data {
         var sighashCache = SighashCache()
         return signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, prevouts: prevouts, sighashCache: &sighashCache)
     }
@@ -401,17 +408,3 @@ extension BitcoinTransaction {
         return sigMsg
     }
 }
-
-private func computeMerkleRoot(controlBlock: Data, tapLeafHash: Data) -> Data {
-    let pathLen = (controlBlock.count - taprootControlBaseSize) / taprootControlNodeSize
-    var k = tapLeafHash
-    for i in 0 ..< pathLen {
-        let startIndex = controlBlock.startIndex.advanced(by: taprootControlBaseSize + taprootControlNodeSize * i)
-        let endIndex = startIndex.advanced(by: taprootControlNodeSize)
-        let node = controlBlock[startIndex ..< endIndex]
-        let payload = k.lexicographicallyPrecedes(node) ? k + node : node + k
-        k = Data(SHA256.hash(data: payload, tag: "TapBranch"))
-    }
-    return k
-}
-

@@ -8,7 +8,6 @@ struct DocumentationExamples {
         // Generate a secret key, corresponding public key, hash and address.
         let secretKey = SecretKey()
         let publicKey = secretKey.publicKey
-        let publicKeyHash = Data(Hash160.hash(data: publicKey.data))
         let address = BitcoinAddress(publicKey, mainnet: false).description
 
         // # Prepare the Bitcoin service.
@@ -38,23 +37,17 @@ struct DocumentationExamples {
         let unsignedTransaction = BitcoinTransaction(
             inputs: [unsignedInput],
             outputs: [
-                .init(value: 49_99_999_000, script: .init([
-                    .dup,
-                    .hash160,
-                    .pushBytes(publicKeyHash),
-                    .equalVerify,
-                    .checkSig
-                ]))
+                .init(value: 49_99_999_000, script: .payToPublicKeyHash(publicKey))
             ])
 
         // # We now need to sign the transaction using our secret key.
 
         // Sign the transaction by first calculating the signature hash.
-        let sighash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, prevout: prevout, scriptCode: prevout.script.data)
+        let sighash = try SignatureHash(transaction: unsignedTransaction, input: 0, prevout: prevout).value
 
         // Obtain the signature using our secret key and append the signature hash type.
-        let signature = Signature(messageHash: sighash, secretKey: secretKey, type: .ecdsa)
-        let signatureData = signature.data + [SighashType.all.value]
+        let signature = try #require(Signature(messageHash: sighash, secretKey: secretKey, type: .ecdsa))
+        let signatureData = ExtendedSignature(signature, .all).data
 
         // Sign our input by including the signature and public key.
         let signedInput = TransactionInput(
@@ -97,7 +90,8 @@ struct DocumentationExamples {
         // In this case we can use the address we created before.
 
         // Decode the address to get the public key hash.
-        let decodedPublicKeyHash = BitcoinAddress(address)!.hash
+        let publicKeyHash = Data(Hash160.hash(data: publicKey.data))
+        let decodedPublicKeyHash = try #require(BitcoinAddress(address)?.hash)
         #expect(publicKeyHash == decodedPublicKeyHash)
 
         // Minde to the public key hash

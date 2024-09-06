@@ -13,7 +13,6 @@ struct BitcoinServiceTests {
         // Generate a secret key, corresponding public key, hash and address.
         let secretKey = SecretKey()
         let publicKey = secretKey.publicKey
-        let publicKeyHash = Data(Hash160.hash(data: publicKey.data))
 
         // Instantiate a fresh Bitcoin service (regtest).
         let service = BitcoinService()
@@ -38,28 +37,22 @@ struct BitcoinServiceTests {
         let unsignedTransaction = BitcoinTransaction(
             inputs: [unsignedInput],
             outputs: [
-                .init(value: 49_99_999_000, script: .init([
-                    .dup,
-                    .hash160,
-                    .pushBytes(publicKeyHash),
-                    .equalVerify,
-                    .checkSig
-                ]))
+                .init(value: 49_99_999_000, script: .payToPublicKeyHash(publicKey))
             ])
 
         // Sign the transaction by first calculating the signature hash.
-        let sighash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, prevout: prevout, scriptCode: prevout.script.data)
+        let sighash = try SignatureHash(transaction: unsignedTransaction, input: 0, prevout: prevout).value
 
         // Obtain the signature using our secret key and append the signature hash type.
         let signature = try #require(Signature(messageHash: sighash, secretKey: secretKey, type: .ecdsa))
-        let sig = signature.data + [SighashType.all.value]
+        let signatureData = ExtendedSignature(signature, .all).data
 
         // Sign our input by including the signature and public key.
         let signedInput = TransactionInput(
             outpoint: unsignedInput.outpoint,
             sequence: unsignedInput.sequence,
             script: .init([
-                .pushBytes(sig),
+                .pushBytes(signatureData),
                 .pushBytes(publicKey.data)
             ]),
             witness: unsignedInput.witness)

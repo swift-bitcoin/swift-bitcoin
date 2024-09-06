@@ -261,3 +261,17 @@ extension BitcoinTransaction {
         try context.run(tapscript, stack: stack, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
     }
 }
+
+private func computeMerkleRoot(controlBlock: Data, tapLeafHash: Data) -> Data {
+    let pathLen = (controlBlock.count - taprootControlBaseSize) / taprootControlNodeSize
+    var k = tapLeafHash
+    for i in 0 ..< pathLen {
+        let startIndex = controlBlock.startIndex.advanced(by: taprootControlBaseSize + taprootControlNodeSize * i)
+        let endIndex = startIndex.advanced(by: taprootControlNodeSize)
+        let node = controlBlock[startIndex ..< endIndex]
+        let payload = k.lexicographicallyPrecedes(node) ? k + node : node + k
+        k = Data(SHA256.hash(data: payload, tag: "TapBranch"))
+    }
+    return k
+}
+
