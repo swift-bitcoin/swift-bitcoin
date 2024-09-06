@@ -103,6 +103,10 @@ public struct SignatureHash {
     } }
 }
 
+// TODO: Deduplicate these variables which also exist on BitcoinTransaction+Verification.swift
+private let taprootControlBaseSize = 33
+private let taprootControlNodeSize = 32
+
 // TODO: Move into the SignatureHash struct and out of the BitcoinTransaction struct.
 extension BitcoinTransaction {
     /// Signature hash for legacy inputs.

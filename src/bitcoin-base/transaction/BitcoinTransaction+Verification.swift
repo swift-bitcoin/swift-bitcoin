@@ -1,6 +1,7 @@
 import Foundation
 import BitcoinCrypto
 
+// TODO: Deduplicate these variables which also exist on SignatureHash.swift
 private let taprootControlBaseSize = 33
 private let taprootControlNodeSize = 32
 
