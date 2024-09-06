@@ -336,8 +336,21 @@ public enum ScriptOperation: Equatable, Sendable {
         case 1...16:
             return .constant(UInt8(value))
         default:
-            let data = Data(value: value)
-            return .pushBytes(data)
+            guard let number = try? ScriptNumber(value) else {
+                preconditionFailure()
+            }
+            return encodeMinimally(number.data)
+        }
+    }
+
+    public static func encodeMinimally(_ data: Data) -> ScriptOperation {
+        switch data.count {
+        case 0: .zero
+        case 1...75: .pushBytes(data)
+        case 76...Int(UInt8.max): .pushData1(data)
+        case (Int(UInt8.max) + 1)...Int(UInt16.max): .pushData2(data)
+        case (Int(UInt16.max) + 1)...Int(UInt32.max): .pushData4(data)
+        default: preconditionFailure()
         }
     }
 }

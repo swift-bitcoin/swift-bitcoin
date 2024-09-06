@@ -16,8 +16,7 @@ public struct TaprootAddress: CustomStringConvertible {
             return
         }
         let scriptTree = ScriptTree(scripts.map(\.data), leafVersion: 192)
-        let (_, merkleRoot) = scriptTree.calcMerkleRoot()
-        outputKey = publicKey.taprootOutputKey(merkleRoot: merkleRoot)
+        outputKey = publicKey.taprootOutputKey(scriptTree)
     }
 
     public var description: String {

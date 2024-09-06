@@ -66,11 +66,29 @@ public struct BitcoinTransaction: Equatable, Sendable {
     // MARK: - Instance Methods
 
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``TransactionInput`` instance.
-    public func outpoint(for output: Int) -> TransactionOutpoint? {
+    public func outpoint(_ output: Int) -> TransactionOutpoint? {
         guard output < outputs.count else {
             return .none
         }
         return .init(transaction: identifier, output: output)
+    }
+
+    public func withUnlockScript(_ script: BitcoinScript, input inputIndex: Int) -> Self {
+        precondition(script.sigVersion == .base && inputs.indices.contains(inputIndex))
+        let oldInput = inputs[inputIndex]
+        precondition(oldInput.witness == .none)
+        let newInput = TransactionInput(outpoint: oldInput.outpoint, sequence: oldInput.sequence, script: script, witness: oldInput.witness)
+        let newInputs = inputs[..<inputIndex] + [newInput] + inputs[inputIndex.advanced(by: 1)...]
+        return .init(version: version, locktime: locktime, inputs: .init(newInputs), outputs: outputs)
+    }
+
+    public func withWitness(_ witnessElements: [Data], input inputIndex: Int) -> Self {
+        precondition(inputs.indices.contains(inputIndex))
+        let oldInput = inputs[inputIndex]
+        precondition(oldInput.script == .empty)
+        let newInput = TransactionInput(outpoint: oldInput.outpoint, sequence: oldInput.sequence, script: oldInput.script, witness: .init(witnessElements))
+        let newInputs = inputs[..<inputIndex] + [newInput] + inputs[inputIndex.advanced(by: 1)...]
+        return .init(version: version, locktime: locktime, inputs: .init(newInputs), outputs: outputs)
     }
 
     // MARK: - Type Properties
@@ -142,6 +160,8 @@ public struct BitcoinTransaction: Equatable, Sendable {
         ])
         return coinbaseTx
     }
+
+    public static let dummy = Self(inputs: [.init(outpoint: .coinbase, sequence: .final)], outputs: [])
 }
 
 extension BitcoinTransaction {

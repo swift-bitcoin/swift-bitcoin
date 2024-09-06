@@ -8,7 +8,6 @@ struct DocumentationExamples {
         // Generate a secret key, corresponding public key, hash and address.
         let secretKey = SecretKey()
         let publicKey = secretKey.publicKey
-        let publicKeyHash = Data(Hash160.hash(data: publicKey.data))
         let address = BitcoinAddress(publicKey, mainnet: false).description
 
         // # Prepare the Bitcoin service.
@@ -28,8 +27,8 @@ struct DocumentationExamples {
 
         // Grab block 1's coinbase transaction and output.
         let previousTransaction = await service.blockTransactions[1][0]
-        let previousOutput = previousTransaction.outputs[0]
-        let outpoint = previousTransaction.outpoint(for: 0)!
+        let prevout = previousTransaction.outputs[0]
+        let outpoint = previousTransaction.outpoint(0)!
 
         // Create a new transaction spending from the previous transaction's outpoint.
         let unsignedInput = TransactionInput(outpoint: outpoint, sequence: .final)
@@ -38,23 +37,17 @@ struct DocumentationExamples {
         let unsignedTransaction = BitcoinTransaction(
             inputs: [unsignedInput],
             outputs: [
-                .init(value: 49_99_999_000, script: .init([
-                    .dup,
-                    .hash160,
-                    .pushBytes(publicKeyHash),
-                    .equalVerify,
-                    .checkSig
-                ]))
+                .init(value: 49_99_999_000, script: .payToPublicKeyHash(publicKey))
             ])
 
         // # We now need to sign the transaction using our secret key.
 
         // Sign the transaction by first calculating the signature hash.
-        let sigHash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, previousOutput: previousOutput, scriptCode: previousOutput.script.data)
+        let sighash = try SignatureHash(transaction: unsignedTransaction, input: 0, prevout: prevout).value
 
         // Obtain the signature using our secret key and append the signature hash type.
-        let signature = Signature(messageHash: sigHash, secretKey: secretKey, type: .ecdsa)
-        let signatureData = signature.data + [SighashType.all.value]
+        let signature = try #require(Signature(messageHash: sighash, secretKey: secretKey, type: .ecdsa))
+        let signatureData = ExtendedSignature(signature, .all).data
 
         // Sign our input by including the signature and public key.
         let signedInput = TransactionInput(
@@ -76,7 +69,7 @@ struct DocumentationExamples {
         // # We can verify that the transaction was signed correctly.
 
         // Make sure the transaction was signed correctly by verifying the scripts.
-        let isVerified = signedTransaction.verifyScript(previousOutputs: [previousOutput])
+        let isVerified = signedTransaction.verifyScript(prevouts: [prevout])
 
         #expect(isVerified)
         // Yay! Our transaction is valid.
@@ -97,7 +90,8 @@ struct DocumentationExamples {
         // In this case we can use the address we created before.
 
         // Decode the address to get the public key hash.
-        let decodedPublicKeyHash = BitcoinAddress(address)!.hash
+        let publicKeyHash = Data(Hash160.hash(data: publicKey.data))
+        let decodedPublicKeyHash = try #require(BitcoinAddress(address)?.hash)
         #expect(publicKeyHash == decodedPublicKeyHash)
 
         // Minde to the public key hash

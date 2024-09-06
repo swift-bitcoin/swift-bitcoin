@@ -6,14 +6,14 @@ extension BitcoinTransaction {
 
 extension BitcoinScript {
     func run(_ stack: inout [Data]) throws {
-        var context = ScriptContext(.standard, transaction: .empty, inputIndex: -1, previousOutputs: [])
+        var context = ScriptContext(.standard, transaction: .empty, inputIndex: -1, prevouts: [])
         try context.run(self, stack: stack)
         stack = context.stack
     }
 
     func runV1(_ stack: inout [Data]) throws {
         let config = ScriptConfig.standard.subtracting(.discourageOpSuccess)
-        var context = ScriptContext(config, transaction: .init(version: .v1, locktime: .init(0), inputs: [.init(outpoint: .coinbase, sequence: .final, script: .empty, witness: .init([]))], outputs: []), inputIndex: 0, previousOutputs: [])
+        var context = ScriptContext(config, transaction: .init(version: .v1, locktime: .init(0), inputs: [.init(outpoint: .coinbase, sequence: .final, script: .empty, witness: .init([]))], outputs: []), inputIndex: 0, prevouts: [])
         try context.run(self, stack: stack)
         stack = context.stack
     }

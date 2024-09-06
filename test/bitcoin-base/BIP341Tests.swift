@@ -227,7 +227,7 @@ struct BIP341Tests {
         )
 
         var cache = SighashCache()
-        _ = tx.signatureMessageSchnorr(sighashType: SighashType?.none, inputIndex: 0, previousOutputs: utxosSpent, sighashCache: &cache)
+        _ = tx.signatureMessageSchnorr(sighashType: SighashType?.none, inputIndex: 0, prevouts: utxosSpent, sighashCache: &cache)
         if let shaAmounts = cache.shaAmounts, let shaOuts = cache.shaOuts, let shaPrevouts = cache.shaPrevouts, let shaScriptPubKeys = cache.shaScriptPubKeys, let shaSequences = cache.shaSequences {
             #expect(shaAmounts == intermediary.hashAmounts)
             #expect(shaOuts == intermediary.hashOutputs)
@@ -464,7 +464,7 @@ struct BIP341Tests {
             let tweakedSecretKey = secretKey.tweakXOnly(tweak)
             #expect(tweakedSecretKey.data == expectedTweakedSecretKey)
 
-            let sigMsg = tx.signatureMessageSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: utxosSpent, sighashCache: &cache)
+            let sigMsg = tx.signatureMessageSchnorr(sighashType: sighashType, inputIndex: inputIndex, prevouts: utxosSpent, sighashCache: &cache)
 
             #expect(cache.shaAmountsHit == testCase.intermediary.precomputedUsed.hashAmounts)
             #expect(cache.shaOutsHit == testCase.intermediary.precomputedUsed.hashOutputs)
@@ -473,7 +473,7 @@ struct BIP341Tests {
             #expect(cache.shaScriptPubKeysHit == testCase.intermediary.precomputedUsed.hashScriptPubkeys)
             #expect(sigMsg == expectedSigMsg)
 
-            let sighash = tx.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, previousOutputs: utxosSpent, sighashCache: &cache)
+            let sighash = tx.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, prevouts: utxosSpent, sighashCache: &cache)
             #expect(sighash == expectedSighash)
 
             let hashTypeSuffix: Data

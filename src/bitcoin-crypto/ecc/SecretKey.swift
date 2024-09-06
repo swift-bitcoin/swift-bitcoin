@@ -45,6 +45,10 @@ public struct SecretKey: Equatable, CustomStringConvertible {
         .init(message: message, secretKey: self, type: signatureType, recoverCompressedKeys: recoverCompressedKeys)
     }
 
+    public func sign(messageHash: Data, signatureType: SignatureType = .schnorr, recoverCompressedKeys: Bool = true) -> Signature? {
+        .init(messageHash: messageHash, secretKey: self, type: signatureType, recoverCompressedKeys: recoverCompressedKeys)
+    }
+
     /// BIP32: Used to derive private keys. Requires global signing context to be initialized.
     public func tweak(_ tweak: Data) -> SecretKey {
         var secretKeyBytes = [UInt8](data)

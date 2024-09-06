@@ -217,7 +217,6 @@ public struct Signature: Equatable, Sendable, CustomStringConvertible {
     public static let ecdsaSignatureMinLength = 8
 
     /// Standard Schnorr signature extended with the sighash type byte.
-    public static let extendedSchnorrSignatureLength = 65
     public static let schnorrSignatureLength = 64
 
     /// ECDSA Compact Signature (with non-recoverable public key)
