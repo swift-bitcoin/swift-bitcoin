@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import BitcoinCrypto
 
-// TODO: Re-enable last test case once github can process it without swift test -q
 struct RIPEMD160Tests {
 
     /// Test vectors from: https://homes.esat.kuleuven.be/~bosselae/ripemd160.html

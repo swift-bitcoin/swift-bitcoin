@@ -1,9 +1,6 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// TODO: Remove once linux does not require the package anymore, the way macOS doesn't.
-let swiftTesting = Target.Dependency.product(name: "Testing", package: "swift-testing", condition: .when(platforms: [.linux]))
-
 let package = Package(
     name: "swift-bitcoin",
     platforms: [.macOS(.v14), .iOS(.v17), .macCatalyst(.v17), .tvOS(.v17), .watchOS(.v10), .visionOS(.v1)],
@@ -19,7 +16,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
-        .package(url: "https://github.com/swiftlang/swift-testing.git", from: "0.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
@@ -91,7 +87,7 @@ let package = Package(
         .testTarget(
             name: "BitcoinBaseTests",
             dependencies: [
-                "BitcoinBase", swiftTesting],
+                "BitcoinBase"],
             path: "test/bitcoin-base",
             resources: [
                 .copy("data")
@@ -100,31 +96,31 @@ let package = Package(
         .testTarget(
             name: "BitcoinCryptoTests",
             dependencies: [
-                "BitcoinCrypto", swiftTesting],
+                "BitcoinCrypto"],
             path: "test/bitcoin-crypto",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinWalletTests",
             dependencies: [
-                "BitcoinWallet", swiftTesting],
+                "BitcoinWallet"],
             path: "test/bitcoin-wallet",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinTransportTests",
             dependencies: [
-                "BitcoinTransport", swiftTesting],
+                "BitcoinTransport"],
             path: "test/bitcoin-transport",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinBlockchainTests",
             dependencies: [
-                "BitcoinBlockchain", swiftTesting],
+                "BitcoinBlockchain"],
             path: "test/bitcoin-blockchain",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "BitcoinTests",
             dependencies: [
-                "Bitcoin", swiftTesting],
+                "Bitcoin"],
             path: "test/bitcoin",
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .executableTarget(
