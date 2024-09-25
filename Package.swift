@@ -34,8 +34,7 @@ let package = Package(
                 "BitcoinWallet",
                 "BitcoinBase",
                 "BitcoinCrypto"],
-            path: "src/bitcoin",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "src/bitcoin"),
         .target(
             name: "BitcoinTransport",
             dependencies: [
@@ -43,36 +42,31 @@ let package = Package(
                 "BitcoinBase",
                 "BitcoinCrypto",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
-            path: "src/bitcoin-transport",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "src/bitcoin-transport"),
         .target(
             name: "BitcoinBlockchain",
             dependencies: [
                 "BitcoinBase",
                 "BitcoinCrypto",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
-            path: "src/bitcoin-blockchain",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "src/bitcoin-blockchain"),
         .target(
             name: "BitcoinWallet",
             dependencies: [
                 "BitcoinBase",
                 "BitcoinCrypto"],
-            path: "src/bitcoin-wallet",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "src/bitcoin-wallet"),
         .target(
             name: "BitcoinBase",
             dependencies: ["BitcoinCrypto"],
-            path: "src/bitcoin-base",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "src/bitcoin-base"),
         .target(
             name: "BitcoinCrypto",
             dependencies: [
                 "ECCHelper",
                 .product(name: "Crypto", package: "swift-crypto")
             ],
-            path: "src/bitcoin-crypto",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "src/bitcoin-crypto"),
         .target(
             name: "ECCHelper",
             dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")],
@@ -82,8 +76,7 @@ let package = Package(
             dependencies: [
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
-            path: "src/bitcoin-rpc",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "src/bitcoin-rpc"),
         .testTarget(
             name: "BitcoinBaseTests",
             dependencies: [
@@ -91,38 +84,32 @@ let package = Package(
             path: "test/bitcoin-base",
             resources: [
                 .copy("data")
-            ],
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            ]),
         .testTarget(
             name: "BitcoinCryptoTests",
             dependencies: [
                 "BitcoinCrypto"],
-            path: "test/bitcoin-crypto",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "test/bitcoin-crypto"),
         .testTarget(
             name: "BitcoinWalletTests",
             dependencies: [
                 "BitcoinWallet"],
-            path: "test/bitcoin-wallet",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "test/bitcoin-wallet"),
         .testTarget(
             name: "BitcoinTransportTests",
             dependencies: [
                 "BitcoinTransport"],
-            path: "test/bitcoin-transport",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "test/bitcoin-transport"),
         .testTarget(
             name: "BitcoinBlockchainTests",
             dependencies: [
                 "BitcoinBlockchain"],
-            path: "test/bitcoin-blockchain",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "test/bitcoin-blockchain"),
         .testTarget(
             name: "BitcoinTests",
             dependencies: [
                 "Bitcoin"],
-            path: "test/bitcoin",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "test/bitcoin"),
         .executableTarget(
             name: "BitcoinNode", dependencies: [
                 "BitcoinTransport",
@@ -137,8 +124,7 @@ let package = Package(
                 .product(name: "NIO", package: "swift-nio"),
                 .product(name: "NIOExtras", package: "swift-nio-extras"),
                 ],
-            path: "src/bitcoin-node",
-            swiftSettings: [.swiftLanguageMode(.v6)]),
+            path: "src/bitcoin-node"),
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
                 "BitcoinTransport",
@@ -149,7 +135,6 @@ let package = Package(
                 "BitcoinRPC",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "NIO", package: "swift-nio")],
-            path: "src/bitcoin-utility",
-            swiftSettings: [.swiftLanguageMode(.v6)])
+            path: "src/bitcoin-utility")
     ]
 )
