@@ -1639,7 +1639,7 @@ fileprivate let testVectors: [TestVector] = [
     // MARK: - SCRIPT_VERIFY_CONST_SCRIPTCODE tests
     // All transactions are copied from OP_CODESEPARATOR tests in tx_valid.json
 
-    // Test that SignatureHash() removes OP_CODESEPARATOR with FindAndDelete()
+    // Test that SignatureHasher() removes OP_CODESEPARATOR with FindAndDelete()
     .init(
         prevouts: [
             .init(

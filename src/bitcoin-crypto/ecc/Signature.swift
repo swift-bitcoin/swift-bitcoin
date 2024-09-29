@@ -10,18 +10,18 @@ public enum SignatureType: Equatable, Sendable {
 /// Elliptic curve SECP256K1 signature supporting both ECDSA and Schnorr algorithms.
 public struct Signature: Equatable, Sendable, CustomStringConvertible {
 
-    public init?(message: String, secretKey: SecretKey, type: SignatureType = .schnorr, recoverCompressedKeys: Bool = true) {
+    public init?(message: String, secretKey: SecretKey, type: SignatureType = .ecdsa, recoverCompressedKeys: Bool = true) {
         guard let messageData = message.data(using: .utf8) else {
             return nil
         }
         self.init(messageData: messageData, secretKey: secretKey, type: type, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public init(messageData: Data, secretKey: SecretKey, type: SignatureType, additionalEntropy: Data? = .none, recoverCompressedKeys: Bool = true) {
+    public init(messageData: Data, secretKey: SecretKey, type: SignatureType = .ecdsa, additionalEntropy: Data? = .none, recoverCompressedKeys: Bool = true) {
         self.init(messageHash: getMessageHash(messageData: messageData, type: type), secretKey: secretKey, type: type, additionalEntropy: additionalEntropy, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public init(messageHash: Data, secretKey: SecretKey, type: SignatureType, additionalEntropy: Data? = .none, recoverCompressedKeys: Bool = true) {
+    public init(messageHash: Data, secretKey: SecretKey, type: SignatureType = .ecdsa, additionalEntropy: Data? = .none, recoverCompressedKeys: Bool = true) {
         precondition(messageHash.count == Self.hashLength)
         switch type {
         case .ecdsa:
@@ -38,14 +38,14 @@ public struct Signature: Equatable, Sendable, CustomStringConvertible {
         self.type = type
     }
 
-    public init?(_ hex: String, type: SignatureType = .schnorr) {
+    public init?(_ hex: String, type: SignatureType = .ecdsa) {
         guard let data = Data(hex: hex) else {
             return nil
         }
         self.init(data, type: type)
     }
 
-    public init?(_ data: Data, type: SignatureType = .schnorr) {
+    public init?(_ data: Data, type: SignatureType = .ecdsa) {
         switch type {
         case .ecdsa:
             guard data.count >= Self.compactSignatureLength && data.count <= Self.ecdsaSignatureMaxLength else {

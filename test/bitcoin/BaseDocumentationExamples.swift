@@ -42,33 +42,31 @@ struct BaseDocumentationExamples {
         let prevout2 = coinbase.outputs[2]
         let prevout3 = coinbase.outputs[3]
 
-
-        var sighash = SignatureHash(transaction: tx, input: 0, prevout: prevout0, sigVersion: .base, sighashType: .all)
+        var hasher = SignatureHasher(transaction: tx, input: 0, prevout: prevout0, sighashType: .all)
 
         // For pay-to-public key we just need to sign the hash and add the signature to the input's unlock script.
-        let sighash0 = try sighash.value
-        let signature0 = try #require(sk.sign(messageHash: sighash0, signatureType: .ecdsa))
+        let sighash0 = hasher.value
+        let signature0 = try #require(sk.sign(messageHash: sighash0))
         let signatureExt0 = ExtendedSignature(signature0, .all)
         var tx_signed = tx.withUnlockScript([.pushBytes(signatureExt0.data)], input: 0)
 
         // For pay-to-public-key-hash we need to also add the public key to the unlock script.
-        sighash.set(input: 1, prevout: prevout1)
-        let sighash1 = try sighash.value
-        let signature1 = try #require(sk.sign(messageHash: sighash1, signatureType: .ecdsa))
+        hasher.set(input: 1, prevout: prevout1)
+        let sighash1 = hasher.value
+        let signature1 = try #require(sk.sign(messageHash: sighash1))
         let signatureExt1 = ExtendedSignature(signature1, .all)
         tx_signed = tx_signed.withUnlockScript([.pushBytes(signatureExt1.data), .pushBytes(sk.publicKey.data)], input: 1)
 
         // For pay-to-witness-public-key-hash we sign a different hash and we add the signature and public key to the input's _witness_.
-        sighash.set(input: 2, prevout: prevout2)
-        let sighash2 = try sighash.value
-        let signature2 = try #require(sk.sign(messageHash: sighash2, signatureType: .ecdsa))
+        hasher.set(input: 2, sigVersion: .witnessV0, prevout: prevout2)
+        let sighash2 = hasher.value
+        let signature2 = try #require(sk.sign(messageHash: sighash2))
         let signatureExt2 = ExtendedSignature(signature2, .all)
         tx_signed = tx_signed.withWitness([signatureExt2.data, sk.publicKey.data], input: 2)
 
         // For pay-to-taproot with key we need a different sighash and a _tweaked_ version of our secret key to sign it. We use the default sighash type which is equal to _all_.
-        sighash.set(input: 3, prevouts: [prevout0, prevout1, prevout2, prevout3])
-        sighash.sighashType = Optional.none
-        let sighash3 = try sighash.value
+        hasher.set(input: 3, sigVersion: .witnessV1, prevouts: [prevout0, prevout1, prevout2, prevout3], sighashType: Optional.none)
+        let sighash3 = hasher.value
         let signature3 = try #require(sk.taprootSecretKey().sign(messageHash: sighash3, signatureType: .schnorr))
         let signatureExt3 = ExtendedSignature(signature3, Optional.none)
         // The witness only requires the signature
@@ -106,13 +104,13 @@ struct BaseDocumentationExamples {
         // Same sighash for all signatures
         let input = 0
         let sighashType = SighashType.all
-        let sighash = SignatureHash(transaction: tx, input: input, prevout: prevout0, sigVersion: .base, sighashType: sighashType)
-        let sighash0 = try sighash.value
+        let hasher = SignatureHasher(transaction: tx, input: input, prevout: prevout0, sighashType: sighashType)
+        let sighash0 = hasher.value
 
-        let signature0 = try #require(sk1.sign(messageHash: sighash0, signatureType: .ecdsa))
+        let signature0 = try #require(sk1.sign(messageHash: sighash0))
         let signatureExt0 = ExtendedSignature(signature0, sighashType)
 
-        let signature1 = try #require(sk3.sign(messageHash: sighash0, signatureType: .ecdsa))
+        let signature1 = try #require(sk3.sign(messageHash: sighash0))
         let signatureExt1 = ExtendedSignature(signature1, sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value

@@ -43,59 +43,46 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
         data = Data(publicKeyBytes)
     }
 
-    public init?(_ hex: String) {
+    public init?(_ hex: String, skipCheck: Bool = false) {
         guard let data = Data(hex: hex) else {
             return nil
         }
-        self.init(data)
+        self.init(data, skipCheck: skipCheck)
     }
 
     public init?(xOnly data: Data, hasEvenY: Bool = true) {
         guard data.count == PublicKey.xOnlyLength else {
             return nil
         }
-        // precondition(checkXOnly(data)) // TODO: Just remove if this fails sometimes during taproot witness verification.
         self.data = [hasEvenY ? Self.publicKeySerializationTagEven : Self.publicKeySerializationTagOdd] + data
     }
 
-    /// BIP143: Checks that the public key is  compressed.
-    public init?<D: DataProtocol>(compressed data: D) {
+    /// BIP143: Checks that the public key is compressed.
+    public init?<D: DataProtocol>(compressed data: D, skipCheck: Bool = false) {
         guard data.count == PublicKey.compressedLength &&
-            (data.first! == Self.publicKeySerializationTagEven || data.first! == Self.publicKeySerializationTagOdd) else {
-            return nil
-        }
+            (data.first! == Self.publicKeySerializationTagEven || data.first! == Self.publicKeySerializationTagOdd)
+        else { return nil }
         self.data = Data(data)
+        if !skipCheck && !check() { return nil }
     }
 
     /// Used mainly for Satoshi's hard-coded key (genesis block).
-    /// BIP143: Checks that the public key is  uncompressed.
-    public init?<D: DataProtocol>(uncompressed data: D) {
+    /// Checks that the public key is uncompressed.
+    public init?<D: DataProtocol>(uncompressed data: D, skipCheck: Bool = false) {
         guard
             data.count == PublicKey.uncompressedLength &&
-            data.first! == Self.publicKeySerializationTagUncompressed,
-            let compressedData = uncompressedToCompressed(Data(data))
+            data.first! == Self.publicKeySerializationTagUncompressed
         else { return nil }
-        self.data = compressedData
+        self.data = Data(data)
+        if !skipCheck && !check() { return nil }
     }
 
     /// Data will be checked to be either compressed or uncompressed public key encoding.
-    public init?(_ data: Data) {
-        guard (
-            data.count == PublicKey.compressedLength &&
-            (data.first! == Self.publicKeySerializationTagEven || data.first! == Self.publicKeySerializationTagOdd)
-        ) || (
-            data.count == PublicKey.uncompressedLength &&
-            data.first! == Self.publicKeySerializationTagUncompressed
-        ) else {
-            return nil
-        }
+    public init?<D: DataProtocol>(_ data: D, skipCheck: Bool = false) {
         if data.count == PublicKey.uncompressedLength {
-            guard let compressedData = uncompressedToCompressed(data) else {
-                return nil
-            }
-            self.data = compressedData
+            self.init(uncompressed: data, skipCheck: skipCheck)
         } else {
-            self.data = data
+            self.init(compressed: data, skipCheck: skipCheck)
         }
     }
 
@@ -105,17 +92,33 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
         data.hex
     }
 
-    public func isPointOnCurve(useXOnly: Bool = false) -> Bool {
+    /// Checks this public key's validity by parsing it and thus verifying that it represents a point on the elliptic curve.
+    ///
+    /// - Parameter useXOnly: Uses the x-only version of the internal parser.
+    /// - Returns: Whether the key is valid after running the check.
+    public func check(useXOnly: Bool = false) -> Bool {
+        // Alternatively `publicKeyData.withContiguousStorageIfAvailable { … }` can be used.
         if useXOnly {
-            checkXOnly(xOnlyData)
+            let publicKeyBytes = [UInt8](xOnlyData)
+            var xonlyPubkey = secp256k1_xonly_pubkey()
+            return  secp256k1_xonly_pubkey_parse(secp256k1_context_static, &xonlyPubkey, publicKeyBytes) != 0
         } else {
-            checkPublicKey(data)
+            let publicKeyBytes = [UInt8](data)
+            var pubkey = secp256k1_pubkey()
+            return secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, publicKeyBytes, publicKeyBytes.count) != 0
         }
     }
 
     /// If internal compressed data does not represent a point on the curve, this will return nil.
     public var uncompressedData: Data? {
-        compressedToUncompressed(data)
+        if data.count == Self.uncompressedLength { return data }
+        return compressedToUncompressed(data)
+    }
+
+    /// If internal compressed data does not represent a point on the curve, this will return nil.
+    public var compressedData: Data? {
+        if data.count == Self.compressedLength { return data }
+        return uncompressedToCompressed(data)
     }
 
     public var xOnlyData: Data { data.dropFirst() }
@@ -154,11 +157,19 @@ public struct PublicKey: Equatable, Sendable, CustomStringConvertible {
     }
 
     public var hasEvenY: Bool {
-        data.first! == Self.publicKeySerializationTagEven
+        if data.count == PublicKey.compressedLength {
+            data.first! == Self.publicKeySerializationTagEven
+        } else {
+            data.last! & 1 == 0 // we look at the least significant bit of the y coordinate
+        }
     }
 
     public var hasOddY: Bool {
-        data.first! == Self.publicKeySerializationTagOdd
+        if data.count == PublicKey.compressedLength {
+            data.first! == Self.publicKeySerializationTagOdd
+        } else {
+            data.last! & 1 == 1
+        }
     }
 
     /// BIP32: Used to derive public keys.
@@ -263,18 +274,4 @@ private func uncompressedToCompressed(_ publicKeyData: Data) -> Data? {
     assert(compressedPublicKeyBytesCount == PublicKey.compressedLength)
 
     return Data(compressedPublicKeyBytes)
-}
-
-/// Checks that a public key is valid.
-private func checkPublicKey(_ publicKeyData: Data) -> Bool {
-    // Alternatively `publicKeyData.withContiguousStorageIfAvailable { … }` can be used.
-    let publicKeyBytes = [UInt8](publicKeyData)
-    var pubkey = secp256k1_pubkey()
-    return secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, publicKeyBytes, publicKeyBytes.count) != 0
-}
-
-private func checkXOnly(_ publicKeyData: Data) -> Bool {
-    let publicKeyBytes = [UInt8](publicKeyData)
-    var xonlyPubkey = secp256k1_xonly_pubkey()
-    return  secp256k1_xonly_pubkey_parse(secp256k1_context_static, &xonlyPubkey, publicKeyBytes) != 0
 }

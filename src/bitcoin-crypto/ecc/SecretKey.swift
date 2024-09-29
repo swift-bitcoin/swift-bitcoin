@@ -41,11 +41,15 @@ public struct SecretKey: Equatable, CustomStringConvertible {
         .init(self)
     }
 
-    public func sign(_ message: String, signatureType: SignatureType = .schnorr, recoverCompressedKeys: Bool = true) -> Signature? {
+    package var xOnlyPublicKey: PublicKey {
+        .init(self, requireEvenY: true)
+    }
+
+    public func sign(_ message: String, signatureType: SignatureType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature? {
         .init(message: message, secretKey: self, type: signatureType, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public func sign(messageHash: Data, signatureType: SignatureType = .schnorr, recoverCompressedKeys: Bool = true) -> Signature? {
+    public func sign(messageHash: Data, signatureType: SignatureType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature? {
         .init(messageHash: messageHash, secretKey: self, type: signatureType, recoverCompressedKeys: recoverCompressedKeys)
     }
 

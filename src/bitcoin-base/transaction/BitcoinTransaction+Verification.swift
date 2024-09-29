@@ -1,7 +1,6 @@
 import Foundation
 import BitcoinCrypto
 
-// TODO: Deduplicate these variables which also exist on SignatureHash.swift
 private let taprootControlBaseSize = 33
 private let taprootControlNodeSize = 32
 
@@ -202,7 +201,8 @@ extension BitcoinTransaction {
                 fatalError()
             }
             let extendedSignature = try ExtendedSignature(schnorrData: stack[0])
-            let sighash = self.signatureHashSchnorr(sighashType: extendedSignature.sighashType, inputIndex: inputIndex, prevouts: prevouts, tapscriptExtension: .none, sighashCache: &context.sighashCache)
+            let hasher = SignatureHasher(transaction: self, input: inputIndex, prevouts: prevouts, sighashType: extendedSignature.sighashType)
+            let sighash = hasher.signatureHashSchnorr(sighashCache: &context.sighashCache)
             guard extendedSignature.signature.verify(messageHash: sighash, publicKey: publicKey) else {
                 throw ScriptError.invalidSchnorrSignature
             }
@@ -227,7 +227,7 @@ extension BitcoinTransaction {
         let internalKeyData = control.dropFirst().prefix(PublicKey.xOnlyLength)
 
         // Fail if this point is not on the curve.
-        guard let internalKey = PublicKey(xOnly: internalKeyData), internalKey.isPointOnCurve(useXOnly: true) else { throw ScriptError.invalidTaprootPublicKey }
+        guard let internalKey = PublicKey(xOnly: internalKeyData), internalKey.check(useXOnly: true) else { throw ScriptError.invalidTaprootPublicKey }
 
         // Let v = c[0] & 0xfe and call it the leaf version
         let leafVersion = control[0] & 0xfe

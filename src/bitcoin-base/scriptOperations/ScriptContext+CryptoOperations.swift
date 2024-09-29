@@ -153,19 +153,47 @@ extension ScriptContext {
     }
 
     private func checkSigECDSA(_ sig: Data, _ publicKeyData: Data, scriptCode: Data) throws -> Bool {
-        try checkPublicKey(publicKeyData, scriptVersion: sigVersion, scriptConfig: config)
-        try checkSignature(sig, scriptConfig: config)
 
-        guard !sig.isEmpty else { return false }
-
-        let (signatureData, sighashType) = splitECDSASignature(sig)
-        let sighash = if sigVersion == .base {
-            transaction.signatureHash(sighashType: sighashType, inputIndex: inputIndex, prevout: prevout, scriptCode: scriptCode)
-        } else /* if sigVersion == .witnessV0 */ {
-            transaction.signatureHashSegwit(sighashType: sighashType, inputIndex: inputIndex, prevout: prevout, scriptCode: scriptCode)
+        // Check public key
+        if config.contains(.strictEncoding) {
+            guard let _ = PublicKey(publicKeyData, skipCheck: true) else {
+                throw ScriptError.invalidPublicKeyEncoding
+            }
         }
-        if let publicKey = PublicKey(publicKeyData), let signature = Signature(signatureData, type: .ecdsa) {
-            return signature.verify(messageHash: sighash, publicKey: publicKey)
+        // Only compressed keys are accepted in segwit
+        if sigVersion == .witnessV0 && config.contains(.witnessCompressedPublicKey) {
+            guard let _ = PublicKey(compressed: publicKeyData, skipCheck: true) else {
+                throw ScriptError.invalidPublicKeyEncoding
+            }
+        }
+
+        // Check signature
+        // Empty signature. Not strictly DER encoded, but allowed to provide a
+        // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
+        guard /* !sig.isEmpty, */
+              let extendedSignature = ExtendedSignature(sig, skipCheck: true) else {
+            return false
+        }
+
+        if config.contains(.strictDER) || config.contains(.lowS) || config.contains(.strictEncoding) {
+            guard extendedSignature.signature.isEncodingValid else {
+                throw ScriptError.invalidSignatureEncoding
+            }
+        }
+        if config.contains(.lowS) && !extendedSignature.signature.isLowS {
+            throw ScriptError.nonLowSSignature
+        }
+
+        // sighashType is never nil for ECDSA
+        guard let sighashType = extendedSignature.sighashType else { preconditionFailure() }
+
+        if config.contains(.strictEncoding) && !sighashType.isDefined {
+            throw ScriptError.undefinedSighashType
+        }
+
+        let sighash = SignatureHasher(transaction: transaction, input: inputIndex, sigVersion: sigVersion, prevout: prevout, scriptCode: scriptCode, sighashType: sighashType).value
+        if let publicKey = PublicKey(publicKeyData) {
+            return extendedSignature.signature.verify(messageHash: sighash, publicKey: publicKey)
         }
         return false
     }
@@ -190,7 +218,8 @@ extension ScriptContext {
 
             let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
             let extendedSignature = try ExtendedSignature(schnorrData: sig)
-            let sighash = transaction.signatureHashSchnorr(sighashType: extendedSignature.sighashType, inputIndex: inputIndex, prevouts: prevouts, tapscriptExtension: ext, sighashCache: &sighashCache)
+            let hasher = SignatureHasher(transaction: transaction, input: inputIndex, prevouts: prevouts, tapscriptExtension: ext, sighashType: extendedSignature.sighashType)
+            let sighash = hasher.signatureHashSchnorr(sighashCache: &sighashCache)
 
             // Validation failure in this case immediately terminates script execution with failure.
             guard extendedSignature.signature.verify(messageHash: sighash, publicKey: publicKey) else {
@@ -209,65 +238,4 @@ extension ScriptContext {
             throw ScriptError.disallowsPublicKeyType
         }
     }
-}
-
-// TODO: Move this logic into Signature struct somehow.
-private func checkSignature(_ extendedSignatureData: Data, scriptConfig: ScriptConfig) throws {
-    // Empty signature. Not strictly DER encoded, but allowed to provide a
-    // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
-    if extendedSignatureData.isEmpty { return }
-
-    let signatureData = extendedSignatureData.dropLast()
-
-    if scriptConfig.contains(.strictDER) || scriptConfig.contains(.lowS) || scriptConfig.contains(.strictEncoding) {
-        guard let signature = Signature(signatureData, type: .ecdsa) else {
-            fatalError()
-        }
-        guard signature.isEncodingValid else {
-            throw ScriptError.invalidSignatureEncoding
-        }
-    }
-    if scriptConfig.contains(.lowS) {
-        guard let signature = Signature(signatureData, type: .ecdsa) else {
-            fatalError()
-        }
-        guard signature.isLowS else {
-            throw ScriptError.nonLowSSignature
-        }
-    }
-    if scriptConfig.contains(.strictEncoding)  {
-
-        // TODO: Initialize SighashType with byte value instead of Data but be careful to allow undefined values!
-        guard let sighashTypeByte = extendedSignatureData.last, let sighashType = SighashType(Data([sighashTypeByte])) else {
-            preconditionFailure()
-        }
-        guard sighashType.isDefined else {
-            throw ScriptError.undefinedSighashType
-        }
-    }
-}
-
-private func checkPublicKey(_ publicKeyData: Data, scriptVersion: SigVersion, scriptConfig: ScriptConfig) throws {
-    if scriptConfig.contains(.strictEncoding) {
-        // TODO: This may actually be checking that the uncompressed key is valid (as we convert it to compressed)
-        guard let _ = PublicKey(publicKeyData) else {
-            throw ScriptError.invalidPublicKeyEncoding
-        }
-    }
-    // Only compressed keys are accepted in segwit
-    if scriptVersion == .witnessV0 && scriptConfig.contains(.witnessCompressedPublicKey) {
-        guard let _ = PublicKey(compressed: publicKeyData) else {
-            throw ScriptError.invalidPublicKeyEncoding
-        }
-    }
-}
-
-private func splitECDSASignature(_ extendedSignature: Data) -> (Data, SighashType) {
-    precondition(!extendedSignature.isEmpty)
-    let signature = extendedSignature.dropLast()
-    let sighashTypeData = extendedSignature.dropFirst(extendedSignature.count - 1)
-    guard let sighashType = SighashType(sighashTypeData) else {
-        preconditionFailure()
-    }
-    return (signature, sighashType)
 }
