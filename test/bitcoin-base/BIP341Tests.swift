@@ -227,7 +227,8 @@ struct BIP341Tests {
         )
 
         var cache = SighashCache()
-        _ = tx.signatureMessageSchnorr(sighashType: SighashType?.none, inputIndex: 0, prevouts: utxosSpent, sighashCache: &cache)
+        let hasher = SignatureHasher(transaction: tx, input: 0, prevouts: utxosSpent, sighashType: SighashType?.none)
+        _ = hasher.signatureMessageSchnorr(sighashCache: &cache)
         if let shaAmounts = cache.shaAmounts, let shaOuts = cache.shaOuts, let shaPrevouts = cache.shaPrevouts, let shaScriptPubKeys = cache.shaScriptPubKeys, let shaSequences = cache.shaSequences {
             #expect(shaAmounts == intermediary.hashAmounts)
             #expect(shaOuts == intermediary.hashOutputs)
@@ -454,7 +455,7 @@ struct BIP341Tests {
             let expectedWitness = testCase.expectedWitness
 
             let secretKey = try #require(SecretKey(secretKeyData))
-            let internalPublicKey = secretKey.publicKey
+            let internalPublicKey = secretKey.xOnlyPublicKey
             let internalPublicKeyData = internalPublicKey.xOnlyData
             #expect(internalPublicKeyData == expectedInternalPublicKey)
 
@@ -464,7 +465,8 @@ struct BIP341Tests {
             let tweakedSecretKey = secretKey.tweakXOnly(tweak)
             #expect(tweakedSecretKey.data == expectedTweakedSecretKey)
 
-            let sigMsg = tx.signatureMessageSchnorr(sighashType: sighashType, inputIndex: inputIndex, prevouts: utxosSpent, sighashCache: &cache)
+            let hasher = SignatureHasher(transaction: tx, input: inputIndex, prevouts: utxosSpent, sighashType: sighashType)
+            let sigMsg = hasher.signatureMessageSchnorr(sighashCache: &cache)
 
             #expect(cache.shaAmountsHit == testCase.intermediary.precomputedUsed.hashAmounts)
             #expect(cache.shaOutsHit == testCase.intermediary.precomputedUsed.hashOutputs)
@@ -473,7 +475,7 @@ struct BIP341Tests {
             #expect(cache.shaScriptPubKeysHit == testCase.intermediary.precomputedUsed.hashScriptPubkeys)
             #expect(sigMsg == expectedSigMsg)
 
-            let sighash = tx.signatureHashSchnorr(sighashType: sighashType, inputIndex: inputIndex, prevouts: utxosSpent, sighashCache: &cache)
+            let sighash = hasher.signatureHashSchnorr(sighashCache: &cache)
             #expect(sighash == expectedSighash)
 
             let hashTypeSuffix: Data

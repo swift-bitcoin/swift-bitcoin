@@ -3,8 +3,12 @@ import BitcoinCrypto
 
 public struct SighashType: Equatable, Sendable {
 
+    init(rawValue: UInt8) {
+        self.value = rawValue
+    }
+
     init?(_ value: UInt8) {
-        self.value = value
+        self.init(rawValue: value)
         if !isDefined { return nil }
     }
 
@@ -47,46 +51,7 @@ public struct SighashType: Equatable, Sendable {
     public static let singleAnyCanPay = Self(Self.sighashSingle | Self.sighashAnyCanPay)!
 }
 
-/// BIP341: Used to represent the `default` signature hash type.
-//extension Optional where Wrapped == SighashType {
-//
-//    private var assumed: SighashType { .all }
-//
-//    var isNone: Bool {
-//        if case let .some(wrapped) = self {
-//            return wrapped.isNone
-//        }
-//        return assumed.isNone
-//    }
-//
-//    var isAll: Bool {
-//        if case let .some(wrapped) = self {
-//            return wrapped.isAll
-//        }
-//        return assumed.isAll
-//    }
-//
-//    var isSingle: Bool {
-//        if case let .some(wrapped) = self {
-//            return wrapped.isSingle
-//        }
-//        return assumed.isSingle
-//    }
-//
-//    var isAnyCanPay: Bool {
-//        if case let .some(wrapped) = self {
-//            return wrapped.isAnyCanPay
-//        }
-//        return assumed.isAnyCanPay
-//    }
-//}
-
 extension SighashType {
-
-    init?(_ data: Data) {
-        guard let value = data.first else { return nil }
-        self.value = value
-    }
 
     var data: Data {
         Data(value: value)
@@ -97,6 +62,7 @@ extension SighashType {
     }
 }
 
+/// BIP341: Used to represent the `default` signature hash type.
 extension Optional where Wrapped == SighashType {
 
     var data: Data {

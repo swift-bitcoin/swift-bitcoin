@@ -195,10 +195,10 @@ public extension ExtendedKey {
             secretKey = parsedSecretKey
         } else {
             let publicKeyData = data.prefix(PublicKey.compressedLength)
-            guard let parsedPublicKey = PublicKey(publicKeyData) else {
+            guard let parsedPublicKey = PublicKey(publicKeyData, skipCheck: true) else {
                 throw Error.invalidPublicKeyEncoding
             }
-            guard parsedPublicKey.isPointOnCurve() else {
+            guard parsedPublicKey.check() else {
                 throw Error.invalidPublicKey
             }
             publicKey = parsedPublicKey

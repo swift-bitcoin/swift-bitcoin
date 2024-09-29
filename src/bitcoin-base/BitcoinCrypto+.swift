@@ -20,8 +20,7 @@ extension PublicKey {
 
     /// Self is an x-only internal public key.
     func tapTweak(merkleRoot: Data) -> Data {
-        // TODO: Reactivate pre-condition and fix creation of x-only public key from private key by forcing an even Y
-        // precondition(hasEvenY)
+        precondition(hasEvenY)
         return Data(SHA256.hash(data: xOnlyData + merkleRoot, tag: "TapTweak"))
     }
 

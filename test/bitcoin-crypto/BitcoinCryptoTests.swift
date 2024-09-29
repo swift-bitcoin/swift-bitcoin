@@ -14,7 +14,7 @@ struct BitcoinCryptoTests {
         #expect(publicKey == publicKeyCopy)
 
         let message = "Hello, Bitcoin!"
-        let signature = try #require(secretKey.sign(message))
+        let signature = try #require(secretKey.sign(message, signatureType: .schnorr))
 
         let isSignatureValid = publicKey.verify(signature, for: message)
         #expect(isSignatureValid)
@@ -36,12 +36,12 @@ struct BitcoinCryptoTests {
         #expect(publicKey == publicKeyCopy)
 
         let message = "Hello, Bitcoin!"
-        let signature = try #require(Signature("c211fc6a0d3b89170af26e1bfcc511de813a01e855b862788e1fa576280a7abc202f1bc1535dc51c54ecbae48dcc9b5752ffa4a8852f7d81aafb695f5efd8876"))
+        let signature = try #require(Signature("c211fc6a0d3b89170af26e1bfcc511de813a01e855b862788e1fa576280a7abc202f1bc1535dc51c54ecbae48dcc9b5752ffa4a8852f7d81aafb695f5efd8876", type: .schnorr))
 
         let isSignatureValid = publicKey.verify(signature, for: message)
         #expect(isSignatureValid)
 
-        let signatureCopy = try #require(secretKey.sign(message))
+        let signatureCopy = try #require(secretKey.sign(message, signatureType: .schnorr))
         #expect(signature == signatureCopy)
 
         // ECDSA signature
@@ -68,7 +68,7 @@ struct BitcoinCryptoTests {
         let secretKey = SecretKey()
 
         let message = "Hello, Bitcoin!"
-        let signature = try #require(secretKey.sign(message))
+        let signature = try #require(secretKey.sign(message, signatureType: .schnorr))
 
         let publicKey = secretKey.publicKey
         #expect(publicKey.matches(secretKey))
@@ -78,7 +78,7 @@ struct BitcoinCryptoTests {
         // Tweak
         let tweak = Data(Hash256.hash(data: "I am Satoshi.".data(using: .utf8)!))
         let tweakedSecretKey = secretKey.tweakXOnly(tweak)
-        let signature2 = try #require(tweakedSecretKey.sign(message))
+        let signature2 = try #require(tweakedSecretKey.sign(message, signatureType: .schnorr))
 
         let tweakedPublicKey = publicKey.tweakXOnly(tweak)
         let valid2 = tweakedPublicKey.verify(signature2, for: message)

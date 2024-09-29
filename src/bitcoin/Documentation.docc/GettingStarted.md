@@ -77,7 +77,7 @@ We now need to sign the transaction using our secret key.
 let sighash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, prevout: prevout, scriptCode: prevout.script.data)
 
 // Obtain the signature using our secret key and append the signature hash type.
-let signature = Signature(messageHash: sighash, secretKey: secretKey, type: .ecdsa)
+let signature = Signature(messageHash: sighash, secretKey: secretKey)
 let signatureData = signature.data + [SighashType.all.value]
 
 // Sign our input by including the signature and public key.
