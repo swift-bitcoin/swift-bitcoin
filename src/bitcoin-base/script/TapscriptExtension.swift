@@ -2,6 +2,13 @@ import Foundation
 
 /// BIP342: The TapRoot Script (Tapscript) Common Message Extension as defined in BIP342
 public struct TapscriptExtension: Equatable {
+
+    public init(tapLeafHash: Data, keyVersion: UInt8 = 0, codesepPos: UInt32 = 0xffffffff) {
+        self.tapLeafHash = tapLeafHash
+        self.keyVersion = keyVersion
+        self.codesepPos = codesepPos
+    }
+
     // We define the tapscript message extension ext to BIP341 Common Signature Message, indicated by ext_flag = 1:
     let tapLeafHash: Data // tapleaf_hash (32): the tapleaf hash as defined in BIP341
     let keyVersion: UInt8 // key_version (1): a constant value 0x00 representing the current version of public keys in the tapscript signature opcode execution.

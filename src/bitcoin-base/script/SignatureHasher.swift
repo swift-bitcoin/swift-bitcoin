@@ -1,7 +1,8 @@
 import Foundation
 import BitcoinCrypto
 
-public struct SignatureHasher {
+/// A hash function which takes a transaction along with some context and produces a hash value for use with signature operations. The function only accepts a signature hash type which allows for commitments to different parts of the transaction.
+public struct SignatureHash {
 
     public init(transaction: BitcoinTransaction, input inputIndex: Int, sigVersion: SigVersion = .base, prevout: TransactionOutput, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none, sighashType: SighashType = .all) {
         precondition(inputIndex < transaction.inputs.count)

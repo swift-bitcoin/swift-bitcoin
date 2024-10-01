@@ -28,7 +28,6 @@ struct BitcoinCoreTaprootTests {
             if !includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.remove(.discourageUpgradableWitnessProgram) }
             if !includeFlags.contains("TAPROOT") { config.remove(.taproot) }
 
-
             let unsignedTx = BitcoinTransaction(Data(testCase.tx))!
             let prevouts = testCase.prevouts.map { TransactionOutput(Data($0))! }
             let inputIndex = testCase.inputIndex
@@ -61,6 +60,7 @@ struct BitcoinCoreTaprootTests {
                 failureInputs[inputIndex] = failureInput
                 let failureTx = BitcoinTransaction(version: unsignedTx.version, locktime: unsignedTx.locktime, inputs: failureInputs, outputs: unsignedTx.outputs)
                 var context = ScriptContext(.standard, transaction: failureTx, inputIndex: inputIndex, prevouts: prevouts)
+
                 #expect(throws: (any Error).self) {
                     try failureTx.verifyScript(&context)
                 }

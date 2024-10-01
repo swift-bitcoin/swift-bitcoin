@@ -76,7 +76,6 @@ public struct BitcoinTransaction: Equatable, Sendable {
     public func withUnlockScript(_ script: BitcoinScript, input inputIndex: Int) -> Self {
         precondition(script.sigVersion == .base && inputs.indices.contains(inputIndex))
         let oldInput = inputs[inputIndex]
-        precondition(oldInput.witness == .none)
         let newInput = TransactionInput(outpoint: oldInput.outpoint, sequence: oldInput.sequence, script: script, witness: oldInput.witness)
         let newInputs = inputs[..<inputIndex] + [newInput] + inputs[inputIndex.advanced(by: 1)...]
         return .init(version: version, locktime: locktime, inputs: .init(newInputs), outputs: outputs)
@@ -85,7 +84,6 @@ public struct BitcoinTransaction: Equatable, Sendable {
     public func withWitness(_ witnessElements: [Data], input inputIndex: Int) -> Self {
         precondition(inputs.indices.contains(inputIndex))
         let oldInput = inputs[inputIndex]
-        precondition(oldInput.script == .empty)
         let newInput = TransactionInput(outpoint: oldInput.outpoint, sequence: oldInput.sequence, script: oldInput.script, witness: .init(witnessElements))
         let newInputs = inputs[..<inputIndex] + [newInput] + inputs[inputIndex.advanced(by: 1)...]
         return .init(version: version, locktime: locktime, inputs: .init(newInputs), outputs: outputs)
@@ -146,7 +144,7 @@ public struct BitcoinTransaction: Equatable, Sendable {
         ])
 
         let coinbaseTx = BitcoinTransaction(version: .v2, inputs: [
-            .init(outpoint: .coinbase, sequence: .final, script: .init([.encodeMinimally(blockHeight), .zero]), witness: .init([witnessReservedValue]))
+            .init(outpoint: .coinbase, script: .init([.encodeMinimally(blockHeight), .zero]), witness: .init([witnessReservedValue]))
         ], outputs: [
             .init(value: blockSubsidy, script: .init([
                 // Standard p2pkh
@@ -161,7 +159,7 @@ public struct BitcoinTransaction: Equatable, Sendable {
         return coinbaseTx
     }
 
-    public static let dummy = Self(inputs: [.init(outpoint: .coinbase, sequence: .final)], outputs: [])
+    public static let dummy = Self(inputs: [.init(outpoint: .coinbase)], outputs: [])
 }
 
 extension BitcoinTransaction {

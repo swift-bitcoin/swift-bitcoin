@@ -31,7 +31,7 @@ struct BitcoinServiceTests {
         let outpoint = previousTransaction.outpoint(0)!
 
         // Create a new transaction spending from the previous transaction's outpoint.
-        let unsignedInput = TransactionInput(outpoint: outpoint, sequence: .final)
+        let unsignedInput = TransactionInput(outpoint: outpoint)
 
         // Specify the transaction's output. We'll leave 1000 sats on the table to tip miners. We'll re-use the origin address for simplicity.
         let unsignedTransaction = BitcoinTransaction(
@@ -41,10 +41,10 @@ struct BitcoinServiceTests {
             ])
 
         // Sign the transaction by first calculating the signature hash.
-        let sighash = try SignatureHasher(transaction: unsignedTransaction, input: 0, prevout: prevout).value
+        let sighash = SignatureHash(transaction: unsignedTransaction, input: 0, prevout: prevout).value
 
         // Obtain the signature using our secret key and append the signature hash type.
-        let signature = try #require(Signature(messageHash: sighash, secretKey: secretKey))
+        let signature = try #require(Signature(hash: sighash, secretKey: secretKey))
         let signatureData = ExtendedSignature(signature, .all).data
 
         // Sign our input by including the signature and public key.

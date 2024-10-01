@@ -201,9 +201,9 @@ extension BitcoinTransaction {
                 fatalError()
             }
             let extendedSignature = try ExtendedSignature(schnorrData: stack[0])
-            let hasher = SignatureHasher(transaction: self, input: inputIndex, prevouts: prevouts, sighashType: extendedSignature.sighashType)
+            let hasher = SignatureHash(transaction: self, input: inputIndex, prevouts: prevouts, sighashType: extendedSignature.sighashType)
             let sighash = hasher.signatureHashSchnorr(sighashCache: &context.sighashCache)
-            guard extendedSignature.signature.verify(messageHash: sighash, publicKey: publicKey) else {
+            guard extendedSignature.signature.verify(hash: sighash, publicKey: publicKey) else {
                 throw ScriptError.invalidSchnorrSignature
             }
             return
@@ -258,7 +258,16 @@ extension BitcoinTransaction {
         }
 
         let tapscript = BitcoinScript(tapscriptData, sigVersion: .witnessV1)
+
+        // The tapscript is executed according to the rules in the following section, with the initial stack as input.
+        // If execution fails for any reason, fail.
         try context.run(tapscript, stack: stack, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
+
+        // If the execution results in anything but exactly one element on the stack which evaluates to true with CastToBool(), fail.
+        guard context.stack.count == 1, let last = context.stack.last, ScriptBoolean(last).value else {
+            throw ScriptError.falseReturned
+        }
+
     }
 }
 
