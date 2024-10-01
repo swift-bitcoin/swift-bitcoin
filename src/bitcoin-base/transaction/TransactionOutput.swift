@@ -7,7 +7,7 @@ public struct TransactionOutput: Equatable, Sendable {
     /// - Parameters:
     ///   - value: A Satoshi amount represented by this output.
     ///   - script: The script encumbering the specified value.
-    public init(value: BitcoinAmount, script: BitcoinScript) {
+    public init(value: BitcoinAmount, script: BitcoinScript = .empty) {
         self.value = value
         self.script = script
     }

@@ -54,7 +54,7 @@ let prevout = previousTransaction.outputs[0]
 let outpoint = previousTransaction.outpoint(0)!
 
 // Create a new transaction spending from the previous transaction's outpoint.
-let unsignedInput = TransactionInput(outpoint: outpoint, sequence: .final)
+let unsignedInput = TransactionInput(outpoint: outpoint)
 
 // Specify the transaction's output. We'll leave 1000 sats on the table to tip miners. We'll re-use the origin address for simplicity.
 let unsignedTransaction = BitcoinTransaction(
@@ -77,7 +77,7 @@ We now need to sign the transaction using our secret key.
 let sighash = unsignedTransaction.signatureHash(sighashType: .all, inputIndex: 0, prevout: prevout, scriptCode: prevout.script.data)
 
 // Obtain the signature using our secret key and append the signature hash type.
-let signature = Signature(messageHash: sighash, secretKey: secretKey)
+let signature = Signature(hash: sighash, secretKey: secretKey)
 let signatureData = signature.data + [SighashType.all.value]
 
 // Sign our input by including the signature and public key.

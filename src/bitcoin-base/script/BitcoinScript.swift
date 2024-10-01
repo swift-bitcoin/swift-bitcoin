@@ -45,7 +45,7 @@ public struct BitcoinScript: Equatable, Sendable {
         if size == 23,
            operations.count == 3,
            operations[0] == .hash160,
-           case .pushBytes(_) = operations[1],
+           operations[1].isPush,
            operations[2] == .equal { true } else { false }
     }
 
@@ -125,20 +125,22 @@ public struct BitcoinScript: Equatable, Sendable {
     }
 
     /// This is the script code for signing Pay-to-Witness-Public-Key-Hash inputs. It contains the same operations as a Pay-to-Public-Key-Hash output script but the signature version is bumped to Witness V0.
-    static func segwitPKHScriptCode(_ hash: Data) -> Self {
+    public static func segwitPKHScriptCode(_ hash: Data) -> Self {
         precondition(hash.count == Hash160.Digest.byteCount)
         return .init([.dup, .hash160, .pushBytes(hash), .equalVerify, .checkSig], sigVersion: .witnessV0)
     }
 
-    public static func payToMultiSignature(_ threshold: Int, of keys: PublicKey...) -> Self {
+    public static func payToMultiSignature(_ threshold: Int, of keys: PublicKey..., sigVersion: SigVersion = .base) -> Self {
         precondition(keys.count <= 20 && threshold >= 0 && threshold <= keys.count)
+        precondition(sigVersion == .base || sigVersion == .witnessV0)
         let keyOps = keys.map { key in
             ScriptOperation.pushBytes(key.data)
         }
         return .init(
             [.encodeMinimally(threshold)] +
             keyOps +
-            [.encodeMinimally(keys.count), .checkMultiSig]
+            [.encodeMinimally(keys.count), .checkMultiSig],
+            sigVersion: sigVersion
         )
     }
 
@@ -169,7 +171,7 @@ public struct BitcoinScript: Equatable, Sendable {
         precondition(messageData.count <= UInt32.max)
         return [
             .return,
-            ScriptOperation.encodeMinimally(messageData)
+            .encodeMinimally(messageData)
         ]
     }
 }

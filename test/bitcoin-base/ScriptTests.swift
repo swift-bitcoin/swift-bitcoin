@@ -27,7 +27,7 @@ struct ScriptTests {
     func allVectors(test: TestVector) throws {
         let txCredit = BitcoinTransaction(
             inputs: [
-                .init(outpoint: .coinbase, sequence: .final, script: .init([.zero, .zero])),
+                .init(outpoint: .coinbase, script: .init([.zero, .zero])),
             ],
             outputs: [
                 .init(value: test.amount, script: test.scriptPubKey)
@@ -42,10 +42,10 @@ struct ScriptTests {
 
         let txSpend = BitcoinTransaction(
             inputs: [
-                .init(outpoint: txCredit.outpoint(0)!, sequence: .final, script: test.scriptSig, witness: witness),
+                .init(outpoint: txCredit.outpoint(0)!, script: test.scriptSig, witness: witness),
             ],
             outputs: [
-                .init(value: txCredit.outputs[0].value, script: .empty)
+                .init(value: txCredit.outputs[0].value)
             ]
         )
         let result = txSpend.verifyScript(prevouts: [txCredit.outputs[0]], config: test.flags)

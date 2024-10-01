@@ -11,7 +11,7 @@ public struct TransactionInput: Equatable, Sendable {
     ///   - sequence: This input's sequence number.
     ///   - script: Optional script to unlock the referenced output.
     ///   - witness: Optional witness data for this input. See BIP141 for more information.
-    public init(outpoint: TransactionOutpoint, sequence: InputSequence, script: BitcoinScript = .empty, /* BIP141 */ witness: InputWitness? = .none) {
+    public init(outpoint: TransactionOutpoint, sequence: InputSequence = .final, script: BitcoinScript = .empty, /* BIP141 */ witness: InputWitness? = .none) {
         self.outpoint = outpoint
         self.sequence = sequence
         self.script = script

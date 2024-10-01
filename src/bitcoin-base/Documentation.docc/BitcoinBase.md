@@ -19,7 +19,7 @@ let prevout = previousTransaction.outputs[0]
 let outpoint = previousTransaction.outpoint(0)!
 
 // Create a new transaction spending from the previous transaction's outpoint.
-let unsignedInput = TransactionInput(outpoint: outpoint, sequence: .final)
+let unsignedInput = TransactionInput(outpoint: outpoint)
 
 // Specify the transaction's output. We'll leave 1000 sats on the table to tip miners. We'll re-use the origin address for simplicity.
 let unsignedTransaction = BitcoinTransaction(

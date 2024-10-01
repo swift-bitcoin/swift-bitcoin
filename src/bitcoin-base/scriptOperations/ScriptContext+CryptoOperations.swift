@@ -8,7 +8,8 @@ extension ScriptContext {
         let (sig, publicKeyData) = try getBinaryParams()
 
         if sigVersion == .witnessV1 {
-            try checkSigSchnorr(sig, publicKeyData)
+            let result = try checkSigSchnorr(sig, publicKeyData)
+            stack.append(ScriptBoolean(result).data)
             return
         }
 
@@ -87,10 +88,10 @@ extension ScriptContext {
             throw ScriptError.invalidCheckSigAddArgument
         }
 
-        try checkSigSchnorr(sig, publicKeyData, adding: true)
+        let result = try checkSigSchnorr(sig, publicKeyData)
 
         // If the script did not fail and terminate before this step, regardless of the public key type:
-        if sig.isEmpty {
+        if !result {
             // If the signature is the empty vector:
             // For OP_CHECKSIGADD, a CScriptNum with value n is pushed onto the stack, and execution continues with the next opcode.
             stack.append(nData)
@@ -191,51 +192,40 @@ extension ScriptContext {
             throw ScriptError.undefinedSighashType
         }
 
-        let sighash = SignatureHasher(transaction: transaction, input: inputIndex, sigVersion: sigVersion, prevout: prevout, scriptCode: scriptCode, sighashType: sighashType).value
+        let sighash = SignatureHash(transaction: transaction, input: inputIndex, sigVersion: sigVersion, prevout: prevout, scriptCode: scriptCode, sighashType: sighashType).value
         if let publicKey = PublicKey(publicKeyData) {
-            return extendedSignature.signature.verify(messageHash: sighash, publicKey: publicKey)
+            return extendedSignature.signature.verify(hash: sighash, publicKey: publicKey)
         }
         return false
     }
 
-    private mutating func checkSigSchnorr(_ sig: Data, _ publicKeyData: Data, adding: Bool = false) throws {
+    private mutating func checkSigSchnorr(_ sig: Data, _ publicKeyData: Data) throws -> Bool {
 
         guard let tapLeafHash = tapLeafHash, let keyVersion = keyVersion else { preconditionFailure() }
+
+        if !sig.isEmpty { try checkSigopBudget() }
 
         // If the public key size is zero, the script MUST fail and terminate immediately.
         guard !publicKeyData.isEmpty else { throw ScriptError.emptyPublicKey }
 
-        if !sig.isEmpty { try checkSigopBudget() }
-
-        // publicKeyData.count == 32,
-        // `PublicKey(xOnly:)` essentially checks that the signature length is 32 bytes
-        if let publicKey = PublicKey(xOnly: publicKeyData), !(sig.isEmpty && adding) {
-
-            // If the public key size is 32 bytes, it is considered to be a public key as described in BIP340:
-
-            if sig.isEmpty, !adding { return }
-            // If the signature is not the empty vector, the signature is validated against the public key (see the next subsection).
+        // If the public key size is 32 bytes, it is considered to be a public key as described in BIP340:
+        if let publicKey = PublicKey(xOnly: publicKeyData), !sig.isEmpty {
 
             let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
             let extendedSignature = try ExtendedSignature(schnorrData: sig)
-            let hasher = SignatureHasher(transaction: transaction, input: inputIndex, prevouts: prevouts, tapscriptExtension: ext, sighashType: extendedSignature.sighashType)
+            let hasher = SignatureHash(transaction: transaction, input: inputIndex, prevouts: prevouts, tapscriptExtension: ext, sighashType: extendedSignature.sighashType)
             let sighash = hasher.signatureHashSchnorr(sighashCache: &sighashCache)
 
             // Validation failure in this case immediately terminates script execution with failure.
-            guard extendedSignature.signature.verify(messageHash: sighash, publicKey: publicKey) else {
+            guard extendedSignature.signature.verify(hash: sighash, publicKey: publicKey) else {
                 throw ScriptError.invalidSchnorrSignature
             }
-            return
+        } else if !sig.isEmpty {
+            // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
+            if config.contains(.discourageUpgradablePublicKeyType) {
+                throw ScriptError.disallowsPublicKeyType
+            }
         }
-
-        if sig.isEmpty, !adding {
-            // The script execution fails when using empty signature with invalid public key.
-            throw ScriptError.emptySchnorrSignature
-        }
-
-        // If the public key size is not zero and not 32 bytes, the public key is of an unknown public key type and no actual signature verification is applied. During script execution of signature opcodes they behave exactly as known public key types except that signature validation is considered to be successful.
-        if config.contains(.discourageUpgradablePublicKeyType) {
-            throw ScriptError.disallowsPublicKeyType
-        }
+        return !sig.isEmpty
     }
 }

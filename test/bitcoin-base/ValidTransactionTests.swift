@@ -697,7 +697,7 @@ fileprivate let testVectors: [TestVector] = [
 
     // MARK: - OP_CODESEPARATOR tests
 
-    // Test that SignatureHasher() removes OP_CODESEPARATOR with FindAndDelete()
+    // Test that SignatureHash() removes OP_CODESEPARATOR with FindAndDelete()
     .init(
         prevouts: [
             .init(
