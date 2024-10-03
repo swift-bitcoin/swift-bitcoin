@@ -43,7 +43,7 @@ public enum ScriptOperation: Equatable, Sendable {
         }
     }
 
-    var isPush: Bool {
+    public var isPush: Bool {
         switch self {
         case .zero, .oneNegate, .constant(_), .pushBytes(_), .pushData1(_), .pushData2(_), .pushData4(_): true
         default: false

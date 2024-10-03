@@ -8,6 +8,10 @@ public struct BitcoinAddress: CustomStringConvertible {
     public let isScript: Bool
     public let hash: Data
 
+    public init(_ secretKey: SecretKey, mainnet: Bool = true) {
+        self.init(secretKey.publicKey, mainnet: mainnet)
+    }
+
     public init(_ publicKey: PublicKey, mainnet: Bool = true) {
         isMainnet = mainnet
         isScript = false
@@ -41,6 +45,18 @@ public struct BitcoinAddress: CustomStringConvertible {
         }
         data.append(hash)
         return Base58Encoder().encode(data)
+    }
+
+    public var script: BitcoinScript {
+        if isScript {
+            .payToScriptHash(hash)
+        } else {
+            .payToPublicKeyHash(hash)
+        }
+    }
+
+    public func output(_ value: BitcoinAmount) -> TransactionOutput {
+        .init(value: value, script: script)
     }
 }
 

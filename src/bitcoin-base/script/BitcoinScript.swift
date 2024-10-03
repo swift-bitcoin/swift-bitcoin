@@ -42,10 +42,10 @@ public struct BitcoinScript: Equatable, Sendable {
 
     // BIP16
     var isPayToScriptHash: Bool {
-        if size == 23,
+        if size == RIPEMD160.Digest.byteCount + 3,
            operations.count == 3,
            operations[0] == .hash160,
-           operations[1].isPush,
+           case .pushBytes(_) = operations[1],
            operations[2] == .equal { true } else { false }
     }
 
@@ -120,8 +120,11 @@ public struct BitcoinScript: Equatable, Sendable {
     }
 
     public static func payToPublicKeyHash(_ publicKey: PublicKey) -> Self {
-        let hash = Data(Hash160.hash(data: publicKey.data))
-        return [.dup, .hash160, .pushBytes(hash), .equalVerify, .checkSig]
+        payToPublicKeyHash(Data(Hash160.hash(data: publicKey.data)))
+    }
+
+    package static func payToPublicKeyHash(_ hash: Data) -> Self {
+        [.dup, .hash160, .pushBytes(hash), .equalVerify, .checkSig]
     }
 
     /// This is the script code for signing Pay-to-Witness-Public-Key-Hash inputs. It contains the same operations as a Pay-to-Public-Key-Hash output script but the signature version is bumped to Witness V0.
@@ -145,25 +148,39 @@ public struct BitcoinScript: Equatable, Sendable {
     }
 
     public static func payToScriptHash(_ redeem: BitcoinScript) -> Self {
-        let hash = Data(Hash160.hash(data: redeem.data))
-        return [.hash160, .pushBytes(hash), .equal]
+        payToScriptHash(Data(Hash160.hash(data: redeem.data)))
+    }
+
+    package static func payToScriptHash(_ hash: Data) -> Self {
+        [.hash160, .pushBytes(hash), .equal]
     }
 
     public static func payToWitnessPublicKeyHash(_ publicKey: PublicKey) -> Self {
-        let hash = Data(Hash160.hash(data: publicKey.data))
-        return [.zero, .pushBytes(hash)]
+        payToWitnessPublicKeyHash(Data(Hash160.hash(data: publicKey.data)))
+    }
+
+    package static func payToWitnessPublicKeyHash(_ hash: Data) -> Self {
+        .init([.zero, .pushBytes(hash)], sigVersion: .witnessV0)
     }
 
     public static func payToWitnessScriptHash(_ witness: BitcoinScript) -> Self {
         precondition(witness.sigVersion == .witnessV0)
         let hash = Data(SHA256.hash(data: witness.data))
-        return [.zero, .pushBytes(hash)]
+        return payToWitnessScriptHash(hash)
     }
 
-    public static func payToTaproot(_ publicKey: PublicKey, script: ScriptTree? = .none) -> Self {
-        precondition(publicKey.hasEvenY)
-        let outputKey = publicKey.taprootOutputKey(script)
-        return [.constant(1), .pushBytes(outputKey.xOnlyData)]
+    package static func payToWitnessScriptHash(_ hash: Data) -> Self {
+        [.zero, .pushBytes(hash)]
+    }
+
+    public static func payToTaproot(internalKey: PublicKey, script: ScriptTree? = .none) -> Self {
+        precondition(internalKey.hasEvenY)
+        let outputKey = internalKey.taprootOutputKey(script)
+        return payToTaproot(outputKey)
+    }
+
+    package static func payToTaproot(_ outputKey: PublicKey) -> Self {
+        [.constant(1), .pushBytes(outputKey.xOnlyData)]
     }
 
     public static func dataCarrier(_ message: String) -> Self {
@@ -218,7 +235,7 @@ extension BitcoinScript {
         operations.reduce(Data()) { $0 + $1.data } + unparsable
     }
 
-    var size: Int {
+    public var size: Int {
         operations.reduce(0) { $0 + $1.size } + unparsable.count
     }
 

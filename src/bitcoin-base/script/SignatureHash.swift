@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 
 /// A hash function which takes a transaction along with some context and produces a hash value for use with signature operations. The function only accepts a signature hash type which allows for commitments to different parts of the transaction.
-public struct SignatureHash {
+public class SignatureHash {
 
     public init(transaction: BitcoinTransaction, input inputIndex: Int, sigVersion: SigVersion = .base, prevout: TransactionOutput, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none, sighashType: SighashType = .all) {
         precondition(inputIndex < transaction.inputs.count)
@@ -16,7 +16,7 @@ public struct SignatureHash {
         self.sighashType = sighashType
     }
 
-    public init(transaction: BitcoinTransaction, input inputIndex: Int, sigVersion: SigVersion = .base, prevouts: [TransactionOutput], scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none, sighashType: SighashType? = Optional.none) {
+    public init(transaction: BitcoinTransaction, input inputIndex: Int = 0, sigVersion: SigVersion = .base, prevouts: [TransactionOutput], scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none, sighashType: SighashType? = Optional.none) {
         precondition(inputIndex < transaction.inputs.count)
         precondition(prevouts.count == transaction.inputs.count || (prevouts.count == 1 && (sigVersion == .base || sigVersion == .witnessV0)))
         self.transaction = transaction
@@ -34,13 +34,13 @@ public struct SignatureHash {
     public private(set) var prevouts: [TransactionOutput]
     public private(set) var scriptCode: Data?
     public private(set) var tapscriptExtension: TapscriptExtension?
-    public private(set) var sighashType: SighashType?
+    public var sighashType: SighashType?
 
     public var prevout: TransactionOutput {
         if prevouts.count == 1 { prevouts[0] } else { prevouts[inputIndex] }
     }
 
-    public mutating func set(input inputIndex: Int, sigVersion: SigVersion? = .none, prevout: TransactionOutput) {
+    public func set(input inputIndex: Int, sigVersion: SigVersion? = .none, prevout: TransactionOutput) {
         if inputIndex != self.inputIndex {
             scriptCode = .none
             tapscriptExtension = .none
@@ -54,13 +54,13 @@ public struct SignatureHash {
         precondition(transaction.inputs.count == 1 || self.sigVersion == .base || self.sigVersion == .witnessV0)
     }
 
-    public mutating func set(input: Int, sigVersion: SigVersion? = .none, prevouts: [TransactionOutput]? = .none, sighashType: SighashType?) {
+    public func set(input: Int, sigVersion: SigVersion? = .none, prevouts: [TransactionOutput]? = .none, sighashType: SighashType?) {
         set(input: input, sigVersion: sigVersion, prevouts: prevouts)
         self.sighashType = sighashType
         precondition(sigVersion == .witnessV1 || sighashType != Optional.none)
     }
 
-    public mutating func set(input inputIndex: Int, sigVersion: SigVersion? = .none, prevouts newPrevouts: [TransactionOutput]? = .none) {
+    public func set(input inputIndex: Int, sigVersion: SigVersion? = .none, prevouts newPrevouts: [TransactionOutput]? = .none) {
         if inputIndex != self.inputIndex {
             scriptCode = .none
             tapscriptExtension = .none
