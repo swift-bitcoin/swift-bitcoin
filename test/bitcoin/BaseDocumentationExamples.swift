@@ -16,7 +16,7 @@ struct BaseDocumentationExamples {
             .init(value: 21_000_000, script: .payToPublicKeyHash(sk.publicKey)),
             .init(value: 21_000_000, script: .payToWitnessPublicKeyHash(sk.publicKey)),
             // Pay-to-taproot requires an internal key instead of the regular public key.
-            .init(value: 21_000_000, script: .payToTaproot(sk.taprootInternalKey)),
+            .init(value: 21_000_000, script: .payToTaproot(internalKey: sk.taprootInternalKey)),
             .init(value: 0, script: .dataCarrier("Hello, Bitcoin!"))
         ])
         #expect(coinbase.isCoinbase)
@@ -42,7 +42,7 @@ struct BaseDocumentationExamples {
         let prevout2 = coinbase.outputs[2]
         let prevout3 = coinbase.outputs[3]
 
-        var hasher = SignatureHash(transaction: tx, input: 0, prevout: prevout0, sighashType: .all)
+        let hasher = SignatureHash(transaction: tx, input: 0, prevout: prevout0, sighashType: .all)
 
         // For pay-to-public key we just need to sign the hash and add the signature to the input's unlock script.
         let sighash0 = hasher.value
@@ -322,7 +322,7 @@ struct BaseDocumentationExamples {
         let coinbase = BitcoinTransaction(inputs: [
             .init(outpoint: .coinbase)
         ], outputs: [
-            .init(value: 21_000_000, script: .payToTaproot(internalKey, script: scriptTree)),
+            .init(value: 21_000_000, script: .payToTaproot(internalKey: internalKey, script: scriptTree)),
         ])
 
         let outpoint0 = try #require(coinbase.outpoint(0))
@@ -340,14 +340,14 @@ struct BaseDocumentationExamples {
 
         let (merkleRoot, leafHashes, controlBlocks) = internalKey.computeControlBlocks(scriptTree)
 
-        //let sighashType = SighashType.all
-        let hasher = SignatureHash(transaction: tx, input: input, sigVersion: .witnessV1, prevouts: [prevout0], tapscriptExtension: .init(tapLeafHash: leafHashes[leafIndex]), sighashType: Optional.none)
+        let sighashType = SighashType?.none
+        let hasher = SignatureHash(transaction: tx, input: input, sigVersion: .witnessV1, prevouts: [prevout0], tapscriptExtension: .init(tapLeafHash: leafHashes[leafIndex]), sighashType: sighashType)
 
         let sighash = hasher.value
         let signature1 = try #require(sk1.sign(hash: sighash, signatureType: .schnorr))
-        let signatureExt1 = ExtendedSignature(signature1, Optional.none)
+        let signatureExt1 = ExtendedSignature(signature1, sighashType)
         let signature3 = try #require(sk3.sign(hash: sighash, signatureType: .schnorr))
-        let signatureExt3 = ExtendedSignature(signature3, Optional.none)
+        let signatureExt3 = ExtendedSignature(signature3, sighashType)
 
         let tx_signed = tx.withWitness([
             signatureExt3.data,

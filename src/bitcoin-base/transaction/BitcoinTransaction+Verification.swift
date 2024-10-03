@@ -113,7 +113,7 @@ extension BitcoinTransaction {
             guard let witnessVersion, let witnessProgram else { preconditionFailure() }
             if witnessVersion == 0 {
                 try verifyWitness(&context, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
-            } else if witnessVersion == 1 && witnessProgram.count == 32 && !isPayToScriptHash {
+            } else if witnessVersion == 1 && witnessProgram.count == PublicKey.xOnlyLength && !isPayToScriptHash {
                 // BIP341
                 try verifyTaproot(&context, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
             } else if config.contains(.discourageUpgradableWitnessProgram) {
