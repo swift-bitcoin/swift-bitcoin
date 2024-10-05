@@ -7,10 +7,10 @@ public struct TransactionOutpoint: Equatable, Hashable, Sendable {
     /// - Parameters:
     ///   - transaction: The identifier for the previous transaction being referenced.
     ///   - output: The index within the previous transaction corresponding to the desired output.
-    init(transaction: Data, output: Int) {
+    init(transaction: Data, output outputIndex: Int) {
         precondition(transaction.count == BitcoinTransaction.identifierSize)
         self.transactionIdentifier = transaction
-        self.outputIndex = output
+        self.outputIndex = outputIndex
     }
 
     // The identifier for the transaction containing the referenced output.

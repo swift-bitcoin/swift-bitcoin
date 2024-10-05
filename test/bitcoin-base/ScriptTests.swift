@@ -42,7 +42,7 @@ struct ScriptTests {
 
         let txSpend = BitcoinTransaction(
             inputs: [
-                .init(outpoint: txCredit.outpoint(0)!, script: test.scriptSig, witness: witness),
+                .init(outpoint: txCredit.outpoint(0), script: test.scriptSig, witness: witness),
             ],
             outputs: [
                 .init(value: txCredit.outputs[0].value)

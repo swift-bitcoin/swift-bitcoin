@@ -20,6 +20,23 @@ extension BitcoinScript {
            operations[4] == .checkSig { true } else { false }
     }
 
+    var isPayToMultisig: Bool {
+        guard
+            operations.count >= 5, unparsable.isEmpty,
+            case .constant(let m) = operations[0],
+            case .constant(let n) = operations[operations.count - 2],
+            m <= n,
+            operations[operations.count - 1] == .checkMultiSig,
+            operations.count == 3 + n
+        else { return false }
+        return operations[1 ..< (operations.count - 2)].allSatisfy {
+            if case .pushBytes(let key) = $0, (
+                key.count == PublicKey.compressedLength ||
+                key.count == PublicKey.uncompressedLength
+            ) { true } else { false }
+        }
+    }
+
     var isPayToTaproot: Bool {
         if size == PublicKey.xOnlyLength + 2,
            operations.count == 2,
