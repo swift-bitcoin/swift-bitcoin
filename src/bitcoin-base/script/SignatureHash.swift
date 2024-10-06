@@ -54,17 +54,15 @@ public class SignatureHash {
         precondition(transaction.inputs.count == 1 || self.sigVersion == .base || self.sigVersion == .witnessV0)
     }
 
-    public func set(input: Int, sigVersion: SigVersion? = .none, prevouts: [TransactionOutput]? = .none, sighashType: SighashType?) {
-        set(input: input, sigVersion: sigVersion, prevouts: prevouts)
+    public func set(input: Int, sigVersion: SigVersion? = .none, prevouts: [TransactionOutput]? = .none, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none, sighashType: SighashType?) {
+        set(input: input, sigVersion: sigVersion, prevouts: prevouts, scriptCode: scriptCode, tapscriptExtension: tapscriptExtension)
         self.sighashType = sighashType
         precondition(sigVersion == .witnessV1 || sighashType != Optional.none)
     }
 
-    public func set(input inputIndex: Int, sigVersion: SigVersion? = .none, prevouts newPrevouts: [TransactionOutput]? = .none) {
-        if inputIndex != self.inputIndex {
-            scriptCode = .none
-            tapscriptExtension = .none
-        }
+    public func set(input inputIndex: Int, sigVersion: SigVersion? = .none, prevouts newPrevouts: [TransactionOutput]? = .none, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none) {
+        self.scriptCode = scriptCode
+        self.tapscriptExtension = tapscriptExtension
         self.inputIndex = inputIndex
         if let newPrevouts {
             prevouts = newPrevouts

@@ -10,7 +10,7 @@ public struct InputWitness: Equatable, Sendable {
     }
 
     /// The list of elements that makes up this witness.
-    public var elements: [Data]
+    public let elements: [Data]
 
     /// BIP341
     var taprootAnnex: Data? {
@@ -32,7 +32,7 @@ extension InputWitness {
             return nil
         }
         data = data.dropFirst(elementsCount.varIntSize)
-        elements = [Data]()
+        var elements = [Data]()
         for _ in 0 ..< elementsCount {
             guard let element = Data(varLenData: data) else {
                 return nil
@@ -40,6 +40,7 @@ extension InputWitness {
             elements.append(element)
             data = data.dropFirst(element.varLenSize)
         }
+        self.elements = elements
     }
 
     /// Used by ``BitcoinTransaction/data`` to support the serialization format specified in BIP144.

@@ -66,11 +66,9 @@ public struct BitcoinTransaction: Equatable, Sendable {
     // MARK: - Instance Methods
 
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``TransactionInput`` instance.
-    public func outpoint(_ output: Int) -> TransactionOutpoint? {
-        guard output < outputs.count else {
-            return .none
-        }
-        return .init(transaction: identifier, output: output)
+    public func outpoint(_ outputIndex: Int) -> TransactionOutpoint {
+        precondition(outputIndex < outputs.count)
+        return .init(transaction: identifier, output: outputIndex)
     }
 
     public func withUnlockScript(_ script: BitcoinScript, input inputIndex: Int) -> Self {

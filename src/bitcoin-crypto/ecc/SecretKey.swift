@@ -33,23 +33,17 @@ public struct SecretKey: Equatable, CustomStringConvertible {
 
     public let data: Data
 
-    public var description: String {
-        data.hex
-    }
+    public var description: String { data.hex }
 
-    public var publicKey: PublicKey {
-        .init(self)
-    }
+    public var publicKey: PublicKey { .init(self) }
 
-    package var xOnlyPublicKey: PublicKey {
-        .init(self, requireEvenY: true)
-    }
+    package var xOnlyPublicKey: PublicKey { .init(self, requireEvenY: true) }
 
     public func sign(_ message: String, signatureType: SignatureType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature? {
         .init(message: message, secretKey: self, type: signatureType, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public func sign(hash: Data, signatureType: SignatureType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature? {
+    public func sign(hash: Data, signatureType: SignatureType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature {
         .init(hash: hash, secretKey: self, type: signatureType, recoverCompressedKeys: recoverCompressedKeys)
     }
 

@@ -41,7 +41,7 @@ public struct BitcoinScript: Equatable, Sendable {
     }
 
     // BIP16
-    var isPayToScriptHash: Bool {
+    public var isPayToScriptHash: Bool {
         if size == RIPEMD160.Digest.byteCount + 3,
            operations.count == 3,
            operations[0] == .hash160,
@@ -160,7 +160,7 @@ public struct BitcoinScript: Equatable, Sendable {
     }
 
     package static func payToWitnessPublicKeyHash(_ hash: Data) -> Self {
-        .init([.zero, .pushBytes(hash)], sigVersion: .witnessV0)
+        [.zero, .pushBytes(hash)]
     }
 
     public static func payToWitnessScriptHash(_ witness: BitcoinScript) -> Self {

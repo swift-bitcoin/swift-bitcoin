@@ -16,7 +16,7 @@ import BitcoinBase
 
 let previousTransaction: BitcoinTransaction = …
 let prevout = previousTransaction.outputs[0]
-let outpoint = previousTransaction.outpoint(0)!
+let outpoint = previousTransaction.outpoint(0)
 
 // Create a new transaction spending from the previous transaction's outpoint.
 let unsignedInput = TransactionInput(outpoint: outpoint)
