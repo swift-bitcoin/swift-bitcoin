@@ -33,6 +33,7 @@ struct ValidTransactionTests {
             if excludeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.remove(.discourageUpgradableWitnessProgram) }
 
             let result = tx.verifyScript(prevouts: prevouts, config: config)
+            let resultAgain = tx.verifyScript(prevouts: prevouts, config: config)
             #expect(result)
             if !excludeFlags.isEmpty {
                  let failure = tx.verifyScript(prevouts: prevouts, config: .standard)

@@ -171,24 +171,24 @@ struct OpIfTests {
     @Test("Minimal If")
     func minimalif() throws {
         // True-ish value
-        var script = BitcoinScript([.constant(2), .if, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
+        var script = BitcoinScript([.constant(2), .if, .constant(2), .else, .constant(3), .endIf])
         var stack = [Data]()
-        #expect(throws: (any Error).self) { try script.run(&stack) }
+        #expect(throws: (any Error).self) { try script.run(&stack, sigVersion: .witnessV0) }
 
         // Falsish value
-        script = .init([.pushBytes(Data([0])), .if, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
+        script = .init([.pushBytes(Data([0])), .if, .constant(2), .else, .constant(3), .endIf])
         stack = []
-        #expect(throws: (any Error).self) { try script.run(&stack) }
+        #expect(throws: (any Error).self) { try script.run(&stack, sigVersion: .witnessV0) }
 
         // Falsish value not-if
-        script = .init([.pushBytes(Data([0])), .notIf, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
+        script = .init([.pushBytes(Data([0])), .notIf, .constant(2), .else, .constant(3), .endIf])
         stack = []
-        #expect(throws: (any Error).self) { try script.run(&stack) }
+        #expect(throws: (any Error).self) { try script.run(&stack, sigVersion: .witnessV0) }
 
         // true-ish value not-if
-        script = .init([.constant(2), .notIf, .constant(2), .else, .constant(3), .endIf], sigVersion: .witnessV0)
+        script = .init([.constant(2), .notIf, .constant(2), .else, .constant(3), .endIf])
         stack = []
-        #expect(throws: (any Error).self) { try script.run(&stack) }
+        #expect(throws: (any Error).self) { try script.run(&stack, sigVersion: .witnessV0) }
     }
 
     @Test("VerIf")
@@ -208,11 +208,11 @@ struct OpIfTests {
 
     @Test("If + Op Success")
     func opSuccess() throws {
-        var script = BitcoinScript([.constant(1), .if, .constant(2), .else, .success(80)], sigVersion: .witnessV1)
+        var script = BitcoinScript([.constant(1), .if, .constant(2), .else, .success(80)])
         var stack = [Data]()
         try script.runV1(&stack)
 
-        script = .init([.constant(1), .if, .success(80), .else, .constant(2), .endIf], sigVersion: .witnessV1)
+        script = .init([.constant(1), .if, .success(80), .else, .constant(2), .endIf])
         stack = []
         try script.runV1(&stack)
     }

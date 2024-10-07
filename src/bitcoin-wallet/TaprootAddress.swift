@@ -13,7 +13,6 @@ public struct TaprootAddress: CustomStringConvertible {
 
     public init(_ internalKey: PublicKey, scripts: [BitcoinScript] = [], network: WalletNetwork = .main) {
         precondition(scripts.count <= 8)
-        precondition(scripts.allSatisfy { $0.sigVersion == .witnessV1})
         precondition(internalKey.hasEvenY)
         self.network = network
         if scripts.isEmpty {

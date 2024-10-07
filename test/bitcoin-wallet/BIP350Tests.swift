@@ -143,8 +143,8 @@ struct BIP350Tests {
         let publicKey = try #require(PublicKey(compressed: publicKeyData))
         let script1Data = try #require(Data([0x20, 0x44, 0xb1, 0x78, 0xd6, 0x4c, 0x32, 0xc4, 0xa0, 0x5c, 0xc4, 0xf4, 0xd1, 0x40, 0x72, 0x68, 0xf7, 0x64, 0xc9, 0x40, 0xd2, 0x0c, 0xe9, 0x7a, 0xbf, 0xd4, 0x4d, 0xb5, 0xc3, 0x59, 0x2b, 0x72, 0xfd, 0xac]))
         let script2Data = try #require(Data([0x07, 0x54, 0x61, 0x70, 0x72, 0x6f, 0x6f, 0x74]))
-        let script1 = try #require(BitcoinScript(script1Data, sigVersion: .witnessV1))
-        let script2 = try #require(BitcoinScript(script2Data, sigVersion: .witnessV1))
+        let script1 = try #require(BitcoinScript(script1Data))
+        let script2 = try #require(BitcoinScript(script2Data))
         let address = TaprootAddress(publicKey, scripts: [script1, script2]).description
         #expect(address == "bc1pwl3s54fzmk0cjnpl3w9af39je7pv5ldg504x5guk2hpecpg2kgsqaqstjq")
     }

@@ -91,12 +91,11 @@ struct WalletDocumentationExamples {
 
         // Multisig 2-out-of-3
         let multisigScript = BitcoinScript.payToMultiSignature(2, of: sk1.publicKey, sk2.publicKey, sk3.publicKey)
-        let witnessScript = BitcoinScript.payToMultiSignature(2, of: sk1.publicKey, sk2.publicKey, sk3.publicKey, sigVersion: .witnessV0)
 
         // Some different types of addresses
         let p2sh = BitcoinAddress(multisigScript)
-        let p2sh_p2wsh = BitcoinAddress(.payToWitnessScriptHash(witnessScript))
-        let p2wsh = SegwitAddress(witnessScript)
+        let p2sh_p2wsh = BitcoinAddress(.payToWitnessScriptHash(multisigScript))
+        let p2wsh = SegwitAddress(multisigScript)
 
         let fund = BitcoinTransaction(inputs: [.init(outpoint: .coinbase)], outputs: [
             .init(value: 100, script: multisigScript),
@@ -118,8 +117,8 @@ struct WalletDocumentationExamples {
         let signer = TransactionSigner(transaction: spend, prevouts: prevouts, sighashType: .all)
         signer.sign(input: 0, with: [sk1, sk2])
         signer.sign(input: 1, redeemScript: multisigScript, with: [sk2, sk3])
-        signer.sign(input: 2, witnessScript: witnessScript, with: [sk1, sk3]) // p2sh-p2wsh
-        let signed = signer.sign(input: 3, witnessScript: witnessScript, with: [sk1, sk2])
+        signer.sign(input: 2, witnessScript: multisigScript, with: [sk1, sk3]) // p2sh-p2wsh
+        let signed = signer.sign(input: 3, witnessScript: multisigScript, with: [sk1, sk2])
 
         // Verify transaction signatures.
         let result = signed.verifyScript(prevouts: prevouts)

@@ -72,7 +72,7 @@ public struct BitcoinTransaction: Equatable, Sendable {
     }
 
     public func withUnlockScript(_ script: BitcoinScript, input inputIndex: Int) -> Self {
-        precondition(script.sigVersion == .base && inputs.indices.contains(inputIndex))
+        precondition(inputs.indices.contains(inputIndex))
         let oldInput = inputs[inputIndex]
         let newInput = TransactionInput(outpoint: oldInput.outpoint, sequence: oldInput.sequence, script: script, witness: oldInput.witness)
         let newInputs = inputs[..<inputIndex] + [newInput] + inputs[inputIndex.advanced(by: 1)...]
