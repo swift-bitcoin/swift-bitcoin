@@ -17,11 +17,13 @@ public struct ScriptContext {
         self.transaction = transaction
         self.inputIndex = inputIndex
         self.prevouts = prevouts
+        self.sigVersion = .base
     }
 
     public let config: ScriptConfig
     public let transaction: BitcoinTransaction
     public let prevouts: [TransactionOutput]
+    public private(set) var sigVersion: SigVersion
 
     // Internal state
     public internal(set) var inputIndex: Int {
@@ -66,8 +68,6 @@ public struct ScriptContext {
         prevouts[inputIndex]
     }
 
-    var sigVersion: SigVersion { script.sigVersion }
-
     var currentOp: ScriptOperation {
         script.operations[operationIndex]
     }
@@ -97,15 +97,18 @@ public struct ScriptContext {
     }
 
     /// Evaluates the script with a new stack. All previous mutable state is reset.
-    public mutating func run(_ newScript: BitcoinScript, stack newStack: [Data] = [], leafVersion: UInt8? = .none, tapLeafHash: Data? = .none) throws {
+    public mutating func run(_ newScript: BitcoinScript, stack newStack: [Data] = [], sigVersion newSigVersion: SigVersion? = .none, leafVersion: UInt8? = .none, tapLeafHash: Data? = .none) throws {
 
         reset()
         script = newScript
         stack = newStack
+        if let newSigVersion {
+            sigVersion = newSigVersion
+        }
         self.leafVersion = leafVersion
         self.tapLeafHash = tapLeafHash
 
-        if script.sigVersion == .witnessV1 {
+        if sigVersion == .witnessV1 {
             if let witness = transaction.inputs[inputIndex].witness {
                 sigopBudget = BitcoinScript.sigopBudgetBase + witness.size
             } else {
@@ -139,7 +142,7 @@ public struct ScriptContext {
         }
 
         for operation in script.operations {
-            if (sigVersion == .base || sigVersion == .witnessV0) && !operation.isPush && operation != .reserved(80) {
+            if (sigVersion == .base || sigVersion == .witnessV0) && !operation.isPush && operation != .success(80) { // .success(80) == .reserved for base and witnessV0
                 nonPushOperations += 1
                 guard nonPushOperations <= BitcoinScript.maxOperations else {
                     throw ScriptError.operationsLimitExceeded
@@ -187,7 +190,7 @@ public struct ScriptContext {
         var scriptCode = Data()
         var programCounter2 = scriptData.startIndex
         while programCounter2 < scriptData.endIndex {
-            guard let operation = ScriptOperation(scriptData[programCounter2...], sigVersion: sigVersion) else {
+            guard let operation = ScriptOperation(scriptData[programCounter2...]) else {
                 preconditionFailure()
                 // TODO: What happens to scriptCode if script cannot be fully decoded?
             }
@@ -236,11 +239,15 @@ public struct ScriptContext {
         case .zero: opConstant(0)
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): try opPushBytes(data: d)
         case .oneNegate: op1Negate()
-        case .reserved(_): throw ScriptError.disabledOperation
-        case .success(_): preconditionFailure()
+        case .success(_): if sigVersion == .base || sigVersion == .witnessV0 {
+            if op.opCode == 80 || op.opCode == 98 || op.opCode == 137 || op.opCode == 138 {
+                throw ScriptError.disabledOperation
+            } else {
+                throw ScriptError.unknownOperation
+            }
+        } else { preconditionFailure() }
         case .constant(let k): opConstant(k)
         case .noOp: break
-        case .ver: throw ScriptError.disabledOperation
         case .if: try opIf()
         case .notIf: try opIf(isNotIf: true)
         case .verIf, .verNotIf: throw ScriptError.disabledOperation

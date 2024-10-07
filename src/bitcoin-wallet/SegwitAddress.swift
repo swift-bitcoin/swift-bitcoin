@@ -17,7 +17,6 @@ public struct SegwitAddress: CustomStringConvertible {
     }
 
     public init(_ script: BitcoinScript, network: WalletNetwork = .main) {
-        precondition(script.sigVersion == .witnessV0)
         self.network = network
         hash = Data(SHA256.hash(data: script.data))
     }

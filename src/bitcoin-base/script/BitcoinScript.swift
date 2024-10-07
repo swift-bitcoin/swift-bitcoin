@@ -11,17 +11,12 @@ public struct BitcoinScript: Equatable, Sendable {
     /// Creates a script from a list of operations.
     /// - Parameters:
     ///   - operations: A sequence of script operations.
-    ///   - sigVersion: The signature version to be assumed by this script.
-    public init(_ operations: [ScriptOperation], sigVersion: SigVersion = .base) {
-        self.sigVersion = sigVersion
+    public init(_ operations: [ScriptOperation]) {
         self.operations = operations
         self.unparsable = .init()
     }
 
     // MARK: - Instance Properties
-
-    /// The signature version of this script.
-    public let sigVersion: SigVersion
 
     /// List of all decoded script operations.
     public let operations: [ScriptOperation]
@@ -32,8 +27,8 @@ public struct BitcoinScript: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// Attempts to parse the script and return its assembly representation. Otherwise returns an empty string.
-    public var asm: String {
-        (operations.map(\.asm) + [unparsable.hex]).joined(separator: " ")
+    public func asm(_ sigVersion: SigVersion = .witnessV1) -> String {
+        (operations.map { $0.asm(sigVersion) } + [unparsable.hex]).joined(separator: " ")
     }
 
     var isEmpty: Bool {
@@ -86,9 +81,9 @@ public struct BitcoinScript: Equatable, Sendable {
     }
 
     /// Simple script execution ``ScriptContext``
-    public func run(_ config: ScriptConfig = .standard, transaction: BitcoinTransaction = .dummy, inputIndex: Int = 0, prevouts: [TransactionOutput] = [], stack: [Data] = []) throws -> [Data] {
+    public func run(_ config: ScriptConfig = .standard, transaction: BitcoinTransaction = .dummy, inputIndex: Int = 0, prevouts: [TransactionOutput] = [], stack: [Data] = [], sigVersion: SigVersion = .base) throws -> [Data] {
         var context = ScriptContext(config, transaction: transaction, inputIndex: inputIndex, prevouts: prevouts)
-        try context.run(self, stack: stack)
+        try context.run(self, stack: stack, sigVersion: sigVersion)
         return context.stack
     }
 
@@ -130,20 +125,18 @@ public struct BitcoinScript: Equatable, Sendable {
     /// This is the script code for signing Pay-to-Witness-Public-Key-Hash inputs. It contains the same operations as a Pay-to-Public-Key-Hash output script but the signature version is bumped to Witness V0.
     public static func segwitPKHScriptCode(_ hash: Data) -> Self {
         precondition(hash.count == Hash160.Digest.byteCount)
-        return .init([.dup, .hash160, .pushBytes(hash), .equalVerify, .checkSig], sigVersion: .witnessV0)
+        return [.dup, .hash160, .pushBytes(hash), .equalVerify, .checkSig]
     }
 
-    public static func payToMultiSignature(_ threshold: Int, of keys: PublicKey..., sigVersion: SigVersion = .base) -> Self {
+    public static func payToMultiSignature(_ threshold: Int, of keys: PublicKey...) -> Self {
         precondition(keys.count <= 20 && threshold >= 0 && threshold <= keys.count)
-        precondition(sigVersion == .base || sigVersion == .witnessV0)
         let keyOps = keys.map { key in
             ScriptOperation.pushBytes(key.data)
         }
         return .init(
             [.encodeMinimally(threshold)] +
             keyOps +
-            [.encodeMinimally(keys.count), .checkMultiSig],
-            sigVersion: sigVersion
+            [.encodeMinimally(keys.count), .checkMultiSig]
         )
     }
 
@@ -164,7 +157,6 @@ public struct BitcoinScript: Equatable, Sendable {
     }
 
     public static func payToWitnessScriptHash(_ witness: BitcoinScript) -> Self {
-        precondition(witness.sigVersion == .witnessV0)
         let hash = Data(SHA256.hash(data: witness.data))
         return payToWitnessScriptHash(hash)
     }
@@ -206,22 +198,21 @@ extension BitcoinScript {
     /// Creates a script from raw data.
     ///
     /// The script will be fully parsed – if possible. Any unparsable data will be stored separately.
-    public init(_ data: Data, sigVersion: SigVersion = .base) {
+    public init(_ data: Data) {
         var data = data
         var operations = [ScriptOperation]()
         while data.count > 0 {
-            guard let operation = ScriptOperation(data, sigVersion: sigVersion) else {
+            guard let operation = ScriptOperation(data) else {
                 break
             }
             operations.append(operation)
             data = data.dropFirst(operation.size)
         }
-        self.sigVersion = sigVersion
         self.operations = operations
         self.unparsable = data
     }
 
-    init?(prefixedData: Data, sigVersion: SigVersion = .base) {
+    init?(prefixedData: Data) {
         guard let data = Data(varLenData: prefixedData) else {
             return nil
         }

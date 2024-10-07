@@ -78,7 +78,7 @@ public class TransactionSigner {
                 transaction = transaction.withUnlockScript([.encodeMinimally(redeemScriptP2WSH.data)], input: inputIndex)
             }
         } else {
-            let unlockScript = BitcoinScript([.zero] + signatures.map { ScriptOperation.encodeMinimally($0) }, sigVersion: sigVersion)
+            let unlockScript = BitcoinScript([.zero] + signatures.map { ScriptOperation.encodeMinimally($0) })
             transaction = transaction.withUnlockScript(unlockScript, input: inputIndex)
         }
         return transaction

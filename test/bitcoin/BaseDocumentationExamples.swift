@@ -140,7 +140,7 @@ struct BaseDocumentationExamples {
 
     @Test func signWitnessScriptHashMultisig() async throws {
         let sk1 = SecretKey(); let sk2 = SecretKey(); let sk3 = SecretKey()
-        let redeemScript = BitcoinScript.payToMultiSignature(2, of: sk1.publicKey, sk2.publicKey, sk3.publicKey, sigVersion: .witnessV0)
+        let redeemScript = BitcoinScript.payToMultiSignature(2, of: sk1.publicKey, sk2.publicKey, sk3.publicKey)
 
         let fund = BitcoinTransaction(inputs: [
             .init(outpoint: .coinbase)
@@ -212,7 +212,7 @@ struct BaseDocumentationExamples {
     @Test func signScriptHashWitnessScript() async throws {
         let sk1 = SecretKey(); let sk2 = SecretKey(); let sk3 = SecretKey()
 
-        let witnessScript = BitcoinScript.payToMultiSignature(2, of: sk1.publicKey, sk2.publicKey, sk3.publicKey, sigVersion: .witnessV0)
+        let witnessScript = BitcoinScript.payToMultiSignature(2, of: sk1.publicKey, sk2.publicKey, sk3.publicKey)
         let redeemScript = BitcoinScript.payToWitnessScriptHash(witnessScript)
 
         let fund = BitcoinTransaction(inputs: [.init(outpoint: .coinbase)], outputs: [
@@ -264,7 +264,7 @@ struct BaseDocumentationExamples {
             .checkSigAdd,
             .constant(2),
             .equal
-        ], sigVersion: .witnessV1).data
+        ]).data
         let scriptTree = ScriptTree.leaf(0xc0, tapscript)
 
         let fund = BitcoinTransaction(inputs: [.init(outpoint: .coinbase)], outputs: [

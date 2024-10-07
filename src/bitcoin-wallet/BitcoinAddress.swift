@@ -19,7 +19,6 @@ public struct BitcoinAddress: CustomStringConvertible {
     }
 
     public init(_ script: BitcoinScript, mainnet: Bool = true) {
-        precondition(script.sigVersion == .base)
         isMainnet = mainnet
         isScript = true
         hash = Data(Hash160.hash(data: script.data))

@@ -59,7 +59,7 @@ extension BitcoinTransaction {
             witnessProgram = scriptPubKey.witnessProgram
         } else {
             // Execute scriptSig
-            try context.run(scriptSig)
+            try context.run(scriptSig, sigVersion: .base)
             let stackTmp = context.stack // BIP16
 
             // scriptSig and scriptPubKey must be evaluated sequentially on the same stack rather than being simply concatenated (see CVE-2010-5141)
@@ -140,7 +140,7 @@ extension BitcoinTransaction {
             // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
             let witnessScript = BitcoinScript.segwitPKHScriptCode(witnessProgram)
 
-            try context.run(witnessScript, stack: stack)
+            try context.run(witnessScript, stack: stack, sigVersion: .witnessV0)
 
             // The verification must result in a single TRUE on the stack.
             guard context.stack.count == 1, let last = context.stack.last, ScriptBoolean(last).value else {
@@ -163,8 +163,8 @@ extension BitcoinTransaction {
                 throw ScriptError.wrongWitnessScriptHash
             }
 
-            let witnessScript = BitcoinScript(witnessScriptRaw, sigVersion: .witnessV0)
-            try context.run(witnessScript, stack: stack)
+            let witnessScript = BitcoinScript(witnessScriptRaw)
+            try context.run(witnessScript, stack: stack, sigVersion: .witnessV0)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
             guard context.stack.count == 1, let last = context.stack.last, ScriptBoolean(last).value else {
@@ -257,11 +257,11 @@ extension BitcoinTransaction {
             return
         }
 
-        let tapscript = BitcoinScript(tapscriptData, sigVersion: .witnessV1)
+        let tapscript = BitcoinScript(tapscriptData)
 
         // The tapscript is executed according to the rules in the following section, with the initial stack as input.
         // If execution fails for any reason, fail.
-        try context.run(tapscript, stack: stack, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
+        try context.run(tapscript, stack: stack, sigVersion: .witnessV1, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
 
         // If the execution results in anything but exactly one element on the stack which evaluates to true with CastToBool(), fail.
         guard context.stack.count == 1, let last = context.stack.last, ScriptBoolean(last).value else {
