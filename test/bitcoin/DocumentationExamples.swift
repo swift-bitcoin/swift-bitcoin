@@ -26,7 +26,7 @@ struct DocumentationExamples {
         // # Prepare our transaction.
 
         // Grab block 1's coinbase transaction and output.
-        let fundingTx = await service.blockTransactions[1][0]
+        let fundingTx = await service.transactions[1][0]
         let prevout = fundingTx.outputs[0]
 
         // Create a new transaction spending from the previous transaction's outpoint.
@@ -78,7 +78,7 @@ struct DocumentationExamples {
         let blocks = await service.headers.count
         #expect(blocks == 102)
 
-        let lastBlock = await service.blockTransactions.last!
+        let lastBlock = await service.transactions.last!
         // Verify our transaction was confirmed in a block.
 
         #expect(lastBlock[1] == signedTx)

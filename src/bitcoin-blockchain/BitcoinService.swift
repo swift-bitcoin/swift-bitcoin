@@ -11,7 +11,7 @@ public actor BitcoinService: Sendable {
 
     let consensusParams: ConsensusParams
     public private(set) var headers = [BlockHeader]()
-    public private(set) var blockTransactions = [[BitcoinTransaction]]()
+    public private(set) var transactions = [[BitcoinTransaction]]()
     public private(set) var mempool = [BitcoinTransaction]()
 
     /// Subscriptions to new blocks.
@@ -21,16 +21,16 @@ public actor BitcoinService: Sendable {
         self.consensusParams = consensusParams
         let genesisBlock = TransactionBlock.makeGenesisBlock(consensusParams: consensusParams)
         headers.append(genesisBlock.header)
-        blockTransactions.append(genesisBlock.transactions)
+        transactions.append(genesisBlock.transactions)
     }
 
     public var genesisBlock: TransactionBlock {
-        .init(header: headers[0], transactions: blockTransactions[0])
+        .init(header: headers[0], transactions: transactions[0])
     }
 
     public func getBlock(_ height: Int) -> TransactionBlock {
-        precondition(height < blockTransactions.count)
-        return .init(header: headers[height], transactions: blockTransactions[height])
+        precondition(height < transactions.count)
+        return .init(header: headers[height], transactions: transactions[height])
     }
 
     /// Adds a transaction to the mempool.
@@ -40,10 +40,10 @@ public actor BitcoinService: Sendable {
     }
 
     public func createGenesisBlock() {
-        guard blockTransactions.isEmpty else { return }
+        guard transactions.isEmpty else { return }
         let genesisBlock = TransactionBlock.makeGenesisBlock(consensusParams: consensusParams)
         headers.append(genesisBlock.header)
-        blockTransactions.append(genesisBlock.transactions)
+        transactions.append(genesisBlock.transactions)
     }
 
     public func subscribeToBlocks() -> AsyncChannel<TransactionBlock> {
@@ -97,7 +97,7 @@ public actor BitcoinService: Sendable {
         }
         guard let from else { return [] }
         let firstIndex = from.advanced(by: 1)
-        var lastIndex = blockTransactions.endIndex
+        var lastIndex = transactions.endIndex
         if firstIndex >= lastIndex { return [] }
         if lastIndex - firstIndex > 200 {
             lastIndex = from.advanced(by: 200)
@@ -128,7 +128,7 @@ public actor BitcoinService: Sendable {
                 throw Error.headerTooNew
             }
 
-            let target = getNextWorkRequired(forHeight: blockTransactions.endIndex.advanced(by: -1), newBlockTime: newHeader.time, params: consensusParams)
+            let target = getNextWorkRequired(forHeight: transactions.endIndex.advanced(by: -1), newBlockTime: newHeader.time, params: consensusParams)
             guard DifficultyTarget(compact: newHeader.target) <= DifficultyTarget(compact: target), DifficultyTarget(newHeader.hash) <= DifficultyTarget(compact: newHeader.target) else {
                 throw Error.insuficientProofOfWork
             }
@@ -141,18 +141,18 @@ public actor BitcoinService: Sendable {
     }
 
     public func generateTo(_ publicKeyHash: Data, blockTime: Date = .now) {
-        if blockTransactions.isEmpty {
+        if transactions.isEmpty {
             createGenesisBlock()
         }
 
         let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool)
-        let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: blockTransactions.count, publicKeyHash: publicKeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: consensusParams.blockSubsidy)
+        let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: transactions.count, publicKeyHash: publicKeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: consensusParams.blockSubsidy)
 
         let previousBlockHash = headers.last!.identifier
-        let transactions = [coinbaseTx] + mempool
-        let merkleRoot = calculateMerkleRoot(transactions)
+        let newTransactions = [coinbaseTx] + mempool
+        let merkleRoot = calculateMerkleRoot(newTransactions)
 
-        let target = getNextWorkRequired(forHeight: blockTransactions.endIndex.advanced(by: -1), newBlockTime: blockTime, params: consensusParams)
+        let target = getNextWorkRequired(forHeight: transactions.endIndex.advanced(by: -1), newBlockTime: blockTime, params: consensusParams)
 
         var nonce = 0
         var block: TransactionBlock
@@ -166,13 +166,13 @@ public actor BitcoinService: Sendable {
                     target: target,
                     nonce: nonce
                 ),
-                transactions: transactions)
+                transactions: newTransactions)
             nonce += 1
         } while DifficultyTarget(block.hash) > DifficultyTarget(compact: target)
 
         let blockFound = block
         headers.append(blockFound.header)
-        blockTransactions.append(blockFound.transactions)
+        transactions.append(blockFound.transactions)
         mempool = .init()
 
         Task {
