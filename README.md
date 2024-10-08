@@ -8,7 +8,9 @@ Swift Bitcoin aims to become the first Bitcoin full node implementation and libr
 
 This repository contains a single Swift Package which exposes a series of library and executable products: crypto, base, wallet, blockchain, transport, RPC, node and utility.
 
-## Use as a library
+Refer to each module's [documentation](https://swift-bitcoin.github.io/docc/documentation/bitcoin/) to understand the exact functionality they each cover.
+
+## Use as library
 
 To integrate Swift Bitcoin into your Swift project add it to your `Package.swift` dependencies:
 
@@ -47,12 +49,12 @@ To build the project and run the command line tools use the `swift` command.
 
 First make sure all tests are passing:
 
-``bash
+```bash
 swift build --build-tests
 swift test
 ```
 
-Now you can run any of the executable targets.
+Now you can run any of the executable targets available.
 
 The Bitcoin Utility `bcutil` tool provides a number of useful offline commands as well as being able to query and control a running node instance. Check out the tool's help menu for usage information:
 
