@@ -1,45 +1,95 @@
 # Swift Bitcoin
 
-[Blog](https://swift-bitcoin.github.io)
-[Documentation](https://swift-bitcoin.github.io/docc/documentation/bitcoin/)
+[documentation](https://swift-bitcoin.github.io/docc/documentation/bitcoin/) ∙ [blog](https://swift-bitcoin.github.io)
 
-Swift Bitcoin is a [Bitcoin](https://bitcoin.org/bitcoin.pdf) network client written entirely in [Swift](https://www.swift.org/documentation/) with minimal[^1] third-party dependencies. It fully implements the Bitcoin protocol and exposes it as a framework for Swift application development on every [supported platform](https://www.swift.org/platform-support/). In addition to the [API](https://swift-bitcoin.github.io/docc/documentation/bitcoin/) there's command-line tools for [launching](https://swift-bitcoin.github.io/docc/bcnode/documentation/bcnode/) a peer-to-peer node, [interfacing](https://swift-bitcoin.github.io/docc/bcutil/documentation/bcutil/) with it using RPC and performing advanced off-chain wallet and cryptographic operations.
+Swift Bitcoin aims to become the first Bitcoin full node implementation and library written entirely in Swift.
 
-The library provides full support for bitcoin [transactions](https://en.bitcoin.it/wiki/Transaction), [SCRIPT](https://en.bitcoin.it/wiki/Script), [segregated witness](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki),
-[Schnorr signatures](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki), [taproot](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki), [tapscript](https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki) and more.
+## Repository organization
 
-The goal is to make Swift Bitcoin the most comprehensive SDK for bitcoin in Swift with features like mempool management, block mining and connectivity via the bitcoin protocol.
+This repository contains a single Swift Package which exposes a series of library and executable products: crypto, base, wallet, blockchain, transport, RPC, node and utility.
 
-# Development Roadmap
+## Use as a library
 
-We want the library to be fully tested from the beginning. When available we will use test vectors from the BIPs and reference implementations or port tests directly from [Bitcoin Core](https://bitcoincore.org).
+To integrate Swift Bitcoin into your Swift project add it to your `Package.swift` dependencies:
 
-This implies a slow and steady progress but the end result will be a secure and robust product on which developers can base their solutions.
+```swift
+let package = Package( …
+    dependencies: [ …
+        .package(url: "https://github.com/swift-bitcoin/swift-bitcoin", branch: "develop") …
+```
 
-Below is a rough roadmap of the order in which features could be integrated.
+Then select the appropriate modules as dependencies for a specific target:
 
-- Full transaction model with script, lock-time, input sequence and witness.
-- Transaction serialization and deserialization.
-- SCRIPT interpreter loop.
-- Transaction signature hash, signature [signature hash types](https://river.com/learn/terms/s/sighash-flag/) and signature generation (ECDSA).
-- [`OP_CHECKSIG`](https://en.bitcoin.it/wiki/OP_CHECKSIG).
-- Transaction verifying for Pay-to-Public-Key (`P2PK`) and Pay-to-Public-Key-Hash (`P2PKH`).
-- [`OP_RIPEMD160`](https://en.bitcoin.it/wiki/RIPEMD-160), `OP_SHA256`, `OP_HASH256`, `OP_HASH160` and other cryptographic operations.
-- `Base58` and [`Base58Check`](https://en.bitcoin.it/wiki/Base58Check_encoding) address encoding/decoding.
-- [`OP_CHECKMULTISIG`](https://en.bitcoin.it/wiki/OP_CHECKMULTISIG).
-- Transaction verifying [`P2SH`](https://github.com/bitcoin/bips/blob/master/bip-0016.mediawiki).
-- [Relative lock-time](https://github.com/bitcoin/bips/blob/master/bip-0068.mediawiki).
-- [`OP_CHECKSEQUENCEVERIFY`](https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki).
-- [`OP_CHECKLOCKTIMEVERIFY`](https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki).
-- [`NULLDUMMY`](https://en.bitcoin.it/wiki/BIP_0147).
-- Other script operations (arithmetic, stack, …).
-- [Segwit](https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki) transaction verifying `P2WPKH`, `P2WSH`, `P2SH-P2WPKH`, `P2SH-P2WSH`.
-- [`Bech32`](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) address encoding/decoding.
-- Transaction Schnorr signature generation.
-- Pay-to-Taproot [`P2TR`](https://github.com/bitcoin/bips/blob/master/bip-0086.mediawiki) (key-hash spends only).
-- Transaction signing for all standard scripts.
-- [`Bech32m`](https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki) address encoding/decoding.
-- `OP_CHECKSIGADD` (witness V1 script).
-- Tapscript transactions.
+```swift
+… targets: [
+    .target( …
+        dependencies: [ …
+            .product(name: "BitcoinWallet", package: "swift-bitcoin") …
+```
 
-[^1]: There is one dependency on Bitcoin's official [secp256k1](https://github.com/bitcoin-core/secp256k1) library for critical elliptic curve cryptography operations.
+The umbrella module `Bitcoin` will make the entire framework available to your project.
+
+```swift
+.product(name: "Bitcoin", package: "swift-bitcoin") 
+``` 
+
+In your source files make sure to import the corresponding module:
+
+```swift
+import Bitcoin
+```
+
+Refer to this [Getting Started](https://swift-bitcoin.github.io/docc/documentation/bitcoin/gettingstarted) documentation article to learn about some of the library's capabilities.
+
+## Building and running
+
+To build the project and run the command line tools use the `swift` command.
+
+First make sure all tests are passing:
+
+``bash
+swift build --build-tests
+swift test
+```
+
+Now you can run any of the executable targets.
+
+The Bitcoin Utility `bcutil` tool provides a number of useful offline commands as well as being able to query and control a running node instance. Check out the tool's help menu for usage information:
+
+```bash
+swift run bcutil --help
+```
+
+The Bitcoin Node `bcnode` tool launches a fresh node instance listening to RPC commands from `bcutil node`. Check out the tool's help menu for usage information:
+
+```bash
+swift run bcnode --help
+```
+
+Refer to this [Building](https://swift-bitcoin.github.io/docc/documentation/bitcoin/building) documentation article to learn how to produce a release build on multiple platforms.
+
+## Project dependencies
+
+Swift Bitcoin itself depends on Bitcoin Core's `libsecp256k1` as well as some official Swift Language packages that extend the standard library.
+
+The transport component depends on the open source SwiftNIO library by Apple. 
+
+## Project status
+
+As of October 2024 the APIs for cryptography, hashing functions, encodings, transactions, scripting, verification, wallet addresses, key derivation and input signing are stable and tested.
+
+Most if not all BIPs relating to transaction verification, SCRIPT and wallet have been implemented completely including official test vectors and test data borrowed from the Bitcoin Core project. This includes full segwit and taproot support.
+
+Blockchain, mempool, coins view are working in-memory but their APIs have not yet been solidified.
+
+At this time the peer-to-peer client is able to connect and perform an extended handshake, send and respond to pings and synchronize headers. It is not yet ready to fully synchronize against a testnet node or even a regtest node.
+
+Make sure to check the project's [blog](https://swift-bitcoin.github.io) for the latest news and updates. 
+
+## Roadmap
+
+The medium term focus is set on completing the wire protocol implementation on regtest.
+
+After that the remaining BIPs associated to blocks and transport layer should be implemented.
+
+Longer term a persistence story would need to be spec'd out and implemented to start thinking about sync'ing testnet. 
