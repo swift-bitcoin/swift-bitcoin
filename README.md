@@ -70,6 +70,24 @@ swift run bcnode --help
 
 Refer to this [Building](https://swift-bitcoin.github.io/docc/documentation/bitcoin/building) documentation article to learn how to produce a release build on multiple platforms.
 
+## Technologies
+
+Many of the latest features from the extended Swift Language ecosystem are leveraged by Swift Bitcoin to keep usability, performance and reliability at the highest possible level.
+
+- Swift Package Manager
+- C / C++ interoperability
+- Async/await APIs
+- Actors for mutable state isolation
+- Non-Blocking I/O and service lifecycle
+- Structured concurrency
+- Data race safety
+- Argument parser
+- Swift Testing
+- DocC documentation plugin
+- Logging
+
+Going forward we would like to experiment with Swift Macros, Swift Embedded and `~Copyable` to bring the solution even closer to the cutting edge.
+
 ## Project dependencies
 
 Swift Bitcoin itself depends on Bitcoin Core's `libsecp256k1` as well as some official Swift Language packages that extend the standard library.
