@@ -48,7 +48,7 @@ let mempoolAfter = await service.mempool.count
 let blocks = await service.headers.count
 #expect(blocks == 102)
 
-let lastBlock = await service.blockTransactions.last!
+let lastBlock = await service.transactions.last!
 // Verify our transaction was confirmed in a block.
 
 #expect(lastBlock[1] == signedTransaction)

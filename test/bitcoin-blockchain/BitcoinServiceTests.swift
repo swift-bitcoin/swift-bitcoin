@@ -77,9 +77,9 @@ struct BitcoinServiceTests {
 
         // Verify the mempool is empty once again.
         #expect(mempoolAfter == 0)
-        let blocks = await service.blockTransactions.count
+        let blocks = await service.transactions.count
         #expect(blocks == 102)
-        let lastBlockTtransactions = try #require(await service.blockTransactions.last)
+        let lastBlockTtransactions = try #require(await service.transactions.last)
         // Verify our transaction was confirmed in a block.
         #expect(lastBlockTtransactions[1] == signedTransaction)
     }

@@ -453,14 +453,12 @@ final class NodeServiceTests {
     func headers() async throws {
         try await performExtendedHandshake()
 
-        guard let satoshi, let halPeer, var satoshiOut, let hal, let satoshiPeer, var halOut else { preconditionFailure() }
+        guard let satoshi, let halPeer, let hal, let satoshiPeer else { preconditionFailure() }
 
-        Task {
-            await hal.requestHeaders()
-        }
+        await hal.requestHeaders()
+
         // Hal --(getheaders)->> …
-        let messageHS0_getheaders = try #require(await halOut.next())
-        await Task.yield()
+        let messageHS0_getheaders = try #require(await hal.popMessage(satoshiPeer))
         #expect(messageHS0_getheaders.command == .getheaders)
 
         let headersRequest = try #require(GetHeadersMessage(messageHS0_getheaders.payload))
@@ -469,26 +467,20 @@ final class NodeServiceTests {
         #expect(receivedHeaders == nil)
 
         // … --(getheaders)->> Satoshi
-        Task {
-            try await satoshi.processMessage(messageHS0_getheaders, from: halPeer)
-        }
+        try await satoshi.processMessage(messageHS0_getheaders, from: halPeer)
 
         // Satoshi --(headers)->> …
-        let messageSH0_headers = try #require(await satoshiOut.next())
-        await Task.yield()
+        let messageSH0_headers = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH0_headers.command == .headers)
 
         let headersResponse = try #require(HeadersMessage(messageSH0_headers.payload))
         #expect(headersResponse.items.count == 1)
 
         // … --(headers)->> Hal
-        Task {
-            try await hal.processMessage(messageSH0_headers, from: satoshiPeer)
-        }
+        try await hal.processMessage(messageSH0_headers, from: satoshiPeer)
         // Hal --(getheaders)->> …
-        let messageHS1_header = try #require(await halOut.next())
-        await Task.yield()
-        #expect(messageHS1_header.command == .getheaders)
+        let messageHS1_header = await hal.popMessage(satoshiPeer)
+        #expect(messageHS1_header == nil)
 
         receivedHeaders = await hal.peers[satoshiPeer]!.receivedHeaders
         #expect(receivedHeaders != nil)

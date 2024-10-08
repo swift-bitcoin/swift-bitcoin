@@ -99,11 +99,13 @@ public actor NodeService: Sendable {
 
     /// Request headers from a specific peer.
     func requestHeaders(_ id: UUID) async {
+        guard let peer = peers[id] else { preconditionFailure() }
+        guard await bitcoinService.headers.count - 1 < peer.height else { return }
         let locatorHashes = await bitcoinService.makeBlockLocator()
         let getHeaders = GetHeadersMessage(protocolVersion: .latest, locatorHashes: locatorHashes)
         awaitingHeadersFrom = id
         awaitingHeadersSince = .now
-        await send(.getheaders, payload: getHeaders.data, to: id)
+        enqueue(.getheaders, payload: getHeaders.data, to: id)
     }
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
@@ -130,7 +132,7 @@ public actor NodeService: Sendable {
     func makeVersion(for id: UUID) async -> VersionMessage {
         guard let peer = peers[id] else { preconditionFailure() }
 
-        let lastBlock = await bitcoinService.blockTransactions.count - 1
+        let lastBlock = await bitcoinService.transactions.count - 1
         return .init(
             protocolVersion: version,
             services: services,
@@ -393,6 +395,9 @@ public actor NodeService: Sendable {
         peers[id]?.lastPingNonce = .none
 
         // BIP152: Lock compact block version on first pong.
+
+        if peer.compactBlocksVersionLocked { return }
+
         guard let compactBlocksVersion = peer.compactBlocksVersion, compactBlocksVersion >= Self.minCompactBlocksVersion else {
             throw Error.unsupportedCompactBlocksVersion
         }
@@ -433,7 +438,7 @@ public actor NodeService: Sendable {
         let headers = await bitcoinService.findHeaders(using: getHeaders.locatorHashes)
         let headersMessage = HeadersMessage(items: headers)
 
-        await send(.headers, payload: headersMessage.data, to: id)
+        enqueue(.headers, payload: headersMessage.data, to: id)
     }
 
     private func processHeaders(_ message: BitcoinMessage, from id: UUID) async throws {
