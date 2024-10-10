@@ -14,6 +14,12 @@ public struct HeadersMessage: Equatable {
     }
 
     public let items: [BlockHeader]
+
+    public static let maxItems = 2000
+
+    public var moreItems: Bool {
+        items.count == Self.maxItems
+    }
 }
 
 extension HeadersMessage {
@@ -29,12 +35,12 @@ extension HeadersMessage {
         for _ in 0 ..< itemCount {
             guard let block = TransactionBlock(data), block.transactions.isEmpty else { return nil }
             items.append(block.header)
-            data = data.dropFirst(BlockHeader.size)
+            data = data.dropFirst(BlockHeader.size + 1) // + 1 to account for empty transactions
         }
         self.items = items
     }
 
-    var data: Data {
+    public var data: Data {
         var ret = Data(count: size)
         var offset = ret.addData(Data(varInt: UInt64(items.count)))
         for header in items {

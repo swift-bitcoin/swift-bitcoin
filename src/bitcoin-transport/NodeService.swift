@@ -99,13 +99,29 @@ public actor NodeService: Sendable {
 
     /// Request headers from a specific peer.
     func requestHeaders(_ id: UUID) async {
-        guard let peer = peers[id] else { preconditionFailure() }
-        guard await bitcoinService.headers.count - 1 < peer.height else { return }
+        guard let _ = peers[id] else { preconditionFailure() }
         let locatorHashes = await bitcoinService.makeBlockLocator()
         let getHeaders = GetHeadersMessage(protocolVersion: .latest, locatorHashes: locatorHashes)
         awaitingHeadersFrom = id
         awaitingHeadersSince = .now
         enqueue(.getheaders, payload: getHeaders.data, to: id)
+    }
+
+    func requestNextMissingBlocks(_ id: UUID) async {
+        guard let peer = peers[id] else { preconditionFailure() }
+
+        let numberOfBlocksToRequest = Peer.maxInTransitBlocks - peer.inTransitBlocks
+        guard numberOfBlocksToRequest > 0 else { return }
+
+        let blockIDs = await bitcoinService.getNextMissingBlocks(numberOfBlocksToRequest)
+
+        guard !blockIDs.isEmpty else { return }
+
+        let getData = GetDataMessage(items:
+            blockIDs.map { .init(type: .witnessBlock, hash: $0) }
+        )
+        peers[id]?.inTransitBlocks += blockIDs.count
+        enqueue(.getdata, payload: getData.data, to: id)
     }
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
@@ -210,7 +226,11 @@ public actor NodeService: Sendable {
             try await processGetHeaders(message, from: id)
         case .headers:
             try await processHeaders(message, from: id)
-        case .getaddr, .addrv2, .inv, .getdata, .notfound, .unknown:
+        case .block:
+            try await processBlock(message, from: id)
+        case .getdata:
+            try await processGetData(message, from: id)
+        case .getaddr, .addrv2, .inv, .notfound, .unknown:
             break
         }
     }
@@ -360,7 +380,7 @@ public actor NodeService: Sendable {
             peers[id]?.pongOnHoldUntilCompactBlocksPreference = .none
         }
         enqueuePingTo(id)
-
+        await requestHeaders(id)
         enqueue(.feefilter, payload: FeeFilterMessage(feeRate: feeFilterRate).data, to: id)
     }
 
@@ -454,26 +474,47 @@ public actor NodeService: Sendable {
         guard let headersMessage = HeadersMessage(message.payload) else {
             throw Error.invalidPayload
         }
-
-        guard headersMessage.items.count > 0 else {
-            return
-        }
-        let connectionPoint = headersMessage.items[0].previous
-
-        guard let last = await bitcoinService.headers.last, connectionPoint == last.identifier else {
-            return
-        }
-
-        peers[id]?.receivedHeaders = headersMessage.items
         do {
             try await bitcoinService.processHeaders(headersMessage.items)
-            await requestHeaders(id)
         } catch is BitcoinService.Error {
             peers[id]?.height = await bitcoinService.headers.count - 1
         }
 
-        // TODO: Request blocks
-        debugPrint(headersMessage)
+        if headersMessage.moreItems {
+            await requestHeaders(id)
+        }
+
+        await requestNextMissingBlocks(id)
+    }
+
+    func processBlock(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let _ = peers[id] else { preconditionFailure() }
+
+        guard let blockMessage = BlockMessage(message.payload) else {
+            throw Error.invalidPayload
+        }
+
+        await bitcoinService.processBlock(header: blockMessage.header, transactions: blockMessage.transactions)
+
+        peers[id]?.inTransitBlocks -= 1
+
+        await requestNextMissingBlocks(id)
+    }
+
+    func processGetData(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let _ = peers[id] else { preconditionFailure() }
+
+        guard let getDataMessage = GetDataMessage(message.payload) else {
+            throw Error.invalidPayload
+        }
+
+        let hashes = getDataMessage.items.filter { $0.type == .witnessBlock }.map { $0.hash }
+        let blocks = await bitcoinService.getBlocks(hashes)
+
+        for (header, transactions) in blocks {
+            let blockMessage = BlockMessage(header: header, transactions: transactions)
+            enqueue(.block, payload: blockMessage.data, to: id)
+        }
     }
 
     static let minCompactBlocksVersion = 2

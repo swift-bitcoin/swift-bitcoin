@@ -20,7 +20,7 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
     /// BIP133
     case feefilter
 
-    case inv, getdata, notfound
+    case inv, getdata, notfound, block
     case unknown
 
     static let size = 12 // Data size
@@ -35,7 +35,7 @@ extension MessageCommand {
 
     init?(_ data: Data) {
         guard data.count >= Self.size else { return nil }
-        let commandDataUntrimmed = data.dropFirst(Self.size)
+        let commandDataUntrimmed = data.prefix(Self.size)
         let commandData = commandDataUntrimmed.reversed().trimmingPrefix(while: { $0 == 0x00 }).reversed()
         let commandRawValue = String(decoding: commandData, as: Unicode.ASCII.self)
         self.init(tentativeRawValue: commandRawValue)

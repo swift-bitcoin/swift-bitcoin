@@ -1,12 +1,13 @@
 import Foundation
 import BitcoinCrypto
+import BitcoinBase
+import BitcoinBlockchain
 
-/// A block's header.
-public struct BlockHeader: Equatable, Sendable {
+public struct BlockMessage: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    public init(version: Int = 2, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0) {
+    public init(version: Int = 2, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0, transactions: [BitcoinTransaction] = []) {
         self.version = version
         self.previous = previous
         self.merkleRoot = merkleRoot
@@ -19,6 +20,17 @@ public struct BlockHeader: Equatable, Sendable {
 
         self.target = target
         self.nonce = nonce
+        self.transactions = transactions
+    }
+
+    public init(header: BlockHeader, transactions: [BitcoinTransaction]) {
+        version = header.version
+        previous = header.previous
+        merkleRoot = header.merkleRoot
+        time = header.time
+        target = header.target
+        nonce = header.nonce
+        self.transactions = transactions
     }
 
     // MARK: - Instance Properties
@@ -32,9 +44,13 @@ public struct BlockHeader: Equatable, Sendable {
     public let target: Int
 
     public let nonce: Int
+    public let transactions: [BitcoinTransaction]
 
     // MARK: - Computed Properties
 
+    var header: BlockHeader {
+        .init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce)
+    }
     public var hash: Data {
         Data(Hash256.hash(data: data))
     }
@@ -60,13 +76,13 @@ public struct BlockHeader: Equatable, Sendable {
     // No type methods yet.
 }
 
-extension BlockHeader {
+extension BlockMessage {
 
     // MARK: - Initializers
 
     /// Initialize from serialized raw data.
     public init?(_ data: Data) {
-        guard data.count >= Self.size else {
+        guard data.count >= Self.baseSize else {
             return nil
         }
         var data = data
@@ -83,23 +99,44 @@ extension BlockHeader {
         data = data.dropFirst(MemoryLayout<UInt32>.size)
         nonce = Int(data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) })
         data = data.dropFirst(MemoryLayout<UInt32>.size)
+
+        guard let txCount = data.varInt else {
+            return nil
+        }
+        data = data.dropFirst(txCount.varIntSize)
+
+        var transactions = [BitcoinTransaction]()
+        for _ in 0 ..< txCount {
+            guard let tx = BitcoinTransaction(data) else {
+                return nil
+            }
+            transactions.append(tx)
+            data = data.dropFirst(tx.size)
+        }
+        self.transactions = transactions
     }
 
     // MARK: - Computed Properties
 
     public var data: Data {
-        var ret = Data(count: Self.size)
+        var ret = Data(count: size)
         var offset = ret.addBytes(Int32(version))
         offset = ret.addData(previous.reversed(), at: offset)
         offset = ret.addData(merkleRoot.reversed(), at: offset)
         offset = ret.addBytes(UInt32(time.timeIntervalSince1970), at: offset)
         offset = ret.addBytes(UInt32(target), at: offset)
         offset = ret.addBytes(UInt32(nonce), at: offset)
+        offset = ret.addData(Data(varInt: UInt64(transactions.count)), at: offset)
+        offset = ret.addData(transactions.reduce(Data()) { $0 + $1.data }, at: offset)
         return ret
+    }
+
+    /// Size of data in bytes.
+    public var size: Int {
+        Self.baseSize + UInt64(transactions.count).varIntSize + transactions.reduce(0) { $0 + $1.size }
     }
 
     // MARK: - Type Properties
 
-    /// Size of data in bytes.
-    public static let size = 80
+    public static let baseSize = 80
 }
