@@ -25,6 +25,7 @@ extension FeeFilterMessage {
         let feeRateRaw = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt64.self)
         }
+        guard feeRateRaw <= BitcoinAmount.max else { return nil }
         feeRate = BitcoinAmount(feeRateRaw)
     }
 }

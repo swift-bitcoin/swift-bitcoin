@@ -115,7 +115,7 @@ final class NodeServiceTests {
     ///
     func performExtendedHandshake() async throws {
 
-        guard let satoshi, let halPeer, let hal, let satoshiPeer else { preconditionFailure() }
+        guard let satoshi, let halPeer, let hal, let satoshiPeer, let satoshiChain, let halChain else { preconditionFailure() }
 
         await hal.connect(satoshiPeer)
 
@@ -193,11 +193,18 @@ final class NodeServiceTests {
         let messageHS5_ping = try #require(await hal.popMessage(satoshiPeer))
         #expect(messageHS5_ping.command == .ping)
 
-        // Hal --(feefilter)->> …
-        let messageHS6_feefilter = try #require(await hal.popMessage(satoshiPeer))
-        #expect(messageHS6_feefilter.command == .feefilter)
+        // Hal --(getheaders)->> …
+        let messageHS6_getheaders = try #require(await hal.popMessage(satoshiPeer))
+        #expect(messageHS6_getheaders.command == .getheaders)
 
-        let halFeeRate1 = try #require(FeeFilterMessage(messageHS6_feefilter.payload))
+        let halGetHeaders = try #require(GetHeadersMessage(messageHS6_getheaders.payload))
+        #expect(halGetHeaders.locatorHashes.count == 1)
+
+        // Hal --(feefilter)->> …
+        let messageHS7_feefilter = try #require(await hal.popMessage(satoshiPeer))
+        #expect(messageHS7_feefilter.command == .feefilter)
+
+        let halFeeRate1 = try #require(FeeFilterMessage(messageHS7_feefilter.payload))
         let halFeeRate = await hal.feeFilterRate
         #expect(halFeeRate1.feeRate == halFeeRate)
 
@@ -209,6 +216,7 @@ final class NodeServiceTests {
 
         // … --(verack)->> Satoshi
         try await satoshi.processMessage(messageHS3_verack, from: halPeer)
+
         // Satoshi --(sendcmpct)->> …
         let messageSH4_sendcmpct = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH4_sendcmpct.command == .sendcmpct)
@@ -217,11 +225,18 @@ final class NodeServiceTests {
         let messageSH5_ping = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH5_ping.command == .ping)
 
-        // Satoshi --(feefilter)->> …
-        let messageSH6_feefilter = try #require(await satoshi.popMessage(halPeer))
-        #expect(messageSH6_feefilter.command == .feefilter)
+        // Satoshi --(getheaders)->> …
+        let messageSH6_getheaders = try #require(await satoshi.popMessage(halPeer))
+        #expect(messageSH6_getheaders.command == .getheaders)
 
-        let satoshiFeeRate1 = try #require(FeeFilterMessage(messageSH6_feefilter.payload))
+        let satoshiGetHeaders = try #require(GetHeadersMessage(messageSH6_getheaders.payload))
+        #expect(satoshiGetHeaders.locatorHashes.count == 2)
+
+        // Satoshi --(feefilter)->> …
+        let messageSH7_feefilter = try #require(await satoshi.popMessage(halPeer))
+        #expect(messageSH7_feefilter.command == .feefilter)
+
+        let satoshiFeeRate1 = try #require(FeeFilterMessage(messageSH7_feefilter.payload))
         let satoshiFeeRate = await satoshi.feeFilterRate
         #expect(satoshiFeeRate1.feeRate == satoshiFeeRate)
 
@@ -238,12 +253,23 @@ final class NodeServiceTests {
 
         // … --(ping)->> Satoshi
         try await satoshi.processMessage(messageHS5_ping, from: halPeer)
+
         // Satoshi --(pong)->> …
-        let messageSH7_pong = try #require(await satoshi.popMessage(halPeer))
-        #expect(messageSH7_pong.command == .pong)
+        let messageSH8_pong = try #require(await satoshi.popMessage(halPeer))
+        #expect(messageSH8_pong.command == .pong)
+
+        // … --(getheaders)->> Satoshi
+        try await satoshi.processMessage(messageHS6_getheaders, from: halPeer)
+
+        // Satoshi --(headers)->> …
+        let messageSH9_headers = try #require(await satoshi.popMessage(halPeer))
+        #expect(messageSH9_headers.command == .headers)
+
+        let satoshiHeaders = try #require(HeadersMessage(messageSH9_headers.payload))
+        #expect(satoshiHeaders.items.count == 1)
 
         // … --(feefilter)->> Satoshi
-        try await satoshi.processMessage(messageHS6_feefilter, from: halPeer) // No response expected
+        try await satoshi.processMessage(messageHS7_feefilter, from: halPeer) // No response expected
         let halFeeRate2 = await satoshi.peers[halPeer]!.feeFilterRate
         #expect(halFeeRate2 == halFeeRate)
 
@@ -254,25 +280,89 @@ final class NodeServiceTests {
 
         // … --(ping)->> Hal
         try await hal.processMessage(messageSH5_ping, from: satoshiPeer)
+
         // Hal --(pong)->> …
         let messageHS7_pong = try #require(await hal.popMessage(satoshiPeer))
         #expect(messageHS7_pong.command == .pong)
 
+        // … --(getheaders)->> Hal
+        try await hal.processMessage(messageSH6_getheaders, from: satoshiPeer)
+
+        // Hal --(headers)->> …
+        let messageHS8_headers = try #require(await hal.popMessage(satoshiPeer))
+        #expect(messageHS8_headers.command == .headers)
+
+        let halHeaders = try #require(HeadersMessage(messageHS8_headers.payload))
+        #expect(halHeaders.items.count == 0)
+
         // … --(feefilter)->> Hal
-        try await hal.processMessage(messageSH6_feefilter, from: satoshiPeer) // No response expected
+        try await hal.processMessage(messageSH7_feefilter, from: satoshiPeer) // No response expected
         let satoshiFeeRate2 = await hal.peers[satoshiPeer]!.feeFilterRate
         #expect(satoshiFeeRate2 == satoshiFeeRate)
 
         // … --(pong)->> Hal
-        try await hal.processMessage(messageSH7_pong, from: satoshiPeer) // No response expected
+        try await hal.processMessage(messageSH8_pong, from: satoshiPeer) // No response expected
 
         let compactBlocksVersionLockedHal = await hal.peers[satoshiPeer]!.compactBlocksVersionLocked
         #expect(compactBlocksVersionLockedHal)
 
+        let halHeadersBefore = await halChain.headers.count
+        #expect(halHeadersBefore == 1)
+
+        // … --(headers)->> Hal
+        try await hal.processMessage(messageSH9_headers, from: satoshiPeer)
+
+        let halHeadersAfter = await halChain.headers.count
+        #expect(halHeadersAfter == 2)
+
+        // Hal --(getdata)->> …
+        let messageHS9_getdata = try #require(await hal.popMessage(satoshiPeer))
+        #expect(messageHS9_getdata.command == .getdata)
+
+        let halGetData = try #require(GetDataMessage(messageHS9_getdata.payload))
+        #expect(halGetData.items.count == 1)
+
         // … --(pong)->> Satoshi
-        try await satoshi.processMessage(messageHS7_pong, from: halPeer) // No response expected
+        try await satoshi.processMessage(messageHS7_pong, from: halPeer)
+
+        // No Response
+        #expect(await satoshi.popMessage(halPeer) == nil)
+
         let compactBlocksVersionLockedSatoshi = await satoshi.peers[halPeer]!.compactBlocksVersionLocked
         #expect(compactBlocksVersionLockedSatoshi)
+
+        let satoshiHeadersBefore = await halChain.headers.count
+
+        // … --(headers)->> Satoshi
+        try await satoshi.processMessage(messageHS8_headers, from: halPeer)
+
+        let satoshiHeadersAfter = await satoshiChain.headers.count
+        #expect(satoshiHeadersAfter == satoshiHeadersBefore)
+
+        // No Response
+        #expect(await satoshi.popMessage(halPeer) == nil)
+
+        // … --(getdata)->> Satoshi
+        try await satoshi.processMessage(messageHS9_getdata, from: halPeer)
+
+        // Satoshi --(block)->> …
+        let messageSH10_block = try #require(await satoshi.popMessage(halPeer))
+        #expect(messageSH10_block.command == .block)
+
+        let satoshiBlock = try #require(BlockMessage(messageSH10_block.payload))
+        #expect(satoshiBlock.transactions.count == 1)
+
+        let halBlocksBefore = await halChain.transactions.count
+        #expect(halBlocksBefore == 1)
+
+        // … --(block)->> Hal
+        try await hal.processMessage(messageSH10_block, from: satoshiPeer)
+
+        let halBlocksAfter = await halChain.transactions.count
+        #expect(halBlocksAfter == 2)
+
+        // No Response
+        #expect(await hal.popMessage(satoshiPeer) == nil)
     }
 
     /// Extended handshake.
@@ -447,43 +537,5 @@ final class NodeServiceTests {
 
         lastPingNonce = await hal.peers[satoshiPeer]!.lastPingNonce
         #expect(lastPingNonce == nil)
-    }
-
-    @Test
-    func headers() async throws {
-        try await performExtendedHandshake()
-
-        guard let satoshi, let halPeer, let hal, let satoshiPeer else { preconditionFailure() }
-
-        await hal.requestHeaders()
-
-        // Hal --(getheaders)->> …
-        let messageHS0_getheaders = try #require(await hal.popMessage(satoshiPeer))
-        #expect(messageHS0_getheaders.command == .getheaders)
-
-        let headersRequest = try #require(GetHeadersMessage(messageHS0_getheaders.payload))
-        var receivedHeaders = await hal.peers[satoshiPeer]!.receivedHeaders
-        #expect(headersRequest.locatorHashes.count == 1)
-        #expect(receivedHeaders == nil)
-
-        // … --(getheaders)->> Satoshi
-        try await satoshi.processMessage(messageHS0_getheaders, from: halPeer)
-
-        // Satoshi --(headers)->> …
-        let messageSH0_headers = try #require(await satoshi.popMessage(halPeer))
-        #expect(messageSH0_headers.command == .headers)
-
-        let headersResponse = try #require(HeadersMessage(messageSH0_headers.payload))
-        #expect(headersResponse.items.count == 1)
-
-        // … --(headers)->> Hal
-        try await hal.processMessage(messageSH0_headers, from: satoshiPeer)
-        // Hal --(getheaders)->> …
-        let messageHS1_header = await hal.popMessage(satoshiPeer)
-        #expect(messageHS1_header == nil)
-
-        receivedHeaders = await hal.peers[satoshiPeer]!.receivedHeaders
-        #expect(receivedHeaders != nil)
-        #expect(receivedHeaders!.count == 1)
     }
 }

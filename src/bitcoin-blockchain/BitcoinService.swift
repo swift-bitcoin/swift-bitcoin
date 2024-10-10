@@ -9,6 +9,19 @@ public actor BitcoinService: Sendable {
         case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew
     }
 
+    public struct BlockchainInfo: Sendable, CustomStringConvertible, Codable {
+        public var description: String {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let value = try! encoder.encode(self)
+            return String(data: value, encoding: .utf8)!
+        }
+
+        public let headers: Int
+        public let blocks: Int
+        public let hashes: [String]
+    }
+
     let consensusParams: ConsensusParams
     public private(set) var headers = [BlockHeader]()
     public private(set) var transactions = [[BitcoinTransaction]]()
@@ -62,23 +75,30 @@ public actor BitcoinService: Sendable {
         blockChannels.removeAll(where: { $0 === channel })
     }
 
+
+    public func getBlockchainInfo() -> BlockchainInfo {
+        .init(
+            headers: headers.count,
+            blocks: transactions.count,
+            hashes: headers.map { $0.identifierHex }
+        )
+    }
+
     /// To create the block locator hashes, keep pushing hashes until you go back to the genesis block. After pushing 10 hashes back, the step backwards doubles every loop.
     public func makeBlockLocator() -> [Data] {
-        precondition(headers.startIndex == 0)
+        precondition(!headers.isEmpty)
 
+        var have = [Data]()
         var index = headers.endIndex - 1
         var step = 1
-        var have = [Data]()
-        if index < 0 { return have }
-
         while index >= 0 {
             let header = headers[index]
             have.append(header.identifier)
             if index == 0 { break }
 
             // Exponentially larger steps back, plus the genesis block.
+            if have.count >= 10 { step *= 2 }
             index = max(index - step, 0) // TODO: Use "skiplist"
-            if have.count > 10 { step *= 2 }
         }
         return have
     }
@@ -86,7 +106,7 @@ public actor BitcoinService: Sendable {
     public func findHeaders(using locator: [Data]) -> [BlockHeader] {
         var from = Int?.none
         for identifier in locator {
-            for index in headers.indices.reversed() {
+            for index in headers.indices {
                 let header = headers[index]
                 if header.identifier == identifier {
                     from = index
@@ -134,6 +154,42 @@ public actor BitcoinService: Sendable {
             }
             headers.append(newHeader)
         }
+    }
+
+    public func getNextMissingBlocks(_ numberOfBlocks: Int) -> [Data] {
+        let lastBlockIndex = transactions.count
+        let delta = headers.count - transactions.count
+        let realNumberOfBlocks = min(numberOfBlocks, delta)
+        var hashes = [Data]()
+        for i in lastBlockIndex ..< (lastBlockIndex + realNumberOfBlocks) {
+            hashes.append(headers[i].identifier)
+        }
+        return hashes
+    }
+
+    public func getBlocks(_ hashes: [Data]) -> [(BlockHeader, [BitcoinTransaction])] {
+        var ret = [(BlockHeader, [BitcoinTransaction])]()
+        for hash in hashes {
+            guard let index = headers.firstIndex(where: { $0.identifier == hash }),
+                  index < transactions.count else {
+                continue
+            }
+            ret.append((
+                headers[index],
+                transactions[index]
+            ))
+        }
+        return ret
+    }
+
+    public func processBlock(header: BlockHeader, transactions blockTransactions: [BitcoinTransaction]) {
+        guard headers.count > transactions.count else { return }
+        if header == headers[transactions.count] {
+            // TODO: Verify each transaction
+            // TODO: Verify merkle root
+            transactions.append(blockTransactions)
+        }
+
     }
 
     public func generateTo(_ publicKey: PublicKey, blockTime: Date = .now) {

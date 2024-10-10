@@ -211,6 +211,9 @@ actor RPCService: Service {
                 }
                 await bitcoinService.generateTo(publicKey)
                 try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.headers.last!.hash.hex) as JSONObject))
+            case "get-blockchain-info":
+                let blockchainInfo = await bitcoinService.getBlockchainInfo()
+                try await outbound.write(.init(id: request.id, result: .string(blockchainInfo.description) as JSONObject))
             case "ping-all":
                 await bitcoinNode.pingAll()
             case "request-headers":

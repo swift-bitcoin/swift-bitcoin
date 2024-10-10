@@ -59,10 +59,11 @@ extension NodeService {
         /// Difference between the time reported by the peer and our time at the time we receive the version message.
         var timeDiff = 0
 
+        var inTransitBlocks = 0
+
         // Status
         public internal(set) var height = 0
         public internal(set) var lastPingNonce = UInt64?.none
-        var receivedHeaders = [BlockHeader]?.none
 
         /// BIP133
         public internal(set) var feeFilterRate = BitcoinAmount?.none // TODO: Honor when relaying transacions (inv) to this peer, #188
@@ -80,5 +81,7 @@ extension NodeService {
             // versionAckSent &&
             versionAckReceived
         }
+
+        static let maxInTransitBlocks = 16
     }
 }
