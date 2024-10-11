@@ -55,6 +55,7 @@ actor P2PService: Service {
     }
 
     func connectionMade() {
+        status.activeConnections += 1
         status.overallTotalConnections += 1
     }
 
@@ -127,6 +128,7 @@ actor P2PService: Service {
                                         for await message in await self.bitcoinNode.getChannel(for: peerID).cancelOnGracefulShutdown() {
                                             try await outbound.write(message)
                                         }
+                                        try? await connectionChannel.channel.close()
                                     }
                                     group.addTask {
                                         for try await message in inbound.cancelOnGracefulShutdown() {
@@ -138,7 +140,6 @@ actor P2PService: Service {
                                             while let message = await self.bitcoinNode.popMessage(peerID) {
                                                 try await outbound.write(message)
                                             }
-
                                         }
                                         // Disconnected
                                         logger.info("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
