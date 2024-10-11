@@ -99,6 +99,7 @@ actor P2PClientService: Service {
                     for await message in await self.bitcoinNode.getChannel(for: peerID).cancelOnGracefulShutdown() {
                         try await outbound.write(message)
                     }
+                    try? await clientChannel.channel.close()
                 }
                 group.addTask {
                     for try await message in inbound.cancelOnGracefulShutdown() {

@@ -3,6 +3,9 @@ import AsyncAlgorithms
 import BitcoinBase
 import BitcoinBlockchain
 
+private let keepAliveSeconds = 60
+private let pongToleranceSeconds = 15
+
 /// Manages connection with peers, process incoming messages and sends responses.
 public actor NodeService: Sendable {
 
@@ -134,6 +137,8 @@ public actor NodeService: Sendable {
 
     /// Deregisters a peer and cleans up outbound channels.
     public func removePeer(_ id: UUID) {
+        peers[id]?.nextPingTask?.cancel()
+        peers[id]?.checkPongTask?.cancel()
         peerOuts[id]?.finish()
         peerOuts.removeValue(forKey: id)
         peers.removeValue(forKey: id)
@@ -170,37 +175,54 @@ public actor NodeService: Sendable {
         enqueue(.version, payload: versionMessage.data, to: id)
         enqueue(.wtxidrelay, to: id)
         enqueue(.sendaddrv2, to: id)
-
-        // await send(.version, payload: versionMessage.data, to: id)
-        // peers[id]?.versionSent = true
     }
 
     /// Sends a ping message to a peer. Creates a new child task.
-    func sendPingTo(_ id: UUID) async {
-        let ping = PingMessage()
-        peers[id]?.lastPingNonce = ping.nonce
-        await send(.ping, payload: ping.data, to: id)
-    }
+    func sendPingTo(_ id: UUID, useQueue: Bool = false) async {
+        guard let peer = peers[id], peer.lastPingNonce == .none else { return }
 
-    /// Enqueues a ping message to a peer. Creates a new child task.
-    func enqueuePingTo(_ id: UUID) {
+        // Prepare pong check
+        peers[id]?.checkPongTask = Task.detached { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(pongToleranceSeconds) * 1_000_000_000)
+            } catch { return }
+            guard !Task.isCancelled, let self else { return }
+            if let peer = await self.peers[id], peer.lastPingNonce != .none {
+                await peerOuts[id]?.finish() // Trigger disconnection
+            }
+        }
+
+        // Send ping
         let ping = PingMessage()
         peers[id]?.lastPingNonce = ping.nonce
-        enqueue(.ping, payload: ping.data, to: id)
+        if useQueue {
+            enqueue(.ping, payload: ping.data, to: id)
+        } else {
+            await send(.ping, payload: ping.data, to: id)
+        }
     }
 
     public func popMessage(_ id: UUID) -> BitcoinMessage? {
-        guard let peer = peers[id] else { preconditionFailure() }
-        guard !peer.outbox.isEmpty else { return .none }
+        guard let peer = peers[id], !peer.outbox.isEmpty else { return .none }
         return peers[id]!.outbox.removeFirst()
     }
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
     public func processMessage(_ message: BitcoinMessage, from id: UUID) async throws {
 
+        // Postpone the next ping
+        peers[id]?.nextPingTask?.cancel()
+        peers[id]?.nextPingTask = Task.detached { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(keepAliveSeconds) * 1_000_000_000)
+            } catch { return }
+            guard !Task.isCancelled, let self else { return }
+            await self.sendPingTo(id)
+        }
+
         guard let peer = peers[id] else { return }
 
-        /// First message must always be `version`.
+        // First message must always be `version`.
         if peer.version == .none, message.command != .version {
             throw Error.versionMissing
         }
@@ -293,25 +315,10 @@ public actor NodeService: Sendable {
 
         if peer.incoming {
             let versionMessage = await makeVersion(for: id)
-
-            // await send(.version, payload: versionMessage.data, to: id)
             enqueue(.version, payload: versionMessage.data, to: id)
             enqueue(.wtxidrelay, to: id)
             enqueue(.sendaddrv2, to: id)
-
-            //peers[id]?.versionSent = true
         }
-
-        // BIP339
-        // await send(.wtxidrelay, to: id)
-        // peers[id]?.witnessRelayPreferenceSent = true
-
-        // BIP155
-        // await send(.sendaddrv2, to: id)
-        // peers[id]?.v2AddressPreferenceSent = true
-
-        // await send(.verack, to: id)
-        // peers[id]?.versionAckSent = true
     }
 
     /// BIP339
@@ -379,7 +386,7 @@ public actor NodeService: Sendable {
             enqueue(.pong, payload: pong.data, to: id)
             peers[id]?.pongOnHoldUntilCompactBlocksPreference = .none
         }
-        enqueuePingTo(id)
+        await sendPingTo(id, useQueue: true)
         await requestHeaders(id)
         enqueue(.feefilter, payload: FeeFilterMessage(feeRate: feeFilterRate).data, to: id)
     }
@@ -409,10 +416,12 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
-        guard let nonce = peers[id]?.lastPingNonce, pong.nonce == nonce else {
+        guard let nonce = peer.lastPingNonce, pong.nonce == nonce else {
             throw Error.pingPongMismatch
         }
+
         peers[id]?.lastPingNonce = .none
+        peers[id]?.checkPongTask?.cancel()
 
         // BIP152: Lock compact block version on first pong.
 

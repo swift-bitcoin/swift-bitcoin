@@ -1,5 +1,6 @@
 import BitcoinBase
 import BitcoinBlockchain
+import Foundation
 
 /// Defines the `Peer` inner struct.
 extension NodeService {
@@ -65,6 +66,9 @@ extension NodeService {
         public internal(set) var height = 0
         public internal(set) var lastPingNonce = UInt64?.none
 
+        var nextPingTask: Task<(), Never>?
+        var checkPongTask: Task<(), Never>?
+
         /// BIP133
         public internal(set) var feeFilterRate = BitcoinAmount?.none // TODO: Honor when relaying transacions (inv) to this peer, #188
 
@@ -72,13 +76,9 @@ extension NodeService {
 
         /// The connection has been established.
         public var handshakeComplete: Bool {
-            // versionSent &&
             version != .none &&
-            // witnessRelayPreferenceSent &&
             witnessRelayPreferenceReceived &&
-            // v2AddressPreferenceSent &&
             v2AddressPreferenceReceived &&
-            // versionAckSent &&
             versionAckReceived
         }
 
