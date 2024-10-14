@@ -74,6 +74,7 @@ let package = Package(
         .target(
             name: "BitcoinRPC",
             dependencies: [
+                "BitcoinBlockchain",
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
             path: "src/bitcoin-rpc"),

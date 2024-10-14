@@ -9,19 +9,6 @@ public actor BitcoinService: Sendable {
         case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew
     }
 
-    public struct BlockchainInfo: Sendable, CustomStringConvertible, Codable {
-        public var description: String {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let value = try! encoder.encode(self)
-            return String(data: value, encoding: .utf8)!
-        }
-
-        public let headers: Int
-        public let blocks: Int
-        public let hashes: [String]
-    }
-
     let consensusParams: ConsensusParams
     public private(set) var headers = [BlockHeader]()
     public private(set) var transactions = [[BitcoinTransaction]]()
@@ -73,15 +60,6 @@ public actor BitcoinService: Sendable {
     public func unsubscribe(_ channel: AsyncChannel<TransactionBlock>) {
         channel.finish()
         blockChannels.removeAll(where: { $0 === channel })
-    }
-
-
-    public func getBlockchainInfo() -> BlockchainInfo {
-        .init(
-            headers: headers.count,
-            blocks: transactions.count,
-            hashes: headers.map { $0.identifierHex }
-        )
     }
 
     /// To create the block locator hashes, keep pushing hashes until you go back to the genesis block. After pushing 10 hashes back, the step backwards doubles every loop.
