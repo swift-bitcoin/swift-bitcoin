@@ -13,6 +13,7 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
     /// BIP152
     /// ``SendCompactMessage``
     case sendcmpct
+    case cmpctblock, getblocktxn, blocktxn
 
     case getheaders
     case headers

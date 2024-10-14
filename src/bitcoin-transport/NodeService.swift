@@ -71,8 +71,22 @@ public actor NodeService: Sendable {
         self.port = port
     }
 
+    public func start() async {
+        blocks = await bitcoinService.subscribeToBlocks()
+    }
+
+    public func handleBlock(_ block: TransactionBlock) async {
+        await withDiscardingTaskGroup {
+            for id in peers.keys {
+                $0.addTask {
+                    await self.sendBlock(block, to: id)
+                }
+            }
+        }
+    }
+
     /// We unsubscribe from Bitcoin service's blocks.
-    public func stop() async throws {
+    public func stop() async {
         if let blocks {
             await bitcoinService.unsubscribe(blocks)
         }
@@ -177,7 +191,14 @@ public actor NodeService: Sendable {
         enqueue(.sendaddrv2, to: id)
     }
 
-    /// Sends a ping message to a peer. Creates a new child task.
+    func sendBlock(_ block: TransactionBlock, to id: UUID) async {
+        guard let _ = peers[id] else { return }
+        let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
+        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, transactionIdentifiers: [block.makeShortTransactionIdentifier(for: 0, nonce: nonce)], transactions: [.init(index: 0, transaction: block.transactions[0])])
+        await send(.cmpctblock, payload: compactBlockMesssage.data, to: id)
+    }
+
+    // Sends a ping message to a peer. Creates a new child task.
     func sendPingTo(_ id: UUID, useQueue: Bool = false) async {
         guard let peer = peers[id], peer.lastPingNonce == .none else { return }
 
@@ -252,7 +273,9 @@ public actor NodeService: Sendable {
             try await processBlock(message, from: id)
         case .getdata:
             try await processGetData(message, from: id)
-        case .getaddr, .addrv2, .inv, .notfound, .unknown:
+        case .cmpctblock:
+            try await processCompactBlock(message, from: id)
+        case .getblocktxn, .blocktxn, .getaddr, .addrv2, .inv, .notfound, .unknown:
             break
         }
     }
@@ -524,6 +547,19 @@ public actor NodeService: Sendable {
             let blockMessage = BlockMessage(header: header, transactions: transactions)
             enqueue(.block, payload: blockMessage.data, to: id)
         }
+    }
+
+    func processCompactBlock(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let _ = peers[id] else { preconditionFailure() }
+
+        guard let compactBlockMessage = CompactBlockMessage(message.payload) else {
+            throw Error.invalidPayload
+        }
+
+        // try await bitcoinService.processHeaders([compactBlockMessage.header])
+        // TODO: Process header first and then send getblocktxn for the non prefilled ones which we are lacking (check transaction ids)
+
+        await bitcoinService.processBlock(header: compactBlockMessage.header, transactions: compactBlockMessage.transactions.map { $0.transaction })
     }
 
     static let minCompactBlocksVersion = 2

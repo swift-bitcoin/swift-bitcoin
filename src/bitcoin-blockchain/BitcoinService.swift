@@ -183,13 +183,17 @@ public actor BitcoinService: Sendable {
     }
 
     public func processBlock(header: BlockHeader, transactions blockTransactions: [BitcoinTransaction]) {
-        guard headers.count > transactions.count else { return }
-        if header == headers[transactions.count] {
-            // TODO: Verify each transaction
-            // TODO: Verify merkle root
-            transactions.append(blockTransactions)
+        if headers.count > transactions.count {
+            guard header == headers[transactions.count] else { return }
+        } else {
+            guard header.previous == headers[headers.count - 1].identifier else {
+                return
+            }
+            headers.append(header)
         }
-
+        // TODO: Verify each transaction
+        // TODO: Verify merkle root
+        transactions.append(blockTransactions)
     }
 
     public func generateTo(_ publicKey: PublicKey, blockTime: Date = .now) {

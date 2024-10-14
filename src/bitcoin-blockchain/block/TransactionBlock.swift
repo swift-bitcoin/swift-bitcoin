@@ -109,7 +109,7 @@ extension TransactionBlock {
     ///   1. single-SHA256 hashing the block header with the nonce appended (in little-endian)
     ///   2. Running SipHash-2-4 with the input being the transaction ID and the keys (k0/k1) set to the first two little-endian 64-bit integers from the above hash, respectively.
     ///   3. Dropping the 2 most significant bytes from the SipHash output to make it 6 bytes.
-    func makeShortTransactionIdentifier(for transactionIndex: Int, nonce: UInt64) -> Int {
+    public func makeShortTransactionIdentifier(for transactionIndex: Int, nonce: UInt64) -> Int {
 
         // single-SHA256 hashing the block header with the nonce appended (in little-endian)
         let headerData = header.data + Data(value: nonce)
