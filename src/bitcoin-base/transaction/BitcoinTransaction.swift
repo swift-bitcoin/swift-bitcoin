@@ -288,6 +288,8 @@ extension BitcoinTransaction {
         hasWitness ? (MemoryLayout.size(ofValue: BitcoinTransaction.segwitMarker) + MemoryLayout.size(ofValue: BitcoinTransaction.segwitFlag)) + inputs.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
     }
 
+    public static let identifierLength = SHA256.Digest.byteCount
+
     public static let coinbaseWitnessIdentifier = Data(count: identifierSize)
 
     /// BIP141
