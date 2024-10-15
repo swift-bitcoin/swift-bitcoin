@@ -83,7 +83,7 @@ private func base58Decode(_ string: String) -> Data? {
     }
 
     let bytes = answer.data
-    return Array(byteString.prefix { i in i == alphabet[0] }) + bytes
+    return .init(count: byteString.prefix { $0 == alphabet[0] }.count) + bytes
 }
 
 private func calculateChecksum(_ data: Data) -> Data {

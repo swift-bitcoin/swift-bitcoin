@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 import BitcoinBase
 
-public struct BitcoinAddress: CustomStringConvertible {
+public struct BitcoinAddress: CustomStringConvertible, Equatable, Sendable {
 
     public let isMainnet: Bool
     public let isScript: Bool
@@ -43,7 +43,9 @@ public struct BitcoinAddress: CustomStringConvertible {
             data.appendBytes(isMainnet ? base58VersionMain : base58VersionTest)
         }
         data.append(hash)
-        return Base58Encoder().encode(data)
+        let encoded = Base58Encoder().encode(data)
+        // let decoded = Base58Decoder().decode(encoded); precondition(decoded == data)
+        return encoded
     }
 
     public var script: BitcoinScript {

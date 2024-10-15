@@ -22,7 +22,7 @@ public struct TransactionOutput: Equatable, Sendable {
 /// Data extensions.
 extension TransactionOutput {
 
-    init?(_ data: Data) {
+    package init?(_ data: Data) {
         guard data.count > MemoryLayout<BitcoinAmount>.size else {
             return nil
         }
@@ -39,7 +39,7 @@ extension TransactionOutput {
         Data(value: value)
     }
 
-    var data: Data {
+    package var data: Data {
         var ret = Data(count: size)
         let offset = ret.addData(valueData)
         ret.addData(script.prefixedData, at: offset)

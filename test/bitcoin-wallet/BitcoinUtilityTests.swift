@@ -37,4 +37,15 @@ struct BitcoinUtilityTests {
         }
         #expect(result)
     }
+
+    /// Verifies fix for bug #263
+    @Test func addressDecoding() throws {
+        let publicKeyData = try #require(Data(hex: "029a3865b2488e2fee75336d1048c1d0795a088368a0caa4adc076425c90227bc3"))
+        let publicKey = try #require(PublicKey(publicKeyData))
+        let address1 = BitcoinAddress(publicKey, mainnet: true)
+        let addressText1 = address1.description
+        #expect(addressText1 == "1MMgabnpMVKTnYXwJfupDJRpWNJmUay8cP")
+        let address2 = try #require(BitcoinAddress(addressText1))
+        #expect(address1 == address2)
+    }
 }

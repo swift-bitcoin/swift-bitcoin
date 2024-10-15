@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 import BitcoinBase
 
-public struct TaprootAddress: CustomStringConvertible {
+public struct TaprootAddress: CustomStringConvertible, Equatable, Sendable {
 
     public let network: WalletNetwork
     public let outputKey: PublicKey
