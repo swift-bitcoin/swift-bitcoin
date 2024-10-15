@@ -21,7 +21,7 @@ struct SendRPC: AsyncParsableCommand {
             // try StartP2P.parseAsRoot(params).run()
             throw ValidationError("Use bcutil node \(method) command instead.")
         }
-        let params = if method == "generate-to" {
+        let params = if method == "generate-to" || method == "get-block" || method == "get-transaction" {
             JSONObject(RPCObject(params))
         } else {
             JSONObject(RPCObject(params.compactMap { Int($0) }))

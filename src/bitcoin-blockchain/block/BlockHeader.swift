@@ -1,6 +1,8 @@
 import Foundation
 import BitcoinCrypto
 
+public typealias BlockIdentifier = Data
+
 /// A block's header.
 public struct BlockHeader: Equatable, Sendable {
 
@@ -43,7 +45,7 @@ public struct BlockHeader: Equatable, Sendable {
         hash.hex
     }
 
-    public var identifier: Data {
+    public var identifier: BlockIdentifier {
         Data(hash.reversed())
     }
 
@@ -54,6 +56,8 @@ public struct BlockHeader: Equatable, Sendable {
     // MARK: - Instance Methods
 
     // MARK: - Type Properties
+
+    public static let identifierLength = Hash256.Digest.byteCount
 
     // MARK: - Type Methods
 
