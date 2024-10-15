@@ -25,6 +25,7 @@ public extension BitcoinService {
         }
 
         public struct Output: Sendable, Codable {
+            public let raw: String
             public let amount: BitcoinAmount
             public let script: String
         }
@@ -88,6 +89,7 @@ public extension BitcoinService {
         }
         let outputs = transaction.outputs.map {
             TransactionInfo.Output(
+                raw: $0.data.hex,
                 amount: $0.value,
                 script: $0.script.data.hex
             )

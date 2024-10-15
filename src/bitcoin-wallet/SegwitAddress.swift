@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 import BitcoinBase
 
-public struct SegwitAddress: CustomStringConvertible {
+public struct SegwitAddress: CustomStringConvertible, Equatable, Sendable {
 
     public let network: WalletNetwork
     public let hash: Data
