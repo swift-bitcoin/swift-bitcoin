@@ -21,7 +21,7 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
     /// BIP133
     case feefilter
 
-    case inv, getdata, notfound, block
+    case inv, getdata, notfound, block, tx
     case unknown
 
     static let size = 12 // Data size

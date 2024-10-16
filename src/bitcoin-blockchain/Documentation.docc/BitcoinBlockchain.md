@@ -66,8 +66,8 @@ let lastBlock = await service.transactions.last!
 - [Crypto Library][crypto]
 - [Base Library][base]
 - [Wallet Library][wallet]
-- [Blockchain Library][blockchain]
 - [Transport Library][transport]
+- [RPC Library][rpc]
 - [Bitcoin Utility (bcutil) Command][bcutil]
 - [Bitcoin Node (bcnode) Command][bcnode]
 
@@ -77,7 +77,7 @@ let lastBlock = await service.transactions.last!
 [crypto]: https://swift-bitcoin.github.io/docc/crypto/documentation/bitcoincrypto/
 [base]: https://swift-bitcoin.github.io/docc/base/documentation/bitcoinbase/
 [wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
-[blockchain]: https://swift-bitcoin.github.io/docc/blockchain/documentation/bitcoinblockchain/
 [transport]: https://swift-bitcoin.github.io/docc/transport/documentation/bitcointransport/
+[rpc]: https://swift-bitcoin.github.io/docc/rpc/documentation/bitcoinrpc/
 [bcnode]: https://swift-bitcoin.github.io/docc/bcnode/documentation/bitcoinnode/
 [bcutil]: https://swift-bitcoin.github.io/docc/bcutil/documentation/bitcoinutility/

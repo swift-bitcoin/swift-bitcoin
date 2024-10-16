@@ -211,38 +211,34 @@ actor RPCService: Service {
                     return
                 }
                 await bitcoinService.generateTo(publicKey)
-                try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.headers.last!.hash.hex) as JSONObject))
-            case "get-block":
-                guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(blockIdentifierHex) = first else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("blockIdentifier"), description: "BlockIdentifier (string) is required.")))
-                    return
+                try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.headers.last!.identifierHex) as JSONObject))
+            case GetBlockCommand.method:
+                let command = GetBlockCommand(bitcoinService: bitcoinService)
+                do {
+                    try await outbound.write(command.run(request))
+                } catch let error as RPCError {
+                    try await outbound.write(.init(id: request.id, error: error))
                 }
-                guard let blockIdentifier = Data(hex: blockIdentifierHex), blockIdentifier.count == BlockHeader.identifierLength else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("blockIdentifier"), description: "BlockIdentifier hex encoding or length is invalid.")))
-                    return
+            case GetTransactionCommand.method:
+                let command = GetTransactionCommand(bitcoinService: bitcoinService)
+                do {
+                    try await outbound.write(command.run(request))
+                } catch let error as RPCError {
+                    try await outbound.write(.init(id: request.id, error: error))
                 }
-                guard let blockInfo = await bitcoinService.getBlockInfo(blockIdentifier) else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("blockIdentifier"), description: "Block not found.")))
-                    return
+            case GetBlockchainInfoCommand.method:
+                let command = GetBlockchainInfoCommand(bitcoinService: bitcoinService)
+                try await outbound.write(command.run(request))
+            case GetMempoolCommand.method:
+                let command = GetMempoolCommand(bitcoinService: bitcoinService)
+                try await outbound.write(command.run(request))
+            case SendTransactionCommand.method:
+                let command = SendTransactionCommand(bitcoinNode: bitcoinNode)
+                do {
+                    try await command.run(request)
+                } catch let error as RPCError {
+                    try await outbound.write(.init(id: request.id, error: error))
                 }
-                try await outbound.write(.init(id: request.id, result: .string(blockInfo.description) as JSONObject))
-            case "get-transaction":
-                guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(transactionIdentifierHex) = first else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("transactionIdentifier"), description: "TransactionIdentifier (string) is required.")))
-                    return
-                }
-                guard let transactionIdentifier = Data(hex: transactionIdentifierHex), transactionIdentifier.count == BitcoinTransaction.identifierLength else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("transactionIdentifier"), description: "TransactionIdentifier hex encoding or length is invalid.")))
-                    return
-                }
-                guard let transactionInfo = await bitcoinService.getTransactionInfo(transactionIdentifier) else {
-                    try await outbound.write(.init(id: request.id, error: .init(.invalidParams("transactionIdentifier"), description: "Transaction not found.")))
-                    return
-                }
-                try await outbound.write(.init(id: request.id, result: .string(transactionInfo.description) as JSONObject))
-            case "get-blockchain-info":
-                let blockchainInfo = await bitcoinService.getBlockchainInfo()
-                try await outbound.write(.init(id: request.id, result: .string(blockchainInfo.description) as JSONObject))
             case "ping-all":
                 await bitcoinNode.pingAll()
             case "request-headers":

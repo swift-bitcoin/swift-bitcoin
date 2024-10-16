@@ -33,9 +33,19 @@ public actor BitcoinService: Sendable {
         return .init(header: headers[height], transactions: transactions[height])
     }
 
+    public func getBlock(_ id: BlockIdentifier) -> TransactionBlock? {
+        guard let index = headers.firstIndex(where: { $0.identifier == id }), index < transactions.endIndex else {
+            return .none
+        }
+        let header = headers[index]
+        let transactions = transactions[index]
+        return .init(header: header, transactions: transactions)
+    }
+
     /// Adds a transaction to the mempool.
-    public func addTransaction(_ transaction: BitcoinTransaction) {
+    public func addTransaction(_ transaction: BitcoinTransaction) throws {
         // TODO: Check transaction.
+        guard getTransaction(transaction.identifier) == .none else { return }
         mempool.append(transaction)
     }
 
@@ -222,6 +232,22 @@ public actor BitcoinService: Sendable {
                 }
             }
         }
+    }
+
+    public func getTransaction(_ id: TransactionIdentifier) -> BitcoinTransaction? {
+        for t in mempool {
+            if t.witnessIdentifier == id {
+                return t
+            }
+        }
+        for block in transactions {
+            for t in block {
+                if t.witnessIdentifier == id {
+                    return t
+                }
+            }
+        }
+        return .none
     }
 
     private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParams) -> Int {
