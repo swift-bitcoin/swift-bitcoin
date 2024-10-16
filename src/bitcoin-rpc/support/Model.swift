@@ -328,7 +328,7 @@ public enum RPCObject: Equatable {
     }
 }
 
-public struct RPCError {
+public struct RPCError: Error {
     public init(_ kind: Kind, description: String? = nil) {
         self.kind = kind
         self.description = description

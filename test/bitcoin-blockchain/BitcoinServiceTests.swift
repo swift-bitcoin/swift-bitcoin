@@ -67,7 +67,7 @@ struct BitcoinServiceTests {
         #expect(signedTransaction.verifyScript(prevouts: [prevout]))
 
         // Submit the signed transaction to the mempool.
-        await service.addTransaction(signedTransaction)
+        try await service.addTransaction(signedTransaction)
         let mempoolBefore = await service.mempool.count
         #expect(mempoolBefore == 1)
 

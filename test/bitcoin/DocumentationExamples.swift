@@ -53,7 +53,7 @@ struct DocumentationExamples {
         // # Now we're ready to submit our signed transaction to the mempool.
 
         // Submit the signed transaction to the mempool.
-        await service.addTransaction(signedTx)
+        try await service.addTransaction(signedTx)
 
         // The mempool should now contain our transaction.
         let mempoolBefore = await service.mempool.count

@@ -53,6 +53,7 @@ Encode and decode binary data into and from strings using Base58 or Bech32 encod
 - [Wallet Library][wallet]
 - [Blockchain Library][blockchain]
 - [Transport Library][transport]
+- [RPC Library][rpc]
 - [Bitcoin Utility (bcutil) Command][bcutil]
 - [Bitcoin Node (bcnode) Command][bcnode]
 
@@ -63,5 +64,6 @@ Encode and decode binary data into and from strings using Base58 or Bech32 encod
 [wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
 [blockchain]: https://swift-bitcoin.github.io/docc/blockchain/documentation/bitcoinblockchain/
 [transport]: https://swift-bitcoin.github.io/docc/transport/documentation/bitcointransport/
+[rpc]: https://swift-bitcoin.github.io/docc/rpc/documentation/bitcoinrpc/
 [bcnode]: https://swift-bitcoin.github.io/docc/bcnode/documentation/bitcoinnode/
 [bcutil]: https://swift-bitcoin.github.io/docc/bcutil/documentation/bitcoinutility/

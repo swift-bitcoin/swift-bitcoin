@@ -92,6 +92,17 @@ public actor NodeService: Sendable {
         }
     }
 
+    public func addTransaction(_ transaction: BitcoinTransaction) async throws {
+        try await bitcoinService.addTransaction(transaction)
+        await withDiscardingTaskGroup {
+            for id in peers.keys {
+                $0.addTask {
+                    await self.sendTransaction(transaction, to: id)
+                }
+            }
+        }
+    }
+
     /// Send a ping to each of our peers. Calling this function will create child tasks.
     public func pingAll() async {
         await withDiscardingTaskGroup {
@@ -191,6 +202,12 @@ public actor NodeService: Sendable {
         enqueue(.sendaddrv2, to: id)
     }
 
+    func sendTransaction(_ transaction: BitcoinTransaction, to id: UUID) async {
+        guard let _ = peers[id] else { return }
+        let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTransaction, hash: transaction.witnessIdentifier)])
+        await send(.inv, payload: inventoryMessage.data, to: id)
+    }
+
     func sendBlock(_ block: TransactionBlock, to id: UUID) async {
         guard let _ = peers[id] else { return }
         let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
@@ -275,7 +292,11 @@ public actor NodeService: Sendable {
             try await processGetData(message, from: id)
         case .cmpctblock:
             try await processCompactBlock(message, from: id)
-        case .getblocktxn, .blocktxn, .getaddr, .addrv2, .inv, .notfound, .unknown:
+        case .inv:
+            try await processInventory(message, from: id)
+        case .tx:
+            try await processTransaction(message, from: id)
+        case .getblocktxn, .blocktxn, .getaddr, .addrv2, .notfound, .unknown:
             break
         }
     }
@@ -540,13 +561,47 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
-        let hashes = getDataMessage.items.filter { $0.type == .witnessBlock }.map { $0.hash }
-        let blocks = await bitcoinService.getBlocks(hashes)
+        let blockHashes = getDataMessage.items.filter { $0.type == .witnessBlock }.map { $0.hash }
+        if !blockHashes.isEmpty {
+            let blocks = await bitcoinService.getBlocks(blockHashes)
 
-        for (header, transactions) in blocks {
-            let blockMessage = BlockMessage(header: header, transactions: transactions)
-            enqueue(.block, payload: blockMessage.data, to: id)
+            for (header, transactions) in blocks {
+                let blockMessage = BlockMessage(header: header, transactions: transactions)
+                enqueue(.block, payload: blockMessage.data, to: id)
+            }
         }
+
+        let transactionHashes = getDataMessage.items.filter { $0.type == .witnessTransaction }.map { $0.hash }
+        if !transactionHashes.isEmpty {
+            guard let tx = await bitcoinService.getTransaction(transactionHashes[0]) else { return }
+            enqueue(.tx, payload: tx.data, to: id)
+        }
+    }
+
+    func processInventory(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let _ = peers[id] else { preconditionFailure() }
+
+        guard let inventoryMessage = InventoryMessage(message.payload) else {
+            throw Error.invalidPayload
+        }
+
+        for item in inventoryMessage.items {
+            guard item.type == .witnessTransaction else { continue }
+            if let _ = await bitcoinService.getTransaction(item.hash) { continue }
+            let getData = GetDataMessage(items: [
+                .init(type: .witnessTransaction, hash: item.hash)
+            ])
+            await send(.getdata, payload: getData.data, to: id)
+        }
+    }
+
+    func processTransaction(_ message: BitcoinMessage, from id: UUID) async throws {
+        guard let _ = peers[id] else { preconditionFailure() }
+
+        guard let tx = BitcoinTransaction(message.payload) else {
+            throw Error.invalidPayload
+        }
+        try await bitcoinService.addTransaction(tx)
     }
 
     func processCompactBlock(_ message: BitcoinMessage, from id: UUID) async throws {

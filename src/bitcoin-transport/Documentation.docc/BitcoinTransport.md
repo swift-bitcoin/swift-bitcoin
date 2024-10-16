@@ -72,6 +72,7 @@ _ = try #require(await satoshi.popMessage(halPeer))
 - [Wallet Library][wallet]
 - [Blockchain Library][blockchain]
 - [Bitcoin Utility (bcutil) Command][bcutil]
+- [RPC Library][rpc]
 - [Bitcoin Node (bcnode) Command][bcnode]
 
 <!-- links -->
@@ -81,5 +82,6 @@ _ = try #require(await satoshi.popMessage(halPeer))
 [base]: https://swift-bitcoin.github.io/docc/base/documentation/bitcoinbase/
 [wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
 [blockchain]: https://swift-bitcoin.github.io/docc/blockchain/documentation/bitcoinblockchain/
+[rpc]: https://swift-bitcoin.github.io/docc/rpc/documentation/bitcoinrpc/
 [bcnode]: https://swift-bitcoin.github.io/docc/bcnode/documentation/bitcoinnode/
 [bcutil]: https://swift-bitcoin.github.io/docc/bcutil/documentation/bitcoinutility/

@@ -1,42 +1,34 @@
-# ``BitcoinWallet``
+# ``BitcoinRPC``
 
 @Metadata {
-    @DisplayName("BitcoinWallet")
+    @DisplayName("Bitcoin RPC")
     @TitleHeading("Swift Bitcoin Library")
 }
 
-Generate and decode Bitcoin addresses. Manage mnemonic seeds and derive Hierarchically Deterministic (HD) keys.
+Bitcoin RPC (Remote Procedure Call) contains the basic JSON-RPC types along with implementations for the various commands.
 
 ## Overview
 
-Use BitcoinWallet to generate addresses from public keys or scripts and to decode either legacy, segregated witness or taproot addresses.
+_BitcoinRPC_ example:
 
-Create private (_xpriv_) and public (_xpub_) master keys from BIP32 seeds and use them to derive output keys. Manage BIP39 mnemonic phrases in multiple languages.
+```swift
+import BitcoinRPC
+
+```
 
 ## Topics
 
-### Addresses
+### Essentials
 
-- ``BitcoinAddress``
-- ``SegwitAddress``
-- ``TaprootAddress``
-
-### Hierarchically Deterministic (HD) extended keys
-
-- ``ExtendedKey``
-
-### Mnemonic
-
-- ``MnemonicPhrase`` 
 
 ## See Also
 
 - [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
 - [Crypto Library][crypto]
 - [Base Library][base]
+- [Wallet Library][wallet]
 - [Blockchain Library][blockchain]
 - [Transport Library][transport]
-- [RPC Library][rpc]
 - [Bitcoin Utility (bcutil) Command][bcutil]
 - [Bitcoin Node (bcnode) Command][bcnode]
 
@@ -45,8 +37,8 @@ Create private (_xpriv_) and public (_xpub_) master keys from BIP32 seeds and us
 [swiftbitcoin]: https://swift-bitcoin.github.io/docc/documentation/bitcoin/
 [crypto]: https://swift-bitcoin.github.io/docc/crypto/documentation/bitcoincrypto/
 [base]: https://swift-bitcoin.github.io/docc/base/documentation/bitcoinbase/
+[wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
 [blockchain]: https://swift-bitcoin.github.io/docc/blockchain/documentation/bitcoinblockchain/
 [transport]: https://swift-bitcoin.github.io/docc/transport/documentation/bitcointransport/
-[rpc]: https://swift-bitcoin.github.io/docc/rpc/documentation/bitcoinrpc/
 [bcnode]: https://swift-bitcoin.github.io/docc/bcnode/documentation/bitcoinnode/
 [bcutil]: https://swift-bitcoin.github.io/docc/bcutil/documentation/bitcoinutility/
