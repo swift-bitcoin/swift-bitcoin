@@ -44,11 +44,11 @@ public struct BitcoinTransaction: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var identifier: Data { Data(Hash256.hash(data: identifierData).reversed()) }
+    public var id: Data { Data(Hash256.hash(data: nonWitnessData).reversed()) }
 
     /// BIP141
     /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
-    public var witnessIdentifier: Data { Data(Hash256.hash(data: data).reversed()) }
+    public var witnessID: Data { Data(Hash256.hash(data: data).reversed()) }
 
     /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
     public var weight: Int { baseSize * 4 + witnessSize }
@@ -68,7 +68,7 @@ public struct BitcoinTransaction: Equatable, Sendable {
     /// Creates an outpoint from a particular output in this transaction to be used when creating an ``TransactionInput`` instance.
     public func outpoint(_ outputIndex: Int) -> TransactionOutpoint {
         precondition(outputIndex < outputs.count)
-        return .init(transaction: identifier, output: outputIndex)
+        return .init(transaction: id, output: outputIndex)
     }
 
     public func withUnlockScript(_ script: BitcoinScript, input inputIndex: Int) -> Self {
@@ -96,7 +96,6 @@ public struct BitcoinTransaction: Equatable, Sendable {
     static let coinbaseMaturity = 100
 
     static let maxBlockWeight = 4_000_000
-    static let identifierSize = 32
 
     // MARK: - Type Methods
 
@@ -266,7 +265,7 @@ extension BitcoinTransaction {
     private var inputsUInt64: UInt64 { .init(inputs.count) }
     private var outputsUInt64: UInt64 { .init(outputs.count) }
 
-    var identifierData: Data {
+    private var nonWitnessData: Data {
         var ret = Data(count: baseSize)
         var offset = ret.addData(version.data)
         offset = ret.addData(Data(varInt: inputsUInt64), at: offset)
@@ -288,9 +287,9 @@ extension BitcoinTransaction {
         hasWitness ? (MemoryLayout.size(ofValue: BitcoinTransaction.segwitMarker) + MemoryLayout.size(ofValue: BitcoinTransaction.segwitFlag)) + inputs.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
     }
 
-    public static let identifierLength = Hash256.Digest.byteCount
+    public static let idLength = Hash256.Digest.byteCount
 
-    public static let coinbaseWitnessIdentifier = Data(count: identifierSize)
+    public static let coinbaseWitnessID = Data(count: idLength)
 
     /// BIP141
     private static let segwitMarker = UInt8(0x00)

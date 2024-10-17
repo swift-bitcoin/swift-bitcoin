@@ -24,7 +24,8 @@ public struct GetTransactionCommand: Sendable {
             return String(data: value, encoding: .utf8)!
         }
 
-        public let identifier: String
+        public let id: String
+        public let witnessID: String
         public let inputs: [Input]
         public let outputs: [Output]
     }
@@ -39,18 +40,18 @@ public struct GetTransactionCommand: Sendable {
 
         precondition(request.method == Self.method)
 
-        guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(transactionIdentifierHex) = first else {
-            throw RPCError(.invalidParams("transactionIdentifier"), description: "TransactionIdentifier (hex string) is required.")
+        guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(transactionIDHex) = first else {
+            throw RPCError(.invalidParams("transactionID"), description: "TransactionID (hex string) is required.")
         }
-        guard let transactionIdentifier = Data(hex: transactionIdentifierHex), transactionIdentifier.count == BitcoinTransaction.identifierLength else {
-            throw RPCError(.invalidParams("transactionIdentifier"), description: "TransactionIdentifier hex encoding or length is invalid.")
+        guard let transactionID = Data(hex: transactionIDHex), transactionID.count == BitcoinTransaction.idLength else {
+            throw RPCError(.invalidParams("transactionID"), description: "TransactionID hex encoding or length is invalid.")
         }
-        guard let transaction = await bitcoinService.getTransaction(transactionIdentifier) else {
-            throw RPCError(.invalidParams("transactionIdentifier"), description: "Transaction not found.")
+        guard let transaction = await bitcoinService.getTransaction(transactionID) else {
+            throw RPCError(.invalidParams("transactionID"), description: "Transaction not found.")
         }
         let inputs = transaction.inputs.map {
             Output.Input(
-                transaction: $0.outpoint.transactionIdentifier.hex,
+                transaction: $0.outpoint.transactionID.hex,
                 output: $0.outpoint.outputIndex
             )
         }
@@ -62,7 +63,8 @@ public struct GetTransactionCommand: Sendable {
             )
         }
         let result = Output(
-            identifier: transaction.identifier.hex,
+            id: transaction.id.hex,
+            witnessID: transaction.witnessID.hex,
             inputs: inputs,
             outputs: outputs
         )

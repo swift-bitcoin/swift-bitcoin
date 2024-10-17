@@ -3,7 +3,7 @@ import BitcoinCrypto
 import BitcoinBase
 
 func calculateMerkleRoot(_ transactions: [BitcoinTransaction]) -> Data {
-    calculateMerkleRoot(transactions.map(\.identifier))
+    calculateMerkleRoot(transactions.map(\.id))
 }
 
 func calculateMerkleRoot(_ hashes: [Data]) -> Data {

@@ -37,7 +37,7 @@ struct CreateTransaction: ParsableCommand {
             guard let identifier = Data(hex: inputTransaction) else {
                 throw ValidationError("Invalid input transaction hex: \(inputTransaction)")
             }
-            guard identifier.count == BitcoinTransaction.identifierLength else {
+            guard identifier.count == BitcoinTransaction.idLength else {
                 throw ValidationError("Invalid transaction identtifier length: \(inputTransaction)")
             }
             return TransactionInput(outpoint: .init(transaction: identifier, output: outputIndex))

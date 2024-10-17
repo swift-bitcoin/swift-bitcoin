@@ -211,7 +211,7 @@ actor RPCService: Service {
                     return
                 }
                 await bitcoinService.generateTo(publicKey)
-                try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.headers.last!.identifierHex) as JSONObject))
+                try await outbound.write(.init(id: request.id, result: .string(await bitcoinService.headers.last!.idHex) as JSONObject))
             case GetBlockCommand.method:
                 let command = GetBlockCommand(bitcoinService: bitcoinService)
                 do {

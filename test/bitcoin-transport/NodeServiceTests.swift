@@ -46,14 +46,10 @@ final class NodeServiceTests {
         }
         if let satoshi, let satoshiChain {
             Task {
-                try await satoshi.stop()
+                await satoshi.stop()
                 await satoshiChain.shutdown()
             }
         }
-        // halPeer = .none
-        // satoshi = .none
-        // satoshiChain = .none
-
         if let satoshiPeer, let hal {
             Task {
                 await hal.removePeer(satoshiPeer)
@@ -61,12 +57,10 @@ final class NodeServiceTests {
         }
         if let hal, let halChain {
             Task {
-                try await hal.stop()
+                await hal.stop()
                 await halChain.shutdown()
             }
         }
-        // hal = .none
-        // halChain = .none
     }
 
     /// Tests handshake and extended post-handshake exchange.
@@ -349,7 +343,7 @@ final class NodeServiceTests {
         let messageSH10_block = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH10_block.command == .block)
 
-        let satoshiBlock = try #require(BlockMessage(messageSH10_block.payload))
+        let satoshiBlock = try #require(TransactionBlock(messageSH10_block.payload))
         #expect(satoshiBlock.transactions.count == 1)
 
         let halBlocksBefore = await halChain.transactions.count

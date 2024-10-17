@@ -21,13 +21,6 @@
     {
       "target" : {
         "containerPath" : "container:",
-        "identifier" : "BitcoinBlockchainTests",
-        "name" : "BitcoinBlockchainTests"
-      }
-    },
-    {
-      "target" : {
-        "containerPath" : "container:",
         "identifier" : "BitcoinWalletTests",
         "name" : "BitcoinWalletTests"
       }
@@ -35,8 +28,15 @@
     {
       "target" : {
         "containerPath" : "container:",
-        "identifier" : "BitcoinBaseTests",
-        "name" : "BitcoinBaseTests"
+        "identifier" : "BitcoinCryptoTests",
+        "name" : "BitcoinCryptoTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "BitcoinBlockchainTests",
+        "name" : "BitcoinBlockchainTests"
       }
     },
     {
@@ -49,8 +49,22 @@
     {
       "target" : {
         "containerPath" : "container:",
-        "identifier" : "BitcoinCryptoTests",
-        "name" : "BitcoinCryptoTests"
+        "identifier" : "BitcoinBaseTests",
+        "name" : "BitcoinBaseTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "BitcoinTests",
+        "name" : "BitcoinTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "BitcoinRPCTests",
+        "name" : "BitcoinRPCTests"
       }
     }
   ],

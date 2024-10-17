@@ -29,7 +29,7 @@ public struct GetMempoolCommand: Sendable {
         let mempool = await bitcoinService.mempool
         let result = Output(
             size: mempool.count,
-            transactions: mempool.map(\.witnessIdentifier.hex)
+            transactions: mempool.map(\.id.hex)
         )
         return .init(id: request.id, result: JSONObject.string(result.description))
     }

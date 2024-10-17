@@ -7,10 +7,10 @@ import BitcoinBlockchain
 ///
 public struct CompactBlockMessage: Equatable {
 
-    public init(header: BlockHeader, nonce: UInt64, transactionIdentifiers: [Int], transactions: [PrefilledTransaction]) {
+    public init(header: BlockHeader, nonce: UInt64, transactionIDs: [Int], transactions: [PrefilledTransaction]) {
         self.header = header
         self.nonce = nonce
-        self.transactionIdentifiers = transactionIdentifiers
+        self.transactionIDs = transactionIDs
         self.transactions = transactions
     }
 
@@ -30,7 +30,7 @@ public struct CompactBlockMessage: Equatable {
     ///
     /// `shortids_length`: The number of short transaction IDs in shortids (i.e. `block tx count - prefilledtxn_length`)
     ///
-    public let transactionIdentifiers: [Int]
+    public let transactionIDs: [Int]
 
     /// Used to provide the coinbase transaction and a select few which we expect a peer may be missing.
     ///
@@ -56,24 +56,24 @@ extension CompactBlockMessage {
         self.nonce = nonce
         data = data.dropFirst(MemoryLayout<UInt64>.size)
 
-        guard let transactionIdentifierCount = data.varInt else { return nil }
-        data = data.dropFirst(transactionIdentifierCount.varIntSize)
-        var transactionIdentifiers = [Int]()
-        for _ in 0 ..< transactionIdentifierCount {
+        guard let transactionIDCount = data.varInt else { return nil }
+        data = data.dropFirst(transactionIDCount.varIntSize)
+        var transactionIDs = [Int]()
+        for _ in 0 ..< transactionIDCount {
             guard data.count >= 6 else { return nil }
             let identifier = (data + Data(count: 2)).withUnsafeBytes {
                 $0.loadUnaligned(as: UInt64.self)
             }
-            transactionIdentifiers.append(Int(identifier))
+            transactionIDs.append(Int(identifier))
             data = data.dropFirst(6)
         }
-        self.transactionIdentifiers = transactionIdentifiers
+        self.transactionIDs = transactionIDs
 
         guard let transactionCount = data.varInt else { return nil }
         data = data.dropFirst(transactionCount.varIntSize)
         var transactions = [PrefilledTransaction]()
         var previousIndex = -1
-        for _ in 0 ..< transactionIdentifierCount {
+        for _ in 0 ..< transactionIDCount {
             guard let transaction = PrefilledTransaction(data, previousIndex: previousIndex) else { return nil }
             previousIndex = transaction.index
             transactions.append(transaction)
@@ -87,8 +87,8 @@ extension CompactBlockMessage {
         var offset = ret.addData(header.data)
         offset = ret.addBytes(nonce, at: offset)
 
-        offset = ret.addData(Data(varInt: UInt64(transactionIdentifiers.count)), at: offset)
-        for identifier in transactionIdentifiers {
+        offset = ret.addData(Data(varInt: UInt64(transactionIDs.count)), at: offset)
+        for identifier in transactionIDs {
             let data = withUnsafeBytes(of: UInt64(identifier)) {
                 Data($0)
             }
@@ -96,7 +96,7 @@ extension CompactBlockMessage {
             offset = ret.addData(data.prefix(6), at: offset)
         }
 
-        offset = ret.addData(Data(varInt: UInt64(transactionIdentifiers.count)), at: offset)
+        offset = ret.addData(Data(varInt: UInt64(transactionIDs.count)), at: offset)
 
         var previousIndex = Int?.none
         for transaction in transactions {
@@ -108,6 +108,6 @@ extension CompactBlockMessage {
     }
 
     var size: Int {
-        BlockHeader.size + MemoryLayout<UInt64>.size + UInt64(transactionIdentifiers.count).varIntSize + transactionIdentifiers.count * 6 + UInt64(transactions.count).varIntSize + transactions.reduce(0) { $0 + $1.size }
+        BlockHeader.size + MemoryLayout<UInt64>.size + UInt64(transactionIDs.count).varIntSize + transactionIDs.count * 6 + UInt64(transactions.count).varIntSize + transactions.reduce(0) { $0 + $1.size }
     }
 }

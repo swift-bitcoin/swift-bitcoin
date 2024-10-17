@@ -87,8 +87,8 @@ public struct ExtendedKey {
         } else {
             fatalError()
         }
-        let publicKeyIdentifier = Data(Hash160.hash(data: publicKey.data))
-        let fingerprint = publicKeyIdentifier.withUnsafeBytes {
+        let publicKeyID = Data(Hash160.hash(data: publicKey.data))
+        let fingerprint = publicKeyID.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }
 

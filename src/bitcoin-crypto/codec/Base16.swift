@@ -5,13 +5,12 @@ public struct Base16Encoder {
 
     public init() { }
 
-    public func encode<D: DataProtocol>(_ d: D) -> String {
-        let hexLen = d.count * 2
-        var hexChars = [UInt8](repeating: 0, count: hexLen)
+    public func encode<D: ContiguousBytes>(_ d: D) -> String {
         var offset = 0
-
-        d.regions.forEach { (_) in
-            for i in d {
+        let count = d.withUnsafeBytes { $0.count }
+        var hexChars = [UInt8](repeating: 0, count: count * 2)
+        d.withUnsafeBytes {
+            for i in $0 {
                 hexChars[Int(offset * 2)] = itoh((i >> 4) & 0xF)
                 hexChars[Int(offset * 2 + 1)] = itoh(i & 0xF)
                 offset += 1
@@ -79,7 +78,7 @@ package extension Data {
     }
 }
 
-package extension DataProtocol {
+package extension ContiguousBytes {
 
     /// Hexadecimal (Base-16) string representation of data.
     var hex: String { Base16Encoder().encode(self) }
