@@ -204,14 +204,14 @@ public actor NodeService: Sendable {
 
     func sendTransaction(_ transaction: BitcoinTransaction, to id: UUID) async {
         guard let _ = peers[id] else { return }
-        let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTransaction, hash: transaction.witnessIdentifier)])
+        let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTransaction, hash: transaction.witnessID)])
         await send(.inv, payload: inventoryMessage.data, to: id)
     }
 
     func sendBlock(_ block: TransactionBlock, to id: UUID) async {
         guard let _ = peers[id] else { return }
         let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
-        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, transactionIdentifiers: [block.makeShortTransactionIdentifier(for: 0, nonce: nonce)], transactions: [.init(index: 0, transaction: block.transactions[0])])
+        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, transactionIDs: [block.makeShortTransactionID(for: 0, nonce: nonce)], transactions: [.init(index: 0, transaction: block.transactions[0])])
         await send(.cmpctblock, payload: compactBlockMesssage.data, to: id)
     }
 
@@ -543,7 +543,7 @@ public actor NodeService: Sendable {
     func processBlock(_ message: BitcoinMessage, from id: UUID) async throws {
         guard let _ = peers[id] else { preconditionFailure() }
 
-        guard let blockMessage = BlockMessage(message.payload) else {
+        guard let blockMessage = TransactionBlock(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -566,7 +566,7 @@ public actor NodeService: Sendable {
             let blocks = await bitcoinService.getBlocks(blockHashes)
 
             for (header, transactions) in blocks {
-                let blockMessage = BlockMessage(header: header, transactions: transactions)
+                let blockMessage = TransactionBlock(header: header, transactions: transactions)
                 enqueue(.block, payload: blockMessage.data, to: id)
             }
         }

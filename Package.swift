@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v14), .iOS(.v17), .macCatalyst(.v17), .tvOS(.v17), .watchOS(.v10), .visionOS(.v1)],
     products: [
         .library(name: "Bitcoin", targets: ["Bitcoin"]),
+        .library(name: "BitcoinRPC", targets: ["BitcoinRPC"]),
         .library(name: "BitcoinTransport", targets: ["BitcoinTransport"]),
         .library(name: "BitcoinBlockchain", targets: ["BitcoinBlockchain"]),
         .library(name: "BitcoinWallet", targets: ["BitcoinWallet"]),
@@ -74,6 +75,7 @@ let package = Package(
         .target(
             name: "BitcoinRPC",
             dependencies: [
+                "BitcoinTransport",
                 "BitcoinBlockchain",
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
@@ -101,6 +103,11 @@ let package = Package(
             dependencies: [
                 "BitcoinTransport"],
             path: "test/bitcoin-transport"),
+        .testTarget(
+            name: "BitcoinRPCTests",
+            dependencies: [
+                "BitcoinRPC"],
+            path: "test/bitcoin-rpc"),
         .testTarget(
             name: "BitcoinBlockchainTests",
             dependencies: [

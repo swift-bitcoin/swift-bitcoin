@@ -19,14 +19,6 @@ public struct TransactionBlock: Equatable, Sendable {
 
     // MARK: - Computed Properties
 
-    public var hash: Data {
-        header.hash
-    }
-
-    public var identifier: Data {
-        header.identifier
-    }
-
     // MARK: - Instance Methods
 
     // MARK: - Type Properties
@@ -39,7 +31,7 @@ public struct TransactionBlock: Equatable, Sendable {
             header: .init(
                 version: 1,
                 previous: Data(count: 32),
-                merkleRoot: genesisTx.identifier,
+                merkleRoot: genesisTx.id,
                 time: Date(timeIntervalSince1970: TimeInterval(consensusParams.genesisBlockTime)),
                 target: consensusParams.genesisBlockTarget,
                 nonce: consensusParams.genesisBlockNonce
@@ -49,14 +41,12 @@ public struct TransactionBlock: Equatable, Sendable {
     }
 }
 
-extension TransactionBlock {
-
-    // MARK: - Initializers
+package extension TransactionBlock {
 
     /// Initialize from serialized raw data.
-    public init?(_ data: Data) {
-        // Check we at least have enough data for block header + transactions
-        guard data.count > 80 else {
+    init?(_ data: Data) {
+        // Check we at least have enough data for block header + empty transactions
+        guard data.count > BlockHeader.size else {
             return nil
         }
         var data = data
@@ -66,39 +56,33 @@ extension TransactionBlock {
             return nil
         }
         data = data.dropFirst(BlockHeader.size)
-        self.header = header
-
-        guard let transactionCount = data.varInt, transactionCount <= Int.max else {
+        guard let txCount = data.varInt, txCount <= Int.max else {
             return nil
         }
-        data = data.dropFirst(transactionCount.varIntSize)
-
+        data = data.dropFirst(txCount.varIntSize)
         var transactions = [BitcoinTransaction]()
-        for _ in 0 ..< transactionCount {
-            guard let transaction = BitcoinTransaction(data) else {
+        for _ in 0 ..< txCount {
+            guard let tx = BitcoinTransaction(data) else {
                 return nil
             }
-            transactions.append(transaction)
+            transactions.append(tx)
+            data = data.dropFirst(tx.size)
         }
+        self.header = header
         self.transactions = transactions
     }
 
-    // MARK: - Computed Properties
-
-    public var data: Data {
+    var data: Data {
         var ret = Data(count: size)
         var offset = ret.addData(header.data)
-        offset = ret.addData(Data(varInt: .init(transactions.count)), at: offset)
+        offset = ret.addData(Data(varInt: UInt64(transactions.count)), at: offset)
         ret.addData(Data(transactions.map(\.data).joined()), at: offset)
         return ret
     }
 
     /// Size of data in bytes.
     var size: Int {
-        let transactionsSize = transactions.reduce(0) { $0 + $1.size }
-        return BlockHeader.size +
-               UInt64(transactions.count).varIntSize +
-               transactionsSize // Transactions
+        BlockHeader.size + UInt64(transactions.count).varIntSize + transactions.reduce(0) { $0 + $1.size }
     }
 }
 
@@ -109,7 +93,7 @@ extension TransactionBlock {
     ///   1. single-SHA256 hashing the block header with the nonce appended (in little-endian)
     ///   2. Running SipHash-2-4 with the input being the transaction ID and the keys (k0/k1) set to the first two little-endian 64-bit integers from the above hash, respectively.
     ///   3. Dropping the 2 most significant bytes from the SipHash output to make it 6 bytes.
-    public func makeShortTransactionIdentifier(for transactionIndex: Int, nonce: UInt64) -> Int {
+    public func makeShortTransactionID(for transactionIndex: Int, nonce: UInt64) -> Int {
 
         // single-SHA256 hashing the block header with the nonce appended (in little-endian)
         let headerData = header.data + Data(value: nonce)
@@ -120,7 +104,7 @@ extension TransactionBlock {
         let secondInt = headerHash.dropFirst(MemoryLayout.size(ofValue: firstInt)).withUnsafeBytes { $0.load(as: UInt64.self) }
         var sipHasher = SipHash(k0: firstInt, k1: secondInt)
 
-        let transactionID = transactions[transactionIndex].witnessIdentifier
+        let transactionID = transactions[transactionIndex].witnessID
         transactionID.withUnsafeBytes { sipHasher.update(bufferPointer: $0) }
         let sipHash = sipHasher.finalize().value
 

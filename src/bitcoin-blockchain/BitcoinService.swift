@@ -33,8 +33,8 @@ public actor BitcoinService: Sendable {
         return .init(header: headers[height], transactions: transactions[height])
     }
 
-    public func getBlock(_ id: BlockIdentifier) -> TransactionBlock? {
-        guard let index = headers.firstIndex(where: { $0.identifier == id }), index < transactions.endIndex else {
+    public func getBlock(_ id: BlockID) -> TransactionBlock? {
+        guard let index = headers.firstIndex(where: { $0.id == id }), index < transactions.endIndex else {
             return .none
         }
         let header = headers[index]
@@ -45,7 +45,7 @@ public actor BitcoinService: Sendable {
     /// Adds a transaction to the mempool.
     public func addTransaction(_ transaction: BitcoinTransaction) throws {
         // TODO: Check transaction.
-        guard getTransaction(transaction.identifier) == .none else { return }
+        guard getTransaction(transaction.id) == .none else { return }
         mempool.append(transaction)
     }
 
@@ -81,7 +81,7 @@ public actor BitcoinService: Sendable {
         var step = 1
         while index >= 0 {
             let header = headers[index]
-            have.append(header.identifier)
+            have.append(header.id)
             if index == 0 { break }
 
             // Exponentially larger steps back, plus the genesis block.
@@ -93,10 +93,10 @@ public actor BitcoinService: Sendable {
 
     public func findHeaders(using locator: [Data]) -> [BlockHeader] {
         var from = Int?.none
-        for identifier in locator {
+        for id in locator {
             for index in headers.indices {
                 let header = headers[index]
-                if header.identifier == identifier {
+                if header.id == id {
                     from = index
                     break
                 }
@@ -122,7 +122,7 @@ public actor BitcoinService: Sendable {
 
 
             let lastVerifiedHeader = headers.last!
-            guard lastVerifiedHeader.identifier == newHeader.previous else {
+            guard lastVerifiedHeader.id == newHeader.previous else {
                 throw Error.orphanHeader
             }
 
@@ -150,7 +150,7 @@ public actor BitcoinService: Sendable {
         let realNumberOfBlocks = min(numberOfBlocks, delta)
         var hashes = [Data]()
         for i in lastBlockIndex ..< (lastBlockIndex + realNumberOfBlocks) {
-            hashes.append(headers[i].identifier)
+            hashes.append(headers[i].id)
         }
         return hashes
     }
@@ -158,7 +158,7 @@ public actor BitcoinService: Sendable {
     public func getBlocks(_ hashes: [Data]) -> [(BlockHeader, [BitcoinTransaction])] {
         var ret = [(BlockHeader, [BitcoinTransaction])]()
         for hash in hashes {
-            guard let index = headers.firstIndex(where: { $0.identifier == hash }),
+            guard let index = headers.firstIndex(where: { $0.id == hash }),
                   index < transactions.count else {
                 continue
             }
@@ -174,7 +174,7 @@ public actor BitcoinService: Sendable {
         if headers.count > transactions.count {
             guard header == headers[transactions.count] else { return }
         } else {
-            guard header.previous == headers[headers.count - 1].identifier else {
+            guard header.previous == headers[headers.count - 1].id else {
                 return
             }
             headers.append(header)
@@ -196,33 +196,31 @@ public actor BitcoinService: Sendable {
         let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool)
         let coinbaseTx = BitcoinTransaction.makeCoinbaseTransaction(blockHeight: transactions.count, publicKeyHash: publicKeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: consensusParams.blockSubsidy)
 
-        let previousBlockHash = headers.last!.identifier
+        let previousBlockHash = headers.last!.id
         let newTransactions = [coinbaseTx] + mempool
         let merkleRoot = calculateMerkleRoot(newTransactions)
 
         let target = getNextWorkRequired(forHeight: transactions.endIndex.advanced(by: -1), newBlockTime: blockTime, params: consensusParams)
 
         var nonce = 0
-        var block: TransactionBlock
+        var header: BlockHeader
         repeat {
-            block = TransactionBlock(
-                header: .init(
-                    version: 0x20000000,
-                    previous: previousBlockHash,
-                    merkleRoot: merkleRoot,
-                    time: blockTime,
-                    target: target,
-                    nonce: nonce
-                ),
-                transactions: newTransactions)
+            header = BlockHeader(
+                version: 0x20000000,
+                previous: previousBlockHash,
+                merkleRoot: merkleRoot,
+                time: blockTime,
+                target: target,
+                nonce: nonce
+            )
             nonce += 1
-        } while DifficultyTarget(block.hash) > DifficultyTarget(compact: target)
+        } while DifficultyTarget(header.hash) > DifficultyTarget(compact: target)
 
-        let blockFound = block
-        headers.append(blockFound.header)
-        transactions.append(blockFound.transactions)
+        headers.append(header)
+        transactions.append(newTransactions)
         mempool = .init()
 
+        let blockFound = TransactionBlock(header: header, transactions: newTransactions)
         Task {
             await withDiscardingTaskGroup {
                 for channel in blockChannels {
@@ -234,15 +232,15 @@ public actor BitcoinService: Sendable {
         }
     }
 
-    public func getTransaction(_ id: TransactionIdentifier) -> BitcoinTransaction? {
+    public func getTransaction(_ id: TransactionID) -> BitcoinTransaction? {
         for t in mempool {
-            if t.witnessIdentifier == id {
+            if t.id == id {
                 return t
             }
         }
         for block in transactions {
             for t in block {
-                if t.witnessIdentifier == id {
+                if t.id == id {
                     return t
                 }
             }

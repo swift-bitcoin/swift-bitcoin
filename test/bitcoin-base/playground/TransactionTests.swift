@@ -33,8 +33,8 @@ struct TransactionTests {
             guard let expectedID = Data(hex: txInfo.txid), let expectedWitnessID = Data(hex: txInfo.hash) else {
                 Issue.record("Transaction ID data could not be decoded."); continue
             }
-            #expect(tx.identifier == expectedID)
-            #expect(tx.witnessIdentifier == expectedWitnessID)
+            #expect(tx.id == expectedID)
+            #expect(tx.witnessID == expectedWitnessID)
 
             let expectedSize = txInfo.size
             #expect(tx.size == expectedSize)
@@ -67,7 +67,7 @@ struct TransactionTests {
                         Issue.record("Transaction input \(i) transaction ID data could not be decoded."); continue
                     }
 
-                    #expect(input.outpoint.transactionIdentifier == expectedTransaction)
+                    #expect(input.outpoint.transactionID == expectedTransaction)
                     #expect(input.outpoint.outputIndex == expectedOutput)
                     let expectedScript = BitcoinScript(expectedScriptData)
                     #expect(input.script == expectedScript)

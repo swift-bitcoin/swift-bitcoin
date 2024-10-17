@@ -6,7 +6,7 @@ public struct GetBlockCommand: Sendable {
 
     internal struct Output: Sendable, CustomStringConvertible, Codable {
 
-        public let identifier: String
+        public let id: String
         public let previous: String
         public let transactions: [String]
 
@@ -28,20 +28,20 @@ public struct GetBlockCommand: Sendable {
 
         precondition(request.method == Self.method)
 
-        guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(blockIdentifierHex) = first else {
-            throw RPCError(.invalidParams("blockIdentifier"), description: "BlockIdentifier (hex string) is required.")
+        guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(blockIDHex) = first else {
+            throw RPCError(.invalidParams("blockID"), description: "BlockID (hex string) is required.")
         }
-        guard let blockIdentifier = Data(hex: blockIdentifierHex), blockIdentifier.count == BlockHeader.identifierLength else {
-            throw RPCError(.invalidParams("blockIdentifier"), description: "BlockIdentifier hex encoding or length is invalid.")
+        guard let blockID = Data(hex: blockIDHex), blockID.count == BlockHeader.idLength else {
+            throw RPCError(.invalidParams("blockID"), description: "BlockID hex encoding or length is invalid.")
         }
 
-        guard let block = await bitcoinService.getBlock(blockIdentifier) else {
-            throw RPCError(.invalidParams("blockIdentifier"), description: "Block not found.")
+        guard let block = await bitcoinService.getBlock(blockID) else {
+            throw RPCError(.invalidParams("blockID"), description: "Block not found.")
         }
-        let transactions = block.transactions.map { $0.identifier.hex }
+        let transactions = block.transactions.map { $0.id.hex }
 
         let result = Output(
-            identifier: block.header.identifierHex,
+            id: block.header.idHex,
             previous: block.header.previous.hex,
             transactions: transactions
         )

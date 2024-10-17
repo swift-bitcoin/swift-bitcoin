@@ -32,7 +32,7 @@ public struct GetBlockchainInfoCommand: Sendable {
         let result = Output(
             headers: headers.count,
             blocks: blocks,
-            hashes: headers.map { $0.identifierHex }
+            hashes: headers.map { $0.idHex }
         )
         return .init(id: request.id, result: JSONObject.string(result.description))
     }

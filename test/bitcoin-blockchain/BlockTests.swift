@@ -20,19 +20,19 @@ struct BlockTests {
         let genesisBlock = await service.genesisBlock
         let genesisTx = genesisBlock.transactions[0]
 
-        #expect(genesisTx.identifier.hex == expectedGenesisTxHash)
+        #expect(genesisTx.id.hex == expectedGenesisTxHash)
 
         let genesisBlockData = genesisBlock.data
         #expect(genesisBlockData.hex == expectedBlockData)
 
         let genesisBlockRedeserialized = try #require(TransactionBlock(genesisBlockData))
         #expect(genesisBlockRedeserialized == genesisBlock)
-        #expect(genesisBlock.identifier.hex == expectedBlockHash)
+        #expect(genesisBlock.header.idHex == expectedBlockHash)
 
         // Short transaction ID
         // TODO: The following value is taken from the function's output so nothing is being verified until replaced with a known-to-be valid ID.
-        let expectedShortTransactionIdentifier = 0x00005b073a0c72eb
-        #expect(genesisBlock.makeShortTransactionIdentifier(for: 0, nonce: 0) == expectedShortTransactionIdentifier)
+        let expectedShortTransactionID = 0x00005b073a0c72eb
+        #expect(genesisBlock.makeShortTransactionID(for: 0, nonce: 0) == expectedShortTransactionID)
     }
 
     /// Tests one empty block right after the genesis block at height 1. Includes checks for the coinbase transaction.
@@ -144,13 +144,13 @@ struct BlockTests {
         #expect(coinbaseTx.data == expectedCoinbaseTxData)
         #expect(block == expectedBlock)
         #expect(block.data == expectedBlockData)
-        #expect(block.identifier.hex == expectedBlockHash)
+        #expect(block.header.idHex == expectedBlockHash)
 
         // Short transaction ID
         // TODO: The following value is taken from the function's output so nothing is being verified until replaced with a known-to-be valid ID.
-        //let expectedShortTransactionIdentifier = Data([0x20, 0xb2, 0x36, 0x73, 0x7a, 0xcb])
-        // let expectedShortTransactionIdentifier = 0x0000cb7a7336b220
-        //XCTAssertEqual(block.makeShortTransactionIdentifier(for: 0, nonce: 0), expectedShortTransactionIdentifier)
+        //let expectedShortTransactionID = Data([0x20, 0xb2, 0x36, 0x73, 0x7a, 0xcb])
+        // let expectedShortTransactionID = 0x0000cb7a7336b220
+        //XCTAssertEqual(block.makeShortTransactionID(for: 0, nonce: 0), expectedShortTransactionID)
     }
 
     @Test("Block date/time nanoseconds")
