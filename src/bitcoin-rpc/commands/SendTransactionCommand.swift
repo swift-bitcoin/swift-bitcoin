@@ -1,4 +1,5 @@
 import Foundation
+import JSONRPC
 import BitcoinBase
 import BitcoinTransport
 

@@ -1,12 +1,10 @@
-import Foundation
-
-public enum Framing: CaseIterable {
+enum Framing: CaseIterable {
     case `default`
     case jsonpos
     case brute
 }
 
-internal extension String {
+extension String {
     func leftPadding(toLength: Int, withPad character: Character) -> String {
         let stringLength = self.count
         if stringLength < toLength {
