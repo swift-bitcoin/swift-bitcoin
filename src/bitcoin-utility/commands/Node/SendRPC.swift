@@ -1,4 +1,5 @@
 import ArgumentParser
+import JSONRPC
 import BitcoinRPC
 
 struct SendRPC: AsyncParsableCommand {

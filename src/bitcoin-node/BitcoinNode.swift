@@ -1,5 +1,4 @@
 import ArgumentParser
-import NIO
 
 @main
 struct BitcoinNode: AsyncParsableCommand {

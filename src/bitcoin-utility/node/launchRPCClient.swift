@@ -1,7 +1,8 @@
 import Foundation
 import NIOCore
 import NIOPosix
-import BitcoinRPC
+import JSONRPC
+import NIOJSONRPC
 
 public func launchRPCClient(host: String, port: Int, method: String, params: JSONObject) async throws {
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)

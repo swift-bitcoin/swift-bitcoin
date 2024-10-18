@@ -1,8 +1,9 @@
 import Foundation
+import NIOPosix
 import BitcoinTransport
 import AsyncAlgorithms
 import ServiceLifecycle
-import NIO
+import NIOCore
 import NIOExtras
 import Logging
 
