@@ -3,6 +3,7 @@ import JSONRPC
 import BitcoinBase
 import BitcoinTransport
 
+/// Submits a new (raw) transaction to the mempool. The transaction needs to be both valid and signed for it to be accepted.
 public struct SendTransactionCommand: Sendable {
 
     public init(bitcoinNode: NodeService) {
@@ -11,6 +12,7 @@ public struct SendTransactionCommand: Sendable {
 
     let bitcoinNode: NodeService
 
+    /// Request must contain single transaction (string) parameter.
     public func run(_ request: JSONRequest) async throws {
 
         precondition(request.method == Self.method)

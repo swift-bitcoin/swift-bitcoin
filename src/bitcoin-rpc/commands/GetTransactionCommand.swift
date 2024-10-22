@@ -3,6 +3,7 @@ import JSONRPC
 import BitcoinBase
 import BitcoinBlockchain
 
+/// Transaction information including ID, witness ID, inputs and outputs. For each output a raw value is also included in order to facilitate the signing of transactions which require the serialization of previous outputs.
 public struct GetTransactionCommand: Sendable {
 
     internal struct Output: Sendable, CustomStringConvertible, Codable {

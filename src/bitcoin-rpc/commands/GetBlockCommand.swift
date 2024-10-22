@@ -3,6 +3,7 @@ import JSONRPC
 import BitcoinBase
 import BitcoinBlockchain
 
+/// Block information by block ID. Includes a reference to the previous block and a list of transaction IDs.
 public struct GetBlockCommand: Sendable {
 
     internal struct Output: Sendable, CustomStringConvertible, Codable {

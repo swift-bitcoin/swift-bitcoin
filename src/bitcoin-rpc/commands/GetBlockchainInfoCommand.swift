@@ -3,6 +3,7 @@ import JSONRPC
 import BitcoinBase
 import BitcoinBlockchain
 
+/// Summary of current blockchain information such as total number of headers, blocks and a list of block IDs (hashes).
 public struct GetBlockchainInfoCommand: Sendable {
 
     internal struct Output: Sendable, CustomStringConvertible, Codable {
