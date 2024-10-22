@@ -33,7 +33,11 @@ final class CommandTests {
     func blockchainInfo() async throws {
         guard let satoshiChain else { preconditionFailure() }
         let command = GetBlockchainInfoCommand(bitcoinService: satoshiChain)
-        let result = await command.run(.init(id: "", method: "get-blockchain-info", params: .none))
-        let _ = try #require(result.result)
+        let output = await command.run(.init(id: "", method: "get-blockchain-info", params: .none))
+        let result = try #require(output.result)
+        guard case .string(let blockchainInfo) = result else {
+            Issue.record()
+            return
+        }
     }
 }

@@ -3,6 +3,7 @@ import JSONRPC
 import BitcoinBase
 import BitcoinBlockchain
 
+/// Summary of current mempool information including a list of transaction IDs.
 public struct GetMempoolCommand: Sendable {
 
     internal struct Output: Sendable, CustomStringConvertible, Codable {
