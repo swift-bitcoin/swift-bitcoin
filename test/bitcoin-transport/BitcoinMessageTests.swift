@@ -43,7 +43,7 @@ struct BitcoinMessageTests {
         let header = TxBlock(previous: .init(count: 32), merkleRoot: .init(count: 32), target: 0)
         let message = CompactBlockMessage(header: header, nonce: 0, txIDs: [val], txs: [.init(index: 0, tx: tx)])
         let messageData = message.data
-        let message2 = CompactBlockMessage(messageData)!
+        let message2 = try #require(CompactBlockMessage(messageData))
         #expect(message == message2)
     }
 }

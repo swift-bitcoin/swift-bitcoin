@@ -22,7 +22,7 @@ public struct LegacyAddress: BitcoinAddress {
     public init(_ script: BitcoinScript, mainnet: Bool = true) {
         isMainnet = mainnet
         isScript = true
-        hash = Data(Hash160.hash(data: script.data))
+        hash = Data(Hash160.hash(data: script.binaryData))
     }
 
     public init?(_ address: String) {

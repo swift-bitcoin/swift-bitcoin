@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// A single input belonging to a ``BitcoinTx``.
 public struct TxIn: Equatable, Sendable {
@@ -36,34 +37,27 @@ public struct TxIn: Equatable, Sendable {
 }
 
 /// Data extensions.
-extension TxIn {
-
-    init?(_ data: Data) {
-        var data = data
-        guard let outpoint = TxOutpoint(data) else { return nil }
-        data = data.dropFirst(TxOutpoint.size)
-
-        guard let script = BitcoinScript(prefixedData: data) else { return nil }
-        data = data.dropFirst(script.prefixedSize)
-
-        guard let sequence = TxSequence(data) else { return nil }
-
-        self.init(outpoint: outpoint, sequence: sequence, script: script)
+extension TxIn: BinaryCodable {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+        outpoint = try decoder.take()
+        script = try BitcoinScript(prefixedFrom: &decoder)
+        sequence = try decoder.take()
     }
 
-    // MARK: - Instance Properties
-
-    /// Used by ``BitcoinTx/data``.
-    var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(outpoint.data)
-        offset = ret.addData(script.prefixedData, at: offset)
-        ret.addData(sequence.data, at: offset)
-        return ret
+    public func encode(to encoder: inout BinaryEncoder) {
+        encoder.put(outpoint)
+        script.encodePrefixed(to: &encoder)
+        encoder.put(sequence)
+    }
+    
+    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+        visitor.count(outpoint)
+        script.reportSizePrefixed(to: &visitor)
+        visitor.count(sequence)
     }
 
     /// Used by ``BitcoinTx/size``.
     var size: Int {
-        TxOutpoint.size + script.prefixedSize + TxSequence.size
+        TxOutpoint.size + script.sizePrefixed + MemoryLayout<UInt32>.size
     }
 }

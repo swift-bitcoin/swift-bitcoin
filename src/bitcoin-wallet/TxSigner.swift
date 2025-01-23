@@ -58,7 +58,7 @@ public class TxSigner {
         let sigVersion: SigVersion = if witnessScript != .none { .witnessV0 }
             else { .base }
 
-        hasher.set(txIn: txIn, sigVersion: sigVersion, scriptCode: witnessScript?.data ?? redeemScript?.data)
+        hasher.set(txIn: txIn, sigVersion: sigVersion, scriptCode: witnessScript?.binaryData ?? redeemScript?.binaryData)
         let sighash = hasher.value
 
         var sigs = [Data]()
@@ -67,15 +67,15 @@ public class TxSigner {
             let extended = ExtendedSig(sig, sighashType)
             sigs.append(extended.data)
         }
-        if let redeemScript { sigs.append(redeemScript.data) }
-        if let witnessScript { sigs.append(witnessScript.data)}
+        if let redeemScript { sigs.append(redeemScript.binaryData) }
+        if let witnessScript { sigs.append(witnessScript.binaryData)}
 
         if let witnessScript {
             let witness = [Data()] + sigs
             tx.ins[txIn].witness = .init(witness)
             if lockScript.isPayToScriptHash {
                 let redeemScriptP2WSH = BitcoinScript.payToWitnessScriptHash(witnessScript)
-                tx.ins[txIn].script = [.encodeMinimally(redeemScriptP2WSH.data)]
+                tx.ins[txIn].script = [.encodeMinimally(redeemScriptP2WSH.binaryData)]
             }
         } else {
             let unlockScript = BitcoinScript([.zero] + sigs.map { ScriptOp.encodeMinimally($0) })
@@ -106,7 +106,7 @@ public class TxSigner {
                          else { .base }
 
         let scriptCode: Data? = if lockScript.isPayToScriptHash {
-            BitcoinScript.segwitPKHScriptCode(pubkeyHash).data
+            BitcoinScript.segwitPKHScriptCode(pubkeyHash).binaryData
         } else { .none }
 
         hasher.set(txIn: txIn, sigVersion: sigVersion, scriptCode: scriptCode)
@@ -134,7 +134,7 @@ public class TxSigner {
             tx.ins[txIn].script = .init(ops)
         }
         if lockScript.isPayToScriptHash {
-            tx.ins[txIn].script = [.encodeMinimally(redeemScript.data)]
+            tx.ins[txIn].script = [.encodeMinimally(redeemScript.binaryData)]
         }
         return tx
     }

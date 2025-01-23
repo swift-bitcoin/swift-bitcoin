@@ -40,7 +40,7 @@ public struct SegwitAddress: BitcoinAddress {
 
     public init(_ script: BitcoinScript, network: WalletNetwork = .main) {
         self.network = network
-        hash = Data(SHA256.hash(data: script.data))
+        hash = Data(SHA256.hash(data: script.binaryData))
     }
 
     public var description: String {

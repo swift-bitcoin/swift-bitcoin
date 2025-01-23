@@ -38,7 +38,7 @@ public struct TaprootAddress: BitcoinAddress {
             outputKey = internalKey.taprootOutputKey().xOnlyNormalized!
             return
         }
-        let scriptTree = ScriptTree(scripts.map(\.data), leafVersion: 192)
+        let scriptTree = ScriptTree(scripts.map(\.binaryData), leafVersion: 192)
         outputKey = internalKey.taprootOutputKey(scriptTree).xOnlyNormalized!
     }
 

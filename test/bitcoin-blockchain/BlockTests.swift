@@ -135,7 +135,7 @@ struct BlockTests {
         let coinbaseTx = block.txs[0]
         let expectedWitnessCommitmentHash = "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9"
 
-        #expect(coinbaseTx.outs[1].script.data.hex == expectedWitnessCommitmentHash)
+        #expect(coinbaseTx.outs[1].script.binaryData.hex == expectedWitnessCommitmentHash)
         #expect(coinbaseTx == expectedCoinbaseTx)
         #expect(coinbaseTx.data == expectedCoinbaseTxData)
         #expect(block == expectedBlock)

@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// The output of a ``BitcoinTx``. While unspent also referred to as a _coin_.
 public struct TxOut: Equatable, Sendable {
@@ -20,7 +21,21 @@ public struct TxOut: Equatable, Sendable {
 }
 
 /// Data extensions.
-extension TxOut {
+extension TxOut: BinaryCodable {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+        value = try decoder.take()
+        script = try BitcoinScript(prefixedFrom: &decoder)
+    }
+
+    public func encode(to encoder: inout BinaryEncoder) {
+        encoder.put(value)
+        script.encodePrefixed(to: &encoder)
+    }
+    
+    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+        visitor.count(value)
+        script.reportSizePrefixed(to: &visitor)
+    }
 
     package init?(_ data: Data) {
         guard data.count > MemoryLayout<SatoshiAmount>.size else {
@@ -29,7 +44,7 @@ extension TxOut {
         var data = data
         let value = data.withUnsafeBytes { $0.loadUnaligned(as: SatoshiAmount.self) }
         data = data.dropFirst(MemoryLayout.size(ofValue: value))
-        guard let script = BitcoinScript(prefixedData: data) else {
+        guard let script = try? BitcoinScript(prefixedData: data) else {
             return nil
         }
         self.init(value: value, script: script)
@@ -42,12 +57,12 @@ extension TxOut {
     package var data: Data {
         var ret = Data(count: size)
         let offset = ret.addData(valueData)
-        ret.addData(script.prefixedData, at: offset)
+        ret.addData(script.dataPrefixed, at: offset)
         return ret
     }
 
     var size: Int {
-        Self.valueSize + script.prefixedSize
+        Self.valueSize + script.sizePrefixed
     }
 
     static var valueSize: Int {

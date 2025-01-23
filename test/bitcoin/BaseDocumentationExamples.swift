@@ -122,7 +122,7 @@ struct BaseDocumentationExamples {
         let prevout = fund.outs[0]
         let txIn = 0
         let sighashType = SighashType.all // Same sighash for all signatures
-        let hasher = SigHash(tx: spend, txIn: txIn, prevout: prevout, scriptCode: redeemScript.data, sighashType: sighashType)
+        let hasher = SigHash(tx: spend, txIn: txIn, prevout: prevout, scriptCode: redeemScript.binaryData, sighashType: sighashType)
         let sighash0 = hasher.value
 
         let sig0 = sk1.sign(hash: sighash0)
@@ -132,7 +132,7 @@ struct BaseDocumentationExamples {
         let sigExt1 = ExtendedSig(sig1, sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
-        spend.ins[txIn].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data), .encodeMinimally(redeemScript.data)]
+        spend.ins[txIn].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data), .encodeMinimally(redeemScript.binaryData)]
 
         let result = spend.verifyScript(prevouts: [prevout])
         #expect(result)
@@ -158,7 +158,7 @@ struct BaseDocumentationExamples {
         let prevout = fund.outs[0]
         let txIn = 0
         let sighashType = SighashType.all
-        let hasher = SigHash(tx: spend, txIn: txIn, sigVersion: .witnessV0, prevout: prevout, scriptCode: redeemScript.data, sighashType: sighashType)
+        let hasher = SigHash(tx: spend, txIn: txIn, sigVersion: .witnessV0, prevout: prevout, scriptCode: redeemScript.binaryData, sighashType: sighashType)
         let sighash0 = hasher.value
 
         let sig0 = sk1.sign(hash: sighash0)
@@ -168,7 +168,7 @@ struct BaseDocumentationExamples {
         let sigExt1 = ExtendedSig(sig1, sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
-        spend.ins[txIn].witness = .init([Data(), sigExt0.data, sigExt1.data, redeemScript.data])
+        spend.ins[txIn].witness = .init([Data(), sigExt0.data, sigExt1.data, redeemScript.binaryData])
 
         let result = spend.verifyScript(prevouts: [prevout])
         #expect(result)
@@ -194,7 +194,7 @@ struct BaseDocumentationExamples {
 
         let pubkey = sk.pubkey
         let pubkeyHash = Data(Hash160.hash(data: pubkey.data))
-        let scriptCode = BitcoinScript.segwitPKHScriptCode(pubkeyHash).data
+        let scriptCode = BitcoinScript.segwitPKHScriptCode(pubkeyHash).binaryData
 
         // Same sighash for all signatures
         let txIn = 0
@@ -205,7 +205,7 @@ struct BaseDocumentationExamples {
         let sigExt = ExtendedSig(sig, sighashType)
 
         spend.ins[txIn].witness = .init([sigExt.data, pubkey.data])
-        spend.ins[txIn].script = [.encodeMinimally(redeemScript.data)]
+        spend.ins[txIn].script = [.encodeMinimally(redeemScript.binaryData)]
 
         let result = spend.verifyScript(prevouts: [prevout])
         #expect(result)
@@ -233,7 +233,7 @@ struct BaseDocumentationExamples {
         // Same sighash for all signatures
         let txIn = 0
         let sighashType = SighashType.all
-        let hasher = SigHash(tx: spend, txIn: txIn, sigVersion: .witnessV0, prevout: prevout, scriptCode: witnessScript.data, sighashType: sighashType)
+        let hasher = SigHash(tx: spend, txIn: txIn, sigVersion: .witnessV0, prevout: prevout, scriptCode: witnessScript.binaryData, sighashType: sighashType)
         let sighash0 = hasher.value
 
         let sig0 = sk1.sign(hash: sighash0)
@@ -244,8 +244,8 @@ struct BaseDocumentationExamples {
 
         // Signatures need to appear in the right order, plus a dummy value
 
-        spend.ins[txIn].witness = .init([Data(), sigExt0.data, sigExt1.data, witnessScript.data])
-        spend.ins[txIn].script = [.encodeMinimally(redeemScript.data)]
+        spend.ins[txIn].witness = .init([Data(), sigExt0.data, sigExt1.data, witnessScript.binaryData])
+        spend.ins[txIn].script = [.encodeMinimally(redeemScript.binaryData)]
 
         let result = spend.verifyScript(prevouts: [prevout])
         #expect(result)
@@ -268,7 +268,7 @@ struct BaseDocumentationExamples {
             .checkSigAdd,
             .constant(2),
             .equal
-        ]).data
+        ]).binaryData
         let scriptTree = ScriptTree.leaf(0xc0, tapscript)
 
         let fund = BitcoinTx(ins: [.init(outpoint: .coinbase)], outs: [

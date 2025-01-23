@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// The sequence value of a ``TxIn``.
 ///
@@ -76,19 +77,17 @@ public struct TxSequence: Equatable, Sendable {
 }
 
 /// Data extensions.
-extension TxSequence {
-
-    init?(_ data: Data) {
-        guard data.count >= Self.size else {
-            return nil
-        }
-        let rawValue = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
+extension TxSequence: BinaryCodable {
+    public init(from decoder: inout BitcoinCrypto.BinaryDecoder) throws(BitcoinCrypto.BinaryDecoder.Error) {
+        let rawValue: UInt32 = try decoder.take()
         self.init(Int(rawValue))
     }
 
-    var data: Data {
-        Data(value: rawValue)
+    public func encode(to encoder: inout BitcoinCrypto.BinaryEncoder) {
+        encoder.put(UInt32(sequenceValue))
     }
 
-    static let size = MemoryLayout<UInt32>.size
+    public func reportSize(to visitor: inout BitcoinCrypto.BinaryEncoder.SizeVisitor) {
+        visitor.count(UInt32.self)
+    }
 }

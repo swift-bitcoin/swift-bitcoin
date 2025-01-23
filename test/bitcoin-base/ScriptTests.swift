@@ -27,7 +27,7 @@ struct ScriptTests {
     func allVectors(test: TestVector) throws {
         let txCredit = BitcoinTx(
             ins: [
-                .init(outpoint: .coinbase, script: .init([.zero, .zero])),
+                .init(outpoint: .coinbase, script: .init([ScriptOp.zero, .zero])),
             ],
             outs: [
                 .init(value: test.amount, script: test.scriptPubKey)

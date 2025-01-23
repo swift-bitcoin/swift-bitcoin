@@ -111,7 +111,7 @@ public class SigHash {
     private var sigMessage: Data {
         guard let sighashType else { preconditionFailure() }
 
-        let scriptCode = scriptCode ?? prevout.script.data
+        let scriptCode = scriptCode ?? prevout.script.binaryData
 
         var newIns = [TxIn]()
         if sighashType.hasAnyCanPay {
@@ -175,7 +175,7 @@ public class SigHash {
 
         let resolvedScriptCode: Data
         if prevout.script.isSegwit, prevout.script.witnessProgram.count == Hash160.Digest.byteCount {
-            resolvedScriptCode = BitcoinScript.segwitPKHScriptCode(prevout.script.witnessProgram).data
+            resolvedScriptCode = BitcoinScript.segwitPKHScriptCode(prevout.script.witnessProgram).binaryData
             precondition(scriptCode == .none || scriptCode == scriptCode)
         } else if let scriptCode {
             resolvedScriptCode = scriptCode
@@ -190,7 +190,7 @@ public class SigHash {
         if sighashType.hasAnyCanPay {
             hashPrevouts = Data(repeating: 0, count: 32)
         } else {
-            let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.data }
+            let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.binaryData }
             hashPrevouts = Data(Hash256.hash(data: prevouts))
         }
 
@@ -199,7 +199,7 @@ public class SigHash {
         let hashSequence: Data
         if !sighashType.hasAnyCanPay && !sighashType.isSingle && !sighashType.isNone {
             let sequence = tx.ins.reduce(Data()) {
-                $0 + $1.sequence.data
+                $0 + $1.sequence.binaryData
             }
             hashSequence = Data(Hash256.hash(data: sequence))
         } else {
@@ -219,10 +219,10 @@ public class SigHash {
             hashOuts = Data(repeating: 0, count: 32)
         }
 
-        let outpointData = tx.ins[inIndex].outpoint.data
+        let outpointData = tx.ins[inIndex].outpoint.binaryData
         let scriptCodeData = resolvedScriptCode.varLenData
         let amountData = withUnsafeBytes(of: amount) { Data($0) }
-        let sequenceData = tx.ins[inIndex].sequence.data
+        let sequenceData = tx.ins[inIndex].sequence.binaryData
 
         let remaindingData = sequenceData + hashOuts + tx.locktime.data + sighashType.data32
         return tx.version.data + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remaindingData
@@ -277,7 +277,7 @@ public class SigHash {
                 shaPrevouts = cached
                 sighashCache.shaPrevoutsHit = true
             } else {
-                let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.data }
+                let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.binaryData }
                 shaPrevouts = Data(SHA256.hash(data: prevouts))
                 sighashCache.shaPrevouts = shaPrevouts
             }
@@ -301,7 +301,7 @@ public class SigHash {
                 shaScriptPubKeys = cached
                 sighashCache.shaScriptPubKeysHit = true
             } else {
-                let scriptPubKeys = prevouts.reduce(Data()) { $0 + $1.script.prefixedData }
+                let scriptPubKeys = prevouts.reduce(Data()) { $0 + $1.script.dataPrefixed }
                 shaScriptPubKeys = Data(SHA256.hash(data: scriptPubKeys))
                 sighashCache.shaScriptPubKeys = shaScriptPubKeys
             }
@@ -313,7 +313,7 @@ public class SigHash {
                 shaSequences = cached
                 sighashCache.shaSequencesHit = true
             } else {
-                let sequences = tx.ins.reduce(Data()) { $0 + $1.sequence.data }
+                let sequences = tx.ins.reduce(Data()) { $0 + $1.sequence.binaryData }
                 shaSequences = Data(SHA256.hash(data: sequences))
                 sighashCache.shaSequences = shaSequences
             }
@@ -328,7 +328,7 @@ public class SigHash {
                 shaOuts = cached
                 sighashCache.shaOutsHit = true
             } else {
-                let outsData = tx.outs.reduce(Data()) { $0 + $1.data }
+                let outsData = tx.outs.reduce(Data()) { $0 + $1.binaryData }
                 shaOuts = Data(SHA256.hash(data: outsData))
                 sighashCache.shaOuts = shaOuts
             }
@@ -344,16 +344,16 @@ public class SigHash {
         // If hash_type & 0x80 equals SIGHASH_ANYONECANPAY:
         if sighashType.isAnyCanPay {
             // outpoint (36): the COutPoint of this input (32-byte hash + 4-byte little-endian).
-            let outpoint = tx.ins[inIndex].outpoint.data
+            let outpoint = tx.ins[inIndex].outpoint.binaryData
             inputData.append(outpoint)
             // amount (8): value of the previous output spent by this input.
             let amount = prevouts[inIndex].valueData
             inputData.append(amount)
             // scriptPubKey (35): scriptPubKey of the previous output spent by this input, serialized as script inside CTxOut. Its size is always 35 bytes.
-            let scriptPubKey = prevouts[inIndex].script.prefixedData
+            let scriptPubKey = prevouts[inIndex].script.dataPrefixed
             inputData.append(scriptPubKey)
             // nSequence (4): nSequence of this input.
-            let sequence = tx.ins[inIndex].sequence.data
+            let sequence = tx.ins[inIndex].sequence.binaryData
             inputData.append(sequence)
         } else { // If hash_type & 0x80 does not equal SIGHASH_ANYONECANPAY:
             // input_index (4): index of this input in the transaction input vector. Index of the first input is 0.

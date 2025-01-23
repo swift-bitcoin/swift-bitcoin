@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// A reference to a specific ``TxOut`` of a particular ``BitcoinTx`` which is stored in a ``TxIn``.
 public struct TxOutpoint: Equatable, Hashable, Sendable {
@@ -26,26 +27,23 @@ public struct TxOutpoint: Equatable, Hashable, Sendable {
 }
 
 /// Data extensions.
-extension TxOutpoint {
+extension TxOutpoint: BinaryCodable {
 
-    init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-
-        var data = data
-        let tx = Data(data.prefix(BitcoinTx.idLength).reversed())
-        data = data.dropFirst(BitcoinTx.idLength)
-
-        let txOut = Int(data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) })
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+        let tx = try decoder.take(BitcoinTx.idLength, byteSwapped: true)
+        let txOut = Int(try decoder.take() as UInt32)
         self.init(tx: tx, txOut: txOut)
     }
 
-    var data: Data {
-        var ret = Data(count: Self.size)
-        let offset = ret.addData(txID.reversed())
-        ret.addBytes(UInt32(txOut), at: offset)
-        return ret
+    public func encode(to encoder: inout BinaryEncoder) {
+        encoder.put(txID.reversed())
+        encoder.put(UInt32(txOut))
+    }
+    
+    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+        visitor.countSize(BitcoinTx.idLength)
+        visitor.count(UInt32.self)
     }
 
     static let size = BitcoinTx.idLength + MemoryLayout<UInt32>.size
 }
-

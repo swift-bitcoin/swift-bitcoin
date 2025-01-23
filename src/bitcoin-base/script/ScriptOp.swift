@@ -1,47 +1,9 @@
 import Foundation
+import BitcoinCrypto
 
 /// A script operation.
 public enum ScriptOp: Equatable, Sendable {
     case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, /* reserved(UInt8), */ success(UInt8), constant(UInt8), noOp, /* ver, */ `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultiSig, checkMultiSigVerify, noOp1, checkLockTimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, checkSigAdd, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
-
-    init?(pushOpCode opCode: UInt8, _ data: Data) {
-        var data = data
-        switch opCode {
-        case 0x01 ... 0x4b:
-            let byteCount = Int(opCode)
-            guard data.count >= byteCount else { return nil }
-            let d = data.prefix(byteCount)
-            self = .pushBytes(d)
-        case 0x4c ... 0x4e:
-            let byteCount: Int
-            if opCode == 0x4c {
-                let pushSize = data.withUnsafeBytes {  $0.loadUnaligned(as: UInt8.self) }
-                data = data.dropFirst(MemoryLayout.size(ofValue: pushSize))
-                byteCount = Int(pushSize)
-            } else if opCode == 0x4d {
-                let pushSize = data.withUnsafeBytes {  $0.loadUnaligned(as: UInt16.self) }
-                data = data.dropFirst(MemoryLayout.size(ofValue: pushSize))
-                byteCount = Int(pushSize)
-            } else {
-                // opCode == 0x4e
-                let pushSize = data.withUnsafeBytes {  $0.loadUnaligned(as: UInt32.self) }
-                data = data.dropFirst(MemoryLayout.size(ofValue: pushSize))
-                byteCount = Int(pushSize)
-            }
-            guard data.count >= byteCount else { return nil }
-            let d = data.prefix(byteCount)
-            self = if opCode == 0x4c {
-                .pushData1(d)
-            } else if opCode == 0x4d {
-                .pushData2(d)
-            } else {
-                // opCode == 0x4e
-                .pushData4(d)
-            }
-        default:
-            preconditionFailure()
-        }
-    }
 
     public var isPush: Bool {
         switch self {
@@ -362,22 +324,27 @@ public enum ScriptOp: Equatable, Sendable {
     }
 }
 
-extension ScriptOp {
+extension ScriptOp: BinaryCodable {
 
-    init?(_ data: Data) {
-        var data = data
-        guard data.count > 0 else {
-            return nil
-        }
-        let opCode = data.withUnsafeBytes {  $0.load(as: UInt8.self) }
-        data = data.dropFirst(MemoryLayout.size(ofValue: opCode))
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+        let opCode: UInt8 = try decoder.take()
         switch opCode {
 
         // OP_ZERO
         case Self.zero.opCode: self = .zero
 
         // OP_PUSHBYTES, OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
-        case 0x01 ... 0x4e: self.init(pushOpCode: opCode, data)
+        case 0x01 ... 0x4b:
+            self = .pushBytes(try decoder.take(Int(opCode)))
+        case 0x4c:
+            let count: UInt8 = try decoder.take()
+            self = .pushData1(try decoder.take(Int(count)))
+        case 0x4d:
+            let count: UInt16 = try decoder.take()
+            self = .pushData2(try decoder.take(Int(count)))
+        case 0x4e:
+            let count: UInt32 = try decoder.take()
+            self = .pushData4(try decoder.take(Int(count)))
 
         // If any opcode numbered 80, 98, 126-129, 131-134, 137-138, 141-142, 149-153, 187-254 is encountered, validation succeeds
         case Self.success(80).opCode,
@@ -488,49 +455,43 @@ extension ScriptOp {
         case Self.pubKeyHash.opCode: self = .pubKeyHash
         case Self.pubKey.opCode: self = .pubKey
         case Self.invalidOpCode.opCode: self = .invalidOpCode
-
         default: preconditionFailure()
         }
     }
-
-    var data: Data {
-        let opCodeData = withUnsafeBytes(of: opCode) { Data($0) }
-        let lengthData: Data
+    
+    public func encode(to encoder: inout BinaryEncoder) {
+        encoder.put(opCode)
         switch self {
         case .pushData1(let d):
-            lengthData = withUnsafeBytes(of: UInt8(d.count)) { Data($0) }
+            encoder.put(UInt8(d.count))
         case .pushData2(let d):
-            lengthData = withUnsafeBytes(of: UInt16(d.count)) { Data($0) }
+            encoder.put(UInt16(d.count))
         case .pushData4(let d):
-            lengthData = withUnsafeBytes(of: UInt32(d.count)) { Data($0) }
-        default:
-            lengthData = Data()
+            encoder.put(UInt32(d.count))
+        default: break
         }
-        let rawData: Data
         switch self {
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
-            rawData = d
-        default:
-            rawData = Data()
+            encoder.put(d)
+        default: break
         }
-        return opCodeData + lengthData + rawData
     }
-
-    var size: Int {
-        operationPreconditions()
-        let additionalSize: Int
+    
+    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+        visitor.count(UInt8.self) // opCode
         switch self {
-        case .pushBytes(let d):
-            additionalSize = d.count
-        case .pushData1(let d):
-            additionalSize = MemoryLayout<UInt8>.size + d.count
-        case .pushData2(let d):
-            additionalSize = MemoryLayout<UInt16>.size + d.count
-        case .pushData4(let d):
-            additionalSize = MemoryLayout<UInt32>.size + d.count
-        default:
-            additionalSize = 0
+        case .pushData1(_):
+            visitor.count(UInt8.self)
+        case .pushData2(_):
+            visitor.count(UInt16.self)
+        case .pushData4(_):
+            visitor.count(UInt32.self)
+        default: break
         }
-        return MemoryLayout<UInt8>.size + additionalSize
+        switch self {
+        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
+            visitor.count(d)
+        default: break
+        }
     }
 }

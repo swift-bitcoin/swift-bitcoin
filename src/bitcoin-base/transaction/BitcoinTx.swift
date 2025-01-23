@@ -173,7 +173,7 @@ extension BitcoinTx {
 
         var ins = [TxIn]()
         for _ in 0 ..< insCount {
-            guard let txIn = TxIn(data) else {
+            guard let txIn = try? TxIn(binaryData: data) else {
                 return nil
             }
             ins.append(txIn)
@@ -224,7 +224,7 @@ extension BitcoinTx {
             offset = ret.addData(Data([BitcoinTx.segwitMarker, BitcoinTx.segwitFlag]), at: offset)
         }
         offset = ret.addData(Data(varInt: insUInt64), at: offset)
-        offset = ret.addData(ins.reduce(Data()) { $0 + $1.data }, at: offset)
+        offset = ret.addData(ins.reduce(Data()) { $0 + $1.binaryData }, at: offset)
         offset = ret.addData(Data(varInt: outsUInt64), at: offset)
         offset = ret.addData(outs.reduce(Data()) { $0 + $1.data }, at: offset)
 
@@ -252,7 +252,7 @@ extension BitcoinTx {
         var ret = Data(count: baseSize)
         var offset = ret.addData(version.data)
         offset = ret.addData(Data(varInt: insUInt64), at: offset)
-        offset = ret.addData(ins.reduce(Data()) { $0 + $1.data }, at: offset)
+        offset = ret.addData(ins.reduce(Data()) { $0 + $1.binaryData }, at: offset)
         offset = ret.addData(Data(varInt: outsUInt64), at: offset)
         offset = ret.addData(outs.reduce(Data()) { $0 + $1.data }, at: offset)
         ret.addData(locktime.data, at: offset)

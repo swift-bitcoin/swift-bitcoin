@@ -82,7 +82,7 @@ public struct ScriptContext {
 
     /// BIP143
     var segwitScriptCode: Data {
-        var scriptData = script.data
+        var scriptData = script.binaryData
         // if the witnessScript contains any OP_CODESEPARATOR, the scriptCode is the witnessScript but removing everything up to and including the last executed OP_CODESEPARATOR before the signature checking opcode being executed, serialized as scripts inside CTxOut.
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)
@@ -117,7 +117,7 @@ public struct ScriptContext {
         }
 
         // BIP141
-        if (sigVersion == .base || sigVersion == .witnessV0) && script.size > BitcoinScript.maxScriptSize {
+        if (sigVersion == .base || sigVersion == .witnessV0) && script.binarySize > BitcoinScript.maxScriptSize {
             throw ScriptError.scriptSizeLimitExceeded
         }
 
@@ -157,7 +157,7 @@ public struct ScriptContext {
             if sigVersion != .base && stack.count + altStack.count > BitcoinScript.maxStackElements {
                 throw ScriptError.stacksLimitExceeded
             }
-            programCounter += op.size
+            programCounter += op.binarySize
             opIndex += 1
         }
         guard pendingIfOps.isEmpty, pendingElseOps == 0 else {
@@ -182,7 +182,7 @@ public struct ScriptContext {
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`. Legacy scripts only.
     func getScriptCode(sigs: [Data]) throws -> Data {
         precondition(sigVersion == .base)
-        var scriptData = script.data
+        var scriptData = script.binaryData
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)
         }
@@ -190,7 +190,7 @@ public struct ScriptContext {
         var scriptCode = Data()
         var programCounter2 = scriptData.startIndex
         while programCounter2 < scriptData.endIndex {
-            guard let op = ScriptOp(scriptData[programCounter2...]) else {
+            guard let op = try? ScriptOp(binaryData: scriptData[programCounter2...]) else {
                 preconditionFailure()
                 // TODO: What happens to scriptCode if script cannot be fully decoded?
             }
@@ -209,9 +209,9 @@ public struct ScriptContext {
             if
                 op != .codeSeparator && !operationContainsSignature // Equivalent to FindAndDelete
             {
-                scriptCode.append(op.data)
+                scriptCode.append(op.binaryData)
             }
-            programCounter2 += op.size
+            programCounter2 += op.binarySize
         }
         return scriptCode
     }

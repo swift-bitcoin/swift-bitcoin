@@ -49,7 +49,7 @@ extension BitcoinTx {
             throw .duplicateInput
         }
 
-        if isCoinbase && (ins[0].script.size < 2 || ins[0].script.size > 100) {
+        if isCoinbase && (ins[0].script.binarySize < 2 || ins[0].script.binarySize > 100) {
             throw .coinbaseLengthOutOfRange
         }
         if !isCoinbase {

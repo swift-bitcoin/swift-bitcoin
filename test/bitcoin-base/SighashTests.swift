@@ -16,11 +16,11 @@ struct SighashTests {
     ])
     func allVectors(tx: [UInt8], script: [UInt8], txIn: Int, hashType: Int32, expected: [UInt8]) throws {
         let tx = try #require(BitcoinTx(.init(tx)))
-        let script = BitcoinScript(Data(script))
+        let script = BitcoinScript(script)
 
         var filteredOps = script.ops
         filteredOps.removeAll { $0 == .codeSeparator }
-        let scriptCode = BitcoinScript(filteredOps).data
+        let scriptCode = BitcoinScript(filteredOps).binaryData
 
         let sighashType = try #require(SighashType(rawValue: hashType))
         let sighash = SigHash(tx: tx, txIn: txIn, sigVersion: .base, prevout: .init(value: 0), scriptCode: scriptCode, sighashType: sighashType)

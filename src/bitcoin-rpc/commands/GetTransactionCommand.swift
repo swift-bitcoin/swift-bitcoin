@@ -54,7 +54,7 @@ public struct GetTransactionCommand: Sendable {
             Output.Output(
                 raw: $0.data.hex,
                 amount: $0.value,
-                script: $0.script.data.hex
+                script: $0.script.binaryData.hex
             )
         }
         let result = Output(
