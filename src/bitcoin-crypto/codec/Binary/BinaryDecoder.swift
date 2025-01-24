@@ -22,9 +22,29 @@ public struct BinaryDecoder {
     private var data: Data
     private var offset = 0
     private var limit = Int?.none
+    private var checkpoint = Int?.none
+    private var checkpointLimit = Int?.none
 
     public init<D: DataProtocol>(_ data: D) {
         self.data = Data(data)
+    }
+
+    public mutating func setCheckpoint() {
+        checkpoint = offset
+        checkpointLimit = limit
+    }
+
+    public mutating func clearCheckpoint() {
+        checkpoint = .none
+        checkpointLimit = .none
+    }
+
+    /// Rolls back the offset and the limit to the values when ``setCheckpoint()`` was last called.
+    public mutating func revert() {
+        guard let checkpoint else { return }
+        offset = checkpoint
+        limit = checkpointLimit
+        clearCheckpoint()
     }
 
     public mutating func setLimit(_ limit: Int) {

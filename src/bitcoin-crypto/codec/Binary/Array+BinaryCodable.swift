@@ -3,9 +3,9 @@ import Foundation
 extension Array where Element: BinaryCodable {
 
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
-        let txCount: VarInt = try decoder.take()
+        let count: VarInt = try decoder.take()
         self.init()
-        for _ in 0 ..< txCount.value {
+        for _ in 0 ..< count.value {
             let e = try Element.init(from: &decoder)
             append(e)
         }

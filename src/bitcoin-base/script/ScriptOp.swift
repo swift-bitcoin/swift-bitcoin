@@ -327,6 +327,7 @@ public enum ScriptOp: Equatable, Sendable {
 extension ScriptOp: BinaryCodable {
 
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+        decoder.setCheckpoint()
         let opCode: UInt8 = try decoder.take()
         switch opCode {
 
@@ -335,16 +336,36 @@ extension ScriptOp: BinaryCodable {
 
         // OP_PUSHBYTES, OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
         case 0x01 ... 0x4b:
-            self = .pushBytes(try decoder.take(Int(opCode)))
+            do {
+                self = .pushBytes(try decoder.take(Int(opCode)))
+            } catch {
+                decoder.revert()
+                throw error
+            }
         case 0x4c:
-            let count: UInt8 = try decoder.take()
-            self = .pushData1(try decoder.take(Int(count)))
+            do {
+                let count: UInt8 = try decoder.take()
+                self = .pushData1(try decoder.take(Int(count)))
+            } catch {
+                decoder.revert()
+                throw error
+            }
         case 0x4d:
-            let count: UInt16 = try decoder.take()
-            self = .pushData2(try decoder.take(Int(count)))
+            do {
+                let count: UInt16 = try decoder.take()
+                self = .pushData2(try decoder.take(Int(count)))
+            } catch {
+                decoder.revert()
+                throw error
+            }
         case 0x4e:
-            let count: UInt32 = try decoder.take()
-            self = .pushData4(try decoder.take(Int(count)))
+            do {
+                let count: UInt32 = try decoder.take()
+                self = .pushData4(try decoder.take(Int(count)))
+            } catch {
+                decoder.revert()
+                throw error
+            }
 
         // If any opcode numbered 80, 98, 126-129, 131-134, 137-138, 141-142, 149-153, 187-254 is encountered, validation succeeds
         case Self.success(80).opCode,
@@ -455,8 +476,9 @@ extension ScriptOp: BinaryCodable {
         case Self.pubKeyHash.opCode: self = .pubKeyHash
         case Self.pubKey.opCode: self = .pubKey
         case Self.invalidOpCode.opCode: self = .invalidOpCode
-        default: preconditionFailure()
+        default: fatalError()
         }
+        decoder.clearCheckpoint()
     }
     
     public func encode(to encoder: inout BinaryEncoder) {
