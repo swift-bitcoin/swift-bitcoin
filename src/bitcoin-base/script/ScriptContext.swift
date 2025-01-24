@@ -110,7 +110,7 @@ public struct ScriptContext {
 
         if sigVersion == .witnessV1 {
             if let witness = tx.ins[txIn].witness {
-                sigopBudget = BitcoinScript.sigopBudgetBase + witness.size
+                sigopBudget = BitcoinScript.sigopBudgetBase + witness.binarySize
             } else {
                 sigopBudget = BitcoinScript.sigopBudgetBase
             }

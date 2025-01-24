@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// The version of a ``BitcoinTx``.
 ///
@@ -30,20 +31,19 @@ public struct TxVersion: Equatable, Comparable, Sendable {
     public static let v2 = Self(2)
 }
 
-/// Data extensions.
-extension TxVersion {
-
-    init?(_ data: Data) {
-        guard data.count >= Self.size else {
-            return nil
-        }
-        let rawValue = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        self.init(rawValue)
+/// Binary data extensions.
+extension TxVersion: BinaryCodable {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+        let rawValue: UInt32 = try decoder.take()
+        self.init(Int(rawValue))
     }
 
-    var data: Data {
-        Data(value: rawValue)
+    public func encode(to encoder: inout BinaryEncoder) {
+        encoder.put(UInt32(versionValue))
     }
 
-    static let size = MemoryLayout<UInt32>.size
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
+        visitor.count(UInt32.self)
+    }
 }
+

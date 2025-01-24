@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// Witness data associated with a particular ``TxIn``.
 ///
@@ -23,36 +24,32 @@ public struct TxWitness: Equatable, Sendable {
     }
 }
 
-/// Data extensions.
-extension TxWitness {
+/// Binary data extensions.
+extension TxWitness: BinaryCodable {
 
-    init?(_ data: Data) {
-        var data = data
-        guard let elementsCount = data.varInt else {
-            return nil
-        }
-        data = data.dropFirst(elementsCount.varIntSize)
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+        let count = (try decoder.take() as VarInt).value
         var elements = [Data]()
-        for _ in 0 ..< elementsCount {
-            guard let element = Data(varLenData: data) else {
-                return nil
-            }
-            elements.append(element)
-            data = data.dropFirst(element.varLenSize)
+        for _ in 0 ..< count {
+            let length = (try decoder.take() as VarInt).value
+            elements.append(try decoder.take(length))
         }
         self.elements = elements
     }
 
-    /// Used by ``BitcoinTx/data`` to support the serialization format specified in BIP144.
-    var data: Data {
-        var ret = Data(count: size)
-        let offset = ret.addData(Data(varInt: UInt64(elements.count)))
-        ret.addData(elements.reduce(Data()) { $0 + $1.varLenData }, at: offset)
-        return ret
+    public func encode(to encoder: inout BinaryEncoder) {
+        encoder.put(VarInt(elements.count))
+        for e in elements {
+            encoder.put(VarInt(e.count))
+            encoder.put(e)
+        }
     }
 
-    var size: Int {
-        UInt64(elements.count).varIntSize + elements.varLenSize
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
+        visitor.count(VarInt(elements.count))
+        for e in elements {
+            visitor.count(VarInt(e.count))
+            visitor.countSize(e.count)
+        }
     }
 }
-

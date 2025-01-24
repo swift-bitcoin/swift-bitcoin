@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// Lock time value for a ``BitcoinTx``. If less than 500,000,000 is interpreted as the minimum block height at which the transaction is unlocked. When equal or greater than 500,000,000 it represents the time (UNIX epoch) at which the transaction is unlocked. Use 0 to disable the time lock entirely.
 public struct TxLocktime: Equatable, Sendable {
@@ -31,20 +32,18 @@ public struct TxLocktime: Equatable, Sendable {
     public static let minClock = Self(500_000_000)
 }
 
-/// Data extensions.
-extension TxLocktime {
-
-    init?(_ data: Data) {
-        guard data.count >= Self.size else {
-            return nil
-        }
-        let value32 = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        self.init(Int(value32))
+/// Binary data extensions.
+extension TxLocktime: BinaryCodable {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+        let rawValue: UInt32 = try decoder.take()
+        self.init(Int(rawValue))
     }
 
-    var data: Data {
-        Data(value: rawValue)
+    public func encode(to encoder: inout BinaryEncoder) {
+        encoder.put(UInt32(locktimeValue))
     }
 
-    static let size = MemoryLayout<UInt32>.size
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
+        visitor.count(UInt32.self)
+    }
 }

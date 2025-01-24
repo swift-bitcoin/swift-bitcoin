@@ -29,7 +29,7 @@ public struct TxOutpoint: Equatable, Hashable, Sendable {
 /// Data extensions.
 extension TxOutpoint: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let tx = try decoder.take(BitcoinTx.idLength, byteSwapped: true)
         let txOut = Int(try decoder.take() as UInt32)
         self.init(tx: tx, txOut: txOut)
@@ -40,10 +40,8 @@ extension TxOutpoint: BinaryCodable {
         encoder.put(UInt32(txOut))
     }
     
-    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
         visitor.countSize(BitcoinTx.idLength)
         visitor.count(UInt32.self)
     }
-
-    static let size = BitcoinTx.idLength + MemoryLayout<UInt32>.size
 }

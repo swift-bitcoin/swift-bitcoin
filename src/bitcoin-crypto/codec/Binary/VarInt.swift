@@ -4,7 +4,7 @@ public struct VarInt: BinaryCodable {
         rawValue = .init(value)
     }
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let firstByte = try decoder.take() as UInt8
         if firstByte < 0xfd {
             rawValue = UInt64(firstByte)
@@ -41,7 +41,7 @@ public struct VarInt: BinaryCodable {
         }
     }
 
-    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
         visitor.count(UInt8.self)
         switch rawValue {
         case 0xfd ... UInt64(UInt16.max):

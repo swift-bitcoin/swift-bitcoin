@@ -78,16 +78,16 @@ public struct TxSequence: Equatable, Sendable {
 
 /// Data extensions.
 extension TxSequence: BinaryCodable {
-    public init(from decoder: inout BitcoinCrypto.BinaryDecoder) throws(BitcoinCrypto.BinaryDecoder.Error) {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let rawValue: UInt32 = try decoder.take()
         self.init(Int(rawValue))
     }
 
-    public func encode(to encoder: inout BitcoinCrypto.BinaryEncoder) {
+    public func encode(to encoder: inout BinaryEncoder) {
         encoder.put(UInt32(sequenceValue))
     }
 
-    public func reportSize(to visitor: inout BitcoinCrypto.BinaryEncoder.SizeVisitor) {
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
         visitor.count(UInt32.self)
     }
 }

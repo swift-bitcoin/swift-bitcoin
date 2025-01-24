@@ -150,10 +150,10 @@ extension BitcoinTx {
     /// BIP 144
     public init?(_ data: Data) {
         var data = data
-        guard let version = TxVersion(data) else {
+        guard let version = try? TxVersion(binaryData: data) else {
             return nil
         }
-        data = data.dropFirst(TxVersion.size)
+        data = data.dropFirst(version.binarySize)
 
         // BIP144 - Check for marker and segwit flag
         let maybeSegwitMarker = data[data.startIndex]
@@ -177,7 +177,7 @@ extension BitcoinTx {
                 return nil
             }
             ins.append(txIn)
-            data = data.dropFirst(txIn.size)
+            data = data.dropFirst(txIn.binarySize)
         }
 
         guard let outsCount = data.varInt else {
@@ -191,23 +191,23 @@ extension BitcoinTx {
                 return nil
             }
             outs.append(out)
-            data = data.dropFirst(out.size)
+            data = data.dropFirst(out.binarySize)
         }
 
         // BIP144
         if isSegwit {
             for i in ins.indices {
-                guard let witness = TxWitness(data) else { return nil }
-                data = data.dropFirst(witness.size)
+                guard let witness = try? TxWitness(binaryData: data) else { return nil }
+                data = data.dropFirst(witness.binarySize)
                 let txIn = ins[i]
                 ins[i] = .init(outpoint: txIn.outpoint, sequence: txIn.sequence, script: txIn.script, witness: witness)
             }
         }
 
-        guard let locktime = TxLocktime(data) else {
+        guard let locktime = try? TxLocktime(binaryData: data) else {
             return nil
         }
-        data = data.dropFirst(TxLocktime.size)
+        data = data.dropFirst(locktime.binarySize)
         self.init(version: version, locktime: locktime, ins: ins, outs: outs)
     }
 
@@ -217,7 +217,7 @@ extension BitcoinTx {
     /// BIP144
     public var data: Data {
         var ret = Data(count: size)
-        var offset = ret.addData(version.data)
+        var offset = ret.addData(version.binaryData)
 
         // BIP144
         if hasWitness {
@@ -226,7 +226,7 @@ extension BitcoinTx {
         offset = ret.addData(Data(varInt: insUInt64), at: offset)
         offset = ret.addData(ins.reduce(Data()) { $0 + $1.binaryData }, at: offset)
         offset = ret.addData(Data(varInt: outsUInt64), at: offset)
-        offset = ret.addData(outs.reduce(Data()) { $0 + $1.data }, at: offset)
+        offset = ret.addData(outs.reduce(Data()) { $0 + $1.binaryData }, at: offset)
 
         // BIP144
         if hasWitness {
@@ -234,11 +234,11 @@ extension BitcoinTx {
                 guard let witness = $1.witness else {
                     return $0
                 }
-                return $0 + witness.data
+                return $0 + witness.binaryData
             }, at: offset)
         }
 
-        ret.addData(locktime.data, at: offset)
+        ret.addData(locktime.binaryData, at: offset)
         return ret
     }
 
@@ -250,24 +250,24 @@ extension BitcoinTx {
 
     private var nonWitnessData: Data {
         var ret = Data(count: baseSize)
-        var offset = ret.addData(version.data)
+        var offset = ret.addData(version.binaryData)
         offset = ret.addData(Data(varInt: insUInt64), at: offset)
         offset = ret.addData(ins.reduce(Data()) { $0 + $1.binaryData }, at: offset)
         offset = ret.addData(Data(varInt: outsUInt64), at: offset)
-        offset = ret.addData(outs.reduce(Data()) { $0 + $1.data }, at: offset)
-        ret.addData(locktime.data, at: offset)
+        offset = ret.addData(outs.reduce(Data()) { $0 + $1.binaryData }, at: offset)
+        ret.addData(locktime.binaryData, at: offset)
         return ret
     }
 
     /// BIP141: Base transaction size is the size of the transaction serialised with the witness data stripped.
     /// AKA `identifierSize`
     var baseSize: Int {
-        TxVersion.size + insUInt64.varIntSize + ins.reduce(0) { $0 + $1.size } + outsUInt64.varIntSize + outs.reduce(0) { $0 + $1.size } + TxLocktime.size
+        version.binarySize + insUInt64.varIntSize + ins.reduce(0) { $0 + $1.binarySize } + outsUInt64.varIntSize + outs.reduce(0) { $0 + $1.binarySize } + locktime.binarySize
     }
 
     /// BIP141 / BIP144
     var witnessSize: Int {
-        hasWitness ? (MemoryLayout.size(ofValue: BitcoinTx.segwitMarker) + MemoryLayout.size(ofValue: BitcoinTx.segwitFlag)) + ins.reduce(0) { $0 + ($1.witness?.size ?? 0) } : 0
+        hasWitness ? (MemoryLayout.size(ofValue: BitcoinTx.segwitMarker) + MemoryLayout.size(ofValue: BitcoinTx.segwitFlag)) + ins.reduce(0) { $0 + ($1.witness?.binarySize ?? 0) } : 0
     }
 
     public static let idLength = Hash256.Digest.byteCount

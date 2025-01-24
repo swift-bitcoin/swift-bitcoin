@@ -326,7 +326,7 @@ public enum ScriptOp: Equatable, Sendable {
 
 extension ScriptOp: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         decoder.setCheckpoint()
         let opCode: UInt8 = try decoder.take()
         switch opCode {
@@ -499,7 +499,7 @@ extension ScriptOp: BinaryCodable {
         }
     }
     
-    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
         visitor.count(UInt8.self) // opCode
         switch self {
         case .pushData1(_):
@@ -512,7 +512,7 @@ extension ScriptOp: BinaryCodable {
         }
         switch self {
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
-            visitor.count(d)
+            visitor.countSize(d.count)
         default: break
         }
     }

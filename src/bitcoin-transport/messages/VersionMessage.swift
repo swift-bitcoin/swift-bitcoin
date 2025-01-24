@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 struct VersionMessage: Equatable, Sendable {
     init(protocolVersion: ProtocolVersion = .latest, services: ProtocolServices = .all, receiverServices: ProtocolServices? = .none, receiverAddress: IPv6Address? = .none, receiverPort: Int? = .none, transmitterAddress: IPv6Address? = .none, transmitterPort: Int? = .none, nonce: UInt64 = 0, userAgent: String = "/SwiftBitcoin:0.1.0/", startHeight: Int = 0, relay: Bool = true) {
@@ -93,12 +94,17 @@ extension VersionMessage {
         self.nonce = nonce
         data = data.dropFirst(MemoryLayout<UInt64>.size)
 
-        guard let userAgentData = Data(varLenData: data) else {
+        guard let userAgentDataLength = data.varInt else { return nil }
+        data = data.dropFirst(userAgentDataLength.varIntSize)
+
+        guard data.count >= userAgentDataLength else {
             return nil
         }
+        let userAgentData = data.prefix(Int(userAgentDataLength))
+
         let userAgent = String(decoding: userAgentData, as: Unicode.ASCII.self)
         self.userAgent = userAgent
-        data = data.dropFirst(userAgentData.varLenSize)
+        data = data.dropFirst(userAgentData.count)
 
         guard data.count >= MemoryLayout<Int32>.size else { return nil }
         let startHeight = data.withUnsafeBytes {
@@ -116,7 +122,7 @@ extension VersionMessage {
     }
 
     var size: Int {
-        85 + userAgentData.varLenSize
+        85 + VarInt(userAgentData.count).binarySize + userAgentData.count
     }
 
     var data: Data {
@@ -131,7 +137,8 @@ extension VersionMessage {
         offset = ret.addData(transmitterAddress.rawValue, at: offset)
         offset = ret.addBytes(UInt16(transmitterPort).bigEndian, at: offset)
         offset = ret.addBytes(nonce, at: offset)
-        offset = ret.addData(userAgentData.varLenData, at: offset)
+        offset = ret.addData(VarInt(userAgentData.count).binaryData, at: offset)
+        offset = ret.addData(userAgentData, at: offset)
         offset = ret.addBytes(Int32(startHeight), at: offset)
         offset = ret.addBytes(relay, at: offset)
         return ret

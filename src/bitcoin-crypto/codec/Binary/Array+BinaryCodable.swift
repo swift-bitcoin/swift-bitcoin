@@ -1,8 +1,8 @@
 import Foundation
 
-extension Array where Element: BinaryCodable {
+extension Array: BinaryCodable where Element: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let count: VarInt = try decoder.take()
         self.init()
         for _ in 0 ..< count.value {
@@ -18,7 +18,7 @@ extension Array where Element: BinaryCodable {
         }
     }
 
-    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
         visitor.count(VarInt(count))
         for e in self {
             e.reportSize(to: &visitor)

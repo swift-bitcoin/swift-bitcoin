@@ -4,11 +4,11 @@ public typealias BinaryCodable = BinaryDecodable & BinaryEncodable
 
 public protocol BinaryEncodable {
     func encode(to encoder: inout BinaryEncoder)
-    func reportSize(to visitor: inout BinaryEncoder.SizeVisitor)
+    func reportSize(to visitor: inout BinarySizeVisitor)
 }
 
 public protocol BinaryDecodable {
-    init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error)
+    init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError)
 }
 
 public extension BinaryEncodable {
@@ -20,14 +20,14 @@ public extension BinaryEncodable {
     }
 
     var binarySize: Int {
-        var visitor = BinaryEncoder.SizeVisitor()
+        var visitor = BinarySizeVisitor()
         reportSize(to: &visitor)
         return visitor.size
     }
 }
 
 public extension BinaryDecodable {
-    init<D: DataProtocol>(binaryData: D) throws(BinaryDecoder.Error) {
+    init<D: DataProtocol>(binaryData: D) throws(BinaryDecodingError) {
         var decoder = BinaryDecoder(binaryData)
         try self.init(from: &decoder)
     }

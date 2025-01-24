@@ -111,32 +111,3 @@ package extension UInt64 {
         }
     }
 }
-
-// MARK: - Variable length array
-
-package extension Data {
-
-    init?(varLenData: Data) {
-        var data = varLenData
-        guard let contentLen = data.varInt else { return nil }
-        data = data.dropFirst(contentLen.varIntSize)
-        self = data.prefix(Int(contentLen))
-    }
-
-    var varLenData: Data {
-        Data(varInt: UInt64(count)) + self
-    }
-
-    /// Memory size as variable length byte array (array prefixed with its element count as compact integer).
-    var varLenSize: Int {
-        UInt64(count).varIntSize + count
-    }
-}
-
-package extension Array where Element == Data {
-
-    /// Memory size as multiple variable length arrays.
-    var varLenSize: Int {
-        reduce(0) { $0 + $1.varLenSize }
-    }
-}

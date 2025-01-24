@@ -121,7 +121,7 @@ public indirect enum ScriptTree: Equatable, Sendable {
             preconditionFailure("Needs to be a leaf.")
         }
         let leafVersionData = withUnsafeBytes(of: UInt8(version)) { Data($0) }
-        return Data(SHA256.hash(data: leafVersionData + scriptData.varLenData, tag: "TapLeaf"))
+        return Data(SHA256.hash(data: leafVersionData + VarInt(scriptData.count).binaryData + scriptData, tag: "TapLeaf"))
     }
 
     public func getOutputKey(secretKey: SecretKey) -> Data {

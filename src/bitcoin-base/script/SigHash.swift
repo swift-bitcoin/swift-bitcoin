@@ -211,21 +211,21 @@ public class SigHash {
         // Otherwise, hashOutputs is a uint256 of 0x0000......0000.[7]
         let hashOuts: Data
         if !sighashType.isSingle && !sighashType.isNone {
-            let outsData = tx.outs.reduce(Data()) { $0 + $1.data }
+            let outsData = tx.outs.reduce(Data()) { $0 + $1.binaryData }
             hashOuts = Data(Hash256.hash(data: outsData))
         } else if sighashType.isSingle && inIndex < tx.outs.count {
-            hashOuts = Data(Hash256.hash(data: tx.outs[inIndex].data))
+            hashOuts = Data(Hash256.hash(data: tx.outs[inIndex].binaryData))
         } else {
             hashOuts = Data(repeating: 0, count: 32)
         }
 
         let outpointData = tx.ins[inIndex].outpoint.binaryData
-        let scriptCodeData = resolvedScriptCode.varLenData
+        let scriptCodeData = VarInt(resolvedScriptCode.count).binaryData + resolvedScriptCode
         let amountData = withUnsafeBytes(of: amount) { Data($0) }
         let sequenceData = tx.ins[inIndex].sequence.binaryData
 
-        let remaindingData = sequenceData + hashOuts + tx.locktime.data + sighashType.data32
-        return tx.version.data + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remaindingData
+        let remaindingData = sequenceData + hashOuts + tx.locktime.binaryData + sighashType.data32
+        return tx.version.binaryData + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remaindingData
     }
 
     /// BIP341
@@ -265,9 +265,9 @@ public class SigHash {
 
         // Transaction data:
         // nVersion (4): the nVersion of the tx.
-        var txData = tx.version.data
+        var txData = tx.version.binaryData
         // nLockTime (4): the nLockTime of the tx.
-        txData.append(tx.locktime.data)
+        txData.append(tx.locktime.binaryData)
 
         //If the hash_type & 0x80 does not equal SIGHASH_ANYONECANPAY:
         if !sighashType.isAnyCanPay {
@@ -373,7 +373,7 @@ public class SigHash {
         var outData = Data()
         if sighashType.isSingle {
             //sha_single_output (32): the SHA256 of the corresponding output in CTxOut format.
-            let shaSingleOutput = Data(SHA256.hash(data: tx.outs[inIndex].data))
+            let shaSingleOutput = Data(SHA256.hash(data: tx.outs[inIndex].binaryData))
             outData.append(shaSingleOutput)
         }
 

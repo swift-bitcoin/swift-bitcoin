@@ -200,7 +200,7 @@ extension BitcoinScript: ExpressibleByArrayLiteral {
 /// Data extensions.
 extension BitcoinScript: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         var ops = [ScriptOp]()
         while let op: ScriptOp = try? decoder.take() {
             ops.append(op)
@@ -209,14 +209,14 @@ extension BitcoinScript: BinaryCodable {
         unparsable = try decoder.take()
     }
 
-    public init(prefixedFrom decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+    public init(prefixedFrom decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let size: VarInt = try decoder.take()
         decoder.setLimit(size.value)
         try self.init(from: &decoder)
         decoder.resetLimit()
     }
 
-    init(prefixedData: Data) throws(BinaryDecoder.Error) {
+    init(prefixedData: Data) throws(BinaryDecodingError) {
         var decoder = BinaryDecoder(prefixedData)
         try self.init(prefixedFrom: &decoder)
     }
@@ -233,14 +233,14 @@ extension BitcoinScript: BinaryCodable {
         encode(to: &encoder)
     }
     
-    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
         for op in ops {
             visitor.count(op)
         }
-        visitor.count(unparsable)
+        visitor.countSize(unparsable.count)
     }
 
-    public func reportSizePrefixed(to visitor: inout BinaryEncoder.SizeVisitor) {
+    public func reportSizePrefixed(to visitor: inout BinarySizeVisitor) {
         visitor.count(VarInt(binarySize))
         reportSize(to: &visitor)
     }
@@ -252,7 +252,7 @@ extension BitcoinScript: BinaryCodable {
     }
 
     public var sizePrefixed: Int {
-        var visitor = BinaryEncoder.SizeVisitor()
+        var visitor = BinarySizeVisitor()
         self.reportSizePrefixed(to: &visitor)
         return visitor.size
     }

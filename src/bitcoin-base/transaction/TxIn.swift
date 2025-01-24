@@ -38,7 +38,7 @@ public struct TxIn: Equatable, Sendable {
 
 /// Data extensions.
 extension TxIn: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecoder.Error) {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         outpoint = try decoder.take()
         script = try BitcoinScript(prefixedFrom: &decoder)
         sequence = try decoder.take()
@@ -50,14 +50,9 @@ extension TxIn: BinaryCodable {
         encoder.put(sequence)
     }
     
-    public func reportSize(to visitor: inout BinaryEncoder.SizeVisitor) {
+    public func reportSize(to visitor: inout BinarySizeVisitor) {
         visitor.count(outpoint)
         script.reportSizePrefixed(to: &visitor)
         visitor.count(sequence)
-    }
-
-    /// Used by ``BitcoinTx/size``.
-    var size: Int {
-        TxOutpoint.size + script.sizePrefixed + MemoryLayout<UInt32>.size
     }
 }

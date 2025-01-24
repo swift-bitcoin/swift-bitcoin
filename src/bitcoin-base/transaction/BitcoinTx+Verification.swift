@@ -233,7 +233,7 @@ extension BitcoinTx {
         let leafVersion = control[0] & 0xfe
 
         // Let k0 = hashTapLeaf(v || compact_size(size of s) || s); also call it the tapleaf hash.
-        let tapLeafHash = Data(SHA256.hash(data: [leafVersion] + tapscriptData.varLenData, tag: "TapLeaf"))
+        let tapLeafHash = Data(SHA256.hash(data: [leafVersion] + VarInt(tapscriptData.count).binaryData + tapscriptData, tag: "TapLeaf"))
 
         // Compute the Merkle root from the leaf and the provided path.
         let merkleRoot = computeMerkleRoot(controlBlock: control, tapLeafHash: tapLeafHash)

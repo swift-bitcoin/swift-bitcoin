@@ -1,22 +1,9 @@
 import Foundation
 
-public protocol BinaryTrivial {}
-extension Int: BinaryTrivial {}
-extension UInt: BinaryTrivial {}
-extension Int8: BinaryTrivial {}
-extension UInt8: BinaryTrivial {}
-extension Int16: BinaryTrivial {}
-extension UInt16: BinaryTrivial {}
-extension Int32: BinaryTrivial {}
-extension UInt32: BinaryTrivial {}
-extension Int64: BinaryTrivial {}
-extension UInt64: BinaryTrivial {}
-// extension Array: BinaryTrivial where Element: BinaryTrivial {}
-
 public struct BinaryDecoder {
 
-    public enum Error: Swift.Error {
-        case outOfRange, limitExceeded
+    public init<D: DataProtocol>(_ data: D) {
+        self.data = Data(data)
     }
 
     private var data: Data
@@ -25,65 +12,7 @@ public struct BinaryDecoder {
     private var checkpoint = Int?.none
     private var checkpointLimit = Int?.none
 
-    public init<D: DataProtocol>(_ data: D) {
-        self.data = Data(data)
-    }
-
-    public mutating func setCheckpoint() {
-        checkpoint = offset
-        checkpointLimit = limit
-    }
-
-    public mutating func clearCheckpoint() {
-        checkpoint = .none
-        checkpointLimit = .none
-    }
-
-    /// Rolls back the offset and the limit to the values when ``setCheckpoint()`` was last called.
-    public mutating func revert() {
-        guard let checkpoint else { return }
-        offset = checkpoint
-        limit = checkpointLimit
-        clearCheckpoint()
-    }
-
-    public mutating func setLimit(_ limit: Int) {
-        self.limit = limit
-    }
-
-    public mutating func resetLimit() {
-        limit = .none
-    }
-
-    public mutating func take<E>() throws(Error) -> Array<E> where E: BinaryTrivial {
-        let count: VarInt = try take()
-        var ret = [E]()
-        for _ in 0 ..< count.value {
-            ret.append(try take())
-        }
-        return ret
-    }
-
-    public mutating func take<T: BinaryTrivial>() throws(Error) -> T {
-        let count = MemoryLayout<T>.size
-        if let limit {
-            if count <= limit { self.limit = limit - count }
-            else { throw .limitExceeded }
-        }
-
-        let nextOffset = offset + count
-        guard nextOffset <= data.count else {
-            throw .outOfRange
-        }
-
-        let value = data.withUnsafeBytes {
-            $0.loadUnaligned(fromByteOffset: offset, as: T.self)
-        }
-        offset = nextOffset
-        return value
-    }
-
-    public mutating func take(_ count: Int? = .none, byteSwapped: Bool = false) throws(Error) -> Data {
+    public mutating func take(_ count: Int? = .none, byteSwapped: Bool = false) throws(BinaryDecodingError) -> Data {
         let remaining = data.count - offset
         let count = if let count { count }
                     else if let limit { limit }
@@ -105,7 +34,52 @@ public struct BinaryDecoder {
         return Data(value)
     }
 
-    public mutating func take<T: BinaryDecodable>() throws(Error) -> T {
+    public mutating func take<T: BinaryDecodable>() throws(BinaryDecodingError) -> T {
         try T(from: &self)
+    }
+
+    public mutating func setLimit(_ limit: Int) {
+        self.limit = limit
+    }
+
+    public mutating func resetLimit() {
+        limit = .none
+    }
+
+    public mutating func setCheckpoint() {
+        checkpoint = offset
+        checkpointLimit = limit
+    }
+
+    public mutating func clearCheckpoint() {
+        checkpoint = .none
+        checkpointLimit = .none
+    }
+
+    /// Rolls back the offset and the limit to the values when ``setCheckpoint()`` was last called.
+    public mutating func revert() {
+        guard let checkpoint else { return }
+        offset = checkpoint
+        limit = checkpointLimit
+        clearCheckpoint()
+    }
+
+    mutating func takePrimitive<T: BinaryEncodingPrimitive>() throws(BinaryDecodingError) -> T {
+        let count = MemoryLayout<T>.size
+        if let limit {
+            if count <= limit { self.limit = limit - count }
+            else { throw .limitExceeded }
+        }
+
+        let nextOffset = offset + count
+        guard nextOffset <= data.count else {
+            throw .outOfRange
+        }
+
+        let value = data.withUnsafeBytes {
+            $0.loadUnaligned(fromByteOffset: offset, as: T.self)
+        }
+        offset = nextOffset
+        return value
     }
 }
