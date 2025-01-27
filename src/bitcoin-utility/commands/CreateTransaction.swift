@@ -55,6 +55,6 @@ struct CreateTx: ParsableCommand {
             ins: ins,
             outs: outs
         )
-        print(tx.data.hex)
+        print(tx.binaryData.hex)
     }
 }

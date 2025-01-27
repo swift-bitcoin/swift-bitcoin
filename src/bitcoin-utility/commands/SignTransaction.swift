@@ -33,7 +33,10 @@ struct SignTx: ParsableCommand {
         guard let txData = Data(hex: tx) else {
             throw ValidationError("Invalid hexadecimal value: tx")
         }
-        guard let tx = BitcoinTx(txData) else {
+        let tx: BitcoinTx
+        do {
+            tx = try BitcoinTx(binaryData: txData)
+        } catch {
             throw ValidationError("Invalid raw transaction data: tx")
         }
         let prevouts = try prevout.map {
@@ -47,7 +50,7 @@ struct SignTx: ParsableCommand {
         }
         let signer = TxSigner(tx: tx, prevouts: prevouts)
         let signed = signer.sign(txIn: txIn, with: secretKey)
-        print(signed.data.hex)
+        print(signed.binaryData.hex)
         destroyECCSigningContext()
     }
 }
