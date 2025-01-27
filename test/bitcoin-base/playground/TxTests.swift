@@ -17,12 +17,12 @@ struct TxTests {
         for txInfo in TxInfoItems {
             guard
                 let expectedTransactionData = Data(hex: txInfo.hex),
-                let tx = BitcoinTx(expectedTransactionData)
+                let tx = try? BitcoinTx(binaryData: expectedTransactionData)
             else {
                 Issue.record("Transaction data could not be decoded."); continue
             }
 
-            #expect(tx.data == expectedTransactionData)
+            #expect(tx.binaryData == expectedTransactionData)
 
             let expectedVersion = txInfo.version
             #expect(tx.version.versionValue == expectedVersion)
@@ -37,7 +37,7 @@ struct TxTests {
             #expect(tx.witnessID == expectedWitnessID)
 
             let expectedSize = txInfo.size
-            #expect(tx.size == expectedSize)
+            #expect(tx.binarySize == expectedSize)
 
             let expectedInputCount = txInfo.vin.count
             let expectedOutputCount = txInfo.vout.count

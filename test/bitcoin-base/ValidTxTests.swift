@@ -7,7 +7,7 @@ struct ValidTxTests {
     @Test("Bitcoin Core Valid Transactions")
     func validTx() throws {
         for vector in testVectors {
-            let tx = try #require(BitcoinTx(Data(vector.serializedTx)))
+            let tx = try BitcoinTx(binaryData: Data(vector.serializedTx))
             let prevouts = vector.prevouts.map { prevout in
                 TxOut(value: prevout.amount, script: BitcoinScript(prevout.ops))
             }

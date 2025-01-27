@@ -109,11 +109,8 @@ public struct ScriptContext {
         self.tapLeafHash = tapLeafHash
 
         if sigVersion == .witnessV1 {
-            if let witness = tx.ins[txIn].witness {
-                sigopBudget = BitcoinScript.sigopBudgetBase + witness.binarySize
-            } else {
-                sigopBudget = BitcoinScript.sigopBudgetBase
-            }
+            let witness = tx.ins[txIn].witness
+            sigopBudget = BitcoinScript.sigopBudgetBase + (witness == [] ? 0 : witness.binarySize)
         }
 
         // BIP141

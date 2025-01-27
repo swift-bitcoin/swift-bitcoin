@@ -28,7 +28,7 @@ struct BitcoinCoreTaprootTests {
             if !includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.remove(.discourageUpgradableWitnessProgram) }
             if !includeFlags.contains("TAPROOT") { config.remove(.taproot) }
 
-            let unsignedTx = try #require(BitcoinTx(Data(testCase.tx)))
+            let unsignedTx = try BitcoinTx(binaryData: Data(testCase.tx))
             let prevouts = testCase.prevouts.map { TxOut(Data($0))! }
             let inIndex = testCase.inIndex
             let txIn = unsignedTx.ins[inIndex]

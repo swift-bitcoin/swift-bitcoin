@@ -148,11 +148,11 @@ package extension TxBlock {
         data = data.dropFirst(txCount.varIntSize)
         var txs = [BitcoinTx]()
         for _ in 0 ..< txCount {
-            guard let tx = BitcoinTx(data) else {
+            guard let tx = try? BitcoinTx(binaryData: data) else {
                 return nil
             }
             txs.append(tx)
-            data = data.dropFirst(tx.size)
+            data = data.dropFirst(tx.binarySize)
         }
         self.txs = txs
     }
@@ -175,7 +175,7 @@ package extension TxBlock {
         var ret = Data(count: size)
         var offset = ret.addData(headerData)
         offset = ret.addData(Data(varInt: UInt64(txs.count)), at: offset)
-        ret.addData(Data(txs.map(\.data).joined()), at: offset)
+        ret.addData(Data(txs.map(\.binaryData).joined()), at: offset)
         return ret
     }
 
@@ -186,7 +186,7 @@ package extension TxBlock {
 
     /// Size of data in bytes.
     var size: Int {
-        Self.baseSize + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.size }
+        Self.baseSize + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.binarySize }
     }
 }
 

@@ -37,7 +37,7 @@ struct ScriptTests {
         let witness = if let witnessElements = test.witness {
             TxWitness(witnessElements)
         } else {
-            TxWitness?.none
+            TxWitness([])
         }
 
         let txSpend = BitcoinTx(

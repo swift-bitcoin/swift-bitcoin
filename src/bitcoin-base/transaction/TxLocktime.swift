@@ -35,15 +35,15 @@ public struct TxLocktime: Equatable, Sendable {
 /// Binary data extensions.
 extension TxLocktime: BinaryCodable {
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        let rawValue: UInt32 = try decoder.take()
+        let rawValue: UInt32 = try decoder.decode()
         self.init(Int(rawValue))
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(UInt32(locktimeValue))
+        encoder.encode(UInt32(locktimeValue))
     }
 
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.count(UInt32.self)
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(UInt32.self)
     }
 }

@@ -23,18 +23,18 @@ public struct TxOut: Equatable, Sendable {
 /// Data extensions.
 extension TxOut: BinaryCodable {
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        value = try decoder.take()
+        value = try decoder.decode()
         script = try BitcoinScript(prefixedFrom: &decoder)
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(value)
+        encoder.encode(value)
         script.encodePrefixed(to: &encoder)
     }
     
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.count(value)
-        script.reportSizePrefixed(to: &visitor)
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(value)
+        script.encodingSizePrefixed(&counter)
     }
 
     package init?(_ data: Data) {
@@ -51,14 +51,14 @@ extension TxOut: BinaryCodable {
     }
 
     var valueData: Data {
-        var encoder = BinaryEncoder(count: valueSize)
-        encoder.put(value)
+        var encoder = BinaryEncoder(size: valueSize)
+        encoder.encode(value)
         return encoder.data
     }
 
     var valueSize: Int {
-        var visitor = BinarySizeVisitor()
-        visitor.count(value)
-        return visitor.size
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(value)
+        return counter.size
     }
 }

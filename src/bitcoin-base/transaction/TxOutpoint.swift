@@ -30,18 +30,18 @@ public struct TxOutpoint: Equatable, Hashable, Sendable {
 extension TxOutpoint: BinaryCodable {
 
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        let tx = try decoder.take(BitcoinTx.idLength, byteSwapped: true)
-        let txOut = Int(try decoder.take() as UInt32)
+        let tx = try decoder.decode(BitcoinTx.idLength, byteSwapped: true)
+        let txOut = Int(try decoder.decode() as UInt32)
         self.init(tx: tx, txOut: txOut)
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(txID.reversed())
-        encoder.put(UInt32(txOut))
+        encoder.encode(Data(txID.reversed()))
+        encoder.encode(UInt32(txOut))
     }
     
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.countSize(BitcoinTx.idLength)
-        visitor.count(UInt32.self)
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.countSize(BitcoinTx.idLength)
+        counter.count(UInt32.self)
     }
 }

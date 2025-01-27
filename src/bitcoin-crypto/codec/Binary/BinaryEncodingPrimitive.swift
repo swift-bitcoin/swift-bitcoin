@@ -5,15 +5,15 @@ public protocol BinaryEncodingPrimitive: BinaryCodable {}
 extension BinaryEncodingPrimitive {
 
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        self = try decoder.takePrimitive()
+        self = try decoder.decodePrimitive()
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.putPrimitive(self)
+        encoder.encode(self)
     }
 
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.countPrimitive(self)
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.countPrimitive(self)
     }
 }
 

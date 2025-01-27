@@ -44,14 +44,14 @@ public struct BitcoinTx: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var id: Data { Data(Hash256.hash(data: nonWitnessData).reversed()) }
+    public var id: Data { Data(Hash256.hash(data: dataNonWitness).reversed()) }
 
     /// BIP141
     /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
-    public var witnessID: Data { Data(Hash256.hash(data: data).reversed()) }
+    public var witnessID: Data { Data(Hash256.hash(data: binaryData).reversed()) }
 
     /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
-    public var weight: Int { baseSize * 4 + witnessSize }
+    public var weight: Int { sizeNonWitness * 4 + witnessSize }
 
     ///  BIP141: Virtual transaction size is defined as Transaction weight / 4 (rounded up to the next integer).
     public var virtualSize: Int { Int((Double(weight) / 4).rounded(.up)) }
@@ -65,7 +65,7 @@ public struct BitcoinTx: Equatable, Sendable {
     }
 
     /// BIP141
-    var hasWitness: Bool { ins.contains { $0.witness != .none } }
+    var hasWitness: Bool { ins.contains { $0.witness != [] } }
 
     // MARK: - Instance Methods
 
@@ -144,130 +144,11 @@ public struct BitcoinTx: Equatable, Sendable {
 
 extension BitcoinTx {
 
-    // MARK: - Initializers
-
-    /// Initialize from serialized raw data.
-    /// BIP 144
-    public init?(_ data: Data) {
-        var data = data
-        guard let version = try? TxVersion(binaryData: data) else {
-            return nil
-        }
-        data = data.dropFirst(version.binarySize)
-
-        // BIP144 - Check for marker and segwit flag
-        let maybeSegwitMarker = data[data.startIndex]
-        let maybeSegwitFlag = data[data.startIndex + 1]
-        let isSegwit: Bool
-        if maybeSegwitMarker == BitcoinTx.segwitMarker && maybeSegwitFlag == BitcoinTx.segwitFlag {
-            isSegwit = true
-            data = data.dropFirst(2)
-        } else {
-            isSegwit = false
-        }
-
-        guard let insCount = data.varInt else {
-            return nil
-        }
-        data = data.dropFirst(insCount.varIntSize)
-
-        var ins = [TxIn]()
-        for _ in 0 ..< insCount {
-            guard let txIn = try? TxIn(binaryData: data) else {
-                return nil
-            }
-            ins.append(txIn)
-            data = data.dropFirst(txIn.binarySize)
-        }
-
-        guard let outsCount = data.varInt else {
-            return nil
-        }
-        data = data.dropFirst(outsCount.varIntSize)
-
-        var outs = [TxOut]()
-        for _ in 0 ..< outsCount {
-            guard let out = TxOut(data) else {
-                return nil
-            }
-            outs.append(out)
-            data = data.dropFirst(out.binarySize)
-        }
-
-        // BIP144
-        if isSegwit {
-            for i in ins.indices {
-                guard let witness = try? TxWitness(binaryData: data) else { return nil }
-                data = data.dropFirst(witness.binarySize)
-                let txIn = ins[i]
-                ins[i] = .init(outpoint: txIn.outpoint, sequence: txIn.sequence, script: txIn.script, witness: witness)
-            }
-        }
-
-        guard let locktime = try? TxLocktime(binaryData: data) else {
-            return nil
-        }
-        data = data.dropFirst(locktime.binarySize)
-        self.init(version: version, locktime: locktime, ins: ins, outs: outs)
-    }
-
     // MARK: - Computed Properties
-
-    /// Raw format byte serialization of this transaction. Supports updated serialization format specified in BIP144.
-    /// BIP144
-    public var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(version.binaryData)
-
-        // BIP144
-        if hasWitness {
-            offset = ret.addData(Data([BitcoinTx.segwitMarker, BitcoinTx.segwitFlag]), at: offset)
-        }
-        offset = ret.addData(Data(varInt: insUInt64), at: offset)
-        offset = ret.addData(ins.reduce(Data()) { $0 + $1.binaryData }, at: offset)
-        offset = ret.addData(Data(varInt: outsUInt64), at: offset)
-        offset = ret.addData(outs.reduce(Data()) { $0 + $1.binaryData }, at: offset)
-
-        // BIP144
-        if hasWitness {
-            offset = ret.addData(ins.reduce(Data()) {
-                guard let witness = $1.witness else {
-                    return $0
-                }
-                return $0 + witness.binaryData
-            }, at: offset)
-        }
-
-        ret.addData(locktime.binaryData, at: offset)
-        return ret
-    }
-
-    /// BIP141: Total transaction size is the transaction size in bytes serialized as described in BIP144, including base data and witness data.
-    public var size: Int { baseSize + witnessSize }
-
-    private var insUInt64: UInt64 { .init(ins.count) }
-    private var outsUInt64: UInt64 { .init(outs.count) }
-
-    private var nonWitnessData: Data {
-        var ret = Data(count: baseSize)
-        var offset = ret.addData(version.binaryData)
-        offset = ret.addData(Data(varInt: insUInt64), at: offset)
-        offset = ret.addData(ins.reduce(Data()) { $0 + $1.binaryData }, at: offset)
-        offset = ret.addData(Data(varInt: outsUInt64), at: offset)
-        offset = ret.addData(outs.reduce(Data()) { $0 + $1.binaryData }, at: offset)
-        ret.addData(locktime.binaryData, at: offset)
-        return ret
-    }
-
-    /// BIP141: Base transaction size is the size of the transaction serialised with the witness data stripped.
-    /// AKA `identifierSize`
-    var baseSize: Int {
-        version.binarySize + insUInt64.varIntSize + ins.reduce(0) { $0 + $1.binarySize } + outsUInt64.varIntSize + outs.reduce(0) { $0 + $1.binarySize } + locktime.binarySize
-    }
 
     /// BIP141 / BIP144
     var witnessSize: Int {
-        hasWitness ? (MemoryLayout.size(ofValue: BitcoinTx.segwitMarker) + MemoryLayout.size(ofValue: BitcoinTx.segwitFlag)) + ins.reduce(0) { $0 + ($1.witness?.binarySize ?? 0) } : 0
+        hasWitness ? BitcoinTx.segwitMarkerAndFlag.count + ins.reduce(0) { $0 + $1.witness.binarySize } : 0
     }
 
     public static let idLength = Hash256.Digest.byteCount
@@ -275,12 +156,100 @@ extension BitcoinTx {
     public static let coinbaseWitnessID = Data(count: idLength)
 
     /// BIP141
-    private static let segwitMarker = UInt8(0x00)
-
-    /// BIP141
-    private static let segwitFlag = UInt8(0x01)
+    private static let segwitMarkerAndFlag = Data([0, 1])
 
     // MARK: - Type Methods
 
     // No type methods yet.
+}
+
+extension BitcoinTx: BinaryCodable {
+
+    public init(from decoder: inout BitcoinCrypto.BinaryDecoder) throws(BitcoinCrypto.BinaryDecodingError) {
+        version = try decoder.decode()
+
+        // BIP144 - Check for marker and segwit flag
+        let isSegwit: Bool
+        if decoder.peek(2) == BitcoinTx.segwitMarkerAndFlag {
+            try decoder.decode(2)
+            isSegwit = true
+        } else {
+            isSegwit = false
+        }
+
+        ins = try decoder.decode()
+        outs = try decoder.decode()
+
+        // BIP144
+        if isSegwit {
+            for i in ins.indices {
+                ins[i].witness = try decoder.decode()
+            }
+        }
+
+        locktime = try decoder.decode()
+    }
+    
+    public func encode(to encoder: inout BitcoinCrypto.BinaryEncoder) {
+        encoder.encode(version)
+        // BIP144
+        if hasWitness {
+            encoder.encode(BitcoinTx.segwitMarkerAndFlag)
+        }
+        encoder.encode(ins)
+        encoder.encode(outs)
+        // BIP144
+        if hasWitness {
+            for witness in ins.map(\.witness) {
+                encoder.encode(witness)
+            }
+        }
+        encoder.encode(locktime)
+    }
+    
+    public func encodeNonWitness(to encoder: inout BitcoinCrypto.BinaryEncoder) {
+        encoder.encode(version)
+        encoder.encode(ins)
+        encoder.encode(outs)
+        encoder.encode(locktime)
+    }
+    
+    public func encodingSize(_ counter: inout BitcoinCrypto.BinaryEncodingSizeCounter) {
+        counter.count(version)
+        // BIP144
+        if hasWitness {
+            counter.count(BitcoinTx.segwitMarkerAndFlag)
+        }
+        counter.count(ins)
+        counter.count(outs)
+        // BIP144
+        if hasWitness {
+            for witness in ins.compactMap({ $0.witness }) {
+                counter.count(witness)
+            }
+        }
+        counter.count(locktime)
+    }
+
+    public func encodingSizeNonWitness(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(version)
+        counter.count(ins)
+        counter.count(outs)
+        counter.count(locktime)
+    }
+
+    /// Data used for the transaction identifier ``BitcoinTx/id``.
+    public var dataNonWitness: Data {
+        var encoder = BinaryEncoder(size: sizeNonWitness)
+        encodeNonWitness(to: &encoder)
+        return encoder.data
+    }
+
+    /// BIP141: Base transaction size is the size of the transaction serialised with the witness data stripped.
+    /// AKA `identifierSize`
+    public var sizeNonWitness: Int {
+        var counter = BinaryEncodingSizeCounter()
+        self.encodingSizeNonWitness(&counter)
+        return counter.size
+    }
 }

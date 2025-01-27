@@ -12,7 +12,7 @@ public struct TxIn: Equatable, Sendable {
     ///   - sequence: This input's sequence number.
     ///   - script: Optional script to unlock the referenced output.
     ///   - witness: Optional witness data for this input. See BIP141 for more information.
-    public init(outpoint: TxOutpoint, sequence: TxSequence = .final, script: BitcoinScript = .empty, /* BIP141 */ witness: TxWitness? = .none) {
+    public init(outpoint: TxOutpoint, sequence: TxInSequence = .final, script: BitcoinScript = .empty, /* BIP141 */ witness: TxWitness = []) {
         self.outpoint = outpoint
         self.sequence = sequence
         self.script = script
@@ -27,32 +27,33 @@ public struct TxIn: Equatable, Sendable {
     public var outpoint: TxOutpoint
 
     /// The sequence number for this input.
-    public var sequence: TxSequence
+    public var sequence: TxInSequence
 
     /// The script that unlocks the output associated with this input.
     public var script: BitcoinScript
 
     /// BIP141 - Segregated witness data associated with this input.
-    public var witness: TxWitness?
+    public var witness: TxWitness
 }
 
 /// Data extensions.
 extension TxIn: BinaryCodable {
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        outpoint = try decoder.take()
+        outpoint = try decoder.decode()
         script = try BitcoinScript(prefixedFrom: &decoder)
-        sequence = try decoder.take()
+        sequence = try decoder.decode()
+        witness = []
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(outpoint)
+        encoder.encode(outpoint)
         script.encodePrefixed(to: &encoder)
-        encoder.put(sequence)
+        encoder.encode(sequence)
     }
     
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.count(outpoint)
-        script.reportSizePrefixed(to: &visitor)
-        visitor.count(sequence)
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(outpoint)
+        script.encodingSizePrefixed(&counter)
+        counter.count(sequence)
     }
 }

@@ -33,9 +33,9 @@ extension PrefilledTx {
         self.index = index
         data = data.dropFirst(indexDiff.varIntSize)
 
-        guard let tx = BitcoinTx(data) else { return nil }
+        guard let tx = try? BitcoinTx(binaryData: data) else { return nil }
         self.tx = tx
-        data = data.dropFirst(tx.size)
+        data = data.dropFirst(tx.binarySize)
     }
 
     func getData(previousIndex: Int?) -> Data {
@@ -47,11 +47,11 @@ extension PrefilledTx {
             index
         }
         var offset = ret.addData(Data(varInt: UInt64(indexDiff)))
-        offset = ret.addData(tx.data, at: offset)
+        offset = ret.addData(tx.binaryData, at: offset)
         return ret
     }
 
     var size: Int {
-        UInt64(index).varIntSize + tx.size
+        UInt64(index).varIntSize + tx.binarySize
     }
 }

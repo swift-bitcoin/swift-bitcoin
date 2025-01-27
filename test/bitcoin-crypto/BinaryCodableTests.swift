@@ -6,38 +6,38 @@ struct BinaryCodableTests {
 
     @Test func trivialRoundtrip() throws {
         let a = Int.random(in: Int.min ... Int.max)
-        var visitor = BinarySizeVisitor()
-        visitor.count(a)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(a)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(a)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(a)
         let data = encoder.data
         var decoder = BinaryDecoder(data)
-        let a2: Int = try decoder.take()
+        let a2: Int = try decoder.decode()
         #expect(a == a2)
     }
 
     @Test func customStructRoundtrip() throws {
         let s = CustomStruct(int: .max, intArray: [0, 1, 2], data: .init([3, 4, 5, 6]), uInt64: .max)
-        var visitor = BinarySizeVisitor()
-        visitor.count(s)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(s)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(s)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(s)
         let data = encoder.data
         var decoder = BinaryDecoder(data)
-        let s2: CustomStruct = try decoder.take()
+        let s2: CustomStruct = try decoder.decode()
         #expect(s == s2)
     }
 
     @Test func nestedStructRoundtrip() throws {
         let child = CustomStruct(int: .max, intArray: [0, 1, 2], data: .init([3, 4, 5, 6]), uInt64: .max)
         let parent = ParentStruct(int1: .max, child: child, int2: .max / 2, children: [child, child, child], int3: .max / 3)
-        var visitor = BinarySizeVisitor()
-        visitor.count(parent)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(parent)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(parent)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(parent)
         let data = encoder.data
         var decoder = BinaryDecoder(data)
-        let parent2: ParentStruct = try decoder.take()
+        let parent2: ParentStruct = try decoder.decode()
         #expect(parent == parent2)
     }
 }
@@ -52,27 +52,27 @@ private struct ParentStruct: Equatable {
 
 extension ParentStruct: BinaryCodable {
     init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        int1 = try decoder.take()
-        child = try decoder.take()
-        int2 = try decoder.take()
-        children = try decoder.take()
-        int3 = try decoder.take()
+        int1 = try decoder.decode()
+        child = try decoder.decode()
+        int2 = try decoder.decode()
+        children = try decoder.decode()
+        int3 = try decoder.decode()
     }
 
     func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(int1)
-        encoder.put(child)
-        encoder.put(int2)
-        encoder.put(children)
-        encoder.put(int3)
+        encoder.encode(int1)
+        encoder.encode(child)
+        encoder.encode(int2)
+        encoder.encode(children)
+        encoder.encode(int3)
     }
     
-    func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.count(int1)
-        visitor.count(child)
-        visitor.count(int2)
-        visitor.count(children)
-        visitor.count(int3)
+    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(int1)
+        counter.count(child)
+        counter.count(int2)
+        counter.count(children)
+        counter.count(int3)
     }
 }
 
@@ -85,28 +85,23 @@ private struct CustomStruct: Equatable {
 
 extension CustomStruct: BinaryCodable {
     init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        int = try decoder.take()
-        intArray = try decoder.take()
-        let len: VarInt = try decoder.take()
-        decoder.setLimit(len.value)
-        data = try decoder.take()
-        decoder.resetLimit()
-        uInt64 = try decoder.take()
+        int = try decoder.decode()
+        intArray = try decoder.decode()
+        data = try decoder.decode(variable: true)
+        uInt64 = try decoder.decode()
     }
 
     func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(int)
-        encoder.put(intArray)
-        encoder.put(VarInt(data.count))
-        encoder.put(data)
-        encoder.put(uInt64)
+        encoder.encode(int)
+        encoder.encode(intArray)
+        encoder.encode(data, variable: true)
+        encoder.encode(uInt64)
     }
     
-    func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.count(int)
-        visitor.count(intArray)
-        visitor.count(VarInt(data.count))
-        visitor.countSize(data.count)
-        visitor.count(uInt64)
+    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(int)
+        counter.count(intArray)
+        counter.count(data, variable: true)
+        counter.count(uInt64)
     }
 }

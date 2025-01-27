@@ -328,7 +328,7 @@ extension ScriptOp: BinaryCodable {
 
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         decoder.setCheckpoint()
-        let opCode: UInt8 = try decoder.take()
+        let opCode: UInt8 = try decoder.decode()
         switch opCode {
 
         // OP_ZERO
@@ -337,31 +337,31 @@ extension ScriptOp: BinaryCodable {
         // OP_PUSHBYTES, OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
         case 0x01 ... 0x4b:
             do {
-                self = .pushBytes(try decoder.take(Int(opCode)))
+                self = .pushBytes(try decoder.decode(Int(opCode)))
             } catch {
                 decoder.revert()
                 throw error
             }
         case 0x4c:
             do {
-                let count: UInt8 = try decoder.take()
-                self = .pushData1(try decoder.take(Int(count)))
+                let count: UInt8 = try decoder.decode()
+                self = .pushData1(try decoder.decode(Int(count)))
             } catch {
                 decoder.revert()
                 throw error
             }
         case 0x4d:
             do {
-                let count: UInt16 = try decoder.take()
-                self = .pushData2(try decoder.take(Int(count)))
+                let count: UInt16 = try decoder.decode()
+                self = .pushData2(try decoder.decode(Int(count)))
             } catch {
                 decoder.revert()
                 throw error
             }
         case 0x4e:
             do {
-                let count: UInt32 = try decoder.take()
-                self = .pushData4(try decoder.take(Int(count)))
+                let count: UInt32 = try decoder.decode()
+                self = .pushData4(try decoder.decode(Int(count)))
             } catch {
                 decoder.revert()
                 throw error
@@ -482,37 +482,37 @@ extension ScriptOp: BinaryCodable {
     }
     
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(opCode)
+        encoder.encode(opCode)
         switch self {
         case .pushData1(let d):
-            encoder.put(UInt8(d.count))
+            encoder.encode(UInt8(d.count))
         case .pushData2(let d):
-            encoder.put(UInt16(d.count))
+            encoder.encode(UInt16(d.count))
         case .pushData4(let d):
-            encoder.put(UInt32(d.count))
+            encoder.encode(UInt32(d.count))
         default: break
         }
         switch self {
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
-            encoder.put(d)
+            encoder.encode(d)
         default: break
         }
     }
     
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.count(UInt8.self) // opCode
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(UInt8.self) // opCode
         switch self {
         case .pushData1(_):
-            visitor.count(UInt8.self)
+            counter.count(UInt8.self)
         case .pushData2(_):
-            visitor.count(UInt16.self)
+            counter.count(UInt16.self)
         case .pushData4(_):
-            visitor.count(UInt32.self)
+            counter.count(UInt32.self)
         default: break
         }
         switch self {
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
-            visitor.countSize(d.count)
+            counter.countSize(d.count)
         default: break
         }
     }

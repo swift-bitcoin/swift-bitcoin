@@ -1,5 +1,6 @@
 import Foundation
 
+/// An object that decodes values from a native binary format into in-memory representations.
 public struct BinaryDecoder {
 
     public init<D: DataProtocol>(_ data: D) {
@@ -12,7 +13,17 @@ public struct BinaryDecoder {
     private var checkpoint = Int?.none
     private var checkpointLimit = Int?.none
 
-    public mutating func take(_ count: Int? = .none, byteSwapped: Bool = false) throws(BinaryDecodingError) -> Data {
+    /// Decodes data which may appear prefixed by its length as a variable integer.
+    public mutating func decode(variable: Bool, byteSwapped: Bool = false) throws(BinaryDecodingError) -> Data {
+        if variable {
+            let varInt: VarInt = try decode()
+            return try decode(varInt.value, byteSwapped: byteSwapped)
+        }
+        return try decode(byteSwapped: byteSwapped)
+    }
+
+    /// Decodes data of the specified length or until there are no more bytes available.
+    @discardableResult public mutating func decode(_ count: Int? = .none, byteSwapped: Bool = false) throws(BinaryDecodingError) -> Data {
         let remaining = data.count - offset
         let count = if let count { count }
                     else if let limit { limit }
@@ -34,23 +45,30 @@ public struct BinaryDecoder {
         return Data(value)
     }
 
-    public mutating func take<T: BinaryDecodable>() throws(BinaryDecodingError) -> T {
+    /// Decodes a binary decodable object.
+    public mutating func decode<T: BinaryDecodable>() throws(BinaryDecodingError) -> T {
         try T(from: &self)
     }
 
+    /// Sets a limit on the number of bytes to decode before issuing a ``BinaryDecodingError/limitExceeded``.
     public mutating func setLimit(_ limit: Int) {
         self.limit = limit
     }
 
+    /// Resets the limit to none.
     public mutating func resetLimit() {
         limit = .none
     }
 
+    /// Sets a checkpoint to which we might want to revert if something fails.
+    ///
+    /// To revert use ``revert()``.
     public mutating func setCheckpoint() {
         checkpoint = offset
         checkpointLimit = limit
     }
 
+    /// Clears a previously set checkpoint.
     public mutating func clearCheckpoint() {
         checkpoint = .none
         checkpointLimit = .none
@@ -64,7 +82,13 @@ public struct BinaryDecoder {
         clearCheckpoint()
     }
 
-    mutating func takePrimitive<T: BinaryEncodingPrimitive>() throws(BinaryDecodingError) -> T {
+    /// Peeks into the next _n_ bytes to be decoded without advancing the internal offset.
+    public func peek(_ n: Int) -> Data {
+        Data(data[offset ..< offset + 2])
+    }
+
+    /// Decodes a primitive type value.
+    mutating func decodePrimitive<T: BinaryEncodingPrimitive>() throws(BinaryDecodingError) -> T {
         let count = MemoryLayout<T>.size
         if let limit {
             if count <= limit { self.limit = limit - count }

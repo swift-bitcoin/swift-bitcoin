@@ -7,65 +7,65 @@ struct BinaryCodableBaseTests {
 
     @Test func outpointRoundtrip() throws {
         let o = TxOutpoint.coinbase
-        var visitor = BinarySizeVisitor()
-        visitor.count(o)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(o)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(o)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(o)
         let data = encoder.data
         var decoder = BinaryDecoder(data)
-        let o2: TxOutpoint = try decoder.take()
+        let o2: TxOutpoint = try decoder.decode()
         #expect(o == o2)
     }
 
     @Test func scriptOpRoundtrip() throws {
         let basicOp = ScriptOp.checkSig
-        var visitor = BinarySizeVisitor()
-        visitor.count(basicOp)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(basicOp)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(basicOp)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(basicOp)
         var data = encoder.data
         var decoder = BinaryDecoder(data)
-        let basicOp2: ScriptOp = try decoder.take()
+        let basicOp2: ScriptOp = try decoder.decode()
         #expect(basicOp == basicOp2)
 
         let minPush = ScriptOp.pushBytes(.init([0, 1, 2]))
-        visitor = BinarySizeVisitor()
-        visitor.count(minPush)
-        encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(minPush)
+        counter = BinaryEncodingSizeCounter()
+        counter.count(minPush)
+        encoder = BinaryEncoder(counter)
+        encoder.encode(minPush)
         data = encoder.data
         decoder = BinaryDecoder(data)
-        let minPush2: ScriptOp = try decoder.take()
+        let minPush2: ScriptOp = try decoder.decode()
         #expect(minPush == minPush2)
     }
 
     @Test func scriptRoundtrip() throws {
         let emptyScript = BitcoinScript.empty
-        var visitor = BinarySizeVisitor()
-        visitor.count(emptyScript)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(emptyScript)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(emptyScript)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(emptyScript)
         var data = encoder.data
         var decoder = BinaryDecoder(data)
-        let emptyScript2: BitcoinScript = try decoder.take()
+        let emptyScript2: BitcoinScript = try decoder.decode()
         #expect(emptyScript == emptyScript2)
 
         let minPush: BitcoinScript = [ScriptOp.pushBytes(.init([0, 1, 2]))]
-        visitor = BinarySizeVisitor()
-        visitor.count(minPush)
-        encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(minPush)
+        counter = BinaryEncodingSizeCounter()
+        counter.count(minPush)
+        encoder = BinaryEncoder(counter)
+        encoder.encode(minPush)
         data = encoder.data
         decoder = BinaryDecoder(data)
-        let minPush2: BitcoinScript = try decoder.take()
+        let minPush2: BitcoinScript = try decoder.decode()
         #expect(minPush == minPush2)
     }
 
     @Test func scriptPrefixedRoundtrip() throws {
         let emptyScript = BitcoinScript.empty
-        var visitor = BinarySizeVisitor()
-        emptyScript.reportSizePrefixed(to: &visitor)
-        var encoder = BinaryEncoder(count: visitor.size)
+        var counter = BinaryEncodingSizeCounter()
+        emptyScript.encodingSizePrefixed(&counter)
+        var encoder = BinaryEncoder(counter)
         emptyScript.encodePrefixed(to: &encoder)
         var data = encoder.data
         var decoder = BinaryDecoder(data)
@@ -73,9 +73,9 @@ struct BinaryCodableBaseTests {
         #expect(emptyScript == emptyScript2)
 
         let minPush: BitcoinScript = [ScriptOp.pushBytes(.init([0, 1, 2]))]
-        visitor = BinarySizeVisitor()
-        minPush.reportSizePrefixed(to: &visitor)
-        encoder = BinaryEncoder(count: visitor.size)
+        counter = BinaryEncodingSizeCounter()
+        minPush.encodingSizePrefixed(&counter)
+        encoder = BinaryEncoder(counter)
         minPush.encodePrefixed(to: &encoder)
         data = encoder.data
         decoder = BinaryDecoder(data)
@@ -84,44 +84,44 @@ struct BinaryCodableBaseTests {
     }
 
     @Test func sequenceRoundtrip() throws {
-        let final = TxSequence.final
-        var visitor = BinarySizeVisitor()
-        visitor.count(final)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(final)
+        let final = TxInSequence.final
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(final)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(final)
         var data = encoder.data
         var decoder = BinaryDecoder(data)
-        let final2: TxSequence = try decoder.take()
+        let final2: TxInSequence = try decoder.decode()
         #expect(final == final2)
 
-        let maxBlocks = TxSequence.maxLocktimeBlocks
-        visitor = BinarySizeVisitor()
-        visitor.count(maxBlocks)
-        encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(maxBlocks)
+        let maxBlocks = TxInSequence.maxLocktimeBlocks
+        counter = BinaryEncodingSizeCounter()
+        counter.count(maxBlocks)
+        encoder = BinaryEncoder(counter)
+        encoder.encode(maxBlocks)
         data = encoder.data
         decoder = BinaryDecoder(data)
-        let maxBlocks2: TxSequence = try decoder.take()
+        let maxBlocks2: TxInSequence = try decoder.decode()
         #expect(maxBlocks == maxBlocks2)
     }
 
     @Test func combinedRoundtrip() throws {
         let outpoint = TxOutpoint.coinbase
         let emptyScript = BitcoinScript.empty
-        let sequence = TxSequence.final
-        var visitor = BinarySizeVisitor()
-        visitor.count(outpoint)
-        emptyScript.reportSizePrefixed(to: &visitor)
-        visitor.count(sequence)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(outpoint)
+        let sequence = TxInSequence.final
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(outpoint)
+        emptyScript.encodingSizePrefixed(&counter)
+        counter.count(sequence)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(outpoint)
         emptyScript.encodePrefixed(to: &encoder)
-        encoder.put(sequence)
+        encoder.encode(sequence)
         let data = encoder.data
         var decoder = BinaryDecoder(data)
-        let outpoint2: TxOutpoint = try decoder.take()
+        let outpoint2: TxOutpoint = try decoder.decode()
         let emptyScript2 = try BitcoinScript(prefixedFrom: &decoder)
-        let sequence2: TxSequence = try decoder.take()
+        let sequence2: TxInSequence = try decoder.decode()
         #expect(outpoint == outpoint2)
         #expect(emptyScript == emptyScript2)
         #expect(sequence == sequence2)
@@ -129,13 +129,13 @@ struct BinaryCodableBaseTests {
 
     @Test func txInRoundtrip() throws {
         let i = TxIn(outpoint: .coinbase)
-        var visitor = BinarySizeVisitor()
-        visitor.count(i)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(i)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(i)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(i)
         let data = encoder.data
         var decoder = BinaryDecoder(data)
-        let i2: TxIn = try decoder.take()
+        let i2: TxIn = try decoder.decode()
         #expect(i == i2)
     }
 
@@ -151,26 +151,26 @@ struct BinaryCodableBaseTests {
         TxOut(value: 588000000, script: .init([0x51, 0x20, 0x77, 0xe3, 0x0a, 0x55, 0x22, 0xdd, 0x9f, 0x89, 0x4c, 0x3f, 0x8b, 0x8b, 0xd4, 0xc4, 0xb2, 0xcf, 0x82, 0xca, 0x7d, 0xa8, 0xa3, 0xea, 0x6a, 0x23, 0x96, 0x55, 0xc3, 0x9c, 0x05, 0x0a, 0xb2, 0x20]))
     ])
     func txOutRoundtrip(_ txOut: TxOut) throws {
-        var visitor = BinarySizeVisitor()
-        visitor.count(txOut)
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(txOut)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(txOut)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(txOut)
         let data = encoder.data
         var decoder = BinaryDecoder(data)
-        let txOut2: TxOut = try decoder.take()
+        let txOut2: TxOut = try decoder.decode()
         #expect(txOut == txOut2)
     }
 
     @Test func unparsableScript() throws {
         let scriptData = Data([0xac, 0x9a, 0x87, 0xf5, 0x59, 0x4b, 0xe2, 0x08, 0xf8, 0x53, 0x2d, 0xb3, 0x8c, 0xff, 0x67, 0x0c, 0x45, 0x0e, 0xd2, 0xfe, 0xa8, 0xfc, 0xde, 0xfc, 0xc9, 0xa6, 0x63, 0xf7, 0x8b, 0xab, 0x96, 0x2b])
         var decoder = BinaryDecoder(scriptData)
-        let script: BitcoinScript = try decoder.take()
+        let script: BitcoinScript = try decoder.decode()
 
-        var visitor = BinarySizeVisitor()
-        visitor.count(script)
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(script)
 
-        var encoder = BinaryEncoder(count: visitor.size)
-        encoder.put(script)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(script)
         #expect(encoder.data == scriptData)
 
         let prefixedData = Data([0x20]) + scriptData
@@ -179,11 +179,22 @@ struct BinaryCodableBaseTests {
         #expect(script2.unparsable == script.unparsable)
         #expect(script2 == script)
 
-        visitor = BinarySizeVisitor()
-        script2.reportSizePrefixed(to: &visitor)
+        counter = BinaryEncodingSizeCounter()
+        script2.encodingSizePrefixed(&counter)
 
-        encoder = BinaryEncoder(count: visitor.size)
+        encoder = BinaryEncoder(counter)
         script2.encodePrefixed(to: &encoder)
         #expect(prefixedData == encoder.data)
+    }
+
+    @Test func txRoundtrip() throws {
+        let tx = BitcoinTx(ins: [
+            .init(outpoint: .coinbase, witness: .init([.init()])),
+            .init(outpoint: .coinbase),
+            .init(outpoint: .coinbase, witness: .init([.init()])),
+        ], outs: [])
+        let data = tx.binaryData
+        let tx2 = try #require(try BitcoinTx(binaryData: data))
+        #expect(tx == tx2)
     }
 }

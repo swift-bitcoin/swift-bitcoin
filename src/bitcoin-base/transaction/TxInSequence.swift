@@ -4,7 +4,7 @@ import BitcoinCrypto
 /// The sequence value of a ``TxIn``.
 ///
 /// On version 2 transactions this field is used to indicate a lock time relative to the output being spent. Until the coin is as old as the indicated number of blocks or time interval the transaction will not be validated or mined.
-public struct TxSequence: Equatable, Sendable {
+public struct TxInSequence: Equatable, Sendable {
     
     /// Creates a sequence with a specific value. Use only in verion 1 transactions.
     /// - Parameter sequenceValue: The number value of this sequence field.
@@ -77,17 +77,17 @@ public struct TxSequence: Equatable, Sendable {
 }
 
 /// Data extensions.
-extension TxSequence: BinaryCodable {
+extension TxInSequence: BinaryCodable {
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        let rawValue: UInt32 = try decoder.take()
+        let rawValue: UInt32 = try decoder.decode()
         self.init(Int(rawValue))
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(UInt32(sequenceValue))
+        encoder.encode(UInt32(sequenceValue))
     }
 
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.count(UInt32.self)
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(UInt32.self)
     }
 }

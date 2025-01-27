@@ -161,7 +161,7 @@ public class SigHash {
             ins: newIns,
             outs: newOuts
         )
-        return txCopy.data + sighashType.data32
+        return txCopy.binaryData + sighashType.data32
     }
 
     /// BIP143
@@ -249,7 +249,7 @@ public class SigHash {
         sighashCache.resetHits()
 
         // (the original witness stack has two or more witness elements, and the first byte of the last element is 0x50)
-        let annex = tx.ins[inIndex].witness?.taprootAnnex
+        let annex = tx.ins[inIndex].witness.taprootAnnex
 
         // Epoch:
         // epoch (0).

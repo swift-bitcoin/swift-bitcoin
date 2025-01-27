@@ -42,9 +42,9 @@ extension BlockTxsMessage {
 
         var txs = [BitcoinTx]()
         for _ in 0 ..< txCount {
-            guard let tx = BitcoinTx(data) else { return nil }
+            guard let tx = try? BitcoinTx(binaryData: data) else { return nil }
             txs.append(tx)
-            data = data.dropFirst(tx.size)
+            data = data.dropFirst(tx.binarySize)
         }
         self.txs = txs
     }
@@ -54,12 +54,12 @@ extension BlockTxsMessage {
         var offset = ret.addData(blockHash)
         offset = ret.addData(Data(varInt: UInt64(txs.count)), at: offset)
         for tx in txs {
-            offset = ret.addData(tx.data, at: offset)
+            offset = ret.addData(tx.binaryData, at: offset)
         }
         return ret
     }
 
     var size: Int {
-        32 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.size }
+        32 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.binarySize }
     }
 }

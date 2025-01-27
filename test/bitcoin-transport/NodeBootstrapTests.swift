@@ -221,7 +221,7 @@ struct NodeBootstrapTests {
         let messageAB1_tx = try #require(await alice.popMessage(peerB))
         #expect(messageAB1_tx.command == .tx)
 
-        let txMessage = try #require(BitcoinTx(messageAB1_tx.payload))
+        let txMessage = try BitcoinTx(binaryData: messageAB1_tx.payload)
         #expect(txMessage == tx)
 
         // … --(tx)->> Bob
@@ -251,7 +251,7 @@ struct NodeBootstrapTests {
         let messageBC1_tx = try #require(await bob.popMessage(peerC))
         #expect(messageBC1_tx.command == .tx)
 
-        let txMessage1 = try #require(BitcoinTx(messageBC1_tx.payload))
+        let txMessage1 = try BitcoinTx(binaryData: messageBC1_tx.payload)
         #expect(txMessage1 == tx)
 
         // … --(tx)->> Carol

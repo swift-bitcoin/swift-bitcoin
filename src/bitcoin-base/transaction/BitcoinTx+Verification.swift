@@ -126,7 +126,7 @@ extension BitcoinTx {
     private func verifyWitness(_ context: inout ScriptContext, witnessVersion: Int, witnessProgram: Data) throws {
         let txIn = context.txIn
 
-        guard var stack = ins[txIn].witness?.elements else { preconditionFailure() }
+        var stack = ins[txIn].witness.elements
 
         if witnessProgram.count == Hash160.Digest.byteCount /* 20 */ {
             // If the version byte is 0, and the witness program is 20 bytes: It is interpreted as a pay-to-witness-public-key-hash (P2WPKH) program.
@@ -182,7 +182,7 @@ extension BitcoinTx {
         let prevouts = context.prevouts
         let config = context.config
 
-        guard let witness = ins[txIn].witness else { preconditionFailure() }
+        let witness = ins[txIn].witness
         guard config.contains(.taproot) else { return }
 
         var stack = witness.elements

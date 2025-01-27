@@ -202,15 +202,15 @@ extension BitcoinScript: BinaryCodable {
 
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         var ops = [ScriptOp]()
-        while let op: ScriptOp = try? decoder.take() {
+        while let op: ScriptOp = try? decoder.decode() {
             ops.append(op)
         }
         self.ops = ops
-        unparsable = try decoder.take()
+        unparsable = try decoder.decode()
     }
 
     public init(prefixedFrom decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        let size: VarInt = try decoder.take()
+        let size: VarInt = try decoder.decode()
         decoder.setLimit(size.value)
         try self.init(from: &decoder)
         decoder.resetLimit()
@@ -223,37 +223,37 @@ extension BitcoinScript: BinaryCodable {
 
     public func encode(to encoder: inout BinaryEncoder) {
         for op in ops {
-            encoder.put(op)
+            encoder.encode(op)
         }
-        encoder.put(unparsable)
+        encoder.encode(unparsable)
     }
 
     public func encodePrefixed(to encoder: inout BinaryEncoder) {
-        encoder.put(VarInt(binarySize))
+        encoder.encode(VarInt(binarySize))
         encode(to: &encoder)
     }
     
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         for op in ops {
-            visitor.count(op)
+            counter.count(op)
         }
-        visitor.countSize(unparsable.count)
+        counter.countSize(unparsable.count)
     }
 
-    public func reportSizePrefixed(to visitor: inout BinarySizeVisitor) {
-        visitor.count(VarInt(binarySize))
-        reportSize(to: &visitor)
+    public func encodingSizePrefixed(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(VarInt(binarySize))
+        encodingSize(&counter)
     }
 
     public var dataPrefixed: Data {
-        var encoder = BinaryEncoder(count: sizePrefixed)
+        var encoder = BinaryEncoder(size: sizePrefixed)
         encodePrefixed(to: &encoder)
         return encoder.data
     }
 
     public var sizePrefixed: Int {
-        var visitor = BinarySizeVisitor()
-        self.reportSizePrefixed(to: &visitor)
-        return visitor.size
+        var counter = BinaryEncodingSizeCounter()
+        self.encodingSizePrefixed(&counter)
+        return counter.size
     }
 }

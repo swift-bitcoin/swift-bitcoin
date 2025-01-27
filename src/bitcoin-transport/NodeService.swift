@@ -628,7 +628,7 @@ public actor NodeService: Sendable {
         if !txHashes.isEmpty {
             let txs = await blockchain.getTxs(txHashes)
             for tx in txs {
-                enqueue(.tx, payload: tx.data, to: id)
+                enqueue(.tx, payload: tx.binaryData, to: id)
             }
         }
     }
@@ -664,7 +664,10 @@ public actor NodeService: Sendable {
     func processTx(_ message: BitcoinMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        guard let tx = BitcoinTx(message.payload) else {
+        let tx: BitcoinTx
+        do {
+            tx = try BitcoinTx(binaryData: message.payload)
+        } catch {
             throw Error.invalidPayload
         }
         state.peers[id]!.registerKnownTxs([tx.id])

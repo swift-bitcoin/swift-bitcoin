@@ -24,32 +24,35 @@ public struct TxWitness: Equatable, Sendable {
     }
 }
 
+extension TxWitness: ExpressibleByArrayLiteral {
+    public init(arrayLiteral elements: Data...) {
+        self.init(elements)
+    }
+}
+
 /// Binary data extensions.
 extension TxWitness: BinaryCodable {
 
     public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        let count = (try decoder.take() as VarInt).value
+        let count = (try decoder.decode() as VarInt).value
         var elements = [Data]()
         for _ in 0 ..< count {
-            let length = (try decoder.take() as VarInt).value
-            elements.append(try decoder.take(length))
+            elements.append(try decoder.decode(variable: true))
         }
         self.elements = elements
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.put(VarInt(elements.count))
+        encoder.encode(VarInt(elements.count))
         for e in elements {
-            encoder.put(VarInt(e.count))
-            encoder.put(e)
+            encoder.encode(e, variable: true)
         }
     }
 
-    public func reportSize(to visitor: inout BinarySizeVisitor) {
-        visitor.count(VarInt(elements.count))
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(VarInt(elements.count))
         for e in elements {
-            visitor.count(VarInt(e.count))
-            visitor.countSize(e.count)
+            counter.count(e, variable: true)
         }
     }
 }

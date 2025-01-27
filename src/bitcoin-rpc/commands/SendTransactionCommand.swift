@@ -20,7 +20,7 @@ public struct SendTransactionCommand: Sendable {
         guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(txHex) = first else {
             throw RPCError(.invalidParams("transaction"), description: "Transaction (hex string) is required.")
         }
-        guard let txData = Data(hex: txHex), let tx = BitcoinTx(txData) else {
+        guard let txData = Data(hex: txHex), let tx = try? BitcoinTx(binaryData: txData) else {
             throw RPCError(.invalidParams("transaction"), description: "Transaction hex encoding or content invalid.")
         }
         do {
