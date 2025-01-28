@@ -36,7 +36,7 @@ extension TxOutpoint: BinaryCodable {
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(Data(txID.reversed()))
+        encoder.encode(txID, byteSwapped: true)
         encoder.encode(UInt32(txOut))
     }
     

@@ -46,7 +46,7 @@ public struct TxBlock: Equatable, Sendable {
     // MARK: - Computed Properties
 
     public var hash: Data {
-        Data(Hash256.hash(data: headerData))
+        Data(Hash256.hash(data: dataHeaderOnly))
     }
 
     public var id: BlockID {
@@ -105,89 +105,75 @@ public struct TxBlock: Equatable, Sendable {
     }
 }
 
+extension TxBlock: BinaryCodable {
+
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+        try self.init(fromHeaderOnly: &decoder)
+        txs = try decoder.decode()
+    }
+
+    public init(fromHeaderOnly decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+        version = Int(try decoder.decode() as Int32)
+        previous = try decoder.decode(TxBlock.idLength, byteSwapped: true)
+        merkleRoot = try decoder.decode(TxBlock.idLength, byteSwapped: true)
+        time = Date(timeIntervalSince1970: TimeInterval(try decoder.decode() as UInt32))
+        target = Int(try decoder.decode() as UInt32)
+        nonce = Int(try decoder.decode() as UInt32)
+        txs = []
+    }
+
+    public init(dataHeaderOnly: Data) throws(BinaryDecodingError) {
+        var decoder = BinaryDecoder(dataHeaderOnly)
+        try self.init(fromHeaderOnly: &decoder)
+    }
+
+    public func encode(to encoder: inout BinaryEncoder) {
+        encodeHeaderOnly(to: &encoder)
+        encoder.encode(txs)
+    }
+
+    public func encodeHeaderOnly(to encoder: inout BinaryEncoder) {
+        encoder.encode(Int32(version))
+        encoder.encode(previous, byteSwapped: true)
+        encoder.encode(merkleRoot, byteSwapped: true)
+        encoder.encode(UInt32(time.timeIntervalSince1970))
+        encoder.encode(UInt32(target))
+        encoder.encode(UInt32(nonce))
+    }
+
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        encodingSizeHeaderOnly(&counter)
+        counter.count(txs)
+    }
+
+    public func encodingSizeHeaderOnly(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(Int32(version))
+        counter.count(previous)
+        counter.count(merkleRoot)
+        counter.count(UInt32(time.timeIntervalSince1970))
+        counter.count(UInt32(target))
+        counter.count(UInt32(nonce))
+    }
+
+    public var dataHeaderOnly: Data {
+        var encoder = BinaryEncoder(size: sizeHeaderOnly)
+        encodeHeaderOnly(to: &encoder)
+        return encoder.data
+    }
+
+    public var sizeHeaderOnly: Int {
+        var counter = BinaryEncodingSizeCounter()
+        self.encodingSizeHeaderOnly(&counter)
+        return counter.size
+    }
+}
+
 package extension TxBlock {
+    /// Minimum size of data in bytes.
+    static let minSize = headerSize + 1
 
-    // MARK: - Initializers
-
-    /// Initialize from serialized raw data.
-    init?(headerData data: Data) {
-        // Check we at least have enough data for block header + empty transactions
-        guard data.count >= Self.baseSize else {
-            return nil
-        }
-        var data = data
-
-        // Header
-        version = Int(data.withUnsafeBytes { $0.loadUnaligned(as: Int32.self) })
-        data = data.dropFirst(MemoryLayout<Int32>.size)
-        previous = Data(data.prefix(32).reversed())
-        data = data.dropFirst(previous.count)
-        merkleRoot = Data(data.prefix(32).reversed())
-        data = data.dropFirst(merkleRoot.count)
-        let seconds = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        time = Date(timeIntervalSince1970: TimeInterval(seconds))
-        data = data.dropFirst(MemoryLayout.size(ofValue: seconds))
-        target = Int(data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) })
-        data = data.dropFirst(MemoryLayout<UInt32>.size)
-        nonce = Int(data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) })
-        data = data.dropFirst(MemoryLayout<UInt32>.size)
-
-        self.txs = []
-    }
-
-    init?(_ data: Data) {
-        var data = data
-        self.init(headerData: data)
-        data = data.dropFirst(Self.baseSize)
-
-        // Check we at least have enough data for block header + empty transactions
-        guard let txCount = data.varInt, txCount <= Int.max else {
-            return nil
-        }
-
-        data = data.dropFirst(txCount.varIntSize)
-        var txs = [BitcoinTx]()
-        for _ in 0 ..< txCount {
-            guard let tx = try? BitcoinTx(binaryData: data) else {
-                return nil
-            }
-            txs.append(tx)
-            data = data.dropFirst(tx.binarySize)
-        }
-        self.txs = txs
-    }
-
-    // MARK: - Computed Properties
-
-    /// Header data
-    var headerData: Data {
-        var ret = Data(count: Self.baseSize)
-        var offset = ret.addBytes(Int32(version))
-        offset = ret.addData(previous.reversed(), at: offset)
-        offset = ret.addData(merkleRoot.reversed(), at: offset)
-        offset = ret.addBytes(UInt32(time.timeIntervalSince1970), at: offset)
-        offset = ret.addBytes(UInt32(target), at: offset)
-        offset = ret.addBytes(UInt32(nonce), at: offset)
-        return ret
-    }
-
-    var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(headerData)
-        offset = ret.addData(Data(varInt: UInt64(txs.count)), at: offset)
-        ret.addData(Data(txs.map(\.binaryData).joined()), at: offset)
-        return ret
-    }
-
-    // MARK: - Type Properties
-
-    /// Size of data in bytes.
-    static let baseSize = 80
-
-    /// Size of data in bytes.
-    var size: Int {
-        Self.baseSize + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.binarySize }
-    }
+    /// Size of header data in bytes.
+    static let headerSize = 80
 }
 
 /// BIP152: Short transaction identifier implementation. See [https://github.com/bitcoin/bips/blob/master/bip-0152.mediawiki#short-transaction-ids].
@@ -195,7 +181,7 @@ package extension TxBlock {
 
     func makeShortIDParams(nonce: UInt64) -> (first: UInt64, second: UInt64) {
         // single-SHA256 hashing the block header with the nonce appended (in little-endian)
-        let headerData = headerData + Data(value: nonce)
+        let headerData = dataHeaderOnly + Data(value: nonce)
         let headerHash = Data(SHA256.hash(data: headerData))
 
         // Running SipHash-2-4 with the input being the transaction ID and the keys (k0/k1) set to the first two little-endian 64-bit integers from the above hash, respectively.

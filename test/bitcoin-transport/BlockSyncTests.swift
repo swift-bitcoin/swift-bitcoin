@@ -289,14 +289,14 @@ final class BlockSyncTests {
         let mBA10_block = try #require(await bob.popMessage(peerA))
         #expect(mBA10_block.command == .block)
 
-        let bobBlock1 = try #require(TxBlock(mBA10_block.payload))
+        let bobBlock1 = try TxBlock(binaryData: mBA10_block.payload)
         #expect(bobBlock1.txs.count == 1)
 
         // Bob --(block)->> …
         let mBA11_block = try #require(await bob.popMessage(peerA))
         #expect(mBA11_block.command == .block)
 
-        let bobBlock2 = try #require(TxBlock(mBA11_block.payload))
+        let bobBlock2 = try TxBlock(binaryData: mBA11_block.payload)
         #expect(bobBlock2.txs.count == 1)
 
         // No Response
@@ -327,7 +327,7 @@ final class BlockSyncTests {
         let mBA12_block = try #require(await bob.popMessage(peerA))
         #expect(mBA12_block.command == .block)
 
-        let bobBlock3 = try #require(TxBlock(mBA12_block.payload))
+        let bobBlock3 = try TxBlock(binaryData: mBA12_block.payload)
         #expect(bobBlock3.txs.count == 1)
 
         // … --(block)->> Alice

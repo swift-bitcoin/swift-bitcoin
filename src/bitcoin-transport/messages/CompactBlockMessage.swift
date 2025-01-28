@@ -46,9 +46,9 @@ extension CompactBlockMessage {
         guard data.count >= 1 else { return nil }
         var data = data
 
-        guard let header = TxBlock(headerData: data) else { return nil }
+        guard let header = try? TxBlock(dataHeaderOnly: data) else { return nil }
         self.header = header
-        data = data.dropFirst(TxBlock.baseSize) // Data does not include the empty transaction array
+        data = data.dropFirst(TxBlock.headerSize) // Data does not include the empty transaction array
 
         guard data.count >= MemoryLayout<UInt64>.size else { return nil }
         let nonce = data.withUnsafeBytes {
@@ -85,7 +85,7 @@ extension CompactBlockMessage {
 
     var data: Data {
         var ret = Data(count: size)
-        var offset = ret.addData(header.headerData)
+        var offset = ret.addData(header.dataHeaderOnly)
         offset = ret.addBytes(nonce, at: offset)
 
         offset = ret.addData(Data(varInt: UInt64(txIDs.count)), at: offset)
@@ -109,6 +109,6 @@ extension CompactBlockMessage {
     }
 
     var size: Int {
-        TxBlock.baseSize + MemoryLayout<UInt64>.size + UInt64(txIDs.count).varIntSize + txIDs.count * 6 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.size }
+        TxBlock.headerSize + MemoryLayout<UInt64>.size + UInt64(txIDs.count).varIntSize + txIDs.count * 6 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.size }
     }
 }

@@ -583,7 +583,7 @@ public actor NodeService: Sendable {
     func processBlock(_ message: BitcoinMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        guard let block = TxBlock(message.payload) else {
+        guard let block = try? TxBlock(binaryData: message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -620,7 +620,7 @@ public actor NodeService: Sendable {
             let blocks = await blockchain.getBlocks(blockHashes)
 
             for block in blocks {
-                enqueue(.block, payload: block.data, to: id)
+                enqueue(.block, payload: block.binaryData, to: id)
             }
         }
 

@@ -345,7 +345,7 @@ public actor BlockchainService: Sendable {
 
     public func processBlock(_ block: TxBlock) throws(Error) {
 
-        if tip < blocks.count && block.headerData != blocks[tip].headerData {
+        if tip < blocks.count && block.dataHeaderOnly != blocks[tip].dataHeaderOnly {
             // New block does not match pre-existing header for block:
             //   Replace block entirely and remove all headers
             blocks.removeLast(blocks.count - tip)

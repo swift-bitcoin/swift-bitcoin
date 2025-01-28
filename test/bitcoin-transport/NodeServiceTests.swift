@@ -332,7 +332,7 @@ final class NodeServiceTests {
         let messageSH10_block = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH10_block.command == .block)
 
-        let satoshiBlock = try #require(TxBlock(messageSH10_block.payload))
+        let satoshiBlock = try TxBlock(binaryData: messageSH10_block.payload)
         #expect(satoshiBlock.txs.count == 1)
 
         let halBlocksBefore = await halChain.tip

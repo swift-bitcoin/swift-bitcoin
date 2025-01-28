@@ -20,7 +20,8 @@ public struct BinaryEncoder {
 
     private var offset = 0
 
-    public mutating func encode<D: DataProtocol & ContiguousBytes>(_ data: D, variable: Bool = false) {
+    public mutating func encode<D: DataProtocol & ContiguousBytes>(_ data: D, variable: Bool = false, byteSwapped: Bool = false) {
+        let data = byteSwapped ? Data(data.reversed()) : Data(data)
         if variable {
             let varInt = VarInt(data.count)
             encode(varInt)
