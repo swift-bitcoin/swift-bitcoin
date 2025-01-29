@@ -29,7 +29,7 @@ struct BitcoinCoreTaprootTests {
             if !includeFlags.contains("TAPROOT") { config.remove(.taproot) }
 
             let unsignedTx = try BitcoinTx(binaryData: Data(testCase.tx))
-            let prevouts = testCase.prevouts.map { TxOut(Data($0))! }
+            let prevouts = testCase.prevouts.map { try! TxOut(binaryData: Data($0)) }
             let inIndex = testCase.inIndex
             let txIn = unsignedTx.ins[inIndex]
             if let success = testCase.success {

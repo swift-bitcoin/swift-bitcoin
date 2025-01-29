@@ -37,19 +37,6 @@ extension TxOut: BinaryCodable {
         script.encodingSizePrefixed(&counter)
     }
 
-    package init?(_ data: Data) {
-        guard data.count > MemoryLayout<SatoshiAmount>.size else {
-            return nil
-        }
-        var data = data
-        let value = data.withUnsafeBytes { $0.loadUnaligned(as: SatoshiAmount.self) }
-        data = data.dropFirst(MemoryLayout.size(ofValue: value))
-        guard let script = try? BitcoinScript(prefixedData: data) else {
-            return nil
-        }
-        self.init(value: value, script: script)
-    }
-
     var valueData: Data {
         var encoder = BinaryEncoder(size: valueSize)
         encoder.encode(value)

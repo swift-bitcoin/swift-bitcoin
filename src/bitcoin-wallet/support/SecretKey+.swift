@@ -47,10 +47,10 @@ public extension SecretKey {
 
     func toWIF(compressedPubkeys: Bool = true, mainnet: Bool = true) -> String {
         var data = Data()
-        data.appendBytes(mainnet ? Self.base58VersionMain : Self.base58VersionTest)
+        data.append(Data([mainnet ? Self.base58VersionMain : Self.base58VersionTest]))
         data.append(self.data)
         if compressedPubkeys {
-            data.appendBytes(UInt8(0x01))
+            data.append(Data([0x01]))
         }
         return Base58Encoder().encode(data)
     }

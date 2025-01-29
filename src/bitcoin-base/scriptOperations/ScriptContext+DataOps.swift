@@ -4,7 +4,7 @@ extension ScriptContext {
     
     /// Implementation of a constant script operation.
     mutating func opConstant(_ k: UInt8) {
-        stack.append(ScriptNum(k).data)
+        stack.append(ScriptNum(k).binaryData)
     }
     
     /// Pushes the string length of the top element of the stack (without popping it).
@@ -12,7 +12,7 @@ extension ScriptContext {
         let first = try getUnaryParam()
         stack.append(first)
         let n = try ScriptNum(first.count)
-        stack.append(n.data)
+        stack.append(n.binaryData)
     }
 
     /// This implementation covers operation codes `0x01` through `0x4e`. It includes `OP_PUSHBYTES` for array lengths up to 75 bytes as well as `OP_PUSHDATA1`, `OP_PUSHDATA2` and `OP_PUSHDATA1` for variable lenght data.

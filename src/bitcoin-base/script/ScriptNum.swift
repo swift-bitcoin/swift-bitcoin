@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// A numerical value in the context of a script execution.
 ///
@@ -61,7 +62,7 @@ public struct ScriptNum: Equatable, Sendable {
     }
 }
 
-extension ScriptNum {
+extension ScriptNum: BinaryEncodable {
 
     /// BIP62 rule 4: Zero-padded number pushes Any time a script opcode consumes a stack value that is interpreted as a number, it must be encoded in its shortest possible form. 'Negative zero' is not allowed.
     public init(_ data: Data, extendedLength: Bool = false, minimal: Bool = false) throws {
@@ -106,63 +107,52 @@ extension ScriptNum {
         value = (negative ? -1 : 1) * magnitude
     }
 
-    var data: Data {
-        if value == 0 {
-            return Data()
-        }
+    public func encode(to encoder: inout BinaryEncoder) {
+        guard value != 0 else { return }
         let magnitude = value.magnitude
         if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
             let signMask = UInt8(isNegative ? 0b10000000 : 0)
             let withSign = UInt8(magnitude) | signMask
-            return withUnsafeBytes(of: withSign) { Data($0) }
-        }
-        if magnitude < Int(pow(Double(2), 8 * 2 - 1)) {
+            encoder.encode(withSign)
+        } else if magnitude < Int(pow(Double(2), 8 * 2 - 1)) {
             let signMask = UInt16(isNegative ? 0x8000 : 0)
             let withSign = UInt16(magnitude) | signMask
-            return withUnsafeBytes(of: withSign) { Data($0) }
-        }
-        if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
+            encoder.encode(withSign)
+        } else if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
             let signMask = UInt32(isNegative ? 0x00800000 : 0)
             let withSign = UInt32(magnitude) | signMask
-            var data = withUnsafeBytes(of: withSign) { Data($0) }
-            data = data.dropLast(MemoryLayout<UInt32>.size - 3)
-            return data
-        }
-        if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
+            encoder.encode(UInt16(withSign & 0x0000ffff))
+            encoder.encode(UInt8(withSign >> 16))
+        } else if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
             let signMask = UInt32(isNegative ? 0x80000000 : 0)
             let withSign = UInt32(magnitude) | signMask
-            return withUnsafeBytes(of: withSign) { Data($0) }
-        }
-        if magnitude <= Self.maxValue {
+            encoder.encode(withSign)
+        } else if magnitude <= Self.maxValue {
             let signMask = UInt(isNegative ? 0x0000008000000000 : 0)
             let withSign = UInt(magnitude) | signMask
-            var data = withUnsafeBytes(of: withSign) { Data($0) }
-            data = data.dropLast(MemoryLayout<UInt>.size - 5)
-            return data
+            encoder.encode(UInt32(withSign & 0x00000000ffffffff))
+            encoder.encode(UInt8(withSign >> 32))
+        } else {
+            preconditionFailure()
         }
-        preconditionFailure()
     }
 
-    var size: Int {
-        if value == 0 {
-            return 0
-        }
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        guard value != 0 else { return }
         let magnitude = value.magnitude
-        if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
-            return 1
+        let size = if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
+            1
+        } else if magnitude < Int(pow(Double(2), 8 * 2 - 1)) {
+            2
+        } else if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
+            3
+        } else if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
+            4
+        } else if magnitude <= Self.maxValue {
+            5
+        } else {
+            preconditionFailure() // Should never reach here
         }
-        if magnitude < Int(pow(Double(2), 8 * 2 - 1)) {
-            return 2
-        }
-        if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
-            return 3
-        }
-        if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
-            return 4
-        }
-        if magnitude <= Self.maxValue {
-            return 5
-        }
-        preconditionFailure() // Should never reach here
+        counter.countSize(size)
     }
 }

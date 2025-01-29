@@ -233,7 +233,7 @@ public class SigHash {
         var hasher = SHA256(tag: "TapSighash")
         hasher.update(data: sigMessageSchnorr(sighashCache: &sighashCache))
         if let tapscriptExtension {
-            hasher.update(data: tapscriptExtension.data)
+            hasher.update(data: tapscriptExtension.binaryData)
         }
         return Data(hasher.finalize())
     }

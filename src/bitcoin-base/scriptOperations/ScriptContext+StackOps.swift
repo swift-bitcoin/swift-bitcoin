@@ -142,7 +142,7 @@ extension ScriptContext {
     /// Puts the number of stack items onto the stack.
     mutating func opDepth() throws {
         let count = try ScriptNum(stack.count)
-        stack.append(count.data)
+        stack.append(count.binaryData)
     }
 
     /// Puts the input onto the top of the alt stack. Removes it from the main stack.

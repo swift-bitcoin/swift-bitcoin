@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 public struct DifficultyTarget: Comparable, Sendable {
 
@@ -10,16 +11,6 @@ public struct DifficultyTarget: Comparable, Sendable {
         self.init()
         n[0] = UInt32(value)
         n[1] = UInt32(value >> 32)
-    }
-
-    init(_ data: Data) {
-        precondition(data.count == Self.bytes)
-        var data = data
-        n = .init(repeating: 0, count: Self.width)
-        for i in n.indices {
-            n[i] = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-            data = data.dropFirst(MemoryLayout<UInt32>.size)
-        }
     }
 
     init(compact: Int) {
@@ -57,15 +48,6 @@ public struct DifficultyTarget: Comparable, Sendable {
 
     private var low64: UInt64 {
         UInt64(n[0]) | UInt64(n[1]) << 32
-    }
-
-    var data: Data {
-        var data = Data(count: Self.bytes)
-        var offset = data.startIndex
-        for value in n {
-            offset = data.addBytes(value, at: offset)
-        }
-        return data
     }
 
     // Returns the position of the highest bit set plus one, or zero if the value is zero.
@@ -274,5 +256,25 @@ public struct DifficultyTarget: Comparable, Sendable {
             if lhs.n[i] > rhs.n[i] { return false }
         }
         return false
+    }
+}
+
+extension DifficultyTarget: BinaryCodable {
+
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+        n = .init(repeating: 0, count: Self.width)
+        for i in n.indices {
+            n[i] = try decoder.decode()
+        }
+    }
+
+    public func encode(to encoder: inout BinaryEncoder) {
+        for value in n {
+            encoder.encode(value)
+        }
+    }
+
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.countSize(Self.bytes)
     }
 }

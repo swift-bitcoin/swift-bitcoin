@@ -181,7 +181,10 @@ package extension TxBlock {
 
     func makeShortIDParams(nonce: UInt64) -> (first: UInt64, second: UInt64) {
         // single-SHA256 hashing the block header with the nonce appended (in little-endian)
-        let headerData = dataHeaderOnly + Data(value: nonce)
+        var encoder = BinaryEncoder(size: TxBlock.headerSize + MemoryLayout<UInt64>.size)
+        encoder.encode(dataHeaderOnly)
+        encoder.encode(nonce)
+        let headerData = encoder.data
         let headerHash = Data(SHA256.hash(data: headerData))
 
         // Running SipHash-2-4 with the input being the transaction ID and the keys (k0/k1) set to the first two little-endian 64-bit integers from the above hash, respectively.

@@ -43,7 +43,7 @@ struct SignTx: ParsableCommand {
             guard let prevoutData = Data(hex: $0) else {
                 throw ValidationError("Invalid hexadecimal value: prevout")
             }
-            guard let prevout = TxOut(prevoutData) else {
+            guard let prevout = try? TxOut(binaryData: prevoutData) else {
                 throw ValidationError("Invalid raw prevout data: prevout")
             }
             return prevout

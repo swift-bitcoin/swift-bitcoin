@@ -4,7 +4,7 @@ extension ScriptContext {
 
     /// The number -1 is pushed onto the stack.
     mutating func op1Negate() {
-        stack.append(ScriptNum.negativeOne.data)
+        stack.append(ScriptNum.negativeOne.binaryData)
     }
 
     /// The input is made positive.
@@ -13,28 +13,28 @@ extension ScriptContext {
         if a.value < 0 {
             a.negate()
         }
-        stack.append(a.data)
+        stack.append(a.binaryData)
     }
 
     /// The sign of the input is flipped.
     mutating func opNegate() throws {
         var a = try getUnaryNumericParam()
         a.negate()
-        stack.append(a.data)
+        stack.append(a.binaryData)
     }
 
     /// 1 is added to the input.
     mutating func op1Add() throws {
         var a = try getUnaryNumericParam()
         try a.add(.one)
-        stack.append(a.data)
+        stack.append(a.binaryData)
     }
 
     /// b is subtracted from a.
     mutating func op1Sub() throws {
         var a = try getUnaryNumericParam()
         try a.add(.negativeOne)
-        stack.append(a.data)
+        stack.append(a.binaryData)
     }
 
     /// a is added to b.
@@ -43,7 +43,7 @@ extension ScriptContext {
         let b: ScriptNum
         (a, b) = try getBinaryNumericParams()
         try a.add(b)
-        stack.append(a.data)
+        stack.append(a.binaryData)
     }
 
     /// b is subtracted from a.
@@ -51,37 +51,37 @@ extension ScriptContext {
         var (a, b) = try getBinaryNumericParams()
         b.negate()
         try a.add(b)
-        stack.append(a.data)
+        stack.append(a.binaryData)
     }
 
     /// If both a and b are not 0, the output is 1. Otherwise 0.
     mutating func opBoolAnd() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append(ScriptBool(a != .zero && b != .zero).data)
+        stack.append(ScriptBool(a != .zero && b != .zero).binaryData)
     }
     
     /// If a or b is not 0, the output is 1. Otherwise 0.
     mutating func opBoolOr() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append(ScriptBool(a != .zero || b != .zero).data)
+        stack.append(ScriptBool(a != .zero || b != .zero).binaryData)
     }
 
     /// If the input is 0 or 1, it is flipped. Otherwise the output will be 0.
     mutating func opNot() throws {
         let a = try getUnaryNumericParam()
-        stack.append(ScriptBool(a == .zero).data)
+        stack.append(ScriptBool(a == .zero).binaryData)
     }
 
     /// Returns 0 if the input is 0. 1 otherwise.
     mutating func op0NotEqual() throws {
         let a = try getUnaryNumericParam()
-        stack.append(ScriptBool(a != .zero).data)
+        stack.append(ScriptBool(a != .zero).binaryData)
     }
 
     /// Returns 1 if the numbers are equal, 0 otherwise.
     mutating func opNumEqual() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append(ScriptBool(a == b).data)
+        stack.append(ScriptBool(a == b).binaryData)
     }
     
     /// Same as `OP_NUMEQUAL`,  but runs `OP_VERIFY` afterward.
@@ -93,48 +93,48 @@ extension ScriptContext {
     /// Returns 1 if the numbers are not equal, 0 otherwise.
     mutating func opNumNotEqual() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append(ScriptBool(a != b).data)
+        stack.append(ScriptBool(a != b).binaryData)
     }
 
     /// Returns 1 if a is greater than b, 0 otherwise.
     mutating func opGreaterThan() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append(ScriptBool(a.value > b.value).data)
+        stack.append(ScriptBool(a.value > b.value).binaryData)
     }
     
     /// Returns 1 if a is greater than or equal to b, 0 otherwise.
     mutating func opGreaterThanOrEqual() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append(ScriptBool(a.value >= b.value).data)
+        stack.append(ScriptBool(a.value >= b.value).binaryData)
     }
 
     /// Returns 1 if a is less than b, 0 otherwise.
     mutating func opLessThan() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append(ScriptBool(a.value < b.value).data)
+        stack.append(ScriptBool(a.value < b.value).binaryData)
     }
     
     /// Returns 1 if a is less than or equal to b, 0 otherwise.
     mutating func opLessThanOrEqual() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append(ScriptBool(a.value <= b.value).data)
+        stack.append(ScriptBool(a.value <= b.value).binaryData)
     }
 
     /// Returns 1 if x is within the specified range (left-inclusive), 0 otherwise.
     mutating func opWithin() throws {
         let (a, min, max) = try getTernaryNumericParams()
-        stack.append(ScriptBool(min.value <= a.value && a.value < max.value).data)
+        stack.append(ScriptBool(min.value <= a.value && a.value < max.value).binaryData)
     }
 
     /// Returns the smaller of a and b.
     mutating func opMin() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append((a.value < b.value ? a : b).data)
+        stack.append((a.value < b.value ? a : b).binaryData)
     }
     
     /// Returns the larger of a and b.
     mutating func opMax() throws {
         let (a, b) = try getBinaryNumericParams()
-        stack.append((a.value > b.value ? a : b).data)
+        stack.append((a.value > b.value ? a : b).binaryData)
     }
 }

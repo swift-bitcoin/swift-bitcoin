@@ -244,3 +244,32 @@ private let mainHDKeyVersionPrivate = 0x0488ade4
 private let mainHDKeyVersionPublic = 0x0488b21e
 private let testHDKeyVersionPrivate = 0x04358394
 private let testHDKeyVersionPublic = 0x043587cf
+
+
+// TODO: Remove this extension and use BinaryEncoder / Decoder (or conform to BinaryCodable instead)
+extension Data {
+
+    mutating func appendBytes<T>(_ value: T) {
+        Swift.withUnsafeBytes(of: value) {
+            append(contentsOf: $0)
+        }
+    }
+
+    @discardableResult
+    mutating func addBytes<T>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
+        let offset = offset ?? startIndex
+        let count = MemoryLayout.size(ofValue: value)
+        precondition(self[offset...].count >= count)
+        Swift.withUnsafePointer(to: value) { replaceSubrange(offset ..< offset.advanced(by: count), with: $0, count: count) }
+        return offset.advanced(by: count)
+    }
+
+    @discardableResult
+    mutating func addData<T: DataProtocol>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
+        let offset = offset ?? startIndex
+        let count = value.count
+        precondition(self[offset...].count >= count)
+        replaceSubrange(offset ..< offset.advanced(by: count), with: value)
+        return offset.advanced(by: count)
+    }
+}

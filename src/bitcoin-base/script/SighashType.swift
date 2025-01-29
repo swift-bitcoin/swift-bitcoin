@@ -63,14 +63,30 @@ public struct SighashType: Equatable, Sendable {
     public static let singleAnyCanPay = Self(unchecked: Self.sighashSingle | Self.sighashAnyCanPay)
 }
 
-extension SighashType {
+extension SighashType: BinaryEncodable {
 
-    var data: Data {
-        Data(value: value)
+    public func encode(to encoder: inout BinaryEncoder) {
+        encoder.encode(value)
+    }
+
+    public func encode32(to encoder: inout BinaryEncoder) {
+        encoder.encode(rawValue)
+    }
+
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(value)
+    }
+
+    public func encodingSize32(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(rawValue)
     }
 
     var data32: Data {
-        Data(value: rawValue)
+        var counter = BinaryEncodingSizeCounter()
+        encodingSize32(&counter)
+        var encoder = BinaryEncoder(counter)
+        encode32(to: &encoder)
+        return encoder.data
     }
 }
 
@@ -78,6 +94,6 @@ extension SighashType {
 extension Optional where Wrapped == SighashType {
 
     var data: Data {
-        if case let .some(wrapped) = self { wrapped.data } else { Data([0x00]) }
+        if case let .some(wrapped) = self { wrapped.binaryData } else { Data([0x00]) }
     }
 }

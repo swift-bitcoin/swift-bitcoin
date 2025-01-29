@@ -83,8 +83,15 @@ public struct BinaryDecoder {
     }
 
     /// Peeks into the next _n_ bytes to be decoded without advancing the internal offset.
-    public func peek(_ n: Int) -> Data {
+    public func peek(_ count: Int) -> Data {
         Data(data[offset ..< offset + 2])
+    }
+
+    public func peek() -> UInt8? {
+        guard offset < data.count else {
+            return .none
+        }
+        return data[offset]
     }
 
     /// Decodes a primitive type value.

@@ -182,7 +182,7 @@ public actor BlockchainService: Sendable {
         }
 
         let target = getNextWorkRequired(forHeight: blocks.endIndex.advanced(by: -1), newBlockTime: header.time, params: params)
-        guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), DifficultyTarget(header.hash) <= DifficultyTarget(compact: header.target) else {
+        guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), try! DifficultyTarget(binaryData: header.hash) <= DifficultyTarget(compact: header.target) else {
             throw .insuficientProofOfWork
         }
         let chainwork = lastHeader.work + header.work
@@ -436,7 +436,7 @@ public actor BlockchainService: Sendable {
                 nonce: nonce
             )
             nonce += 1
-        } while DifficultyTarget(block.hash) > DifficultyTarget(compact: target)
+        } while try! DifficultyTarget(binaryData: block.hash) > DifficultyTarget(compact: target)
 
         block.txs = txs
 
@@ -513,7 +513,7 @@ public actor BlockchainService: Sendable {
     private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParams) -> Int {
         precondition(heightLast >= 0)
         let lastHeader = blocks[heightLast]
-        let powLimitTarget = DifficultyTarget(Data(params.powLimit.reversed()))
+        let powLimitTarget = try! DifficultyTarget(binaryData: Data(params.powLimit.reversed()))
         let proofOfWorkLimit = powLimitTarget.toCompact()
 
         // Only change once per difficulty adjustment interval
@@ -560,7 +560,7 @@ public actor BlockchainService: Sendable {
         }
 
         // Retarget
-        let powLimitTarget = DifficultyTarget(Data(params.powLimit.reversed()))
+        let powLimitTarget = try! DifficultyTarget(binaryData: Data(params.powLimit.reversed()))
 
         var new = DifficultyTarget(compact: lastHeader.target)
         precondition(!new.isZero)

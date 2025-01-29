@@ -22,7 +22,7 @@ extension BitcoinScript {
 extension Array where Element == Data {
     static func withConstants(_ constants: [Int]) -> Self {
         constants.compactMap {
-            (try? ScriptNum($0))?.data ?? .none
+            (try? ScriptNum($0))?.binaryData ?? .none
         }
     }
 
