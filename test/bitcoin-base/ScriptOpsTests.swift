@@ -18,7 +18,7 @@ struct ScriptOpsTests {
     @Test("Data operations", arguments: [
         // oneNegate, zero, constant
         ([Int](), [ScriptOp.oneNegate , .zero, .constant(1), .constant(2), .constant(3), .constant(4), .constant(5), .constant(6), .constant(7), .constant(8), .constant(9), .constant(10), .constant(11), .constant(12), .constant(13), .constant(14), .constant(15), .constant(16)], [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
-        ([], [.pushBytes(try! ScriptNum(17).data)], [17]),
+        ([], [.pushBytes(try! ScriptNum(17).binaryData)], [17]),
     ])
     func dataOps(initialStack: [Int], ops: [ScriptOp], finalStack: [Int]) throws {
         var stack = [Data].withConstants(initialStack)
@@ -30,10 +30,10 @@ struct ScriptOpsTests {
         // pushBytes
         ([Data](), [ScriptOp.pushBytes(lengthyData)], [lengthyData]),
         // size
-        ([Data](), [ScriptOp.pushBytes(lengthyData), .size], [lengthyData, try! ScriptNum(lengthyLength).data]),
+        ([Data](), [ScriptOp.pushBytes(lengthyData), .size], [lengthyData, try! ScriptNum(lengthyLength).binaryData]),
         // equal
-        ([Data](), [ScriptOp.pushBytes(lengthyData), ScriptOp.pushBytes(lengthyData), .equal], [ScriptNum.one.data]),
-        ([Data](), [ScriptOp.pushBytes(lengthyData), ScriptOp.pushBytes(lengthyData2), .equal, .constant(1)], [ScriptNum.zero.data, ScriptNum.one.data]),
+        ([Data](), [ScriptOp.pushBytes(lengthyData), ScriptOp.pushBytes(lengthyData), .equal], [ScriptNum.one.binaryData]),
+        ([Data](), [ScriptOp.pushBytes(lengthyData), ScriptOp.pushBytes(lengthyData2), .equal, .constant(1)], [ScriptNum.zero.binaryData, ScriptNum.one.binaryData]),
     ])
     func additionalDataOps(initialStack: [Data], ops: [ScriptOp], finalStack: [Data]) throws {
         var stack = initialStack

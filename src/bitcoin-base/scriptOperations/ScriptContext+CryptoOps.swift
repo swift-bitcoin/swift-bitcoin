@@ -9,7 +9,7 @@ extension ScriptContext {
 
         if sigVersion == .witnessV1 {
             let result = try checkSigSchnorr(sig, pubkeyData)
-            stack.append(ScriptBool(result).data)
+            stack.append(ScriptBool(result).binaryData)
             return
         }
 
@@ -18,7 +18,7 @@ extension ScriptContext {
         if !result && config.contains(.nullFail) && !sig.isEmpty {
             throw ScriptError.signatureNotEmpty
         }
-        stack.append(ScriptBool(result).data)
+        stack.append(ScriptBool(result).binaryData)
     }
 
     /// Same as `OP_CHECKSIG`, but `OP_VERIFY` is executed afterward.
@@ -67,7 +67,7 @@ extension ScriptContext {
             throw ScriptError.signatureNotEmpty
         }
 
-        stack.append(ScriptBool(success).data)
+        stack.append(ScriptBool(success).binaryData)
     }
 
     /// Same as `OP_CHECKMULTISIG`' but `OP_VERIFY` is executed afterward.
@@ -83,7 +83,7 @@ extension ScriptContext {
         let (sig, nData, pubkeyData) = try getTernaryParams()
 
         var n = try ScriptNum(nData, minimal: config.contains(.minimalData))
-        guard n.size <= 4 else {
+        guard n.binarySize <= 4 else {
             // - If n is larger than 4 bytes, the script MUST fail and terminate immediately.
             throw ScriptError.invalidCheckSigAddArgument
         }
@@ -99,7 +99,7 @@ extension ScriptContext {
             // If the signature is not the empty vector, the opcode is counted towards the sigops budget (see further).
             // For OP_CHECKSIGADD, a CScriptNum with value of n + 1 is pushed onto the stack.
             try n.add(.one)
-            stack.append(n.data)
+            stack.append(n.binaryData)
         }
     }
 

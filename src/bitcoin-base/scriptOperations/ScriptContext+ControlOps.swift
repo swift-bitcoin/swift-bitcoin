@@ -66,7 +66,7 @@ extension ScriptContext {
     /// Returns 1 if the inputs are exactly equal, 0 otherwise.
     mutating func opEqual() throws {
         let (first, second) = try getBinaryParams()
-        stack.append(ScriptBool(first == second).data)
+        stack.append(ScriptBool(first == second).binaryData)
     }
 
     /// Same as ``opEqual`` (`OP_EQUAL`), but runs  ``opVerify`` (`OP_VERIFY`) afterward.

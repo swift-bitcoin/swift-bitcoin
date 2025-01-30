@@ -14,7 +14,7 @@ public struct BinaryDecoder {
     private var checkpointLimit = Int?.none
 
     /// Decodes data which may appear prefixed by its length as a variable integer.
-    public mutating func decode(variable: Bool, byteSwapped: Bool = false) throws(BinaryDecodingError) -> Data {
+    public mutating func decode(variable: Bool, byteSwapped: Bool = false) throws -> Data {
         if variable {
             let varInt: VarInt = try decode()
             return try decode(varInt.value, byteSwapped: byteSwapped)
@@ -23,7 +23,7 @@ public struct BinaryDecoder {
     }
 
     /// Decodes data of the specified length or until there are no more bytes available.
-    @discardableResult public mutating func decode(_ count: Int? = .none, byteSwapped: Bool = false) throws(BinaryDecodingError) -> Data {
+    @discardableResult public mutating func decode(_ count: Int? = .none, byteSwapped: Bool = false) throws -> Data {
         let remaining = data.count - offset
         let count = if let count { count }
                     else if let limit { limit }
@@ -31,12 +31,12 @@ public struct BinaryDecoder {
 
         if let limit {
             if count <= limit { self.limit = limit - count }
-            else { throw .limitExceeded }
+            else { throw BinaryDecodingError.limitExceeded }
         }
 
         let nextOffset = offset + count
         guard nextOffset <= data.count else {
-            throw .outOfRange
+            throw BinaryDecodingError.outOfRange
         }
 
         var value = data[offset ..< nextOffset]
@@ -46,7 +46,7 @@ public struct BinaryDecoder {
     }
 
     /// Decodes a binary decodable object.
-    public mutating func decode<T: BinaryDecodable>() throws(BinaryDecodingError) -> T {
+    public mutating func decode<T: BinaryDecodable>() throws -> T {
         try T(from: &self)
     }
 
@@ -83,21 +83,28 @@ public struct BinaryDecoder {
     }
 
     /// Peeks into the next _n_ bytes to be decoded without advancing the internal offset.
-    public func peek(_ n: Int) -> Data {
+    public func peek(_ count: Int) -> Data {
         Data(data[offset ..< offset + 2])
     }
 
+    public func peek() -> UInt8? {
+        guard offset < data.count else {
+            return .none
+        }
+        return data[offset]
+    }
+
     /// Decodes a primitive type value.
-    mutating func decodePrimitive<T: BinaryEncodingPrimitive>() throws(BinaryDecodingError) -> T {
+    mutating func decodePrimitive<T: BinaryEncodingPrimitive>() throws -> T {
         let count = MemoryLayout<T>.size
         if let limit {
             if count <= limit { self.limit = limit - count }
-            else { throw .limitExceeded }
+            else { throw BinaryDecodingError.limitExceeded }
         }
 
         let nextOffset = offset + count
         guard nextOffset <= data.count else {
-            throw .outOfRange
+            throw BinaryDecodingError.outOfRange
         }
 
         let value = data.withUnsafeBytes {

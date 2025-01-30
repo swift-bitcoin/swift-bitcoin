@@ -163,8 +163,8 @@ struct BlockchainServiceTests {
         let difficultyBits = 0x207fffff
         let powLimitBE = Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]) // Regtest
         let powLimitLE = Data(powLimitBE.reversed())
-        let powLimitTarget = DifficultyTarget(powLimitLE)
-        #expect(powLimitTarget.data == powLimitLE)
+        let powLimitTarget = try DifficultyTarget(binaryData: powLimitLE)
+        #expect(powLimitTarget.binaryData == powLimitLE)
         let powLimitCompact = powLimitTarget.toCompact()
         #expect(powLimitCompact == difficultyBits)
 
@@ -172,7 +172,7 @@ struct BlockchainServiceTests {
         var over: Bool = true
         let powLimitTarget_ = DifficultyTarget(compact: powLimitCompact, negative: &neg, overflow: &over)
         #expect(!powLimitTarget_.isZero && !neg && !over)
-        let powLimitLE_ = powLimitTarget_.data
+        let powLimitLE_ = powLimitTarget_.binaryData
         #expect(powLimitLE_.reversed().hex == "7fffff0000000000000000000000000000000000000000000000000000000000")
     }
 

@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 
 /// A boolean value in the context of SCRIPT execution.
 struct ScriptBool: Equatable {
@@ -17,7 +18,7 @@ struct ScriptBool: Equatable {
     }
 }
 
-extension ScriptBool {
+extension ScriptBool: BinaryEncodable {
 
     init(_ data: Data) {
         let firstNonZeroIndex = data.firstIndex { $0 != 0 }
@@ -40,11 +41,15 @@ extension ScriptBool {
         }
     }
 
-    var data: Data {
-        value ? Data([1]) : Data()
+    func encode(to encoder: inout BinaryEncoder) {
+        if value {
+            encoder.encode(Data([1]))
+        }
     }
 
-    var size: Int {
-        value ? 1 : 0
+    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        if value {
+            counter.countSize(1)
+        }
     }
 }

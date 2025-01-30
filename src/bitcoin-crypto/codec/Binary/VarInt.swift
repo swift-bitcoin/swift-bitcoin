@@ -1,10 +1,14 @@
+/// A Bitcoin protocol variable integer – sometimes referred to as compact integer.
+///
+/// In many cases ``BinaryEncoder`` and ``BinaryDecoder`` can handle variable integer prefixes automatically via a `variable` boolean parameter like in ``BinaryEncoder/encode(_:variable:byteSwapped:)`` or ``BinaryDecoder/decode(variable:byteSwapped:)``.
+/// The default behavior when working with `Array<BinaryCodable>` is to prefix all arrays with their count encoded a `VarInt`.
 public struct VarInt: BinaryCodable {
 
     public init(_ value: Int) {
         rawValue = .init(value)
     }
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         let firstByte = try decoder.decode() as UInt8
         if firstByte < 0xfd {
             rawValue = UInt64(firstByte)

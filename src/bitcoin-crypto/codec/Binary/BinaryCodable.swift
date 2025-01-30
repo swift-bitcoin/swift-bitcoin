@@ -23,7 +23,7 @@ public protocol BinaryEncodable {
 public protocol BinaryDecodable {
 
     /// Creates a new instance by decoding from the given decoder.
-    init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError)
+    init(from decoder: inout BinaryDecoder) throws
 }
 
 public extension BinaryEncodable {
@@ -49,7 +49,7 @@ public extension BinaryDecodable {
     /// - Parameter binaryData: The binary representation to decode.
     ///
     /// This initializer is generic over `DataProtocol`  meaning it can be passed a `Data` instance or a `UInt8` array.
-    init<D: DataProtocol>(binaryData: D) throws(BinaryDecodingError) {
+    init<D: DataProtocol>(binaryData: D) throws {
         var decoder = BinaryDecoder(binaryData)
         try self.init(from: &decoder)
     }

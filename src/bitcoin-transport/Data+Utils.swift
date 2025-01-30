@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Serialization helper functions
 
 /// Helper functions for serialization.
-package extension Data {
+extension Data {
 
     init<T>(value: T) {
         self.init(count: MemoryLayout.size(ofValue: value))
@@ -50,7 +50,7 @@ extension MutableDataProtocol {
 
 // MARK: - Variable Integer (Compact Integer)
 
-package extension Data {
+extension Data {
 
     /// Converts a 64-bit integer into its compact integer representation – i.e. variable length data.
     init(varInt value: UInt64) {
@@ -94,7 +94,7 @@ package extension Data {
     }
 }
 
-package extension UInt64 {
+extension UInt64 {
 
     var varIntSize: Int {
         switch self {

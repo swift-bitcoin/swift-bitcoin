@@ -33,9 +33,9 @@ extension HeadersMessage {
 
         var items = [TxBlock]()
         for _ in 0 ..< itemCount {
-            guard let block = TxBlock(data), block.txs.isEmpty else { return nil }
+            guard let block = try? TxBlock(binaryData: data), block.txs.isEmpty else { return nil }
             items.append(block)
-            data = data.dropFirst(TxBlock.baseSize + 1) // + 1 to account for empty transactions
+            data = data.dropFirst(block.binarySize)
         }
         self.items = items
     }
@@ -45,12 +45,12 @@ extension HeadersMessage {
         var offset = ret.addData(Data(varInt: UInt64(items.count)))
         for header in items {
             precondition(header.txs.isEmpty)
-            offset = ret.addData(header.data, at: offset)
+            offset = ret.addData(header.binaryData, at: offset)
         }
         return ret
     }
 
     var size: Int {
-        UInt64(items.count).varIntSize + (TxBlock.baseSize + 1) * items.count
+        UInt64(items.count).varIntSize + TxBlock.minSize * items.count
     }
 }

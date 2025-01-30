@@ -22,67 +22,67 @@ struct ScriptNumTests {
     func dataRoundTrips() throws {
         // Zero (0)
         let zeroNum = try ScriptNum(zeroData)
-        let zeroDataBack = zeroNum.data
+        let zeroDataBack = zeroNum.binaryData
         #expect(zeroDataBack == zeroData)
 
         // One (1)
         let oneNum = try ScriptNum(oneData)
-        let oneDataBack = oneNum.data
+        let oneDataBack = oneNum.binaryData
         #expect(oneDataBack == oneData)
 
         // Minus one (-1)
         let minusOneNum = try ScriptNum(minusOneData)
-        let minusOneDataBack = minusOneNum.data
+        let minusOneDataBack = minusOneNum.binaryData
         #expect(minusOneDataBack == minusOneData)
 
         // 1-byte max (127)
         let maxNum = try ScriptNum(oneByteMaxData)
-        let maxDataBack = maxNum.data
+        let maxDataBack = maxNum.binaryData
         #expect(maxDataBack == oneByteMaxData)
 
         // 1-byte min (-127)
         let minNum = try ScriptNum(oneByteMinData)
-        let minDataBack = minNum.data
+        let minDataBack = minNum.binaryData
         #expect(minDataBack == oneByteMinData)
 
         // 2-byte max (0x7fff)
         let twoByteMaxNum = try ScriptNum(twoByteMaxData)
-        let twoByteMaxDataBack = twoByteMaxNum.data
+        let twoByteMaxDataBack = twoByteMaxNum.binaryData
         #expect(twoByteMaxDataBack == twoByteMaxData)
 
         // 2-byte min (0xffff)
         let twoByteMinNum = try ScriptNum(twoByteMinData)
-        let twoByteMinDataBack = twoByteMinNum.data
+        let twoByteMinDataBack = twoByteMinNum.binaryData
         #expect(twoByteMinDataBack == twoByteMinData)
 
         // 3-byte max (0x7fffff)
         let threeByteMaxNum = try ScriptNum(threeByteMaxData)
-        let threeByteMaxDataBack = threeByteMaxNum.data
+        let threeByteMaxDataBack = threeByteMaxNum.binaryData
         #expect(threeByteMaxDataBack == threeByteMaxData)
 
         // 3-byte min (0xffffff)
         let threeByteMinNum = try ScriptNum(threeByteMinData)
-        let threeByteMinDataBack = threeByteMinNum.data
+        let threeByteMinDataBack = threeByteMinNum.binaryData
         #expect(threeByteMinDataBack == threeByteMinData)
 
         // 4-byte max (0x7fffffff)
         let fourByteMaxNum = try ScriptNum(fourByteMaxData)
-        let fourByteMaxDataBack = fourByteMaxNum.data
+        let fourByteMaxDataBack = fourByteMaxNum.binaryData
         #expect(fourByteMaxDataBack == fourByteMaxData)
 
         // 4-byte min (0xffffffff)
         let fourByteMinNum = try ScriptNum(fourByteMinData)
-        let fourByteMinDataBack = fourByteMinNum.data
+        let fourByteMinDataBack = fourByteMinNum.binaryData
         #expect(fourByteMinDataBack == fourByteMinData)
 
         // 5-byte max (0x7fffffffff)
         let fiveByteMaxNum = try ScriptNum(fiveByteMaxData, extendedLength: true)
-        let fiveByteMaxDataBack = fiveByteMaxNum.data
+        let fiveByteMaxDataBack = fiveByteMaxNum.binaryData
         #expect(fiveByteMaxDataBack == fiveByteMaxData)
 
         // 5-byte min (0xffffffffff)
         let fiveByteMinNum = try ScriptNum(fiveByteMinData, extendedLength: true)
-        let fiveByteMinDataBack = fiveByteMinNum.data
+        let fiveByteMinDataBack = fiveByteMinNum.binaryData
         #expect(fiveByteMinDataBack == fiveByteMinData)
     }
 
@@ -92,60 +92,60 @@ struct ScriptNumTests {
         var a2 = a
         var b = try ScriptNum(zeroData)
         try a.add(b)
-        var dataBack = a.data
+        var dataBack = a.binaryData
         #expect(dataBack == zeroData)
         try b.add(a2)
-        dataBack = b.data
+        dataBack = b.binaryData
         #expect(dataBack == zeroData)
 
         a = try ScriptNum(oneByteMinData)
         a2 = a
         b = try ScriptNum(oneByteMaxData)
         try a.add(b)
-        dataBack = a.data
+        dataBack = a.binaryData
         #expect(dataBack == zeroData)
         try b.add(a2)
-        dataBack = b.data
+        dataBack = b.binaryData
         #expect(dataBack == zeroData)
 
         a = try ScriptNum(twoByteMinData)
         a2 = a
         b = try ScriptNum(twoByteMaxData)
         try a.add(b)
-        dataBack = a.data
+        dataBack = a.binaryData
         #expect(dataBack == zeroData)
         try b.add(a2)
-        dataBack = b.data
+        dataBack = b.binaryData
         #expect(dataBack == zeroData)
 
         a = try ScriptNum(threeByteMinData)
         a2 = a
         b = try ScriptNum(threeByteMaxData)
         try a.add(b)
-        dataBack = a.data
+        dataBack = a.binaryData
         #expect(dataBack == zeroData)
         try b.add(a2)
-        dataBack = b.data
+        dataBack = b.binaryData
         #expect(dataBack == zeroData)
 
         a = try ScriptNum(fourByteMinData)
         a2 = a
         b = try ScriptNum(fourByteMaxData)
         try a.add(b)
-        dataBack = a.data
+        dataBack = a.binaryData
         #expect(dataBack == zeroData)
         try b.add(a2)
-        dataBack = b.data
+        dataBack = b.binaryData
         #expect(dataBack == zeroData)
 
         a = try ScriptNum(fiveByteMinData, extendedLength: true)
         a2 = a
         b = try ScriptNum(fiveByteMaxData, extendedLength: true)
         try a.add(b)
-        dataBack = a.data
+        dataBack = a.binaryData
         #expect(dataBack == zeroData)
         try b.add(a2)
-        dataBack = b.data
+        dataBack = b.binaryData
         #expect(dataBack == zeroData)
     }
 

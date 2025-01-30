@@ -165,7 +165,7 @@ extension BitcoinTx {
 
 extension BitcoinTx: BinaryCodable {
 
-    public init(from decoder: inout BitcoinCrypto.BinaryDecoder) throws(BitcoinCrypto.BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         version = try decoder.decode()
 
         // BIP144 - Check for marker and segwit flag
@@ -190,7 +190,7 @@ extension BitcoinTx: BinaryCodable {
         locktime = try decoder.decode()
     }
     
-    public func encode(to encoder: inout BitcoinCrypto.BinaryEncoder) {
+    public func encode(to encoder: inout BinaryEncoder) {
         encoder.encode(version)
         // BIP144
         if hasWitness {
@@ -207,14 +207,14 @@ extension BitcoinTx: BinaryCodable {
         encoder.encode(locktime)
     }
     
-    public func encodeNonWitness(to encoder: inout BitcoinCrypto.BinaryEncoder) {
+    public func encodeNonWitness(to encoder: inout BinaryEncoder) {
         encoder.encode(version)
         encoder.encode(ins)
         encoder.encode(outs)
         encoder.encode(locktime)
     }
     
-    public func encodingSize(_ counter: inout BitcoinCrypto.BinaryEncodingSizeCounter) {
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(version)
         // BIP144
         if hasWitness {

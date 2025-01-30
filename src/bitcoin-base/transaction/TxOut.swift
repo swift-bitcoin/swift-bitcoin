@@ -22,7 +22,7 @@ public struct TxOut: Equatable, Sendable {
 
 /// Data extensions.
 extension TxOut: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         value = try decoder.decode()
         script = try BitcoinScript(prefixedFrom: &decoder)
     }
@@ -35,19 +35,6 @@ extension TxOut: BinaryCodable {
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(value)
         script.encodingSizePrefixed(&counter)
-    }
-
-    package init?(_ data: Data) {
-        guard data.count > MemoryLayout<SatoshiAmount>.size else {
-            return nil
-        }
-        var data = data
-        let value = data.withUnsafeBytes { $0.loadUnaligned(as: SatoshiAmount.self) }
-        data = data.dropFirst(MemoryLayout.size(ofValue: value))
-        guard let script = try? BitcoinScript(prefixedData: data) else {
-            return nil
-        }
-        self.init(value: value, script: script)
     }
 
     var valueData: Data {

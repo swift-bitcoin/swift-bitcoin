@@ -39,9 +39,9 @@ public struct LegacyAddress: BitcoinAddress {
     public var description: String {
         var data = Data()
         if isScript {
-            data.appendBytes(isMainnet ? base58VersionScriptMain : base58VersionScriptTest)
+            data.append(Data([isMainnet ? base58VersionScriptMain : base58VersionScriptTest]))
         } else {
-            data.appendBytes(isMainnet ? base58VersionMain : base58VersionTest)
+            data.append(Data([isMainnet ? base58VersionMain : base58VersionTest]))
         }
         data.append(hash)
         let encoded = Base58Encoder().encode(data)

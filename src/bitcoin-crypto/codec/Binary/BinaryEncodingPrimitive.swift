@@ -4,7 +4,7 @@ public protocol BinaryEncodingPrimitive: BinaryCodable {}
 
 extension BinaryEncodingPrimitive {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         self = try decoder.decodePrimitive()
     }
 

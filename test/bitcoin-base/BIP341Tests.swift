@@ -480,7 +480,7 @@ struct BIP341Tests {
 
             let hashTypeSuffix: Data
             if let sighashType {
-                hashTypeSuffix = sighashType.data
+                hashTypeSuffix = sighashType.binaryData
             } else {
                 hashTypeSuffix = Data()
             }
