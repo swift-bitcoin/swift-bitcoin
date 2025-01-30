@@ -33,7 +33,7 @@ extension TxWitness: ExpressibleByArrayLiteral {
 /// Binary data extensions.
 extension TxWitness: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         let count = (try decoder.decode() as VarInt).value
         var elements = [Data]()
         for _ in 0 ..< count {

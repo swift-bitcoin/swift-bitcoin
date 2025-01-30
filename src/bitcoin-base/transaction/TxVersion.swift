@@ -33,7 +33,7 @@ public struct TxVersion: Equatable, Comparable, Sendable {
 
 /// Binary data extensions.
 extension TxVersion: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         let rawValue: UInt32 = try decoder.decode()
         self.init(Int(rawValue))
     }
