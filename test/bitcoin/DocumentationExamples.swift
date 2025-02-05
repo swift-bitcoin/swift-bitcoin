@@ -14,16 +14,18 @@ struct DocumentationExamples {
 
         // Create a fresh blockchain service instance (on regtest).
         let blockchain = BlockchainService()
+        await blockchain.start()
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
-        for _ in 0 ..< 100 {
-            await blockchain.generateTo(pubkey)
+        var blocks = [TxBlock]()
+        for _ in 1 ... 100 {
+            blocks.append(await blockchain.generateTo(pubkey))
         }
 
         // # Prepare our transaction.
 
         // Grab block 1's coinbase transaction and output.
-        let fundingTx = await blockchain.blocks[1].txs[0]
+        let fundingTx = blocks[0].txs[0]
         let prevout = fundingTx.outs[0]
 
         // Create a new transaction spending from the previous transaction's outpoint.
@@ -60,21 +62,20 @@ struct DocumentationExamples {
         // In this case we can re-use the address we created before.
         let pubkeyHash = Data(Hash160.hash(data: pubkey.data))
 
-        // Minde to the public key hash
-        await blockchain.generateTo(pubkeyHash)
+        // Mine to the public key hash
+        let lastBlock = await blockchain.generateTo(pubkeyHash)
 
         // The mempool should now be empty.
         #expect(await blockchain.mempool.count == 0)
 
         // # Finally let's make sure the transaction was confirmed in a block.
 
-        let blocks = await blockchain.blocks.count
-        #expect(blocks == 102)
+        #expect(await blockchain.height == 101)
 
-        let lastBlock = await blockchain.blocks.last!
         // Verify our transaction was confirmed in a block.
-
         #expect(lastBlock.txs[1] == signedTx)
+
         // Our transaction is now confirmed in the blockchain!
+        await blockchain.stop()
     }
 }

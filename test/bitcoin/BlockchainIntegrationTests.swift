@@ -26,24 +26,27 @@ struct BlockchainIntegrationTests {
         let gabrielPK = gabrielKey.pubkey
 
         let alice = BlockchainService()
+        await alice.start()
         let bob = BlockchainService()
+        await bob.start()
 
-        let genesisBlock = await alice.blocks[0]
-        #expect(await bob.blocks[0] == genesisBlock)
+        let genesisBlock = await alice.genesisBlock
+        #expect(await bob.genesisBlock == genesisBlock)
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
-        for _ in 0 ..< 100 {
-            await alice.generateTo(alicePK)
+        var newBlocks = [TxBlock]()
+        for _ in 1 ... 100 {
+            newBlocks.append(await alice.generateTo(alicePK))
         }
-        #expect(await alice.tip == 101)
+        #expect(await alice.height == 100)
 
-        for i in 1 ..< 101 {
-            try await bob.processBlock(await alice.blocks[i])
+        for i in 0 ..< 100 {
+            try await bob.processBlock(newBlocks[i])
         }
-        #expect(await bob.tip == 101)
+        #expect(await bob.height == 100)
 
         // Grab block 1's coinbase transaction and output.
-        let coinbaseTx = await alice.getBlock(1).txs[0]
+        let coinbaseTx = newBlocks[0].txs[0]
 
         var t_a3 = BitcoinTx(
             ins: [.init(outpoint: coinbaseTx.outpoint(0))],
@@ -65,12 +68,12 @@ struct BlockchainIntegrationTests {
         try #require(await bob.addTx(t_a3))
         #expect(await bob.mempool.count == 1)
 
-        await alice.generateTo(alicePK)
+        let aliceLastBlock = await alice.generateTo(alicePK)
         #expect(await alice.mempool.count == 0)
 
-        #expect(await bob.blocks.count == 101)
-        try await bob.processBlock(await alice.blocks.last!)
-        #expect(await bob.blocks.count == 102)
+        #expect(await bob.height == 100)
+        try await bob.processBlock(aliceLastBlock)
+        #expect(await bob.height == 101)
         #expect(await bob.mempool.count == 0)
 
         var tA1_b2 = BitcoinTx(
@@ -107,12 +110,15 @@ struct BlockchainIntegrationTests {
         #expect(await alice.mempool.count == 1)
 
 
-        await bob.generateTo(bobPK)
+        let bobLastBlock = await bob.generateTo(bobPK)
         #expect(await bob.mempool.isEmpty)
-        #expect(await bob.blocks.last!.txs[2] == tA0_A2_c2)
-        #expect(await bob.blocks.count == 103)
+        #expect(bobLastBlock.txs[2] == tA0_A2_c2)
+        #expect(await bob.height == 102)
 
-        try await alice.processBlock(await bob.blocks.last!)
+        try await alice.processBlock(bobLastBlock)
         #expect(await alice.mempool.isEmpty)
+
+        await alice.stop()
+        await bob.stop()
     }
 }

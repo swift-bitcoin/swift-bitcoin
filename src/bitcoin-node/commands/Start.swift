@@ -31,6 +31,8 @@ struct Start: AsyncParsableCommand {
 private func launchNode(host: String, port: Int) async throws {
 
     let blockchain = BlockchainService()
+    await blockchain.start()
+
     let node = NodeService(blockchain: blockchain)
 
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
@@ -51,5 +53,5 @@ private func launchNode(host: String, port: Int) async throws {
     await rpcService.setServiceGroup(serviceGroup)
     try await serviceGroup.run()
 
-    await blockchain.shutdown()
+    await blockchain.stop()
 }

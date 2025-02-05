@@ -9,8 +9,7 @@ public struct TxBlock: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    public init(context: BlockContext? = .none, version: Int = 2, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0, txs: [BitcoinTx] = []) {
-        self.context = context
+    public init(version: Int = 2, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0, txs: [BitcoinTx] = []) {
         self.version = version
         self.previous = previous
         self.merkleRoot = merkleRoot
@@ -27,8 +26,6 @@ public struct TxBlock: Equatable, Sendable {
     }
 
     // MARK: - Instance Properties
-
-    public var context: BlockContext?
 
     // Header
     public let version: Int
@@ -61,7 +58,6 @@ public struct TxBlock: Equatable, Sendable {
     public var header: Self {
         var header = self
         header.txs = []
-        header.context = .none
         return header
     }
 
@@ -72,30 +68,16 @@ public struct TxBlock: Equatable, Sendable {
     // MARK: - Type Properties
 
     public static let idLength = Hash256.Digest.byteCount
+    public static let nullParent = BlockID(count: 32)
 
     // MARK: - Type Methods
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.version == rhs.version &&
-            lhs.previous == rhs.previous &&
-            lhs.merkleRoot == rhs.merkleRoot &&
-            lhs.time == rhs.time &&
-            lhs.target == rhs.target &&
-            lhs.nonce == rhs.nonce &&
-            lhs.txs == rhs.txs
-    }
 
     static func makeGenesisBlock(params: ConsensusParams) -> Self {
         let genesisTx = BitcoinTx.makeGenesisTx(blockSubsidy: params.blockSubsidy)
         let target = params.genesisBlockTarget
         let genesisBlock = TxBlock(
-            context: .init(
-                height: 0,
-                chainwork: DifficultyTarget.getWork(target),
-                status: .full
-            ),
             version: 1,
-            previous: Data(count: 32),
+            previous: TxBlock.nullParent,
             merkleRoot: genesisTx.id,
             time: Date(timeIntervalSince1970: TimeInterval(params.genesisBlockTime)),
             target: target,

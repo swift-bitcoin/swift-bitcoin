@@ -24,8 +24,8 @@ public struct GenerateToPubkeyCommand: Sendable {
             throw RPCError(.invalidParams("pubkey"), description: "Pubkey hex encoding or content invalid.")
         }
 
-        await blockchain.generateTo(pubkey)
-        let result = await blockchain.blocks.last!.idHex
+        let newBlock = await blockchain.generateTo(pubkey)
+        let result = newBlock.idHex
 
         return .init(id: request.id, result: JSONObject.string(result))
     }

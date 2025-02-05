@@ -19,6 +19,8 @@ let halPeer = await satoshi.addPeer()
 satoshiOut = await satoshi.getChannel(for: halPeer).makeAsyncIterator()
 
 let halChain = BlockchainService()
+await halChain.start()
+
 let hal = NodeService(blockchain: halChain, feeFilterRate: 3)
 let satoshiPeer = await hal.addPeer(incoming: false)
 halOut = await hal.getChannel(for: satoshiPeer).makeAsyncIterator()
@@ -57,6 +59,8 @@ _ = try #require(await satoshi.popMessage(halPeer))
 
 // Satoshi --(feefilter)->> …
 _ = try #require(await satoshi.popMessage(halPeer))
+
+await halChain.stop()
 ```
 
 ## Topics

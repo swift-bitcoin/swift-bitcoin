@@ -22,12 +22,12 @@ public struct GetBlockchainInfoCommand: Sendable {
 
         precondition(request.method == Self.method)
 
-        let headers = await blockchain.blocks
-        let blocks = await blockchain.tip
+        let headerIDs = await blockchain.headerIDs
+        let totalBlocks = await blockchain.validatedHeight + 1
         let result = Output(
-            headers: headers.count,
-            blocks: blocks,
-            hashes: headers.map { $0.idHex }
+            headers: headerIDs.count,
+            blocks: totalBlocks,
+            hashes: headerIDs.map(\.hex)
         )
         return .init(id: request.id, result: JSONObject.string(result.description))
     }

@@ -8,6 +8,10 @@ public typealias PeerID = UUID
 /// Manages connection with state.peers, process incoming messages and sends responses.
 public actor NodeService: Sendable {
 
+    public enum Status: Sendable {
+        case idle, starting, running, stopping, stopped
+    }
+
     ///  Creates an instance of a bitcoin node service.
     /// - Parameters:
     ///   - blockchain: The bitcoin service actor instance backing this node.
@@ -23,6 +27,8 @@ public actor NodeService: Sendable {
             peerOuts[id] = .init()
         }
     }
+
+    public var status = Status.idle
 
     /// The bitcoin service actor instance backing this node.
     public let blockchain: BlockchainService
@@ -61,6 +67,7 @@ public actor NodeService: Sendable {
     }
 
     public func start() async {
+        status = .starting
         let blocks = await blockchain.subscribeToBlocks()
         let txs = await blockchain.subscribeToTxs()
         self.blocks = blocks
@@ -77,6 +84,7 @@ public actor NodeService: Sendable {
                 }
             }
         }
+        status = .running
     }
 
     /// Called when the blockchain notifies us that a new block has been found. Relays blocks to peers.
@@ -119,6 +127,7 @@ public actor NodeService: Sendable {
 
     /// We unsubscribe from Bitcoin service's blocks.
     public func stop() async {
+        status = .stopping
         await withDiscardingTaskGroup { group in
             if let blocks {
                 group.addTask {
@@ -131,6 +140,7 @@ public actor NodeService: Sendable {
                 }
             }
         }
+        status = .stopped
     }
 
     /// Send a ping to each of our state.peers. Calling this function will create child tasks.
@@ -147,7 +157,7 @@ public actor NodeService: Sendable {
     /// Request headers from peers.
     public func requestHeaders() async {
         let maxHeight = state.peers.values.reduce(-1) { max($0, $1.height) }
-        let ourHeight = await blockchain.blocks.count - 1
+        let ourHeight = await blockchain.height
         guard maxHeight > ourHeight,
               let (id, _) = state.peers.filter({ $0.value.height == maxHeight }).randomElement() else {
             return
@@ -207,7 +217,7 @@ public actor NodeService: Sendable {
     func makeVersion(for id: PeerID) async -> VersionMessage {
         guard let peer = state.peers[id] else { preconditionFailure() }
 
-        let lastBlock = await blockchain.tip - 1
+        let lastBlock = await blockchain.height
         return .init(
             protocolVersion: config.version,
             services: config.services,
@@ -570,7 +580,7 @@ public actor NodeService: Sendable {
         do {
             try await blockchain.processHeaders(headersMessage.items)
         } catch {
-            state.peers[id]?.height = await blockchain.blocks.count - 1
+            state.peers[id]?.height = await blockchain.height
         }
 
         if headersMessage.moreItems {

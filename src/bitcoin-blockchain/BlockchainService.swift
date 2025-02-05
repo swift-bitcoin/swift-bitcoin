@@ -5,14 +5,20 @@ import BitcoinBase
 
 public actor BlockchainService: Sendable {
 
+    public enum Status: Sendable {
+        case idle, starting, running, stopping, stopped
+    }
+
     public enum Error: Swift.Error {
         case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew
     }
 
-    let params: ConsensusParams
+    public let params: ConsensusParams
+    public var status = Status.idle
 
-    public private(set) var blocks = [TxBlock]()
-    public private(set) var tip = 0
+    private var blockStorage = BlockStorage()
+    private var blockIndex = BlockIndex()
+    private var chainTip: BlockID! = .none
 
     public private(set) var mempool = [BitcoinTx]()
 
@@ -28,42 +34,77 @@ public actor BlockchainService: Sendable {
 
     public init(params: ConsensusParams = .regtest) {
         self.params = params
+    }
+
+    public func start(_ loadFromDisk: Bool = false) async {
+        status = .starting
         let genesisBlock = TxBlock.makeGenesisBlock(params: params)
-        blocks.append(genesisBlock)
-        tip += 1
+        let locator = await blockStorage.store(genesisBlock)
+        try! await blockIndex.add(genesisBlock, locator: locator)
+        chainTip = genesisBlock.id
+        status = .running
+    }
+
+    public func stop() async {
+        status = .stopping
+        for blockChannel in blockChannels {
+            unsubscribe(blockChannel)
+        }
+        for txChannel in txChannels {
+            unsubscribe(txChannel)
+        }
+        status = .stopped
     }
 
     public var genesisBlock: TxBlock {
-        blocks[0]
+        get async {
+            let locator = await blockIndex.get(at: 0).locator
+            return await blockStorage.retrieve(locator)
+        }
     }
 
+    // TODO: Cache this.
     public var synchronized: Bool {
-        tip == blocks.count
-    }
-    
-    public func getBlock(_ height: Int) -> TxBlock {
-        precondition(height < tip)
-        return blocks[height]
+        get async {
+            let height = await blockIndex.height
+            return await validatedHeight == height
+        }
     }
 
-    public func getHeader(_ id: BlockID) -> TxBlock? {
-        guard let index = blocks.firstIndex(where: { $0.id == id }) else {
+    /// Returns a block header, meaning a block without it's transactions.
+    public func getHeader(_ id: BlockID) async -> TxBlock? {
+        guard await blockIndex.has(id) else {
             return .none
         }
-        return blocks[index]
+        let blockRef = await blockIndex.get(id)
+        return await blockStorage.retrieve(blockRef.locator).header
     }
 
-    public func getBlock(_ id: BlockID) -> TxBlock? {
-        guard let index = blocks.firstIndex(where: { $0.id == id }), index < tip else {
+    /// Gets a fully validated block by height complete with transactions.
+    public func getBlock(at height: Int) async -> TxBlock? {
+        guard height >= 0, await validatedHeight >= height else {
             return .none
         }
-        return blocks[index]
+        let blockRef = await blockIndex.get(at: height)
+        return await blockStorage.retrieve(blockRef.locator)
+    }
+
+    /// Gets a fully validated block by ID complete with transactions.
+    public func getBlock(_ id: BlockID) async -> TxBlock? {
+        guard await blockIndex.has(id) else {
+            return .none
+        }
+        let blockRef = await blockIndex.get(id)
+        guard await validatedHeight >= blockRef.height else {
+            return .none
+        }
+        return await blockStorage.retrieve(blockRef.locator)
     }
 
     /// Adds a transaction to the mempool.
-    public func addTx(_ tx: BitcoinTx) throws {
+    public func addTx(_ tx: BitcoinTx) async throws {
         guard !mempool.contains(tx) else { return }
-        guard checkTx(tx) else { return }
+        guard await checkTx(tx) else { return }
         mempool.append(tx)
 
         // Notify other nodes of new tx
@@ -96,15 +137,6 @@ public actor BlockchainService: Sendable {
         return txChannels.last!
     }
 
-    public func shutdown() {
-        for channel in blockChannels {
-            channel.finish()
-        }
-        for channel in txChannels {
-            channel.finish()
-        }
-    }
-
     public func unsubscribe(_ channel: AsyncChannel<TxBlock>) {
         channel.finish()
         blockChannels.removeAll(where: { $0 === channel })
@@ -116,62 +148,58 @@ public actor BlockchainService: Sendable {
     }
 
     /// To create the block locator hashes, keep pushing hashes until you go back to the genesis block. After pushing 10 hashes back, the step backwards doubles every loop.
-    public func makeBlockLocator() -> [Data] {
-        precondition(!blocks.isEmpty)
+    public func makeBlockLocator() async -> [Data] {
+        precondition(status == .running)
 
         var have = [Data]()
-        var index = blocks.endIndex - 1
+        var height = await blockIndex.height
         var step = 1
-        while index >= 0 {
-            let header = blocks[index]
-            have.append(header.id)
-            if index == 0 { break }
+        while height >= 0 {
+            let blockRef = await blockIndex.get(at: height)
+            have.append(blockRef.blockID)
+            if height == 0 { break }
 
             // Exponentially larger steps back, plus the genesis block.
             if have.count >= 10 { step *= 2 }
-            index = max(index - step, 0) // TODO: Use "skiplist"
+            height = max(height - step, 0) // TODO: Use "skiplist"
         }
         return have
     }
 
-    public func findHeaders(using locator: [Data]) -> [TxBlock] {
-        var from = Int?.none
-        for id in locator {
-            for index in blocks.indices {
-                let header = blocks[index]
-                if header.id == id {
-                    from = index
-                    break
-                }
+    public func findHeaders(using locator: [Data]) async -> [TxBlock] {
+        var hitHeight = Int?.none
+        for blockID in locator {
+            if await blockIndex.has(blockID) {
+                hitHeight = await blockIndex.get(blockID).height
+                break
             }
-            if from != .none { break }
         }
-        guard let from else { return [] }
-        let firstIndex = from.advanced(by: 1)
-        var lastIndex = tip
-        if firstIndex >= lastIndex { return [] }
-        if lastIndex - firstIndex > 200 {
-            lastIndex = from.advanced(by: 200)
+        guard let hitHeight else { return [] }
+        var heightTo = await blockIndex.height // TODO: previously `await validatedHeight`. Double check don't need to consider all headers (including ones missing transactions or not yet validated)
+        let heightFrom = hitHeight + 1
+        guard heightFrom <= heightTo else { return [] }
+        if heightTo - heightFrom + 1 > 200 {
+            heightTo = heightFrom + 199 // The limit is 200 but we are using a closed range
         }
         var headers = [TxBlock]()
-        for var block in blocks[firstIndex ..< lastIndex] {
-            block.txs = []
-            headers.append(block)
+        for height in heightFrom ... heightTo {
+            let blockRef = await blockIndex.get(at: height)
+            let block = await blockStorage.retrieve(blockRef.locator)
+            headers.append(block.header)
         }
         return headers
     }
 
-    private func checkHeader(_ header: inout TxBlock) throws(Error) {
+    private func checkHeader(_ header: TxBlock) async throws(Error) {
         guard header.version == 0x20000000 else {
             throw .unsupportedBlockVersion
         }
 
-        let lastHeader = blocks.last!
-        guard lastHeader.id == header.previous else {
+        guard await blockIndex.has(header.previous) else {
             throw .orphanHeader
         }
 
-        guard header.time >= getMedianTimePast() else {
+        guard await header.time >= getMedianTimePast() else {
             throw .headerTooOld
         }
 
@@ -181,52 +209,84 @@ public actor BlockchainService: Sendable {
             throw .headerTooNew
         }
 
-        let target = getNextWorkRequired(forHeight: blocks.endIndex.advanced(by: -1), newBlockTime: header.time, params: params)
+        let target = await getNextWorkRequired(forHeight: await height, newBlockTime: header.time, params: params)
         guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), try! DifficultyTarget(binaryData: header.hash) <= DifficultyTarget(compact: header.target) else {
             throw .insuficientProofOfWork
         }
-        let chainwork = lastHeader.work + header.work
-        header.context = .init(height: blocks.count, chainwork: chainwork, status: .header)
     }
 
-    public func processHeaders(_ headers: [TxBlock]) throws(Error) {
-        for var header in headers {
-            guard header != blocks.last!.header else {
+    public func processHeaders(_ headers: [TxBlock]) async throws(Error) {
+        for header in headers {
+            guard await blockIndex.lastHeaderID != header.id else {
                 continue
             }
-            try checkHeader(&header)
-            blocks.append(header)
+            try await checkHeader(header)
+
+            let locator = await blockStorage.store(header)
+
+            // We can use `try!` because we already checked that the parent exists when we called `checkHeader()`.
+            try! await blockIndex.add(header, locator: locator)
         }
     }
 
-    public func getNextMissingBlocks(_ numberOfBlocks: Int) -> [Data] {
-        let delta = blocks.count - tip
-        let realNumberOfBlocks = min(numberOfBlocks, delta)
-        var hashes = [Data]()
-        for i in tip ..< (tip + realNumberOfBlocks) {
-            hashes.append(blocks[i].id)
+    /// Returns the IDs of the headers missing transactions up to a maximum defined by the function argument.
+    public func getNextMissingBlocks(_ numberOfBlocks: Int) async -> [Data] {
+        let startHeight = await validatedHeight + 1
+        let maxHeight = await height
+        guard startHeight <= maxHeight else { return [] }
+        let delta = maxHeight - startHeight + 1
+        let resolvedNumberOfBlocks = min(numberOfBlocks, delta)
+        let endHeight = startHeight + resolvedNumberOfBlocks - 1
+        var hashes = [BlockID]()
+        for height in startHeight ... endHeight {
+            hashes.append(await blockIndex.get(at: height).blockID)
         }
         return hashes
     }
 
-    public func getBlocks(_ hashes: [Data]) -> [TxBlock] {
+    /// Returns multiple fully validated blocks matching the provided IDs.
+    public func getBlocks(_ blockIDs: [BlockID]) async -> [TxBlock] {
         var ret = [TxBlock]()
-        for hash in hashes {
-            guard let index = blocks.firstIndex(where: { $0.id == hash }),
-                  index < tip else {
+        for blockID in blockIDs {
+            guard await blockIndex.has(blockID) else {
                 continue
             }
-            ret.append(blocks[index])
+            let blockRef = await blockIndex.get(blockID)
+            guard blockRef.status == .full else {
+                continue
+            }
+            let block = await blockStorage.retrieve(blockRef.locator)
+            ret.append(block)
         }
         return ret
     }
 
-    /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``check()``
-    private func checkTxIns(_ tx: BitcoinTx, exclude: [TxOutpoint], auxCoins: [TxOutpoint : UnspentOut]) throws(TxError) {
+    public var validatedHeight: Int {
+        get async { await blockIndex.get(chainTip).height }
+    }
 
+    public var height: Int {
+        get async { await blockIndex.height }
+    }
+
+    public var headerIDs: [BlockID] {
+        get async {
+            var ids = [BlockID]()
+            let height = await height
+            for height in 0 ... height {
+                ids.append(await blockIndex.get(at: height).blockID)
+            }
+            return ids
+        }
+    }
+
+    /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``check()``
+    private func checkTxIns(_ tx: BitcoinTx, exclude: [TxOutpoint], auxCoins: [TxOutpoint : UnspentOut]) async throws(TxError) {
+
+        let nextHeight = await validatedHeight + 1
         let valueIn: SatoshiAmount
         if tx.isCoinbase {
-            valueIn = getBlockSubsidy(tip)
+            valueIn = getBlockSubsidy(nextHeight)
         } else {
             var valueInAcc = SatoshiAmount(0)
             for txIn in tx.ins.enumerated() {
@@ -236,7 +296,7 @@ public actor BlockchainService: Sendable {
                 guard let coin = coins[outpoint] ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
                     throw .inputMissingOrSpent
                 }
-                guard !coin.isCoinbase || tip - coin.height >= params.coinbaseMaturity else {
+                guard !coin.isCoinbase || nextHeight - coin.height >= params.coinbaseMaturity else {
                     throw .prematureCoinbaseSpend
                 }
                 valueInAcc += coin.txOut.value
@@ -263,14 +323,14 @@ public actor BlockchainService: Sendable {
         }
     }
 
-    private func checkTx(_ tx: BitcoinTx, exclude: [TxOutpoint]? = .none, auxCoins: [TxOutpoint : UnspentOut]? = .none) -> Bool {
+    private func checkTx(_ tx: BitcoinTx, exclude: [TxOutpoint]? = .none, auxCoins: [TxOutpoint : UnspentOut]? = .none) async -> Bool {
         let exclude = exclude ?? mempoolExclude
         let auxCoins = auxCoins ?? mempoolCoins
 
         // Check tx
         do {
             try tx.check(weightLimit: ConsensusParams.maxBlockWeight)
-            try checkTxIns(tx, exclude: exclude, auxCoins: auxCoins)
+            try await checkTxIns(tx, exclude: exclude, auxCoins: auxCoins)
 
 
             // TODO: `checkSequenceLocks(tx, verifyLockTimeSequence: Bool, coins: [TxOutpoint : UnspentOut], previousBlockMedianTimePast: Int)`
@@ -278,12 +338,14 @@ public actor BlockchainService: Sendable {
             return false
         }
 
+        let validatedHeight = await validatedHeight
+
         // TODO: Enforce BIP113 (Median Time Past) for block validation only (not mempool acceptance)
         // let enforceLocktimeMedianTimePast = deploymentActiveAfter(blocks[tip], chainman, Consensus.deploymentCSV)
         // let lockTimeCutoff = enforceLocktimeMedianTimePast ? Int(getMedianTimePast(for: tip).timeIntervalSince1970)) : blockCandidate.time
 
         // Check that all transactions are finalized
-        guard tx.isFinal(blockHeight: tip, blockTime: Int(getMedianTimePast().timeIntervalSince1970)) else {
+        guard await tx.isFinal(blockHeight: validatedHeight + 1, blockTime: Int(getMedianTimePast().timeIntervalSince1970)) else {
             // TODO: `throw BlockValidationError.nonFinalTransaction` or the like.
             return false
         }
@@ -303,17 +365,19 @@ public actor BlockchainService: Sendable {
         return true
     }
 
-    private func connectBlock(_ block: TxBlock) {
-        var block = block
-        let chainwork = blocks[tip - 1].work + block.work
-        block.context =  .init(height: tip, chainwork: chainwork, status: .full)
-
+    private func connectBlock(_ block: TxBlock) async {
         // Add block
-        if tip < blocks.count {
-            blocks[tip] = block
+        let blockRef: BlockRef
+        if await blockIndex.has(block.id) {
+            blockRef = await blockIndex.get(block.id)
+            await blockIndex.update(block.id, with: .full)
+            await blockStorage.store(block, at: blockRef.locator) // Overwrite
         } else {
-            blocks.append(block)
+            let locator = await blockStorage.store(block)
+            /// We can use `try!` because the header has already been verified to have an existing parent in our chain.
+            blockRef = try! await blockIndex.add(block, locator: locator, status: .full)
         }
+        chainTip = block.id
 
         // Remove available coins
         for tx in block.txs {
@@ -323,12 +387,9 @@ public actor BlockchainService: Sendable {
             }
             // Add coins
             for out in tx.outs.enumerated() {
-                coins[.init(tx: tx.id, txOut: out.offset)] = .init(out.element, height: tip, isCoinbase: tx.isCoinbase)
+                coins[.init(tx: tx.id, txOut: out.offset)] = .init(out.element, height: blockRef.height, isCoinbase: tx.isCoinbase)
             }
         }
-
-        // Update tip
-        tip += 1
 
         let blockCopy = block
         // Notify other nodes of new tip
@@ -343,18 +404,27 @@ public actor BlockchainService: Sendable {
         }
     }
 
-    public func processBlock(_ block: TxBlock) throws(Error) {
+    public func processBlock(_ block: TxBlock) async throws(Error) {
 
-        if tip < blocks.count && block.dataHeaderOnly != blocks[tip].dataHeaderOnly {
-            // New block does not match pre-existing header for block:
-            //   Replace block entirely and remove all headers
-            blocks.removeLast(blocks.count - tip)
+        let chainTipRef = await blockIndex.get(chainTip)
+        let nextTipHeight = chainTipRef.height + 1
+
+        let synchronized = await synchronized
+        if !synchronized {
+            let fistNonBlockHeader = await blockIndex.get(at: nextTipHeight)
+            if block.id != fistNonBlockHeader.blockID {
+                // New block does not match pre-existing header for block:
+                // Replace block entirely and remove all headers
+                let removed = await blockIndex.removeAll(from: nextTipHeight)
+                for r in removed {
+                    await blockStorage.remove(r.locator)
+                }
+            }
         }
 
-        var block = block
-        if tip == blocks.count {
+        if synchronized  {
             // We need to check the header fields
-            try checkHeader(&block)
+            try await checkHeader(block)
         }
 
         // Verify merkle root
@@ -366,7 +436,7 @@ public actor BlockchainService: Sendable {
         var tmpExclude = [TxOutpoint]()
         var tmpCoins = [TxOutpoint: UnspentOut]()
         for tx in block.txs {
-            guard checkTx(tx, exclude: tmpExclude, auxCoins: tmpCoins) else {
+            guard await checkTx(tx, exclude: tmpExclude, auxCoins: tmpCoins) else {
                 return // Error, invalid tx in block
             }
             // Remove coins
@@ -374,18 +444,18 @@ public actor BlockchainService: Sendable {
             // Add coins
             let txid = tx.id
             for out in tx.outs.enumerated() {
-                tmpCoins[.init(tx: txid, txOut: out.offset)] = .init(out.element, height: tip, isCoinbase: tx.isCoinbase)
+                tmpCoins[.init(tx: txid, txOut: out.offset)] = .init(out.element, height: nextTipHeight, isCoinbase: tx.isCoinbase)
             }
         }
 
-        connectBlock(block) // Will update coins
+        await connectBlock(block) // Will update chain tip and coins
 
         // Clean up mempool and mempoolCoins
         var newMempool = [BitcoinTx]()
         var mpExclude = [TxOutpoint]()
         var mpCoins = [TxOutpoint: UnspentOut]()
         for tx in mempool {
-            guard checkTx(tx, exclude: mpExclude, auxCoins: mpCoins) else {
+            guard await checkTx(tx, exclude: mpExclude, auxCoins: mpCoins) else {
                 continue // Exclude this transaction from the new mempool
             }
             newMempool.append(tx)
@@ -403,26 +473,25 @@ public actor BlockchainService: Sendable {
         mempoolCoins = mpCoins
     }
 
-    public func generateTo(_ pubkey: PubKey, blockTime: Date = .now) {
-        generateTo(Data(Hash160.hash(data: pubkey.data)), blockTime: blockTime)
+    @discardableResult public func generateTo(_ pubkey: PubKey, blockTime: Date = .now) async -> TxBlock {
+        await generateTo(Data(Hash160.hash(data: pubkey.data)), blockTime: blockTime)
     }
 
-    public func generateTo(_ pubkeyHash: Data, blockTime: Date = .now) {
-        precondition(!blocks.isEmpty)
+    @discardableResult public func generateTo(_ pubkeyHash: Data, blockTime: Date = .now) async -> TxBlock {
 
-        guard tip == blocks.count else {
+        guard await synchronized else {
             // Waiting for pending block transactions for known headers
-            return
+            preconditionFailure("Chain cannot contain unvalidated blocks.")
         }
-
+        let chainTipRef = await blockIndex.get(chainTip)
         let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool)
-        let coinbaseTx = BitcoinTx.makeCoinbaseTx(blockHeight: tip, pubkeyHash: pubkeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: params.blockSubsidy)
+        let coinbaseTx = BitcoinTx.makeCoinbaseTx(blockHeight: chainTipRef.height + 1, pubkeyHash: pubkeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: params.blockSubsidy)
 
-        let previousBlockHash = blocks.last!.id
+        let previousBlockHash = chainTip!
         let txs = [coinbaseTx] + mempool
         let merkleRoot = calculateMerkleRoot(txs)
 
-        let target = getNextWorkRequired(forHeight: tip - 1, newBlockTime: blockTime, params: params)
+        let target = await getNextWorkRequired(forHeight: chainTipRef.height, newBlockTime: blockTime, params: params)
 
         var nonce = 0
         var block: TxBlock
@@ -445,17 +514,19 @@ public actor BlockchainService: Sendable {
         mempoolExclude = []
         mempoolCoins = [:]
 
-        connectBlock(block)
+        await connectBlock(block)
+        return block
     }
 
-    public func calculateMissingTxs(ids: [TxID]) -> [TxID] {
+    public func calculateMissingTxs(ids: [TxID]) async -> [TxID] {
         var newIDs = ids
         for tx in mempool {
             if ids.contains(tx.id) {
                 newIDs.removeAll { $0 == tx.id }
             }
         }
-        for block in blocks {
+        for locator in await blockIndex.locators {
+            let block = await blockStorage.retrieve(locator)
             for tx in block.txs {
                 if ids.contains(tx.id) {
                     newIDs.removeAll { $0 == tx.id }
@@ -465,30 +536,25 @@ public actor BlockchainService: Sendable {
         return newIDs
     }
 
-    public func calculateMissingBlocks(ids: [BlockID]) -> [BlockID] {
-        var newIDs = ids
-        for block in blocks {
-            if ids.contains(block.id) {
-                newIDs.removeAll { $0 == block.id }
-            }
-        }
-        return newIDs
+    public func calculateMissingBlocks(ids: [BlockID]) async -> [BlockID] {
+        await blockIndex.calculateMissingBlocks(ids)
     }
 
     /// Gets a transaction by ID looking into mempool and blocks.
-    public func getTx(_ id: TxID) -> BitcoinTx? {
-        getTxs([id]).first
+    public func getTx(_ id: TxID) async -> BitcoinTx? {
+        await getTxs([id]).first
     }
 
     /// Finds transactions in mempool and blocks which match any of the provided IDs.
-    public func getTxs(_ ids: [TxID]) -> [BitcoinTx] {
+    public func getTxs(_ ids: [TxID]) async -> [BitcoinTx] {
         var ret = [BitcoinTx]()
         for tx in mempool {
             if ids.contains(tx.id) {
                 ret.append(tx)
             }
         }
-        for block in blocks {
+        for locator in await blockIndex.locators {
+            let block = await blockStorage.retrieve(locator)
             for tx in block.txs {
                 if ids.contains(tx.id) {
                     ret.append(tx)
@@ -510,9 +576,9 @@ public actor BlockchainService: Sendable {
         }
     }
 
-    private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParams) -> Int {
+    private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParams) async -> Int {
         precondition(heightLast >= 0)
-        let lastHeader = blocks[heightLast]
+        let lastHeader = await blockIndex.get(at: heightLast)
         let powLimitTarget = try! DifficultyTarget(binaryData: Data(params.powLimit.reversed()))
         let proofOfWorkLimit = powLimitTarget.toCompact()
 
@@ -530,7 +596,7 @@ public actor BlockchainService: Sendable {
                     var header = lastHeader
                     while height > 0 && height % params.difficultyAdjustmentInterval != 0 && header.target == proofOfWorkLimit {
                         height -= 1
-                        header = blocks[height]
+                        header = await blockIndex.get(at: height)
                     }
                     return header.target
                 }
@@ -541,11 +607,11 @@ public actor BlockchainService: Sendable {
         // Go back by what we want to be 14 days worth of blocks
         let heightFirst = heightLast - (params.difficultyAdjustmentInterval - 1)
         precondition(heightFirst >= 0)
-        let firstHeader = blocks[heightFirst] // pindexLast->GetAncestor(nHeightFirst)
+        let firstHeader = await blockIndex.get(at: heightFirst) // pindexLast->GetAncestor(nHeightFirst)
         return calculateNextWorkRequired(lastHeader: lastHeader, firstBlockTime: firstHeader.time, params: params)
     }
 
-    private func calculateNextWorkRequired(lastHeader: TxBlock, firstBlockTime: Date, params: ConsensusParams) -> Int {
+    private func calculateNextWorkRequired(lastHeader: BlockRef, firstBlockTime: Date, params: ConsensusParams) -> Int {
         if params.powNoRetargeting {
             return lastHeader.target
         }
@@ -585,24 +651,26 @@ public actor BlockchainService: Sendable {
         return subsidy
     }
 
-    private func getMedianTimePast(for height: Int? = .none) -> Date {
-        let height = height ?? tip - 1
-        precondition(height >= 0 && height < blocks.count)
-        let start = max(height - 11, 0)
-        let median = blocks.lazy.map(\.time)[start...height].sorted()
+    private func getMedianTimePast(for height: Int? = .none) async -> Date {
+        let maxHeight = await blockIndex.get(chainTip).height
+        let height = height ?? maxHeight
+        precondition(height >= 0 && height <= maxHeight)
+        let startHeight = max(height - 11, 0)
+        let blockRefs = await blockIndex.get(from: startHeight, to: height)
+        let median = blockRefs.map(\.time).sorted()
         precondition(median.startIndex == 0)
         return median[median.count / 2]
     }
 
     /// BIP68 - Untested - Entrypoint 1.
-    private func checkSequenceLocks(_ tx: BitcoinTx, verifyLockTimeSequence: Bool, coins: [TxOutpoint : UnspentOut], previousBlockMedianTimePast: Int) throws {
+    private func checkSequenceLocks(_ tx: BitcoinTx, verifyLockTimeSequence: Bool, coins: [TxOutpoint : UnspentOut], previousBlockMedianTimePast: Int) async throws {
         // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate
         // height based locks because when SequenceLocks() is called within
         // ConnectBlock(), the height of the block *being*
         // evaluated is what is used.
         // Thus if we want to know if a transaction can be part of the
         // *next* block, we need to use one more than chainActive.Height()
-        let nextBlockHeight = tip // chainTip + 1
+        let nextBlockHeight = await blockIndex.get(chainTip).height + 1
         var heights = [Int]()
         // pcoinsTip contains the UTXO set for chainActive.Tip()
         for txIn in tx.ins {
