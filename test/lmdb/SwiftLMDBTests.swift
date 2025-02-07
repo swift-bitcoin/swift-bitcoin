@@ -298,7 +298,7 @@ extension FixedWidthInteger where Self: DataConvertible {
 
     init?(data: Data) {
         guard data.count == MemoryLayout<Self>.size else { return nil }
-        let littleEndian = data.withUnsafeBytes { $0.load(as: Self.self) }
+        let littleEndian = data.withUnsafeBytes { $0.loadUnaligned(as: Self.self) }
         self = .init(littleEndian: littleEndian)
     }
 
@@ -324,7 +324,7 @@ extension Float: DataConvertible {
 
     init?(data: Data) {
         guard data.count == MemoryLayout<UInt32>.size else { return nil }
-        let littleEndian = data.withUnsafeBytes { $0.load(as: UInt32.self) }
+        let littleEndian = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
         let bitPattern = UInt32(littleEndian: littleEndian)
         self = .init(bitPattern: bitPattern)
     }
@@ -338,7 +338,7 @@ extension Double: DataConvertible {
 
     init?(data: Data) {
         guard data.count == MemoryLayout<UInt64>.size else { return nil }
-        let littleEndian = data.withUnsafeBytes { $0.load(as: UInt64.self) }
+        let littleEndian = data.withUnsafeBytes { $0.loadUnaligned(as: UInt64.self) }
         let bitPattern = UInt64(littleEndian: littleEndian)
         self = .init(bitPattern: bitPattern)
     }
