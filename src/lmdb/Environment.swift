@@ -1,5 +1,5 @@
 import Foundation
-import System
+import SystemPackage
 import CLMDB
 
 /// An environment is the base of LMDB.

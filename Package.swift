@@ -27,6 +27,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-system.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
@@ -70,7 +71,10 @@ let package = Package(
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
             path: "src/nio-json-rpc"),
         .target(name: "JSONRPC", path: "src/json-rpc"),
-        .target(name: "LMDB", dependencies: [.product(name: "CLMDB", package: "swift-lmdb")], path: "src/lmdb"),
+        .target(name: "LMDB", dependencies: [
+            .product(name: "CLMDB", package: "swift-lmdb"),
+            .product(name: "SystemPackage", package: "swift-system"),
+        ], path: "src/lmdb"),
         .target(name: "ECCHelper", dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")], path: "src/ecc-helper"),
 
         // Tests
