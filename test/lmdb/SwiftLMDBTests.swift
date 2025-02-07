@@ -111,7 +111,8 @@ struct LMDBTests {
 
         try db.put("value".asData, forKey: "key".asData)
         let stats = db.stats
-        #expect(stats.pageSize == UInt32(sysconf(_SC_PAGESIZE)))
+        let multiPlatformPageSize = Int32(Int(_SC_PAGESIZE)) // The double wrapping is necessary for Linux compatibility.
+        #expect(stats.pageSize == UInt32(sysconf(multiPlatformPageSize)))
         #expect(stats.depth == 1)
         #expect(stats.branchPageCount == 0)
         #expect(stats.leafPageCount == 1)
@@ -190,23 +191,22 @@ struct LMDBTests {
 
         var envPath = FilePath?.none
         // Open db and add a value
-        try autoreleasepool {
-            let db = try createDB(dbName)
-            envPath = db.environment.path
-            try db.put(value.asData, forKey: key.asData)
-        }
+        var db: Database! = try createDB(dbName)
+        envPath = db.environment.path
+        try db.put(value.asData, forKey: key.asData)
+        db = nil
 
         // Open the db again as a read only db.
-        let db = try createDB(dbName, path: envPath, envFlags: [.readOnly])
-        defer { clearDB(db) }
+        let readOnlyDB = try createDB(dbName, path: envPath, envFlags: [.readOnly])
+        defer { clearDB(readOnlyDB) }
 
-        let fetchedData = try #require(try db.get(key.asData))
+        let fetchedData = try #require(try readOnlyDB.get(key.asData))
         let fetchedValue = String(data: fetchedData)
         #expect(fetchedValue == value)
 
         // Writing a value to a read-only db should fail.
         #expect(throws: (any Error).self) {
-            try db.put("newValue".asData, forKey: key.asData)
+            try readOnlyDB.put("newValue".asData, forKey: key.asData)
         }
 
     }
