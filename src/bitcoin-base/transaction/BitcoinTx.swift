@@ -13,7 +13,7 @@ import BitcoinCrypto
 public struct BitcoinTx: Equatable, Sendable {
 
     // MARK: - Initializers
-    
+
     /// Creates a transaction from its inputs and outputs.
     /// - Parameters:
     ///   - version: Defaults fo version 1. Version 2 can be specified to unlock per input relative lock times.
@@ -189,7 +189,7 @@ extension BitcoinTx: BinaryCodable {
 
         locktime = try decoder.decode()
     }
-    
+
     public func encode(to encoder: inout BinaryEncoder) {
         encoder.encode(version)
         // BIP144
@@ -206,14 +206,14 @@ extension BitcoinTx: BinaryCodable {
         }
         encoder.encode(locktime)
     }
-    
+
     public func encodeNonWitness(to encoder: inout BinaryEncoder) {
         encoder.encode(version)
         encoder.encode(ins)
         encoder.encode(outs)
         encoder.encode(locktime)
     }
-    
+
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(version)
         // BIP144

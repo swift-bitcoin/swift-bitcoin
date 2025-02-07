@@ -9,15 +9,15 @@ struct BlockRef: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    public init(_ block: TxBlock, height: Int, locator: BlockStorage.Locator, chainwork: DifficultyTarget, status: ValidationStatus = .header) {
+    public init(_ block: TxBlock, height: Int, chainwork: DifficultyTarget, status: ValidationStatus = .header, locator: BlockStorage.Locator? = .none) {
         self.blockID = block.id
         self.previous = block.previous
         self.time = block.time
         self.target = block.target
         self.height = height
-        self.locator = locator
         self.chainwork = chainwork
         self.status = status
+        self.locator = locator
     }
 
     // MARK: - Instance Properties
@@ -27,9 +27,9 @@ struct BlockRef: Equatable, Sendable {
     public let time: Date
     public let target: Int
     public let height: Int
-    public let locator: BlockStorage.Locator
     public let chainwork: DifficultyTarget
     public internal(set) var status: ValidationStatus
+    public internal(set) var locator: BlockStorage.Locator?
 
     // MARK: - Computed Properties
 

@@ -50,7 +50,7 @@ extension TxIn: BinaryCodable {
         script.encodePrefixed(to: &encoder)
         encoder.encode(sequence)
     }
-    
+
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(outpoint)
         script.encodingSizePrefixed(&counter)

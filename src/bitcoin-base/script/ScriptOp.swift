@@ -480,7 +480,7 @@ extension ScriptOp: BinaryCodable {
         }
         decoder.clearCheckpoint()
     }
-    
+
     public func encode(to encoder: inout BinaryEncoder) {
         encoder.encode(opCode)
         switch self {
@@ -498,7 +498,7 @@ extension ScriptOp: BinaryCodable {
         default: break
         }
     }
-    
+
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(UInt8.self) // opCode
         switch self {

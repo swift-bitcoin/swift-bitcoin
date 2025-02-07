@@ -3,7 +3,7 @@ import LibSECP256k1
 
 /// Elliptic curve SECP256K1 public key.
 public struct PubKey: Equatable, Sendable, CustomStringConvertible {
-    
+
     /// Derives a public key from a secret key.
     /// - Parameters:
     ///   - secretKey: The secret key.

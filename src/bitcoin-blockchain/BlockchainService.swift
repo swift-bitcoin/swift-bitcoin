@@ -22,6 +22,8 @@ public actor BlockchainService: Sendable {
 
     public private(set) var mempool = [BitcoinTx]()
 
+    private var headers = [TxBlock]()
+
     private var coins = [TxOutpoint: UnspentOut]()
     private var mempoolExclude = [TxOutpoint]()
     private var mempoolCoins = [TxOutpoint: UnspentOut]()
@@ -58,7 +60,7 @@ public actor BlockchainService: Sendable {
 
     public var genesisBlock: TxBlock {
         get async {
-            let locator = await blockIndex.get(at: 0).locator
+            let locator = await blockIndex.get(at: 0).locator!
             return await blockStorage.retrieve(locator)
         }
     }
@@ -77,7 +79,13 @@ public actor BlockchainService: Sendable {
             return .none
         }
         let blockRef = await blockIndex.get(id)
-        return await blockStorage.retrieve(blockRef.locator).header
+        return if let locator = blockRef.locator {
+            await blockStorage.retrieve(locator).header
+        } else if let header = headers.first(where: { $0.id == blockRef.blockID }) {
+            header
+        } else {
+            preconditionFailure("Could not find header or block.")
+        }
     }
 
     /// Gets a fully validated block by height complete with transactions.
@@ -86,7 +94,10 @@ public actor BlockchainService: Sendable {
             return .none
         }
         let blockRef = await blockIndex.get(at: height)
-        return await blockStorage.retrieve(blockRef.locator)
+        guard let locator = blockRef.locator else {
+            return .none
+        }
+        return await blockStorage.retrieve(locator)
     }
 
     /// Gets a fully validated block by ID complete with transactions.
@@ -95,10 +106,10 @@ public actor BlockchainService: Sendable {
             return .none
         }
         let blockRef = await blockIndex.get(id)
-        guard await validatedHeight >= blockRef.height else {
+        guard let locator = blockRef.locator, await validatedHeight >= blockRef.height else {
             return .none
         }
-        return await blockStorage.retrieve(blockRef.locator)
+        return await blockStorage.retrieve(locator)
     }
 
     /// Adds a transaction to the mempool.
@@ -184,7 +195,13 @@ public actor BlockchainService: Sendable {
         var headers = [TxBlock]()
         for height in heightFrom ... heightTo {
             let blockRef = await blockIndex.get(at: height)
-            let block = await blockStorage.retrieve(blockRef.locator)
+            let block = if let locator = blockRef.locator {
+                await blockStorage.retrieve(locator)
+            } else if let header = headers.first(where: { $0.id == blockRef.blockID }) {
+                header
+            } else {
+                preconditionFailure("Could not find header or block.")
+            }
             headers.append(block.header)
         }
         return headers
@@ -195,7 +212,8 @@ public actor BlockchainService: Sendable {
             throw .unsupportedBlockVersion
         }
 
-        guard await blockIndex.has(header.previous) else {
+        guard await lastBlockID == header.previous else {
+            // TODO: Check for all ancestors
             throw .orphanHeader
         }
 
@@ -217,15 +235,15 @@ public actor BlockchainService: Sendable {
 
     public func processHeaders(_ headers: [TxBlock]) async throws(Error) {
         for header in headers {
-            guard await blockIndex.lastHeaderID != header.id else {
+            guard await lastBlockID != header.id else {
+                // Compact block might send us a known header again
                 continue
             }
             try await checkHeader(header)
 
-            let locator = await blockStorage.store(header)
-
             // We can use `try!` because we already checked that the parent exists when we called `checkHeader()`.
-            try! await blockIndex.add(header, locator: locator)
+            try! await blockIndex.add(header)
+            self.headers.append(header)
         }
     }
 
@@ -252,10 +270,10 @@ public actor BlockchainService: Sendable {
                 continue
             }
             let blockRef = await blockIndex.get(blockID)
-            guard blockRef.status == .full else {
+            guard let locator = blockRef.locator, blockRef.status == .full else {
                 continue
             }
-            let block = await blockStorage.retrieve(blockRef.locator)
+            let block = await blockStorage.retrieve(locator)
             ret.append(block)
         }
         return ret
@@ -267,6 +285,13 @@ public actor BlockchainService: Sendable {
 
     public var height: Int {
         get async { await blockIndex.height }
+    }
+
+    ///Last known block ID which includes headers.
+    public var lastBlockID: BlockID {
+        get async {
+            if headers.isEmpty { chainTip } else { headers.last!.id }
+        }
     }
 
     public var headerIDs: [BlockID] {
@@ -367,13 +392,14 @@ public actor BlockchainService: Sendable {
 
     private func connectBlock(_ block: TxBlock) async {
         // Add block
+        let locator = await blockStorage.store(block)
         let blockRef: BlockRef
-        if await blockIndex.has(block.id) {
+        if let firstHeader = headers.first, block.id == firstHeader.id {
             blockRef = await blockIndex.get(block.id)
-            await blockIndex.update(block.id, with: .full)
-            await blockStorage.store(block, at: blockRef.locator) // Overwrite
+            await blockIndex.update(block.id, locator: locator, status: .full)
+            headers.removeFirst()
         } else {
-            let locator = await blockStorage.store(block)
+            precondition(headers.isEmpty)
             /// We can use `try!` because the header has already been verified to have an existing parent in our chain.
             blockRef = try! await blockIndex.add(block, locator: locator, status: .full)
         }
@@ -417,7 +443,9 @@ public actor BlockchainService: Sendable {
                 // Replace block entirely and remove all headers
                 let removed = await blockIndex.removeAll(from: nextTipHeight)
                 for r in removed {
-                    await blockStorage.remove(r.locator)
+                    if let locator = r.locator {
+                        await blockStorage.remove(locator)
+                    }
                 }
             }
         }

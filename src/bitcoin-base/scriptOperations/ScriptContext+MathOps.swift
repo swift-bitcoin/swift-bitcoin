@@ -59,7 +59,7 @@ extension ScriptContext {
         let (a, b) = try getBinaryNumericParams()
         stack.append(ScriptBool(a != .zero && b != .zero).binaryData)
     }
-    
+
     /// If a or b is not 0, the output is 1. Otherwise 0.
     mutating func opBoolOr() throws {
         let (a, b) = try getBinaryNumericParams()
@@ -83,13 +83,13 @@ extension ScriptContext {
         let (a, b) = try getBinaryNumericParams()
         stack.append(ScriptBool(a == b).binaryData)
     }
-    
+
     /// Same as `OP_NUMEQUAL`,  but runs `OP_VERIFY` afterward.
     mutating func opNumEqualVerify() throws {
         try opNumEqual()
         try opVerify()
     }
-    
+
     /// Returns 1 if the numbers are not equal, 0 otherwise.
     mutating func opNumNotEqual() throws {
         let (a, b) = try getBinaryNumericParams()
@@ -101,7 +101,7 @@ extension ScriptContext {
         let (a, b) = try getBinaryNumericParams()
         stack.append(ScriptBool(a.value > b.value).binaryData)
     }
-    
+
     /// Returns 1 if a is greater than or equal to b, 0 otherwise.
     mutating func opGreaterThanOrEqual() throws {
         let (a, b) = try getBinaryNumericParams()
@@ -113,7 +113,7 @@ extension ScriptContext {
         let (a, b) = try getBinaryNumericParams()
         stack.append(ScriptBool(a.value < b.value).binaryData)
     }
-    
+
     /// Returns 1 if a is less than or equal to b, 0 otherwise.
     mutating func opLessThanOrEqual() throws {
         let (a, b) = try getBinaryNumericParams()
@@ -131,7 +131,7 @@ extension ScriptContext {
         let (a, b) = try getBinaryNumericParams()
         stack.append((a.value < b.value ? a : b).binaryData)
     }
-    
+
     /// Returns the larger of a and b.
     mutating func opMax() throws {
         let (a, b) = try getBinaryNumericParams()

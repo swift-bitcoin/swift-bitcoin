@@ -7,13 +7,13 @@ public typealias BinaryCodable = BinaryDecodable & BinaryEncodable
 
 /// A type that can encode itself to a binary external representation.
 public protocol BinaryEncodable {
-    
+
     /// Encodes this value into the given binary encoder.
     /// - Parameter encoder: The encoder to write binary data to.
     ///
     /// This function throws an error if any values are invalid for the given encoder’s format.
     func encode(to encoder: inout BinaryEncoder)
-    
+
     /// Reports the length of the binary representation.
     /// - Parameter counter: The counter to report the instance's encoded size to.
     func encodingSize(_ counter: inout BinaryEncodingSizeCounter)

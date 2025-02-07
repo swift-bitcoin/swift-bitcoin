@@ -7,7 +7,7 @@ import BitcoinCrypto
 public struct BitcoinScript: Equatable, Sendable {
 
     // MARK: - Initializers
-    
+
     /// Creates a script from a list of operations.
     /// - Parameters:
     ///   - ops: A sequence of script operations.
@@ -232,7 +232,7 @@ extension BitcoinScript: BinaryCodable {
         encoder.encode(VarInt(binarySize))
         encode(to: &encoder)
     }
-    
+
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         for op in ops {
             counter.count(op)

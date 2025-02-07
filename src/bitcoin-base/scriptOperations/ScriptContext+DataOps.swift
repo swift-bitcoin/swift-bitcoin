@@ -1,12 +1,12 @@
 import Foundation
 
 extension ScriptContext {
-    
+
     /// Implementation of a constant script operation.
     mutating func opConstant(_ k: UInt8) {
         stack.append(ScriptNum(k).binaryData)
     }
-    
+
     /// Pushes the string length of the top element of the stack (without popping it).
     mutating func opSize() throws {
         let first = try getUnaryParam()

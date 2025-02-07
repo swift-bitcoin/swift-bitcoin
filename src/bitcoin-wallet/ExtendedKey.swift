@@ -65,7 +65,7 @@ public struct ExtendedKey {
     public var serialized: String {
         Base58Encoder().encode(binaryData)
     }
-    
+
     /// Derives either a child private key from a parent private key, or a child public key form a parent public key.
     ///
     /// Part of  BIP32 implementation.

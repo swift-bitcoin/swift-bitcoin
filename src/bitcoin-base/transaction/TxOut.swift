@@ -3,7 +3,7 @@ import BitcoinCrypto
 
 /// The output of a ``BitcoinTx``. While unspent also referred to as a _coin_.
 public struct TxOut: Equatable, Sendable {
-    
+
     /// Creates an output out of an amount (value) and a locking script.
     /// - Parameters:
     ///   - value: A Satoshi amount represented by this output.
@@ -31,7 +31,7 @@ extension TxOut: BinaryCodable {
         encoder.encode(value)
         script.encodePrefixed(to: &encoder)
     }
-    
+
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(value)
         script.encodingSizePrefixed(&counter)

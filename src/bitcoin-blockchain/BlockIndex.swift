@@ -1,3 +1,5 @@
+import LMDB
+
 /// Block index service.
 actor BlockIndex {
 
@@ -5,6 +7,11 @@ actor BlockIndex {
         case parentMissing
     }
 
+    init() {
+        //db = try! Database(environment: .init(path: ""), name: "", flags: [.create])
+    }
+
+    //private let db: Database
     private var byID = [BlockID : BlockRef]()
     private var byHeight = [BlockID]()
 
@@ -16,7 +23,9 @@ actor BlockIndex {
     var locators: [BlockStorage.Locator] {
         var locators = [BlockStorage.Locator]()
         for id in byHeight.reversed() {
-            locators.append(byID[id]!.locator)
+            if let locator = byID[id]!.locator {
+                locators.append(locator)
+            }
         }
         return locators
     }
@@ -27,7 +36,7 @@ actor BlockIndex {
     }
 
     @discardableResult
-    func add(_ block: TxBlock, locator: BlockStorage.Locator, status: BlockRef.ValidationStatus = .header) throws(AddError) -> BlockRef {
+    func add(_ block: TxBlock, locator: BlockStorage.Locator? = .none, status: BlockRef.ValidationStatus = .header) throws(AddError) -> BlockRef {
         let previous = if block.previous != TxBlock.nullParent && has(block.previous) {
             get(block.previous)
         } else {
@@ -38,7 +47,7 @@ actor BlockIndex {
         }
         let height = if let previous { previous.height + 1 } else { 0 }
         let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
-        let blockRef = BlockRef(block, height: height, locator: locator, chainwork: chainwork, status: status)
+        let blockRef = BlockRef(block, height: height, chainwork: chainwork, status: status, locator: locator)
         add(blockRef)
         return blockRef
     }
@@ -48,7 +57,8 @@ actor BlockIndex {
         byHeight.append(blockRef.blockID)
     }
 
-    func update(_ id: BlockID, with status: BlockRef.ValidationStatus) {
+    func update(_ id: BlockID, locator: BlockStorage.Locator, status: BlockRef.ValidationStatus) {
+        byID[id]!.locator = locator
         byID[id]!.status = status
     }
 

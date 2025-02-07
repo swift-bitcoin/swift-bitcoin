@@ -66,7 +66,7 @@ extension ParentStruct: BinaryCodable {
         encoder.encode(children)
         encoder.encode(int3)
     }
-    
+
     func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(int1)
         counter.count(child)
@@ -97,7 +97,7 @@ extension CustomStruct: BinaryCodable {
         encoder.encode(data, variable: true)
         encoder.encode(uInt64)
     }
-    
+
     func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(int)
         counter.count(intArray)
