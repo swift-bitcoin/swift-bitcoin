@@ -216,9 +216,43 @@ public class Database {
 
     }
 
-    internal func cursor() throws -> Cursor {
+    public func removeFirst() throws {
+        let txn = try Transaction(environment: environment, flags: [])
+        let cursor = Cursor(database: self, transaction: txn)
+        cursor.next()
+        try cursor.delete()
+    }
+
+    public var first: Data? {
+        get throws {
+            guard count > 0 else {
+                return .none
+            }
+            let txn = try Transaction(environment: environment, flags: [.readOnly])
+            let cursor = Cursor(database: self, transaction: txn)
+            guard let value = cursor.next()?.value else {
+                throw LMDBError(returnCode: .max)
+            }
+            return value
+        }
+    }
+
+    public var last: Data? {
+        get throws {
+            guard count > 0 else {
+                return .none
+            }
+            let txn = try Transaction(environment: environment, flags: [.readOnly])
+            let cursor = Cursor(database: self, transaction: txn)
+            guard let value = cursor.last()?.value else {
+                throw LMDBError(returnCode: .max)
+            }
+            return value
+        }
+    }
+
+    func cursor() throws -> Cursor {
         let txn = try Transaction(environment: environment, flags: [.readOnly])
         return Cursor(database: self, transaction: txn)
     }
-
 }

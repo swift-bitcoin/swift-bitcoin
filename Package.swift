@@ -83,10 +83,10 @@ let package = Package(
         .testTarget(name: "BitcoinTransportTests", dependencies: ["BitcoinTransport", "BitcoinWallet"], path: "test/bitcoin-transport"),
         .testTarget(name: "BitcoinBlockchainTests", dependencies: ["BitcoinBlockchain"], path: "test/bitcoin-blockchain"),
         .testTarget(name: "BitcoinWalletTests", dependencies: ["BitcoinWallet"], path: "test/bitcoin-wallet"),
+        .testTarget(name: "LMDBTests", dependencies: ["LMDB", "BitcoinCrypto"], path: "test/lmdb"),
         .testTarget(name: "BitcoinCryptoTests", dependencies: ["BitcoinCrypto"], path: "test/bitcoin-crypto"),
         .testTarget(name: "BitcoinBaseTests", dependencies: ["BitcoinBase"], path: "test/bitcoin-base",
             resources: [.copy("data")]),
-        .testTarget(name: "LMDBTests", dependencies: ["LMDB"], path: "test/lmdb"),
 
         // Plugins
         .plugin(

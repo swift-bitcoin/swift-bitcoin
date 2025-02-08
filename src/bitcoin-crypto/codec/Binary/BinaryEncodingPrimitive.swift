@@ -28,3 +28,7 @@ extension UInt8: BinaryEncodingPrimitive {}
 extension UInt16: BinaryEncodingPrimitive {}
 extension UInt32: BinaryEncodingPrimitive {}
 extension UInt64: BinaryEncodingPrimitive {}
+
+extension Bool: BinaryEncodingPrimitive {}
+extension Float: BinaryEncodingPrimitive {}
+extension Double: BinaryEncodingPrimitive {}

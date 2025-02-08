@@ -1,4 +1,5 @@
 import Testing
+import BitcoinCrypto
 import SystemPackage
 import Foundation
 import LMDB
@@ -39,10 +40,10 @@ struct LMDBTests {
         let keyWithValue = "hv1"
         let keyWithoutValue = "hv2"
 
-        try db.put(value.asData, forKey: keyWithValue.asData)
+        try db.put(value.data(using: .utf8)!, forKey: keyWithValue.data(using: .utf8)!)
 
-        let hasValue1 = try db.exists(key: keyWithValue.asData)
-        let hasValue2 = try db.exists(key: keyWithoutValue.asData)
+        let hasValue1 = try db.exists(key: keyWithValue.data(using: .utf8)!)
+        let hasValue2 = try db.exists(key: keyWithoutValue.data(using: .utf8)!)
 
         #expect(hasValue1, "A value has been set for this key. Result should be true.")
         #expect(!hasValue2, "No value has been set for this key. Result should be false.")
@@ -66,7 +67,7 @@ struct LMDBTests {
         try putGetValue(value: "Hello world! 👋🏼", key: nextKey(), in: db)
 
         // Date
-        try putGetValue(value: Date(), key: nextKey(), in: db)
+        try putGetValue(value: Date.distantFuture, key: nextKey(), in: db)
 
         // Integers
         try putGetValue(value: Int.max, key: nextKey(), in: db)
@@ -90,7 +91,7 @@ struct LMDBTests {
     @Test func getNonExistant() throws {
         let db = try createDB(#function)
         defer { clearDB(db) }
-        let value = try db.get("any-key".asData)
+        let value = try db.get("any-key".data(using: .utf8)!)
         #expect(value == nil)
     }
 
@@ -100,7 +101,7 @@ struct LMDBTests {
 
         let count = 10
         for i in 0 ..< count {
-            try db.put("value-\(i)".asData, forKey: "key-\(i)".asData)
+            try db.put("value-\(i)".data(using: .utf8)!, forKey: "key-\(i)".data(using: .utf8)!)
         }
         #expect(count == db.count)
     }
@@ -109,7 +110,7 @@ struct LMDBTests {
         let db = try createDB(#function)
         defer { clearDB(db) }
 
-        try db.put("value".asData, forKey: "key".asData)
+        try db.put("value".data(using: .utf8)!, forKey: "key".data(using: .utf8)!)
         let stats = db.stats
         let multiPlatformPageSize = Int32(Int(_SC_PAGESIZE)) // The double wrapping is necessary for Linux compatibility.
         #expect(stats.pageSize == UInt32(sysconf(multiPlatformPageSize)))
@@ -125,7 +126,7 @@ struct LMDBTests {
         defer { clearDB(db) }
 
         #expect(throws: (any Error).self) {
-            try db.put("test".asData, forKey: "".asData)
+            try db.put("test".data(using: .utf8)!, forKey: "".data(using: .utf8)!)
         }
 
     }
@@ -137,13 +138,13 @@ struct LMDBTests {
         let key = "deleteTest"
 
         // Put a value
-        try db.put("Hello world!".asData, forKey: key.asData)
+        try db.put("Hello world!".data(using: .utf8)!, forKey: key.data(using: .utf8)!)
 
         // Delete the value.
-        try db.deleteValue(forKey: key.asData)
+        try db.deleteValue(forKey: key.data(using: .utf8)!)
 
         // Get the value
-        let retrievedData = try db.get(key.asData)
+        let retrievedData = try db.get(key.data(using: .utf8)!)
         #expect(retrievedData == nil, "Value still present after delete.")
     }
 
@@ -173,13 +174,13 @@ struct LMDBTests {
 
         let key = "test"
         // Put a value
-        try db.put("Hello world!".asData, forKey: key.asData)
+        try db.put("Hello world!".data(using: .utf8)!, forKey: key.data(using: .utf8)!)
 
         // Empty the db.
         try db.empty()
 
         // Get the value. We want the result to be nil, because the db was emptied.
-        let retrievedData = try db.get(key.asData)
+        let retrievedData = try db.get(key.data(using: .utf8)!)
         #expect(retrievedData == nil, "Value still present after db being emptied.")
     }
 
@@ -193,20 +194,20 @@ struct LMDBTests {
         // Open db and add a value
         var db: Database! = try createDB(dbName)
         envPath = db.environment.path
-        try db.put(value.asData, forKey: key.asData)
+        try db.put(value.data(using: .utf8)!, forKey: key.data(using: .utf8)!)
         db = nil
 
         // Open the db again as a read only db.
         let readOnlyDB = try createDB(dbName, path: envPath, envFlags: [.readOnly])
         defer { clearDB(readOnlyDB) }
 
-        let fetchedData = try #require(try readOnlyDB.get(key.asData))
-        let fetchedValue = String(data: fetchedData)
+        let fetchedData = try #require(try readOnlyDB.get(key.data(using: .utf8)!))
+        let fetchedValue = String(data: fetchedData, encoding: .utf8)!
         #expect(fetchedValue == value)
 
         // Writing a value to a read-only db should fail.
         #expect(throws: (any Error).self) {
-            try readOnlyDB.put("newValue".asData, forKey: key.asData)
+            try readOnlyDB.put("newValue".data(using: .utf8)!, forKey: key.data(using: .utf8)!)
         }
 
     }
@@ -224,11 +225,11 @@ struct LMDBTests {
         ]
 
         // Insert test data
-        try values.forEach { try db.put($0.1.asData, forKey: $0.0.asData) }
+        try values.forEach { try db.put($0.1.data(using: .utf8)!, forKey: $0.0.data(using: .utf8)!) }
 
         for (k, v) in db {
-            let key = String(data: k)!
-            let value = String(data: v)!
+            let key = String(data: k, encoding: .utf8)!
+            let value = String(data: v, encoding: .utf8)!
             #expect(values[key] == value)
         }
     }
@@ -243,8 +244,8 @@ private func createDB(_ name: String?, path: FilePath? = .none, envFlags: Enviro
         let disambiguator = UInt.random(in: UInt.min ... UInt.max)
         let envDir = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)")
         envPath = .init(envDir.path)
-        try? fm.removeItem(atPath: envPath.description)
-        try fm.createDirectory(atPath: envPath.description, withIntermediateDirectories: true)
+        try? fm.removeItem(atPath: envPath.string)
+        try fm.createDirectory(atPath: envPath.string, withIntermediateDirectories: true)
     }
     let environment = try Environment(path: envPath, flags: envFlags, maxDBs: 32)
     return try environment.openDatabase(named: name, flags: dbFlags)
@@ -253,109 +254,13 @@ private func createDB(_ name: String?, path: FilePath? = .none, envFlags: Enviro
 private func clearDB(_ db: Database) {
     let environment = db.environment
     try? db.drop()
-    try? FileManager.default.removeItem(atPath: environment.path.description)
+    try? FileManager.default.removeItem(atPath: environment.path.string)
 }
 
 /// Inserts a value and reads it back, verifying that the two values match.
-private func putGetValue<T>(value: T, key: String, in db: Database) throws where T: DataConvertible & Equatable {
-    try db.put(value.asData, forKey: key.asData)
-    let value2 = try #require(try db.get(key.asData))
-    let fetchedValue = T(data: value2)
+private func putGetValue<T>(value: T, key: String, in db: Database) throws where T: BinaryCodable & Equatable {
+    try db.put(value.binaryData, forKey: key.data(using: .utf8)!)
+    let value2 = try db.get(key.data(using: .utf8)!)
+    let fetchedValue = try T(binaryData: value2!)
     #expect(value == fetchedValue, "The returned value does not match the one that was set.")
-}
-
-// TODO: Get rid of this
-private protocol DataConvertible {
-    init?(data: Data)
-    var asData: Data { get }
-}
-
-extension String: DataConvertible {
-
-    init?(data: Data) {
-        self.init(data: data, encoding: .utf8)
-    }
-
-    var asData: Data {
-        return self.data(using: .utf8)!
-    }
-}
-
-extension Bool: DataConvertible {
-
-    init?(data: Data) {
-        guard let integer = UInt8(data: data) else { return nil }
-        self = (integer != 0)
-    }
-
-    var asData: Data {
-        let value: UInt8 = self ? 1 : 0
-        return value.asData
-    }
-}
-
-extension FixedWidthInteger where Self: DataConvertible {
-
-    init?(data: Data) {
-        guard data.count == MemoryLayout<Self>.size else { return nil }
-        let littleEndian = data.withUnsafeBytes { $0.loadUnaligned(as: Self.self) }
-        self = .init(littleEndian: littleEndian)
-    }
-
-    var asData: Data {
-        var littleEndian = self.littleEndian
-        return Data(bytes: &littleEndian, count: MemoryLayout<Self>.size)
-    }
-}
-
-extension Int: DataConvertible {}
-extension Int8: DataConvertible {}
-extension Int16: DataConvertible {}
-extension Int32: DataConvertible {}
-extension Int64: DataConvertible {}
-
-extension UInt: DataConvertible {}
-extension UInt8: DataConvertible {}
-extension UInt16: DataConvertible {}
-extension UInt32: DataConvertible {}
-extension UInt64: DataConvertible {}
-
-extension Float: DataConvertible {
-
-    init?(data: Data) {
-        guard data.count == MemoryLayout<UInt32>.size else { return nil }
-        let littleEndian = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        let bitPattern = UInt32(littleEndian: littleEndian)
-        self = .init(bitPattern: bitPattern)
-    }
-
-    var asData: Data {
-        return bitPattern.littleEndian.asData
-    }
-}
-
-extension Double: DataConvertible {
-
-    init?(data: Data) {
-        guard data.count == MemoryLayout<UInt64>.size else { return nil }
-        let littleEndian = data.withUnsafeBytes { $0.loadUnaligned(as: UInt64.self) }
-        let bitPattern = UInt64(littleEndian: littleEndian)
-        self = .init(bitPattern: bitPattern)
-    }
-
-    var asData: Data {
-        return bitPattern.littleEndian.asData
-    }
-}
-
-extension Date: DataConvertible {
-
-    init?(data: Data) {
-        guard let timeInterval = TimeInterval(data: data) else { return nil }
-        self = Date(timeIntervalSinceReferenceDate: timeInterval)
-    }
-
-    var asData: Data {
-        return timeIntervalSinceReferenceDate.asData
-    }
 }

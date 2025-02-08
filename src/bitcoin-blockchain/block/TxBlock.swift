@@ -196,3 +196,35 @@ package extension BitcoinTx {
         return (sipHash << 16) >> 16
     }
 }
+
+extension TxBlock: CustomBinaryCodable {
+
+    public enum Encoding { case file(magicBytes: Int) }
+
+    public init(from decoder: inout BinaryDecoder, encoding: Encoding) throws {
+        switch encoding {
+        case .file(let magicBytes):
+            let magic = Int(try decoder.decode() as UInt32)
+            guard magic == magicBytes else { throw BinaryDecodingError.limitExceeded } // TODO: Replace error for something appropriate
+            let length = Int(try decoder.decode() as UInt32)
+            decoder.setLimit(length)
+            try self.init(fromHeaderOnly: &decoder)
+            decoder.resetLimit()
+        }
+    }
+
+    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding) {
+        switch encoding {
+        case .file(let magicBytes):
+            encoder.encode(UInt32(magicBytes))
+            encoder.encode(UInt32(binarySize))
+            encode(to: &encoder)
+        }
+    }
+
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding) {
+        counter.count(UInt32.self)
+        counter.count(UInt32.self)
+        encodingSize(&counter)
+    }
+}

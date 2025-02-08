@@ -2,8 +2,22 @@ import Foundation
 import AsyncAlgorithms
 import BitcoinCrypto
 import BitcoinBase
+import _NIOFileSystem
 
 public actor BlockchainService: Sendable {
+
+    public struct Config: Sendable {
+
+        public enum DataLocation: Sendable {
+            case memory, defaultDirectory, customDirectory(String)
+        }
+
+        public init(dataLocation: Config.DataLocation = .memory) {
+            self.dataLocation = dataLocation
+        }
+
+        let dataLocation: DataLocation
+    }
 
     public enum Status: Sendable {
         case idle, starting, running, stopping, stopped
@@ -14,15 +28,16 @@ public actor BlockchainService: Sendable {
     }
 
     public let params: ConsensusParams
+    public let config: Config
     public var status = Status.idle
 
-    private var blockStorage = BlockStorage()
-    private var blockIndex = BlockIndex()
+    private var blockStorage: BlockStorage!
+    private var blockIndex: BlockIndex!
     private var chainTip: BlockID! = .none
 
     public private(set) var mempool = [BitcoinTx]()
 
-    private var headers = [TxBlock]()
+    private var headers: HeadersIndex!
 
     private var coins = [TxOutpoint: UnspentOut]()
     private var mempoolExclude = [TxOutpoint]()
@@ -34,16 +49,48 @@ public actor BlockchainService: Sendable {
     /// Subscriptions to new transactions.
     private var txChannels = [AsyncChannel<BitcoinTx>]()
 
-    public init(params: ConsensusParams = .regtest) {
+    public init(params: ConsensusParams = .regtest, config: Config = .init()) {
         self.params = params
+        self.config = config
     }
 
-    public func start(_ loadFromDisk: Bool = false) async {
+    public func start() async {
         status = .starting
-        let genesisBlock = TxBlock.makeGenesisBlock(params: params)
-        let locator = await blockStorage.store(genesisBlock)
-        try! await blockIndex.add(genesisBlock, locator: locator)
-        chainTip = genesisBlock.id
+
+        switch config.dataLocation {
+        case .memory:
+            blockIndex = .init()
+            headers = .init()
+            blockStorage = .init()
+            break
+        case .defaultDirectory:
+            let fm = FileManager.default
+            let home = fm.homeDirectoryForCurrentUser.relativePath
+            guard fm.changeCurrentDirectoryPath(home) else {
+                fatalError() // Throw
+            }
+            let dataDir: FilePath = ".swift-bitcoin/data"
+            do {
+                try fm.createDirectory(atPath: dataDir.string, withIntermediateDirectories: true)
+            } catch {
+                fatalError() // Throw
+            }
+            blockIndex = .init(path: dataDir)
+            headers = .init(path: dataDir)
+            blockStorage = .init()
+        case .customDirectory(_):
+            blockIndex = .init()
+            headers = .init()
+            blockStorage = .init()
+        }
+        if await blockIndex.height == -1 {
+            let genesisBlock = TxBlock.makeGenesisBlock(params: params)
+            let locator = await blockStorage.store(genesisBlock)
+            try! await blockIndex.add(genesisBlock, locator: locator)
+            chainTip = genesisBlock.id
+        } else {
+            chainTip = await blockIndex.lastHeaderID // TODO: Replace with findTip()!!
+        }
         status = .running
     }
 
@@ -81,7 +128,7 @@ public actor BlockchainService: Sendable {
         let blockRef = await blockIndex.get(id)
         return if let locator = blockRef.locator {
             await blockStorage.retrieve(locator).header
-        } else if let header = headers.first(where: { $0.id == blockRef.blockID }) {
+        } else if let header = await headers.get(blockRef.blockID) {
             header
         } else {
             preconditionFailure("Could not find header or block.")
@@ -243,7 +290,7 @@ public actor BlockchainService: Sendable {
 
             // We can use `try!` because we already checked that the parent exists when we called `checkHeader()`.
             try! await blockIndex.add(header)
-            self.headers.append(header)
+            await self.headers.add(header)
         }
     }
 
@@ -290,7 +337,7 @@ public actor BlockchainService: Sendable {
     ///Last known block ID which includes headers.
     public var lastBlockID: BlockID {
         get async {
-            if headers.isEmpty { chainTip } else { headers.last!.id }
+            if await headers.isEmpty { chainTip } else { await headers.last!.id }
         }
     }
 
@@ -394,12 +441,11 @@ public actor BlockchainService: Sendable {
         // Add block
         let locator = await blockStorage.store(block)
         let blockRef: BlockRef
-        if let firstHeader = headers.first, block.id == firstHeader.id {
+        if let firstHeader = await headers.first, block.id == firstHeader.id {
             blockRef = await blockIndex.get(block.id)
             await blockIndex.update(block.id, locator: locator, status: .full)
-            headers.removeFirst()
+            await headers.removeFirst()
         } else {
-            precondition(headers.isEmpty)
             /// We can use `try!` because the header has already been verified to have an existing parent in our chain.
             blockRef = try! await blockIndex.add(block, locator: locator, status: .full)
         }

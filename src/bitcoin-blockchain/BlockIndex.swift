@@ -1,4 +1,5 @@
 import LMDB
+import SystemPackage
 
 /// Block index service.
 actor BlockIndex {
@@ -7,17 +8,25 @@ actor BlockIndex {
         case parentMissing
     }
 
-    init() {
-        //db = try! Database(environment: .init(path: ""), name: "", flags: [.create])
+    init(path: FilePath? = .none) {
+        if let path {
+            db = try! Database(environment: .init(path: path.appending("block-index"), flags: [.noSubDir], maxDBs: 2), name: "by-id", flags: [.create])
+            byHeightDB = try! Database(environment: db.environment, name: "by-height", flags: [.create])
+            height = byHeightDB.count - 1
+        } else {
+            db = .none
+            byHeightDB = .none
+            height = -1
+        }
     }
 
-    //private let db: Database
+    private let db: Database!
+    private let byHeightDB: Database!
+
     private var byID = [BlockID : BlockRef]()
     private var byHeight = [BlockID]()
 
-    var height: Int {
-        byHeight.count - 1
-    }
+    internal private(set) var height: Int
 
     /// Locators in reverse height order
     var locators: [BlockStorage.Locator] {
@@ -31,8 +40,15 @@ actor BlockIndex {
     }
 
     var lastHeaderID: BlockID {
-        precondition(byHeight.count > 0)
-        return byHeight.last!
+        precondition(height > -1)
+        if db == nil {
+            return byHeight.last!
+        } else {
+            return try! byHeightDB.last!
+            // If we didn't have byHeightDB…
+            // let data = try? db.last
+            // return try! BlockRef(binaryData: data!).blockID
+        }
     }
 
     @discardableResult
@@ -53,26 +69,55 @@ actor BlockIndex {
     }
 
     func add(_ blockRef: BlockRef) {
-        byID[blockRef.blockID] = blockRef
-        byHeight.append(blockRef.blockID)
+        if db == nil {
+            byID[blockRef.blockID] = blockRef
+            byHeight.append(blockRef.blockID)
+        } else {
+            try? db.put(blockRef.binaryData, forKey: blockRef.blockID)
+            try? byHeightDB.put(blockRef.height.binaryData, forKey: blockRef.blockID)
+        }
+        height += 1
     }
 
     func update(_ id: BlockID, locator: BlockStorage.Locator, status: BlockRef.ValidationStatus) {
-        byID[id]!.locator = locator
-        byID[id]!.status = status
+        if db == nil {
+            byID[id]!.locator = locator
+            byID[id]!.status = status
+        } else if let data = try! db.get(id) {
+            var blockRef = try! BlockRef(binaryData: data)
+            blockRef.locator = locator
+            blockRef.status = status
+            try? db.put(blockRef.binaryData, forKey: blockRef.blockID)
+            try? byHeightDB.put(blockRef.height.binaryData, forKey: blockRef.blockID)
+        }
     }
 
     func has(_ id: BlockID) -> Bool {
-        byID[id] != .none
+        if db == nil {
+            byID[id] != .none
+        } else {
+            try! db.get(id) != .none
+        }
     }
 
-    func get(_ id: BlockID) -> BlockRef {
-        byID[id]!
+    func get(_ id: BlockID) -> BlockRef { // TODO: Probably throws and return value nil-able
+        if db == nil {
+            return byID[id]!
+        } else {
+            let data = try! db.get(id)
+            return try! BlockRef(binaryData: data!)
+        }
     }
 
     func get(at height: Int) -> BlockRef {
         // guard height < byHeight.endIndex else { return .none }
-        return get(byHeight[height])
+        if db == nil {
+            return get(byHeight[height])
+        } else {
+            let blockID = try! byHeightDB.get(height.binaryData)!
+            let blockRefData = try! db.get(blockID)
+            return try! BlockRef(binaryData: blockRefData!)
+        }
     }
 
     func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
@@ -95,7 +140,9 @@ actor BlockIndex {
         for ref in refs {
             byID[ref.blockID] = .none
         }
-        byHeight.removeLast(byHeight.count - height)
+        let totalRemoved = byHeight.count - height
+        byHeight.removeLast(totalRemoved)
+        self.height -= totalRemoved
         return refs
     }
 

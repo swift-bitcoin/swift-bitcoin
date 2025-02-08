@@ -3,10 +3,8 @@ extension Database: Sequence {
     public typealias Iterator = Cursor
 
     public func makeIterator() -> Database.Iterator {
-        return try! cursor()
+        try! cursor()
     }
 
-    public var underestimatedCount: Int {
-        return count
-    }
+    public var underestimatedCount: Int { count }
 }

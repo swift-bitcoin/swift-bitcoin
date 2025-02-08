@@ -1,9 +1,10 @@
 import Foundation
+import BitcoinCrypto
 
 /// A block of transactions.
 struct BlockRef: Equatable, Sendable {
 
-    enum ValidationStatus {
+    enum ValidationStatus: UInt8 {
         case header, merkle, full
     }
 
@@ -38,4 +39,68 @@ struct BlockRef: Equatable, Sendable {
     // MARK: - Type Properties
 
     // MARK: - Type Methods
+}
+
+extension BlockRef.ValidationStatus: BinaryCodable {
+    init(from decoder: inout BinaryDecoder) throws {
+        guard let maybeSelf = Self(rawValue: try decoder.decode()) else {
+            throw BinaryDecodingError.limitExceeded // TODO: find better error
+        }
+        self = maybeSelf
+    }
+    
+    func encode(to encoder: inout BinaryEncoder) {
+        encoder.encode(rawValue)
+    }
+    
+    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(UInt8.self)
+    }
+    
+}
+
+extension BlockRef: BinaryCodable {
+    init(from decoder: inout BinaryDecoder) throws {
+        blockID = try decoder.decode(TxBlock.idLength)
+        previous = try decoder.decode(TxBlock.idLength)
+        time = try decoder.decode()
+        target = try decoder.decode()
+        height = try decoder.decode()
+        chainwork = try decoder.decode()
+        status = try decoder.decode()
+        let hasLocator: Bool = try decoder.decode()
+        if hasLocator {
+            locator = try decoder.decode()
+        }
+    }
+    
+    func encode(to encoder: inout BinaryEncoder) {
+        encoder.encode(blockID)
+        encoder.encode(previous)
+        encoder.encode(time)
+        encoder.encode(target)
+        encoder.encode(height)
+        encoder.encode(chainwork)
+        encoder.encode(status)
+        if let locator {
+            encoder.encode(true)
+            encoder.encode(locator)
+        } else {
+            encoder.encode(false)
+        }
+    }
+    
+    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(blockID)
+        counter.count(previous)
+        counter.count(time)
+        counter.count(target)
+        counter.count(height)
+        counter.count(chainwork)
+        counter.count(status)
+        counter.count(Bool.self)
+        if let locator {
+            counter.count(locator)
+        }
+    }
 }
