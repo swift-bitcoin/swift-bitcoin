@@ -21,7 +21,6 @@ struct PersistenceTests {
         let alice = BlockchainService(config: .init(dataLocation: .customDirectory(dataDir.string)))
         await alice.start()
 
-        #expect(fm.changeCurrentDirectoryPath(dataDir.string))
         // print(dataDir.string)
         let dataDirContents = try fm.contentsOfDirectory(atPath: dataDir.string)
         #expect(dataDirContents.contains("blocks"))
@@ -73,7 +72,6 @@ struct PersistenceTests {
         let bob = BlockchainService(config: .init(dataLocation: .customDirectory(dataDir.string)))
         await bob.start()
 
-        #expect(fm.changeCurrentDirectoryPath(dataDir.string))
         let dataDirContents = try fm.contentsOfDirectory(atPath: dataDir.string)
         #expect(dataDirContents.contains("blocks"))
         #expect(dataDirContents.contains("block-index"))
