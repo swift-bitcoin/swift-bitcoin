@@ -11,7 +11,7 @@ actor BlockIndex {
     init(path: FilePath? = .none) {
         if let path {
             db = try! Database(environment: .init(path: path.appending("block-index"), flags: [.noSubDir], maxDBs: 2), name: "by-id", flags: [.create])
-            byHeightDB = try! Database(environment: db.environment, name: "by-height", flags: [.create])
+            byHeightDB = try! Database(environment: db.environment, name: "by-height", flags: [.create, .integerKey])
             height = byHeightDB.count - 1
         } else {
             db = .none
@@ -26,6 +26,7 @@ actor BlockIndex {
     private var byID = [BlockID : BlockRef]()
     private var byHeight = [BlockID]()
 
+    /// Active chain height only, includes headers of unverified blocks.
     internal private(set) var height: Int
 
     /// Locators in reverse height order
@@ -74,7 +75,7 @@ actor BlockIndex {
             byHeight.append(blockRef.blockID)
         } else {
             try? db.put(blockRef.binaryData, forKey: blockRef.blockID)
-            try? byHeightDB.put(blockRef.height.binaryData, forKey: blockRef.blockID)
+            try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
         }
         height += 1
     }
@@ -88,7 +89,19 @@ actor BlockIndex {
             blockRef.locator = locator
             blockRef.status = status
             try? db.put(blockRef.binaryData, forKey: blockRef.blockID)
-            try? byHeightDB.put(blockRef.height.binaryData, forKey: blockRef.blockID)
+            try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
+        }
+    }
+
+    func update(_ id: BlockID, status: BlockRef.ValidationStatus) {
+        // TODO: deal with duplication of the different `update()` funcs.
+        if db == nil {
+            byID[id]!.status = status
+        } else if let data = try! db.get(id) {
+            var blockRef = try! BlockRef(binaryData: data)
+            blockRef.status = status
+            try? db.put(blockRef.binaryData, forKey: blockRef.blockID)
+            try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
         }
     }
 
@@ -114,14 +127,14 @@ actor BlockIndex {
         if db == nil {
             return get(byHeight[height])
         } else {
-            let blockID = try! byHeightDB.get(height.binaryData)!
+            let blockID = try! byHeightDB.get(height)!
             let blockRefData = try! db.get(blockID)
             return try! BlockRef(binaryData: blockRefData!)
         }
     }
 
     func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
-        .init(byHeight[startHeight ... endHeight].map { get($0) })
+        (startHeight...endHeight).map { get(at: $0) }
     }
 
     func getParent(for childID: BlockID) -> BlockRef? {
@@ -132,16 +145,28 @@ actor BlockIndex {
         return get(child.previous)
     }
 
+    /// Either removes (if header-only) or marks block as stale
     func removeAll(from height: Int) -> [BlockRef] {
         var refs = [BlockRef]()
-        for h in height ..< byHeight.count {
-            refs.append(get(byHeight[h]))
+        for h in height ... self.height {
+            refs.append(get(at: h))
         }
         for ref in refs {
-            byID[ref.blockID] = .none
+            if ref.status < .full {
+                byID[ref.blockID] = .none
+
+            } else {
+                update(ref.blockID, status: .stale)
+            }
         }
         let totalRemoved = byHeight.count - height
-        byHeight.removeLast(totalRemoved)
+        if db == nil {
+            byHeight.removeLast(totalRemoved)
+        } else {
+            for h in height ... self.height {
+                try! byHeightDB.deleteValue(h)
+            }
+        }
         self.height -= totalRemoved
         return refs
     }
@@ -149,7 +174,7 @@ actor BlockIndex {
     func calculateMissingBlocks(_ ids: [BlockID]) -> [BlockID] {
         var missing = [BlockID]()
         for id in ids {
-            if byID[id] == .none {
+            if has(id) {
                 missing.append(id)
             }
         }

@@ -7,14 +7,19 @@ actor HeadersIndex {
 
     init(path: FilePath? = .none) {
         if let path {
-            db = try! Database(environment: .init(path: path.appending("headers"), flags: [.noSubDir], maxDBs: 1), name: .none, flags: [.create])
+            db = try! Database(environment: .init(path: path.appending("headers"), flags: [.noSubDir], maxDBs: 2), name: "by-id", flags: [.create])
+            byPositionDB = try! Database(environment: db.environment, name: "by-position", flags: [.create, .integerKey])
         } else {
             db = .none
+            byPositionDB = .none
         }
     }
 
     private let db: Database!
+    private let byPositionDB: Database!
     private var headers = OrderedDictionary<BlockID, TxBlock>()
+
+    private var position = 0
 
     var isEmpty: Bool {
         if db == nil {
@@ -31,10 +36,10 @@ actor HeadersIndex {
         if db == nil {
             return headers[headers.keys.first!]
         } else {
-            guard let data = try! db.first, let header = try? TxBlock(binaryData: data) else {
+            guard let id = try! byPositionDB.first else {
                 fatalError()
             }
-            return header
+            return get(id)
         }
     }
 
@@ -45,10 +50,10 @@ actor HeadersIndex {
         if db == nil {
             return headers[headers.keys.last!]
         } else {
-            guard let data = try! db.last, let header = try? TxBlock(binaryData: data) else {
+            guard let id = try! byPositionDB.last else {
                 fatalError()
             }
-            return header
+            return get(id)
         }
     }
 
@@ -57,6 +62,8 @@ actor HeadersIndex {
             headers[header.id] = header
         } else {
             try? db.put(header.binaryData, forKey: header.id)
+            try? byPositionDB.put(header.id, key: position)
+            position += 1
         }
     }
 
@@ -88,7 +95,9 @@ actor HeadersIndex {
             }
         } else {
             if db.count > 0 {
-                try! db.removeFirst()
+                let firstID = try! byPositionDB.first
+                try! byPositionDB.removeFirst()
+                try! db.deleteValue(forKey: firstID!)
             }
         }
     }

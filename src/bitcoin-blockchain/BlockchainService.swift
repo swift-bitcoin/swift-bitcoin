@@ -1,8 +1,11 @@
 import Foundation
 import AsyncAlgorithms
+import Logging
+import _NIOFileSystem
 import BitcoinCrypto
 import BitcoinBase
-import _NIOFileSystem
+
+private let logger = Logger(label: "swift-bitcoin.blockchain")
 
 public actor BlockchainService: Sendable {
 
@@ -24,12 +27,14 @@ public actor BlockchainService: Sendable {
     }
 
     public enum Error: Swift.Error {
-        case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew
+        case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew, dataDirIssue
     }
 
     public let params: ConsensusParams
     public let config: Config
     public var status = Status.idle
+
+    private let dataDir: FilePath?
 
     private var blockStorage: BlockStorage!
     private var blockIndex: BlockIndex!
@@ -39,7 +44,7 @@ public actor BlockchainService: Sendable {
 
     private var headers: HeadersIndex!
 
-    private var coins = [TxOutpoint: UnspentOut]()
+    private var coins: CoinsIndex!
     private var mempoolExclude = [TxOutpoint]()
     private var mempoolCoins = [TxOutpoint: UnspentOut]()
 
@@ -52,63 +57,69 @@ public actor BlockchainService: Sendable {
     public init(params: ConsensusParams = .regtest, config: Config = .init()) {
         self.params = params
         self.config = config
+        let fm = FileManager.default
+        switch config.dataLocation {
+        case .defaultDirectory:
+            dataDir = .init(fm.homeDirectoryForCurrentUser.path).appending(".swift-bitcoin/data") // TODO: Centralize this logic. Make async with NIOFileSystem and move to start()?
+        case .customDirectory(let customDataDir):
+            let customDataDirPath = FilePath(customDataDir)
+            dataDir = customDataDirPath
+        default:
+            dataDir = .none
+        }
+        blockStorage = .init(config: .init(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized))
     }
 
-    public func start() async {
+    public func start() async { // TODO: Throw!
         status = .starting
+        defer { status = .running }
 
-        switch config.dataLocation {
-        case .memory:
-            blockIndex = .init()
-            headers = .init()
-            blockStorage = .init()
-            break
-        case .defaultDirectory:
-            let fm = FileManager.default
-            let home = fm.homeDirectoryForCurrentUser.relativePath
-            guard fm.changeCurrentDirectoryPath(home) else {
-                fatalError() // Throw
-            }
-            let dataDir: FilePath = ".swift-bitcoin/data"
+        let fm = FileManager.default
+        if let dataDir {
             do {
                 try fm.createDirectory(atPath: dataDir.string, withIntermediateDirectories: true)
             } catch {
-                fatalError() // Throw
+                logger.error("There was an issue accessing/creating the specified data directory.")
+                fatalError("Could not create data directory.") // Throw .dataDirIssue
             }
-            blockIndex = .init(path: dataDir)
-            headers = .init(path: dataDir)
-            blockStorage = .init()
-        case .customDirectory(_):
-            blockIndex = .init()
-            headers = .init()
-            blockStorage = .init()
         }
+
+        blockIndex = .init(path: dataDir)
+        headers = .init(path: dataDir)
+        coins = .init(path: dataDir)
+
+        do {
+            try await blockStorage.start()
+        } catch {
+            logger.error("Could not start block storage.")
+            fatalError("Could not start block storage.")
+        }
+
         if await blockIndex.height == -1 {
             let genesisBlock = TxBlock.makeGenesisBlock(params: params)
-            let locator = await blockStorage.store(genesisBlock)
+            let locator = try! await blockStorage.store(genesisBlock) // TODO: Throw
             try! await blockIndex.add(genesisBlock, locator: locator)
             chainTip = genesisBlock.id
         } else {
             chainTip = await blockIndex.lastHeaderID // TODO: Replace with findTip()!!
         }
-        status = .running
     }
 
     public func stop() async {
         status = .stopping
+        defer { status = .stopped }
         for blockChannel in blockChannels {
             unsubscribe(blockChannel)
         }
         for txChannel in txChannels {
             unsubscribe(txChannel)
         }
-        status = .stopped
     }
 
     public var genesisBlock: TxBlock {
         get async {
             let locator = await blockIndex.get(at: 0).locator!
-            return await blockStorage.retrieve(locator)
+            return try! await blockStorage.retrieve(locator)!
         }
     }
 
@@ -127,7 +138,7 @@ public actor BlockchainService: Sendable {
         }
         let blockRef = await blockIndex.get(id)
         return if let locator = blockRef.locator {
-            await blockStorage.retrieve(locator).header
+            try? await blockStorage.retrieve(locator)?.header
         } else if let header = await headers.get(blockRef.blockID) {
             header
         } else {
@@ -144,7 +155,7 @@ public actor BlockchainService: Sendable {
         guard let locator = blockRef.locator else {
             return .none
         }
-        return await blockStorage.retrieve(locator)
+        return try? await blockStorage.retrieve(locator)
     }
 
     /// Gets a fully validated block by ID complete with transactions.
@@ -156,7 +167,7 @@ public actor BlockchainService: Sendable {
         guard let locator = blockRef.locator, await validatedHeight >= blockRef.height else {
             return .none
         }
-        return await blockStorage.retrieve(locator)
+        return try? await blockStorage.retrieve(locator)
     }
 
     /// Adds a transaction to the mempool.
@@ -243,7 +254,8 @@ public actor BlockchainService: Sendable {
         for height in heightFrom ... heightTo {
             let blockRef = await blockIndex.get(at: height)
             let block = if let locator = blockRef.locator {
-                await blockStorage.retrieve(locator)
+                try! await blockStorage.retrieve(locator)!
+                // TODO: handle error properly
             } else if let header = headers.first(where: { $0.id == blockRef.blockID }) {
                 header
             } else {
@@ -320,7 +332,9 @@ public actor BlockchainService: Sendable {
             guard let locator = blockRef.locator, blockRef.status == .full else {
                 continue
             }
-            let block = await blockStorage.retrieve(locator)
+            guard let block = try? await blockStorage.retrieve(locator) else {
+                continue
+            }
             ret.append(block)
         }
         return ret
@@ -365,7 +379,7 @@ public actor BlockchainService: Sendable {
                 let outpoint = txIn.element.outpoint
 
                 // are the actual inputs available?
-                guard let coin = coins[outpoint] ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
+                guard let coin = await coins.get(outpoint) ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
                     throw .inputMissingOrSpent
                 }
                 guard !coin.isCoinbase || nextHeight - coin.height >= params.coinbaseMaturity else {
@@ -425,7 +439,7 @@ public actor BlockchainService: Sendable {
         if !tx.isCoinbase {
             var prevouts = [TxOut]()
             for txin in tx.ins {
-                guard let coin = coins[txin.outpoint] ?? auxCoins[txin.outpoint] else {
+                guard let coin = await coins.get(txin.outpoint) ?? auxCoins[txin.outpoint] else {
                     preconditionFailure() // Already checked in checkTxIns
                 }
                 prevouts.append(coin.txOut)
@@ -439,7 +453,7 @@ public actor BlockchainService: Sendable {
 
     private func connectBlock(_ block: TxBlock) async {
         // Add block
-        let locator = await blockStorage.store(block)
+        let locator = try! await blockStorage.store(block) // TODO: throw
         let blockRef: BlockRef
         if let firstHeader = await headers.first, block.id == firstHeader.id {
             blockRef = await blockIndex.get(block.id)
@@ -455,11 +469,11 @@ public actor BlockchainService: Sendable {
         for tx in block.txs {
             // Remove coins
             for txin in tx.ins {
-                coins[txin.outpoint] = nil
+                try! await coins.remove(txin.outpoint)
             }
             // Add coins
             for out in tx.outs.enumerated() {
-                coins[.init(tx: tx.id, txOut: out.offset)] = .init(out.element, height: blockRef.height, isCoinbase: tx.isCoinbase)
+                await coins.add(.init(out.element, height: blockRef.height, isCoinbase: tx.isCoinbase), for: .init(tx: tx.id, txOut: out.offset))
             }
         }
 
@@ -486,11 +500,11 @@ public actor BlockchainService: Sendable {
             let fistNonBlockHeader = await blockIndex.get(at: nextTipHeight)
             if block.id != fistNonBlockHeader.blockID {
                 // New block does not match pre-existing header for block:
-                // Replace block entirely and remove all headers
+                // Replace block entirely and mark all subsequent blocks as stale
                 let removed = await blockIndex.removeAll(from: nextTipHeight)
                 for r in removed {
                     if let locator = r.locator {
-                        await blockStorage.remove(locator)
+                        await blockStorage.remove(locator) // Will only remove from cache, not storage
                     }
                 }
             }
@@ -600,7 +614,9 @@ public actor BlockchainService: Sendable {
             }
         }
         for locator in await blockIndex.locators {
-            let block = await blockStorage.retrieve(locator)
+            guard let block = try? await blockStorage.retrieve(locator) else {
+                continue
+            }
             for tx in block.txs {
                 if ids.contains(tx.id) {
                     newIDs.removeAll { $0 == tx.id }
@@ -628,7 +644,9 @@ public actor BlockchainService: Sendable {
             }
         }
         for locator in await blockIndex.locators {
-            let block = await blockStorage.retrieve(locator)
+            guard let block = try? await blockStorage.retrieve(locator) else {
+                continue
+            }
             for tx in block.txs {
                 if ids.contains(tx.id) {
                     ret.append(tx)

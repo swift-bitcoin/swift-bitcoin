@@ -4,8 +4,13 @@ import BitcoinCrypto
 /// A block of transactions.
 struct BlockRef: Equatable, Sendable {
 
-    enum ValidationStatus: UInt8 {
-        case header, merkle, full
+    enum ValidationStatus: UInt8, Comparable {
+
+        case header, merkle, full, stale
+
+        static func < (lhs: BlockRef.ValidationStatus, rhs: BlockRef.ValidationStatus) -> Bool {
+            lhs.rawValue < rhs.rawValue
+        }
     }
 
     // MARK: - Initializers

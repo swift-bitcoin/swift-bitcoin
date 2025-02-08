@@ -88,7 +88,7 @@ public struct ConsensusParams: Sendable {
 
     /// The maximum allowed size for a serialized block, in bytes (only for buffer size limits)
     /// Unused as of Jan 8 2025
-    private static let maxBlockSerializedSized = 4_000_000
+    public static let maxBlockSerializedSized = 4_000_000
 
     /// The maximum allowed weight for a block, see BIP141 (network rule)
     public static let maxBlockWeight = 4_000_000

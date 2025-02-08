@@ -33,6 +33,7 @@ public class Database {
 
     internal private(set) var handle: MDB_dbi = 0
     public let environment: Environment
+    public let flags: Flags
 
     /// The number of entries contained in the database.
     public var count: Int { stats.entries }
@@ -57,6 +58,7 @@ public class Database {
     public init(environment: Environment, name: String?, flags: Flags = []) throws {
 
         self.environment = environment
+        self.flags = flags
 
         try Transaction(environment: environment) { transaction -> Transaction.Action in
 
@@ -119,6 +121,39 @@ public class Database {
         }
     }
 
+    public func get(_ key: Int) throws -> Data? {
+            guard self.flags.contains(Flags.integerKey) else {
+            throw LMDBError.invalidParameter
+        }
+        var mutableKey = key
+        var keyData = withUnsafeMutablePointer(to: &mutableKey) {
+            MDB_val(mv_size: MemoryLayout<Int>.size, mv_data: $0)
+        }
+
+        // The database will manage the memory for the returned value.
+        // http://104.237.133.194/doc/group__mdb.html#ga8bf10cd91d3f3a83a34d04ce6b07992d
+        var dataVal = MDB_val()
+        var data: Data?
+
+        try Transaction(environment: environment, flags: .readOnly) { transaction -> Transaction.Action in
+
+            var getStatus: Int32 = 0
+            getStatus = mdb_get(transaction.handle, handle, &keyData, &dataVal)
+
+                guard getStatus != MDB_NOTFOUND else {
+                    return .commit
+                }
+
+                guard getStatus == 0 else {
+                    throw LMDBError(returnCode: getStatus)
+                }
+
+                data = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
+                return .commit
+        }
+        return data
+    }
+
     /// Check if a value exists for the given key.
     /// - parameter key: The key to check for.
     /// - returns: `true` if the database contains a value for the key. `false` otherwise.
@@ -157,26 +192,64 @@ public class Database {
         }
     }
 
+    /// Puts using integer keys.
+    public func put(_ value: Data, key: Int, flags: PutFlags = []) throws {
+        guard self.flags.contains(Flags.integerKey) else {
+            throw LMDBError.invalidParameter
+        }
+        var mutableKey = key
+        var keyData = withUnsafeMutablePointer(to: &mutableKey) {
+            MDB_val(mv_size: MemoryLayout<Int>.size, mv_data: $0)
+        }
+
+        var valueData = value
+
+        try valueData.withUnsafeMutableBytes { valueBufferPointer in
+
+            let valuePointer = valueBufferPointer.baseAddress
+            var valueVal = MDB_val(mv_size: valueBufferPointer.count, mv_data: valuePointer)
+
+            var putStatus: Int32 = 0
+            try Transaction(environment: self.environment) { transaction -> Transaction.Action in
+                putStatus = mdb_put(transaction.handle, self.handle, &keyData, &valueVal, UInt32(flags.rawValue))
+                return .commit
+            }
+            guard putStatus == 0 else {
+                throw LMDBError(returnCode: putStatus)
+            }
+        }
+    }
+
     /// Deletes a value from the database.
     /// - parameter key: The key identifying the database entry to be deleted. The key must conform to `DataConvertible`. Passing an empty key will cause an error to be thrown.
     /// - throws: an error if operation fails. See `LMDBError`.
     public func deleteValue(forKey key: Data) throws {
-
         var keyData = key
-
         try keyData.withUnsafeMutableBytes { keyBufferPointer in
 
             let keyPointer = keyBufferPointer.baseAddress
             var keyVal = MDB_val(mv_size: keyBufferPointer.count, mv_data: keyPointer)
 
             try Transaction(environment: environment) { transaction -> Transaction.Action in
-
                 mdb_del(transaction.handle, handle, &keyVal, nil)
                 return .commit
-
             }
         }
+    }
 
+    public func deleteValue(_ key: Int) throws {
+        guard self.flags.contains(Flags.integerKey) else {
+            throw LMDBError.invalidParameter
+        }
+        var mutableKey = key
+        var keyData = withUnsafeMutablePointer(to: &mutableKey) {
+            MDB_val(mv_size: MemoryLayout<Int>.size, mv_data: $0)
+        }
+
+        try Transaction(environment: environment) { transaction -> Transaction.Action in
+            mdb_del(transaction.handle, handle, &keyData, nil)
+            return .commit
+        }
     }
 
     /// Empties the database, removing all key/value pairs.

@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 import BitcoinBase
 
 /// A reference to an unspent transaction output (aka _UTXO_).
@@ -19,4 +20,25 @@ struct UnspentOut: Equatable, Sendable {
         height == Self.mempoolHeight
     }
     static let mempoolHeight = 0x7fffffff
+}
+
+extension UnspentOut: BinaryCodable {
+
+    init(from decoder: inout BinaryDecoder) throws {
+        txOut = try decoder.decode()
+        height = try decoder.decode()
+        isCoinbase = try decoder.decode()
+    }
+    
+    func encode(to encoder: inout BinaryEncoder) {
+        encoder.encode(txOut)
+        encoder.encode(height)
+        encoder.encode(isCoinbase)
+    }
+    
+    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        counter.count(txOut)
+        counter.count(Int.self)
+        counter.count(Bool.self)
+    }
 }

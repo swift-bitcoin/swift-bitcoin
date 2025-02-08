@@ -53,6 +53,7 @@ let package = Package(
                 .product(name: "Collections", package: "swift-collections"),
                 .product(name: "Algorithms", package: "swift-algorithms"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(name: "Logging", package: "swift-log"),
                 .product(name: "_NIOFileSystem", package: "swift-nio"),
             ],
             path: "src/bitcoin-blockchain"),

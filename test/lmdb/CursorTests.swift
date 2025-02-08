@@ -5,17 +5,50 @@ import LMDB
 
 struct CursorTests {
 
-    @Test func getFirst() throws {
+    /// Order is determined by integer key.
+    @Test func getFirstWithIntegerKey() throws {
+        let db = try createDB(#function, dbFlags: [.create, .integerKey])
+        defer { clearDB(db) }
 
+        let key0 = 0
+        let val0 = "val2".data(using: .utf8)!
+        let key1 = 10
+        let val1 = "val1".data(using: .utf8)!
+        let key2 = 100
+        let val2 = "val0".data(using: .utf8)!
+
+        #expect(db.count == 0)
+        let firsNil = try db.first
+        let lastNil = try db.last
+        #expect(firsNil == .none)
+        #expect(lastNil == .none)
+
+
+        try db.put(val0, key: key0)
+        try db.put(val1, key: key1)
+        try db.put(val2, key: key2)
+        #expect(db.count == 3)
+
+        let val2Again = try db.get(key2)
+        #expect(val2 == val2Again)
+
+        let firstElem = try db.first
+        #expect(firstElem == val0)
+        let lastElem = try db.last
+        #expect(lastElem == val2)
+    }
+
+    /// Order is lexicographical by key.
+    @Test func getFirstLexicoraphic() throws {
         let db = try createDB(#function)
         defer { clearDB(db) }
 
-        let key0 = "key0".data(using: .utf8)!
-        let val0 = "val0".data(using: .utf8)!
+        let key0 = "key2".data(using: .utf8)!
+        let val0 = "val2".data(using: .utf8)!
         let key1 = "key1".data(using: .utf8)!
         let val1 = "val1".data(using: .utf8)!
-        let key2 = "key2".data(using: .utf8)!
-        let val2 = "val2".data(using: .utf8)!
+        let key2 = "key0".data(using: .utf8)!
+        let val2 = "val0".data(using: .utf8)!
 
         #expect(db.count == 0)
         let firsNil = try db.first
@@ -30,9 +63,9 @@ struct CursorTests {
         #expect(db.count == 3)
 
         let firstElem = try db.first
-        #expect(firstElem == val0)
+        #expect(firstElem == val2)
         let lastElem = try db.last
-        #expect(lastElem == val2)
+        #expect(lastElem == val0)
     }
 
     @Test func removeFirst() throws {
