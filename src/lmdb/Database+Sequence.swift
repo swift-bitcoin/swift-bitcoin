@@ -1,4 +1,5 @@
 extension Database: Sequence {
+    // Currently this compliance is only used by `LMDBTests.cursor()`.
 
     public typealias Iterator = Cursor
 

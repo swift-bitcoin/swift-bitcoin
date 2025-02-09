@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 
 /// A hash function which takes a transaction along with some context and produces a hash value for use with signature operations. The function only accepts a signature hash type which allows for commitments to different parts of the tx.
-public class SigHash {
+public struct SigHash: Sendable {
 
     public init(tx: BitcoinTx, txIn: Int, sigVersion: SigVersion = .base, prevout: TxOut, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none, sighashType: SighashType = .all) {
         precondition(txIn < tx.ins.count)
@@ -40,7 +40,7 @@ public class SigHash {
         if prevouts.count == 1 { prevouts[0] } else { prevouts[inIndex] }
     }
 
-    public func set(txIn: Int, sigVersion: SigVersion? = .none, prevout: TxOut) {
+    public mutating func set(txIn: Int, sigVersion: SigVersion? = .none, prevout: TxOut) {
         if inIndex != self.inIndex {
             scriptCode = .none
             tapscriptExtension = .none
@@ -54,13 +54,13 @@ public class SigHash {
         precondition(tx.ins.count == 1 || self.sigVersion == .base || self.sigVersion == .witnessV0)
     }
 
-    public func set(txIn: Int, sigVersion: SigVersion? = .none, prevouts: [TxOut]? = .none, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none, sighashType: SighashType?) {
+    public mutating func set(txIn: Int, sigVersion: SigVersion? = .none, prevouts: [TxOut]? = .none, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none, sighashType: SighashType?) {
         set(txIn: txIn, sigVersion: sigVersion, prevouts: prevouts, scriptCode: scriptCode, tapscriptExtension: tapscriptExtension)
         self.sighashType = sighashType
         precondition(sigVersion == .witnessV1 || sighashType != Optional.none)
     }
 
-    public func set(txIn: Int, sigVersion: SigVersion? = .none, prevouts newPrevouts: [TxOut]? = .none, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none) {
+    public mutating func set(txIn: Int, sigVersion: SigVersion? = .none, prevouts newPrevouts: [TxOut]? = .none, scriptCode: Data? = .none, tapscriptExtension: TapscriptExtension? = .none) {
         self.scriptCode = scriptCode
         self.tapscriptExtension = tapscriptExtension
         self.inIndex = txIn

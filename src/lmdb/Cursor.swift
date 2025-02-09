@@ -1,7 +1,7 @@
 import Foundation
 import CLMDB
 
-public class Cursor {
+public final class Cursor {
 
     internal private(set) var handle: OpaquePointer?
 
@@ -55,7 +55,8 @@ public class Cursor {
     }
 }
 
-extension Cursor: IteratorProtocol { // TODO: Remove conformance and make cursor ~Copyable
+extension Cursor: IteratorProtocol {
+    // TODO: Remove conformance (will also make Database not Sequence conformant) and make cursor a ~Copyable struct.
 
     public typealias Element = (key: Data, value: Data)
 

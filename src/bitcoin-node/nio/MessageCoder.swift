@@ -2,7 +2,7 @@ import BitcoinTransport
 import NIOCore
 
 /// Bitcoin Message encoder/decoder.
-final class MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
+struct MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
 
     typealias InboundIn = ByteBuffer
     typealias InboundOut = BitcoinMessage

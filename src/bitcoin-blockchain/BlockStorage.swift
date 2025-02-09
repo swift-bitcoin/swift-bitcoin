@@ -30,9 +30,7 @@ actor BlockStorage {
         // In bytes.
         let maxFileSize: Int
 
-        var blocksPath: FilePath? {
-            path?.appending("blocks")
-        }
+        let blocksSubdirectoryName = "blocks"
     }
 
     enum Status {
@@ -50,10 +48,8 @@ actor BlockStorage {
     let config: Config
     internal private(set) var status = Status.idle
 
-    // TODO: do we need to maintain all of these?
-    private var maxNumber = -1
-    private var lastFile: FilePath?
-    private var lastFileSize: Int64?
+    private var blocksDir = FilePath?.none
+    private var fileNumber = -1
 
     private var cache = OrderedDictionary<Locator, TxBlock>()
 
@@ -63,19 +59,12 @@ actor BlockStorage {
         status = .starting
         defer { status = .running }
         guard let path = config.path else { return }
-        logger.info("Using path \"\(path.string)\".")
-
-        // Change to provided path, i.e. the node's data directory path.
-        let fm = FileManager.default
-        guard fm.changeCurrentDirectoryPath(path.string) else {
-            logger.error("Could not change directories to the configured path.")
-            throw .dataLocationIssue
-        }
+        logger.info("Using data dir path \"\(path.string)\".")
 
         // Attempt to find or create the blocks subdirectory.
         let fs = FileSystem.shared
-        let currentDir = try! await fs.currentWorkingDirectory
-        let blocksDir = path.appending("blocks") // TODO: use config.blocksPath instead
+        // let currentDir = try! await fs.currentWorkingDirectory
+        let blocksDir = path.appending(config.blocksSubdirectoryName) // TODO: use config.blocksPath instead or centralize "blocks"
         logger.info("Will attempt to create \"\(blocksDir.string)\".")
         let blocksDirInfo = try? await fs.info(forFileAt: blocksDir)
         if blocksDirInfo == .none {
@@ -87,10 +76,13 @@ actor BlockStorage {
             }
         }
 
+        // Save the path to the blocks dir.
+        self.blocksDir = blocksDir
+
         // Find the last file.
-        let initialMaxNumber = maxNumber // Will be -1
-        let (maxNumber, totalFiles) = try! await fs.withDirectoryHandle(atPath: currentDir) { dir in
-            var maxNumber = initialMaxNumber
+        let initialFileNumber = fileNumber // Will be -1
+        let (maxNumber, totalFiles) = try! await fs.withDirectoryHandle(atPath: blocksDir) { dir in
+            var maxNumber = initialFileNumber // Will be -1
             var totalFiles = 0
             for try await file in dir.listContents() {
                 logger.debug("\(file.path)")
@@ -114,38 +106,46 @@ actor BlockStorage {
         logger.debug("Max number: \(maxNumber)")
         logger.debug("Total files: \(totalFiles)")
         guard maxNumber == totalFiles - 1 else {
-            logger.error("Missing block data files.")
+            logger.error("Missing some block data files.")
             throw .missingBlockFiles
         }
-        self.maxNumber = maxNumber
+        fileNumber = maxNumber
 
-        if maxNumber >= 0 {
-            lastFile = currentDir.appending(makeFileName(maxNumber))
-            guard let lastFileInfo = try? await fs.info(forFileAt: lastFile!) else {
-                logger.error("Could not find the last file.")
-                throw .dataLocationIssue
-            }
-            lastFileSize = lastFileInfo.size
-            logger.debug("Last file \(lastFile!) size: \(lastFileSize!)")
-        } else {
-            lastFile = .none
-            lastFileSize = .none
+        // Sanity check that we can read from the last file.
+        if let lastFileInfo = try await lastFileInfo {
+            logger.debug("Last file \(filePath(for: maxNumber)) size: \(lastFileInfo.size)")
         }
+        // TODO: Prepopulate cache with the last `Self.cacheSize` blocks.
+    }
+
+    var lastFileInfo: FileInfo? { get async throws(Error) {
+        try await fileInfo(for: fileNumber)
+    } }
+
+    func fileInfo(for number: Int) async throws(Error) -> FileInfo? {
+        guard number >= 0 else { return .none }
+        let fs = FileSystem.shared
+        let filePath = filePath(for: number)
+        guard let fileInfo = try? await fs.info(forFileAt: filePath) else {
+            logger.error("Could not find the file at \(filePath.string).")
+            throw .dataLocationIssue
+        }
+        return fileInfo
     }
 
     func stop() {
         status = .stopping
-        // TODO: Remove lock file?
+        // TODO: Remove our pid lock file once locking is implemented
         status = .stopped
     }
 
     func store(_ block: TxBlock) async throws(Error) -> Locator {
         let locator: Locator
-        if let path = config.blocksPath {
-            locator = try await storeToDisk(block, path: path)
-        } else {
+        if config.path == .none {
             locator = .init(file: -1, offset: blocks.endIndex)
             blocks.append(block)
+        } else {
+            locator = try await storeToDisk(block)
         }
         if cache.count == Self.cacheSize - 1 {
             cache.removeFirst()
@@ -154,117 +154,69 @@ actor BlockStorage {
         return locator
     }
 
-    private func storeToDisk(_ block: TxBlock, path: FilePath) async throws(Error) -> Locator {
-
-        // Change to provided path, i.e. the node's data directory path.
-        let fm = FileManager.default
-        guard fm.changeCurrentDirectoryPath(path.string) else {
-            logger.error("Could not change directories to the configured path.")
-            throw .dataLocationIssue
-        }
-
+    private func storeToDisk(_ block: TxBlock) async throws(Error) -> Locator {
         let fs = FileSystem.shared
-        let currentDir = try! await fs.currentWorkingDirectory
-
         let maxSize = Int64(config.maxFileSize) // Accounts for magic bytes header and block length prefix
-
         let encoding = TxBlock.Encoding.file(magicBytes: config.magic)
 
-        var file: FilePath
         var offset: Int64
-        if let lastFile, let lastFileSize, lastFileSize + Int64(block.binarySize(encoding: encoding)) <= maxSize {
-            file = lastFile
-            offset = lastFileSize
-            do {
-            _ = try await fs.withFileHandle(forWritingAt: file, options: .modifyFile(createIfNecessary: false)) { handle in
-                try await handle.write(contentsOf: block.binaryData(encoding: encoding), toAbsoluteOffset: offset)
-            }
-            } catch {
-                logger.error("Could not open block data file for modifying.")
-                throw .blockFileWriteIssue
-            }
+        if let info = try await lastFileInfo, info.size + Int64(block.binarySize(encoding: encoding)) <= maxSize {
+            offset = info.size
         } else {
-            let newMaxNumber = maxNumber + 1
-            file = currentDir.appending(makeFileName(newMaxNumber))
             offset = 0
-            do {
-                _ = try await fs.withFileHandle(forWritingAt: file, options: .newFile(replaceExisting: false)) { handle in
-                    try await handle.write(contentsOf: block.binaryData(encoding: encoding), toAbsoluteOffset: offset)
-                }
-            } catch {
-                logger.error("Could not create block data file.")
-                throw .blockFileCreateIssue
-            }
-            maxNumber = newMaxNumber
+            fileNumber += 1
         }
 
-        let fileInfo: FileInfo?
+        let path = filePath(for: fileNumber)
         do {
-            fileInfo = try await fs.info(forFileAt: file)
+            _ = try await fs.withFileHandle(
+                forWritingAt: path,
+                options: offset == 0 ? .newFile(replaceExisting: false) : .modifyFile(createIfNecessary: false)
+            ) { handle in
+                try await handle.write(contentsOf: block.binaryData(encoding: encoding), toAbsoluteOffset: offset)
+            }
         } catch {
-            logger.error("Could not read block data file.")
-            throw .blockFileCreateIssue
+            logger.error("Could not open block data file for writing.")
+            throw offset == 0 ? .blockFileCreateIssue : .blockFileWriteIssue
         }
-        guard let fileInfo else {
-            logger.error("Could not read block data file.")
-            throw .blockFileCreateIssue
+
+        // Sanity check
+        if let info = try await lastFileInfo {
+            logger.debug("Written file \(filePath(for: fileNumber).string) as offset \(offset), file size: \(info.size)")
         }
-        logger.debug("Written file \(file) as offset \(offset), file size: \(fileInfo.size)")
-        return .init(file: maxNumber, offset: Int(offset))
+        return .init(file: fileNumber, offset: Int(offset))
     }
 
     func retrieve(_ locator: Locator) async throws(Error) -> TxBlock? {
         if let block = cache[locator] {
             return block
         }
-        return if let path = config.blocksPath {
-            try await retrieveFromDisk(locator, path: path)
-        } else {
+        return if config.path == .none {
             blocks[locator.offset]
+        } else {
+            try await retrieveFromDisk(locator)
         }
     }
 
-    private func retrieveFromDisk(_ locator: Locator, path: FilePath) async throws(Error) -> TxBlock? {
-
-        // Change to provided path, i.e. the node's data directory path.
-        let fm = FileManager.default
-        guard fm.changeCurrentDirectoryPath(path.string) else {
-            logger.error("Could not change directories to the configured path.")
-            throw .dataLocationIssue
-        }
-
+    private func retrieveFromDisk(_ locator: Locator) async throws(Error) -> TxBlock? {
         let fs = FileSystem.shared
-        let currentDir = try! await fs.currentWorkingDirectory
-
         let maxBlockSize = Int64(config.maxBlock + MemoryLayout<UInt32>.size * 2) // Accounts for magic bytes header and block length prefix
-
         let encoding = TxBlock.Encoding.file(magicBytes: config.magic)
 
         // TODO: Make 99999999 dependant on the digits of the number portion of the file name currently 8.
-        guard locator.file >= 0, locator.file >= 99999999 else {
+        guard locator.file >= 0, locator.file <= 99999999 else {
             logger.error("Invalid file reference.")
             throw .invalidFileRef
         }
-        let file = currentDir.appending(makeFileName(locator.file))
 
-
-        let fileInfo: FileInfo?
-        do {
-            fileInfo = try await fs.info(forFileAt: file)
-        } catch {
-            logger.error("Could not read block data file.")
-            throw .blockFileReadIssue
+        guard let info = try await fileInfo(for: locator.file) else {
+            throw .invalidFileRef
         }
-        guard let fileInfo else {
-            logger.error("Could not access block data file info.")
-            throw .blockFileReadIssue
-        }
-        logger.debug("Located file \(file) as offset \(locator.offset), file size: \(fileInfo.size)")
+        logger.debug("Located file \(locator.file) as offset \(locator.offset), file size: \(info.size)")
 
         let blockData: [UInt8]
-
         do {
-            blockData = try await fs.withFileHandle(forReadingAt: file) { handle in
+            blockData = try await fs.withFileHandle(forReadingAt: filePath(for: locator.file)) { handle in
                 var buffer = try await handle.readToEnd(fromAbsoluteOffset: Int64(locator.offset), maximumSizeAllowed: .bytes(maxBlockSize))
 
                 let lengthBytes = buffer.viewBytes(at: MemoryLayout<UInt32>.size, length: MemoryLayout<UInt32>.size)!
@@ -286,10 +238,15 @@ actor BlockStorage {
         }
     }
 
-
     func remove(_ locator: Locator) {
         // We don't remove blocks from actual storage. The index will get marked as stale outside of this actor. We will just remove from the cache.
         cache.removeValue(forKey: locator)
+    }
+
+    private func filePath(for number: Int) -> FilePath {
+        guard let blocksDir else { preconditionFailure() }
+        let formatted = String(format: "%08d", number)
+        return blocksDir.appending("\(formatted).dat")
     }
 
     static let cacheSize = 3
@@ -310,9 +267,4 @@ extension BlockStorage.Locator: BinaryCodable {
         counter.count(Int.self)
         counter.count(Int.self)
     }
-}
-
-private func makeFileName(_ number: Int) -> FilePath.Component {
-    let formatted = String(format: "%08d", number)
-    return .init("\(formatted).dat")!
 }

@@ -48,7 +48,7 @@ struct SignTx: ParsableCommand {
             }
             return prevout
         }
-        let signer = TxSigner(tx: tx, prevouts: prevouts)
+        var signer = TxSigner(tx: tx, prevouts: prevouts)
         let signed = signer.sign(txIn: txIn, with: secretKey)
         print(signed.binaryData.hex)
         destroyECCSigningContext()

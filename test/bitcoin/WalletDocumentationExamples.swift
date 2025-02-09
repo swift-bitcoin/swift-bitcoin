@@ -33,7 +33,7 @@ struct WalletDocumentationExamples {
 
         // Sign the spending transaction.
         let prevouts = [fundingTx.outs[0]]
-        let signer = TxSigner(
+        var signer = TxSigner(
             tx: spendingTx, prevouts: prevouts, sighashType: .all
         )
         let signedTx = signer.sign(txIn: 0, with: bobsSecretKey)
@@ -73,7 +73,7 @@ struct WalletDocumentationExamples {
 
         // Do the signing.
         let prevouts = [fund.outs[0], fund.outs[1], fund.outs[2], fund.outs[3], fund.outs[4]]
-        let signer = TxSigner(tx: spend, prevouts: prevouts, sighashType: .all)
+        var signer = TxSigner(tx: spend, prevouts: prevouts, sighashType: .all)
         signer.sign(txIn: 0, with: sk)
         signer.sign(txIn: 1, with: sk)
         signer.sign(txIn: 2, with: sk) // P2SH-P2WPKH
@@ -114,7 +114,7 @@ struct WalletDocumentationExamples {
 
         // These outpoints and previous outputs all happen to come from the same transaction but they don't necessarilly have to.
         let prevouts = [fund.outs[0], fund.outs[1], fund.outs[2], fund.outs[3]]
-        let signer = TxSigner(tx: spend, prevouts: prevouts, sighashType: .all)
+        var signer = TxSigner(tx: spend, prevouts: prevouts, sighashType: .all)
         signer.sign(txIn: 0, with: [sk1, sk2])
         signer.sign(txIn: 1, redeemScript: multisigScript, with: [sk2, sk3])
         signer.sign(txIn: 2, witnessScript: multisigScript, with: [sk1, sk3]) // p2sh-p2wsh

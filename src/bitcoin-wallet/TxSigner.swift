@@ -3,7 +3,7 @@ import BitcoinCrypto
 import Foundation
 
 /// An affordance to sign multiple inputs of a bitcoin tx.
-public class TxSigner {
+public struct TxSigner {
 
     /// Creates a new signer with default signature hash type of _all_.
     /// - Parameters:
@@ -28,7 +28,7 @@ public class TxSigner {
     public private(set) var tx: BitcoinTx
 
     /// A hasher instance for generating the required signature hashes.
-    private let hasher: SigHash
+    private var hasher: SigHash
 
     /// The current signature hash type.
     public var sighashType: SighashType? {
@@ -44,7 +44,7 @@ public class TxSigner {
     ///   - secretKeys: Secret keys for each signature.
     /// - Returns: A transaction with the signed input.
     @discardableResult
-    public func sign(txIn: Int, redeemScript: BitcoinScript? = .none, witnessScript: BitcoinScript? = .none, with secretKeys: [SecretKey]) -> BitcoinTx {
+    public mutating func sign(txIn: Int, redeemScript: BitcoinScript? = .none, witnessScript: BitcoinScript? = .none, with secretKeys: [SecretKey]) -> BitcoinTx {
 
         let lockScript = hasher.prevouts[txIn].script
 
@@ -90,7 +90,7 @@ public class TxSigner {
     ///   - secretKey: A secret key for signing.
     /// - Returns: A transaction with the signed input.
     @discardableResult
-    public func sign(txIn: Int, with secretKey: SecretKey) -> BitcoinTx {
+    public mutating func sign(txIn: Int, with secretKey: SecretKey) -> BitcoinTx {
         let lockScript = hasher.prevouts[txIn].script
 
         let pubkeyHash = Data(Hash160.hash(data: secretKey.pubkey.data))

@@ -5,16 +5,16 @@ import NIOFoundationCompat
 private let maxPayload = 1_000_000 // 1MB
 
 // no delimeter is provided, brute force try to decode the json
-final class BruteForceCodec<T>: ByteToMessageDecoder, MessageToByteEncoder where T: Decodable {
-    typealias InboundIn = ByteBuffer
-    typealias InboundOut = ByteBuffer
-    typealias OutboundIn = ByteBuffer
-    typealias OutboundOut = ByteBuffer
+public struct BruteForceCodec<T>: ByteToMessageDecoder, MessageToByteEncoder where T: Decodable {
+    public typealias InboundIn = ByteBuffer
+    public typealias InboundOut = ByteBuffer
+    public typealias OutboundIn = ByteBuffer
+    public typealias OutboundOut = ByteBuffer
 
     private let last = UInt8(ascii: "}")
     private var lastIndex = 0
 
-    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+    public mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         guard buffer.readableBytes < maxPayload else {
             throw CodecError.requestTooLarge
         }
@@ -44,7 +44,7 @@ final class BruteForceCodec<T>: ByteToMessageDecoder, MessageToByteEncoder where
         return .continue
     }
 
-    func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+    public mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
         while try self.decode(context: context, buffer: &buffer) == .continue {}
         if buffer.readableBytes > buffer.readerIndex {
             throw CodecError.badFraming
@@ -53,7 +53,7 @@ final class BruteForceCodec<T>: ByteToMessageDecoder, MessageToByteEncoder where
     }
 
     // outbound
-    func encode(data: OutboundIn, out: inout ByteBuffer) throws {
+    public func encode(data: OutboundIn, out: inout ByteBuffer) throws {
         var payload = data
         out.writeBuffer(&payload)
     }

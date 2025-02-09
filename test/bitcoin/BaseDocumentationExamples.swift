@@ -38,7 +38,7 @@ struct BaseDocumentationExamples {
         let prevout2 = fund.outs[2]
         let prevout3 = fund.outs[3]
 
-        let hasher = SigHash(tx: spend, txIn: 0, prevout: prevout0, sighashType: .all)
+        var hasher = SigHash(tx: spend, txIn: 0, prevout: prevout0, sighashType: .all)
 
         // For pay-to-public key we just need to sign the hash and add the signature to the input's unlock script.
         let sighash0 = hasher.value

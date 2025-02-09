@@ -182,7 +182,7 @@ struct NodeBootstrapTests {
                 .init(value: 1000, script: .payToPubkeyHash(pubkey))
             ])
 
-        let signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
+        var signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
         signer.sign(txIn: 0, with: secretKey)
         tx = signer.tx
 
@@ -304,7 +304,7 @@ struct NodeBootstrapTests {
                 .init(value: 1000, script: .payToPubkeyHash(pubkey))
             ])
 
-        let signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
+        var signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
         signer.sign(txIn: 0, with: secretKey)
         tx = signer.tx
 
@@ -420,7 +420,7 @@ struct NodeBootstrapTests {
                 .init(value: 1000, script: .payToPubkeyHash(pubkey))
             ])
 
-        let signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
+        var signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
         signer.sign(txIn: 0, with: secretKey)
         tx = signer.tx
 
