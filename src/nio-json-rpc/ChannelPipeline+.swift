@@ -5,7 +5,7 @@ extension ChannelPipeline {
     func addTimeoutHandlers(_ timeout: TimeAmount) -> EventLoopFuture<Void> {
         return self.addHandlers([IdleStateHandler(readTimeout: timeout), HalfCloseOnTimeout()])
     }
-    
+
     func addFramingHandlers(framing: Framing) -> EventLoopFuture<Void> {
         switch framing {
         case .jsonpos:

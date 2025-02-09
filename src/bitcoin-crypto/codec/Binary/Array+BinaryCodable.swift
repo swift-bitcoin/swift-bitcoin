@@ -2,11 +2,17 @@ import Foundation
 
 extension Array: BinaryCodable where Element: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let count: VarInt = try decoder.decode()
         self.init()
         for _ in 0 ..< count.value {
-            append(try decoder.decode())
+            do {
+                append(try decoder.decode())
+            } catch let error as BinaryDecodingError {
+                throw error
+            } catch {
+                throw .arrayElementError
+            }
         }
     }
 

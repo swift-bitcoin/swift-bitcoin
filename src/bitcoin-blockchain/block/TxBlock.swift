@@ -9,8 +9,7 @@ public struct TxBlock: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    public init(context: BlockContext? = .none, version: Int = 2, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0, txs: [BitcoinTx] = []) {
-        self.context = context
+    public init(version: Int = 2, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0, txs: [BitcoinTx] = []) {
         self.version = version
         self.previous = previous
         self.merkleRoot = merkleRoot
@@ -27,8 +26,6 @@ public struct TxBlock: Equatable, Sendable {
     }
 
     // MARK: - Instance Properties
-
-    public var context: BlockContext?
 
     // Header
     public let version: Int
@@ -61,7 +58,6 @@ public struct TxBlock: Equatable, Sendable {
     public var header: Self {
         var header = self
         header.txs = []
-        header.context = .none
         return header
     }
 
@@ -72,30 +68,16 @@ public struct TxBlock: Equatable, Sendable {
     // MARK: - Type Properties
 
     public static let idLength = Hash256.Digest.byteCount
+    public static let nullParent = BlockID(count: 32)
 
     // MARK: - Type Methods
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.version == rhs.version &&
-            lhs.previous == rhs.previous &&
-            lhs.merkleRoot == rhs.merkleRoot &&
-            lhs.time == rhs.time &&
-            lhs.target == rhs.target &&
-            lhs.nonce == rhs.nonce &&
-            lhs.txs == rhs.txs
-    }
 
     static func makeGenesisBlock(params: ConsensusParams) -> Self {
         let genesisTx = BitcoinTx.makeGenesisTx(blockSubsidy: params.blockSubsidy)
         let target = params.genesisBlockTarget
         let genesisBlock = TxBlock(
-            context: .init(
-                height: 0,
-                chainwork: DifficultyTarget.getWork(target),
-                status: .full
-            ),
             version: 1,
-            previous: Data(count: 32),
+            previous: TxBlock.nullParent,
             merkleRoot: genesisTx.id,
             time: Date(timeIntervalSince1970: TimeInterval(params.genesisBlockTime)),
             target: target,
@@ -107,12 +89,12 @@ public struct TxBlock: Equatable, Sendable {
 
 extension TxBlock: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         try self.init(fromHeaderOnly: &decoder)
         txs = try decoder.decode()
     }
 
-    public init(fromHeaderOnly decoder: inout BinaryDecoder) throws {
+    public init(fromHeaderOnly decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         version = Int(try decoder.decode() as Int32)
         previous = try decoder.decode(TxBlock.idLength, byteSwapped: true)
         merkleRoot = try decoder.decode(TxBlock.idLength, byteSwapped: true)
@@ -188,8 +170,8 @@ package extension TxBlock {
         let headerHash = Data(SHA256.hash(data: headerData))
 
         // Running SipHash-2-4 with the input being the transaction ID and the keys (k0/k1) set to the first two little-endian 64-bit integers from the above hash, respectively.
-        let first = headerHash.withUnsafeBytes { $0.load(as: UInt64.self) }
-        let second = headerHash.dropFirst(MemoryLayout.size(ofValue: first)).withUnsafeBytes { $0.load(as: UInt64.self) }
+        let first = headerHash.withUnsafeBytes { $0.loadUnaligned(as: UInt64.self) }
+        let second = headerHash.dropFirst(MemoryLayout.size(ofValue: first)).withUnsafeBytes { $0.loadUnaligned(as: UInt64.self) }
         return (first, second)
     }
 
@@ -212,5 +194,37 @@ package extension BitcoinTx {
 
         // Dropping the 2 most significant bytes from the SipHash output to make it 6 bytes.
         return (sipHash << 16) >> 16
+    }
+}
+
+extension TxBlock: CustomBinaryCodable {
+
+    public enum Encoding { case file(magicBytes: Int) }
+
+    public init(from decoder: inout BinaryDecoder, encoding: Encoding) throws(BinaryDecodingError) {
+        switch encoding {
+        case .file(let magicBytes):
+            let magic = Int(try decoder.decode() as UInt32)
+            guard magic == magicBytes else { throw BinaryDecodingError.limitExceeded } // TODO: Replace error for something appropriate
+            let length = Int(try decoder.decode() as UInt32)
+            decoder.setLimit(length)
+            try self.init(fromHeaderOnly: &decoder)
+            decoder.resetLimit()
+        }
+    }
+
+    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding) {
+        switch encoding {
+        case .file(let magicBytes):
+            encoder.encode(UInt32(magicBytes))
+            encoder.encode(UInt32(binarySize))
+            encode(to: &encoder)
+        }
+    }
+
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding) {
+        counter.count(UInt32.self)
+        counter.count(UInt32.self)
+        encodingSize(&counter)
     }
 }

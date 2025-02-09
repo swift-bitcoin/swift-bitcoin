@@ -19,6 +19,7 @@ final class BlockSyncTests {
 
     init() async throws {
         let aliceChain = BlockchainService()
+        await aliceChain.start()
         self.aliceChain = aliceChain
         let alice = NodeService(blockchain: aliceChain, config: .init(maxInTransitBlocks: 2, feeFilterRate: 3))
         self.alice = alice
@@ -27,6 +28,7 @@ final class BlockSyncTests {
         bobToAlice = await alice.getChannel(for: peerB).makeAsyncIterator()
 
         let bobChain = BlockchainService()
+        await bobChain.start()
         let pubkey = try #require(PubKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         await bobChain.generateTo(pubkey)
         await bobChain.generateTo(pubkey)
@@ -49,7 +51,7 @@ final class BlockSyncTests {
         if let alice, let aliceChain {
             Task {
                 await alice.stop()
-                await aliceChain.shutdown()
+                await aliceChain.stop()
             }
         }
         if let peerA, let bob {
@@ -60,7 +62,7 @@ final class BlockSyncTests {
         if let bob, let bobChain {
             Task {
                 await bob.stop()
-                await bobChain.shutdown()
+                await bobChain.stop()
             }
         }
     }
@@ -224,7 +226,7 @@ final class BlockSyncTests {
 
         let bobHeaders = try #require(HeadersMessage(mBA9_headers.payload))
         #expect(bobHeaders.items.count == 3)
-        await #expect(aliceChain.blocks[0].id == bobHeaders.items[0].previous)
+        await #expect(aliceChain.genesisBlock.id == bobHeaders.items[0].previous)
         #expect(bobHeaders.items[0].id == bobHeaders.items[1].previous)
 
         // … --(feefilter)->> Bob
@@ -256,7 +258,7 @@ final class BlockSyncTests {
         try await alice.processMessage(mBA8_pong, from: peerB) // No response expected
         try await alice.processMessage(mBA9_headers, from: peerB)
 
-        try await #require(aliceChain.blocks.count == 4)
+        try await #require(aliceChain.height == 3)
 
         // Alice --(getdata)->> …
         let mAB10_getdata = try #require(await alice.popMessage(peerB))
@@ -271,12 +273,12 @@ final class BlockSyncTests {
         // No Response
         #expect(await bob.popMessage(peerA) == nil)
 
-        let bobHeadersBefore = await bobChain.blocks.count
+        let bobHeadersBefore = await bobChain.height + 1
 
         // … --(headers)->> Bob
         try await bob.processMessage(mAB9_headers, from: peerA)
 
-        let bobHeadersAfter = await bobChain.blocks.count
+        let bobHeadersAfter = await bobChain.height + 1
         #expect(bobHeadersAfter == bobHeadersBefore)
 
         // No Response
@@ -302,16 +304,16 @@ final class BlockSyncTests {
         // No Response
         #expect(await bob.popMessage(peerA) == nil)
 
-        await #expect(aliceChain.tip == 1)
+        await #expect(aliceChain.validatedHeight == 0)
 
         // … --(block)->> Alice
         // … --(block)->> Alice
         try await alice.processMessage(mBA10_block, from: peerB)
-        #expect(await aliceChain.tip == 2)
+        #expect(await aliceChain.validatedHeight == 1)
 
         try await alice.processMessage(mBA11_block, from: peerB)
 
-        #expect(await aliceChain.tip == 3)
+        #expect(await aliceChain.validatedHeight == 2)
 
         // Alice --(getdata)->> …
         let mAB11_getdata = try #require(await alice.popMessage(peerB))
@@ -333,7 +335,7 @@ final class BlockSyncTests {
         // … --(block)->> Alice
         try await alice.processMessage(mBA12_block, from: peerB)
 
-        #expect(await aliceChain.tip == 4)
+        #expect(await aliceChain.validatedHeight == 3)
 
         // No Response
         #expect(await alice.popMessage(peerB) == nil)

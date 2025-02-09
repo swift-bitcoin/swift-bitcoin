@@ -13,10 +13,10 @@ final class JSONPosCodec: ByteToMessageDecoder, MessageToByteEncoder {
     typealias InboundOut = ByteBuffer
     typealias OutboundIn = ByteBuffer
     typealias OutboundOut = ByteBuffer
-    
+
     private let newline = UInt8(ascii: "\n")
     private let colon = UInt8(ascii: ":")
-    
+
     // inbound
     func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         guard buffer.readableBytes < maxPayload else {
@@ -51,7 +51,7 @@ final class JSONPosCodec: ByteToMessageDecoder, MessageToByteEncoder {
         context.fireChannelRead(wrapInboundOut(slice))
         return .continue
     }
-    
+
     func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
         while try self.decode(context: context, buffer: &buffer) == .continue {}
         if buffer.readableBytes > buffer.readerIndex {
@@ -59,7 +59,7 @@ final class JSONPosCodec: ByteToMessageDecoder, MessageToByteEncoder {
         }
         return .needMoreData
     }
-    
+
     // outbound
     func encode(data: OutboundIn, out: inout ByteBuffer) throws {
         var payload = data

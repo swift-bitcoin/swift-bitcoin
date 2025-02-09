@@ -2,7 +2,8 @@ import Foundation
 import BitcoinBase
 
 public struct ConsensusParams: Sendable {
-    public init(powLimit: Data, powTargetTimespan: Int, powTargetSpacing: Int, powAllowMinDifficultyBlocks: Bool, powNoRetargeting: Bool, blockSubsidy: Int = 50 * 100_000_000, genesisBlockTime: Int, genesisBlockNonce: Int, genesisBlockTarget: Int, coinbaseMaturity: Int = Self.defaultCoinbaseMaturity) {
+    public init(magicBytes: Int, powLimit: Data, powTargetTimespan: Int, powTargetSpacing: Int, powAllowMinDifficultyBlocks: Bool, powNoRetargeting: Bool, blockSubsidy: Int = 50 * 100_000_000, genesisBlockTime: Int, genesisBlockNonce: Int, genesisBlockTarget: Int, coinbaseMaturity: Int = Self.defaultCoinbaseMaturity) {
+        self.magicBytes = magicBytes
         self.powLimit = powLimit
         self.powTargetTimespan = powTargetTimespan
         self.powTargetSpacing = powTargetSpacing
@@ -14,6 +15,9 @@ public struct ConsensusParams: Sendable {
         self.genesisBlockTarget = genesisBlockTarget
         self.coinbaseMaturity = coinbaseMaturity
     }
+
+    /// Used for block files.
+    public let magicBytes: Int
 
     public let powLimit: Data
     public let powTargetTimespan: Int
@@ -41,6 +45,7 @@ public struct ConsensusParams: Sendable {
     }
 
     public static let mainnet = Self(
+        magicBytes: 0xd9b4bef9,
         powLimit: Data([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
         powTargetTimespan: 14 * 24 * 60 * 60, // Wrong
         powTargetSpacing: 10 * 60, // Wrong
@@ -52,6 +57,7 @@ public struct ConsensusParams: Sendable {
     )
 
     public static let regtest = Self(
+        magicBytes: 0xdab5bffa,
         powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
         powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
         powTargetSpacing: 10 * 60,
@@ -62,7 +68,8 @@ public struct ConsensusParams: Sendable {
         genesisBlockTarget: 0x207fffff
     )
 
-    package static let swiftTesting = Self(
+    package static let swiftTesting = Self( // Similar to regtest
+        magicBytes: 0xdab5bffa,
         powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
         powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
         powTargetSpacing: 10 * 60,
@@ -74,11 +81,14 @@ public struct ConsensusParams: Sendable {
         coinbaseMaturity: 1
     )
 
+    // TODO: Define testnet params with magicBytes 0x0709110b
+    // TODO: Define signet params with magicBytes 0x40cf030a
+
     // MARK: - Flags from `consensus.h` in Bitcoin Core.
 
     /// The maximum allowed size for a serialized block, in bytes (only for buffer size limits)
     /// Unused as of Jan 8 2025
-    private static let maxBlockSerializedSized = 4_000_000
+    public static let maxBlockSerializedSized = 4_000_000
 
     /// The maximum allowed weight for a block, see BIP141 (network rule)
     public static let maxBlockWeight = 4_000_000

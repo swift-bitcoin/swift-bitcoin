@@ -8,7 +8,7 @@ public struct VarInt: BinaryCodable {
         rawValue = .init(value)
     }
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let firstByte = try decoder.decode() as UInt8
         if firstByte < 0xfd {
             rawValue = UInt64(firstByte)

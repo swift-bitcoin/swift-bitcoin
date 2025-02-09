@@ -10,10 +10,10 @@ final class BruteForceCodec<T>: ByteToMessageDecoder, MessageToByteEncoder where
     typealias InboundOut = ByteBuffer
     typealias OutboundIn = ByteBuffer
     typealias OutboundOut = ByteBuffer
-    
+
     private let last = UInt8(ascii: "}")
     private var lastIndex = 0
-    
+
     func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         guard buffer.readableBytes < maxPayload else {
             throw CodecError.requestTooLarge
@@ -43,7 +43,7 @@ final class BruteForceCodec<T>: ByteToMessageDecoder, MessageToByteEncoder where
         context.fireChannelRead(wrapInboundOut(slice))
         return .continue
     }
-    
+
     func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
         while try self.decode(context: context, buffer: &buffer) == .continue {}
         if buffer.readableBytes > buffer.readerIndex {
@@ -51,7 +51,7 @@ final class BruteForceCodec<T>: ByteToMessageDecoder, MessageToByteEncoder where
         }
         return .needMoreData
     }
-    
+
     // outbound
     func encode(data: OutboundIn, out: inout ByteBuffer) throws {
         var payload = data

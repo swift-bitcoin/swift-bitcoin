@@ -5,13 +5,13 @@ import BitcoinCrypto
 ///
 /// On version 2 transactions this field is used to indicate a lock time relative to the output being spent. Until the coin is as old as the indicated number of blocks or time interval the transaction will not be validated or mined.
 public struct TxInSequence: Equatable, Sendable {
-    
+
     /// Creates a sequence with a specific value. Use only in verion 1 transactions.
     /// - Parameter sequenceValue: The number value of this sequence field.
     public init(_ sequenceValue: Int) {
         self.sequenceValue = sequenceValue
     }
-    
+
     /// Creates a sequence from a relative lock time specified in blocks (version 2 transactions only).
     /// - Parameter blocks: How many blocks need to be mined from the creation of the previous output.
     public init?(locktimeBlocks blocks: Int) {
@@ -20,7 +20,7 @@ public struct TxInSequence: Equatable, Sendable {
         }
         self.init(blocks)
     }
-    
+
     /// Creates a sequence from a relative locktime specified as a seconds interval (coin age). Use only with version 2 transactions.
     /// - Parameter seconds: How many seconds need to pass from the creation of the previous output.
     public init?(locktimeSeconds seconds: Int) {
@@ -78,7 +78,7 @@ public struct TxInSequence: Equatable, Sendable {
 
 /// Data extensions.
 extension TxInSequence: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let rawValue: UInt32 = try decoder.decode()
         self.init(Int(rawValue))
     }

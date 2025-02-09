@@ -7,7 +7,7 @@ import BitcoinCrypto
 public struct BitcoinScript: Equatable, Sendable {
 
     // MARK: - Initializers
-    
+
     /// Creates a script from a list of operations.
     /// - Parameters:
     ///   - ops: A sequence of script operations.
@@ -200,7 +200,7 @@ extension BitcoinScript: ExpressibleByArrayLiteral {
 /// Data extensions.
 extension BitcoinScript: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         var ops = [ScriptOp]()
         while let op: ScriptOp = try? decoder.decode() {
             ops.append(op)
@@ -209,7 +209,7 @@ extension BitcoinScript: BinaryCodable {
         unparsable = try decoder.decode()
     }
 
-    public init(prefixedFrom decoder: inout BinaryDecoder) throws {
+    public init(prefixedFrom decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let size: VarInt = try decoder.decode()
         decoder.setLimit(size.value)
         try self.init(from: &decoder)
@@ -232,7 +232,7 @@ extension BitcoinScript: BinaryCodable {
         encoder.encode(VarInt(binarySize))
         encode(to: &encoder)
     }
-    
+
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         for op in ops {
             counter.count(op)

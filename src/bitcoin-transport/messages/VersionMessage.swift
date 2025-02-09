@@ -17,7 +17,7 @@ struct VersionMessage: Equatable, Sendable {
         self.startHeight = startHeight
         self.relay = relay
     }
-    
+
     let protocolVersion: ProtocolVersion
     let services: ProtocolServices
     let timestamp: Date

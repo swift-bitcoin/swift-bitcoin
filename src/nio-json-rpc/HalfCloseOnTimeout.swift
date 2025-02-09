@@ -1,6 +1,6 @@
 import NIOCore
 
-public final class HalfCloseOnTimeout: ChannelInboundHandler {
+public final class HalfCloseOnTimeout: ChannelInboundHandler, Sendable {
 
     public typealias InboundIn = Any
 

@@ -23,9 +23,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
+        .package(url: "https://github.com/swiftlang/swift-lmdb", branch: "main"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-system.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-collections", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
@@ -45,8 +49,13 @@ let package = Package(
             path: "src/bitcoin-transport"),
         .target(
             name: "BitcoinBlockchain",
-            dependencies: ["BitcoinBase", "BitcoinCrypto",
-                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
+            dependencies: ["BitcoinBase", "BitcoinCrypto", "LMDB",
+                .product(name: "Collections", package: "swift-collections"),
+                .product(name: "Algorithms", package: "swift-algorithms"),
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "_NIOFileSystem", package: "swift-nio"),
+            ],
             path: "src/bitcoin-blockchain"),
         .target(name: "BitcoinWallet", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-wallet"),
         .target(name: "BitcoinBase", dependencies: ["BitcoinCrypto"], path: "src/bitcoin-base"),
@@ -63,6 +72,10 @@ let package = Package(
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
             path: "src/nio-json-rpc"),
         .target(name: "JSONRPC", path: "src/json-rpc"),
+        .target(name: "LMDB", dependencies: [
+            .product(name: "CLMDB", package: "swift-lmdb"),
+            .product(name: "SystemPackage", package: "swift-system"),
+        ], path: "src/lmdb"),
         .target(name: "ECCHelper", dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")], path: "src/ecc-helper"),
 
         // Tests
@@ -71,6 +84,7 @@ let package = Package(
         .testTarget(name: "BitcoinTransportTests", dependencies: ["BitcoinTransport", "BitcoinWallet"], path: "test/bitcoin-transport"),
         .testTarget(name: "BitcoinBlockchainTests", dependencies: ["BitcoinBlockchain"], path: "test/bitcoin-blockchain"),
         .testTarget(name: "BitcoinWalletTests", dependencies: ["BitcoinWallet"], path: "test/bitcoin-wallet"),
+        .testTarget(name: "LMDBTests", dependencies: ["LMDB", "BitcoinCrypto"], path: "test/lmdb"),
         .testTarget(name: "BitcoinCryptoTests", dependencies: ["BitcoinCrypto"], path: "test/bitcoin-crypto"),
         .testTarget(name: "BitcoinBaseTests", dependencies: ["BitcoinBase"], path: "test/bitcoin-base",
             resources: [.copy("data")]),

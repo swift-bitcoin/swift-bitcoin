@@ -8,4 +8,6 @@ public enum BinaryDecodingError: Error {
 
     /// The explicitly set limit was exceeded.
     case limitExceeded
+
+    case arrayElementError
 }

@@ -13,25 +13,28 @@ struct BlockchainServiceTests {
         let pubkey = secretKey.pubkey
 
         let alice = BlockchainService()
-        await alice.generateTo(pubkey)
+        await alice.start()
+        let header1 = await alice.generateTo(pubkey)
 
         let bob = BlockchainService()
-
-        let header1 = await alice.blocks[1]
+        await bob.start()
 
         try await bob.processHeaders([header1])
-        await #expect(bob.blocks.count == 2)
+        await #expect(bob.height == 1)
 
         let bobMissingBlockIDs = await bob.getNextMissingBlocks(.max)
         #expect(bobMissingBlockIDs == [header1.id])
 
         let bobMissingBlocks = await alice.getBlocks(bobMissingBlockIDs)
         let bobMissingBlock = bobMissingBlocks[0]
-        let block1 = await alice.getBlock(1)
+        let block1 = try #require(await alice.getBlock(at: 1))
         #expect(bobMissingBlocks.count == 1 && bobMissingBlock == header1 && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
-        await #expect(bob.tip == 2)
+        await #expect(bob.validatedHeight == 1)
+
+        await alice.stop()
+        await bob.stop()
     }
 
     /// Tests synchronizing blocks between two blockchains.
@@ -41,8 +44,10 @@ struct BlockchainServiceTests {
         let pubkey = secretKey.pubkey
 
         let alice = BlockchainService()
+        await alice.start()
 
         let bob = BlockchainService()
+        await bob.start()
         await bob.generateTo(pubkey)
         await bob.generateTo(pubkey)
         await bob.generateTo(pubkey)
@@ -54,8 +59,8 @@ struct BlockchainServiceTests {
         #expect(bobHeaders.count == 3)
 
         try await alice.processHeaders(bobHeaders)
-        await #expect(alice.blocks.count == 4)
-        await #expect(alice.tip == 1)
+        await #expect(alice.height == 3)
+        await #expect(alice.validatedHeight == 0)
 
         let aliceMissing = await alice.getNextMissingBlocks(2)
         #expect(aliceMissing.count == 2)
@@ -64,12 +69,12 @@ struct BlockchainServiceTests {
         #expect(bobBlocks1to2.count == 2)
 
         try await alice.processBlock(bobBlocks1to2[0])
-        await #expect(alice.blocks.count == 4)
-        await #expect(alice.tip == 2)
+        await #expect(alice.height == 3)
+        await #expect(alice.validatedHeight == 1)
 
         try await alice.processBlock(bobBlocks1to2[1])
-        await #expect(alice.blocks.count == 4)
-        await #expect(alice.tip == 3)
+        await #expect(alice.height == 3)
+        await #expect(alice.validatedHeight == 2)
 
         let aliceMissing2 = await alice.getNextMissingBlocks(2)
         #expect(aliceMissing2.count == 1)
@@ -78,8 +83,11 @@ struct BlockchainServiceTests {
         #expect(bobBlocks3to3.count == 1)
 
         try await alice.processBlock(bobBlocks3to3[0])
-        await #expect(alice.blocks.count == 4)
-        await #expect(alice.tip == 4)
+        await #expect(alice.height == 3)
+        await #expect(alice.validatedHeight == 3)
+
+        await alice.stop()
+        await bob.stop()
     }
 
 
@@ -92,15 +100,16 @@ struct BlockchainServiceTests {
         let pubkey = secretKey.pubkey
 
         // Instantiate a fresh Bitcoin service (regtest).
-        let service = BlockchainService()
+        let blockchain = BlockchainService()
+        await blockchain.start()
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         for _ in 0 ..< 100 {
-            await service.generateTo(pubkey)
+            await blockchain.generateTo(pubkey)
         }
 
         // Grab block 1's coinbase transaction and output.
-        let previousTx = await service.getBlock(1).txs[0]
+        let previousTx = await blockchain.getBlock(at: 1)!.txs[0]
         let prevout = previousTx.outs[0]
 
         // Create a new transaction spending from the previous transaction's outpoint.
@@ -141,21 +150,22 @@ struct BlockchainServiceTests {
         #expect(signedTx.verifyScript(prevouts: [prevout]))
 
         // Submit the signed transaction to the mempool.
-        try await service.addTx(signedTx)
-        let mempoolBefore = await service.mempool.count
+        try await blockchain.addTx(signedTx)
+        let mempoolBefore = await blockchain.mempool.count
         #expect(mempoolBefore == 1)
 
         // Let's mine another block to confirm our transaction.
-        await service.generateTo(pubkey)
-        let mempoolAfter = await service.mempool.count
+        let lastBlock = await blockchain.generateTo(pubkey)
+        let mempoolAfter = await blockchain.mempool.count
 
         // Verify the mempool is empty once again.
         #expect(mempoolAfter == 0)
-        let blocks = await service.tip
+        let blocks = await blockchain.height + 1
         #expect(blocks == 102)
-        let lastBlockTxs = try #require(await service.blocks.last!.txs)
         // Verify our transaction was confirmed in a block.
-        #expect(lastBlockTxs[1] == signedTx)
+        #expect(lastBlock.txs[1] == signedTx)
+
+        await blockchain.stop()
     }
 
     @Test("Difficulty Target")
@@ -178,7 +188,8 @@ struct BlockchainServiceTests {
 
     @Test("Difficulty Adjustment")
     func difficultyAdjustment() async throws {
-        let service = BlockchainService(params: .init(
+        let blockchain = BlockchainService(params: .init(
+            magicBytes: 0,
             powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
             powTargetTimespan: 1 * 1 * 10 * 60, // 12 minutes
             powTargetSpacing: 2 * 60, // 2 minutes
@@ -188,7 +199,8 @@ struct BlockchainServiceTests {
             genesisBlockNonce: 2,
             genesisBlockTarget: 0x207fffff
         ))
-        let genesisBlock = await service.genesisBlock
+        await blockchain.start()
+        let genesisBlock = await blockchain.genesisBlock
 
         #expect(genesisBlock.target == 0x207fffff)
         let genesisDate = genesisBlock.time
@@ -200,8 +212,7 @@ struct BlockchainServiceTests {
         for i in 1...15 {
             let minutes = if i < 5 { 4 } else if i < 10 { 2 } else { 4 }
             date = calendar.date(byAdding: .minute, value: minutes, to: date)!
-            await service.generateTo(pubkey, blockTime: date)
-            let header = await service.blocks.last!
+            let header = await blockchain.generateTo(pubkey, blockTime: date)
             let expectedTarget = if (1...4).contains(i) {
                 0x207fffff // 0x7fffff0000000000000000000000000000000000000000000000000000000000 DifficultyTarget(compact: block.target).data.reversed().hex
             } else if (5...9).contains(i) {
@@ -213,6 +224,7 @@ struct BlockchainServiceTests {
             }
             #expect(header.target == expectedTarget)
         }
+        await blockchain.stop()
     }
 
     @Test("Difficulty", arguments: [

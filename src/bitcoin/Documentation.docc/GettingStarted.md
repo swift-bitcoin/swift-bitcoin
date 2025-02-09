@@ -40,6 +40,7 @@ Prepare the Blockchain service.
 ```swift
 // Create a fresh blockchain service instance (on regtest).
 let blockchain = BlockchainService()
+await blockchain.start()
 
 // Mine 100 blocks so block 1's coinbase output reaches maturity.
 for _ in 0 ..< 100 {
@@ -114,6 +115,8 @@ let lastBlock = await blockchain.blocks.last!
 
 #expect(lastBlock.txs[1] == signedTx)
 // Our transaction is now confirmed in the blockchain!
+
+await blockchain.stop()
 ```
 
 We have effectively recreated the entire transaction lifecycle.

@@ -2,7 +2,7 @@ import Foundation
 import NIOCore
 
 // bytes to codable and back
-public final class CodableCodec<In, Out>: ChannelInboundHandler, ChannelOutboundHandler where In: Decodable, Out: Encodable {
+public final class CodableCodec<In, Out>: ChannelInboundHandler, ChannelOutboundHandler, Sendable where In: Decodable, Out: Encodable {
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = In
     public typealias OutboundIn = Out

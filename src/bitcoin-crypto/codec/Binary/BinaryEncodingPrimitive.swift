@@ -4,7 +4,7 @@ public protocol BinaryEncodingPrimitive: BinaryCodable {}
 
 extension BinaryEncodingPrimitive {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         self = try decoder.decodePrimitive()
     }
 
@@ -28,3 +28,7 @@ extension UInt8: BinaryEncodingPrimitive {}
 extension UInt16: BinaryEncodingPrimitive {}
 extension UInt32: BinaryEncodingPrimitive {}
 extension UInt64: BinaryEncodingPrimitive {}
+
+extension Bool: BinaryEncodingPrimitive {}
+extension Float: BinaryEncodingPrimitive {}
+extension Double: BinaryEncodingPrimitive {}
