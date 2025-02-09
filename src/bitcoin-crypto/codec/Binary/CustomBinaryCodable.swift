@@ -32,9 +32,7 @@ public extension CustomBinaryEncodable {
     }
 }
 
-public protocol CustomBinaryDecodable: BinaryDecodable {
-
-    associatedtype Error: Swift.Error
+public protocol CustomBinaryDecodable: BinaryDecodable where Error: Swift.Error {
     associatedtype Encoding
 
     init(from decoder: inout BinaryDecoder, encoding: Encoding) throws(Error)

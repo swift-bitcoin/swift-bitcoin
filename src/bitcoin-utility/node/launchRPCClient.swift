@@ -15,15 +15,15 @@ public func launchRPCClient(host: String, port: Int, method: String, params: JSO
         host: host,
         port: port
     ) { channel in
-        channel.pipeline.addHandlers([
-            IdleStateHandler(readTimeout: TimeAmount.seconds(5)),
-            HalfCloseOnTimeout(),
-            ByteToMessageHandler(NewlineEncoder()),
-            MessageToByteHandler(NewlineEncoder()),
-            CodableCodec<JSONResponse, JSONRequest>()
-        ])
-        .eventLoop.makeCompletedFuture {
-            try NIOAsyncChannel<JSONResponse, JSONRequest>(
+        channel.eventLoop.makeCompletedFuture {
+            try channel.pipeline.syncOperations.addHandlers([
+                IdleStateHandler(readTimeout: TimeAmount.seconds(5)),
+                HalfCloseOnTimeout(),
+                ByteToMessageHandler(NewlineEncoder()),
+                MessageToByteHandler(NewlineEncoder()),
+                CodableCodec<JSONResponse, JSONRequest>()
+            ])
+            return try NIOAsyncChannel<JSONResponse, JSONRequest>(
                 wrappingChannelSynchronously: channel
             )
         }
