@@ -67,17 +67,17 @@ actor P2PClient: Service {
         }
 
         let clientChannel = try await ClientBootstrap(group: eventLoopGroup)
-            .connect( host: remoteHost, port: remotePort) { channel in
-                channel.pipeline.addHandlers([
-                    MessageToByteHandler(MessageCoder()),
-                    ByteToMessageHandler(MessageCoder()),
-                    DebugInboundEventsHandler(),
-                    DebugOutboundEventsHandler()
-                ])
-                .eventLoop.makeCompletedFuture {
-                    try NIOAsyncChannel<BitcoinMessage, BitcoinMessage>(wrappingChannelSynchronously: channel)
+            .connect( host: remoteHost, port: remotePort) { connection in
+                connection.eventLoop.makeCompletedFuture {
+                    try connection.pipeline.syncOperations.addHandlers([
+                        MessageToByteHandler(MessageCoder()),
+                        ByteToMessageHandler(MessageCoder()),
+                        DebugInboundEventsHandler(),
+                        DebugOutboundEventsHandler()
+                    ])
+                    return try NIOAsyncChannel<BitcoinMessage, BitcoinMessage>(wrappingChannelSynchronously: connection)
                 }
-        }
+            }
 
         self.clientChannel = clientChannel
         connected = true

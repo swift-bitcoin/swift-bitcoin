@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 
 /// BIP342: The TapRoot Script (Tapscript) Common Message Extension as defined in BIP342
-public struct TapscriptExtension: Equatable {
+public struct TapscriptExtension: Equatable, Sendable {
 
     public init(tapLeafHash: Data, keyVersion: UInt8 = 0, codesepPos: UInt32 = 0xffffffff) {
         self.tapLeafHash = tapLeafHash

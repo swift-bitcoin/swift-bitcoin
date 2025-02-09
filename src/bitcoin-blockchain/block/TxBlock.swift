@@ -208,7 +208,7 @@ extension TxBlock: CustomBinaryCodable {
             guard magic == magicBytes else { throw BinaryDecodingError.limitExceeded } // TODO: Replace error for something appropriate
             let length = Int(try decoder.decode() as UInt32)
             decoder.setLimit(length)
-            try self.init(fromHeaderOnly: &decoder)
+            try self.init(from: &decoder)
             decoder.resetLimit()
         }
     }

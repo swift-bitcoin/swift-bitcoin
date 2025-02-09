@@ -94,15 +94,16 @@ actor P2PService: Service {
         let serverChannel = try await bootstrap.bind(
             host: host,
             port: port
-        ) { channel in
+        ) { connection in
             // This closure is called for every inbound connection.
-            channel.pipeline.addHandlers([
-                ByteToMessageHandler(MessageCoder()),
-                MessageToByteHandler(MessageCoder()),
-                DebugInboundEventsHandler(),
-                DebugOutboundEventsHandler()
-            ]).eventLoop.makeCompletedFuture {
-                try NIOAsyncChannel<BitcoinMessage, BitcoinMessage>(wrappingChannelSynchronously: channel)
+            connection.eventLoop.makeCompletedFuture {
+                try connection.pipeline.syncOperations.addHandlers([
+                    ByteToMessageHandler(MessageCoder()),
+                    MessageToByteHandler(MessageCoder()),
+                    DebugInboundEventsHandler(),
+                    DebugOutboundEventsHandler()
+                ])
+                return try NIOAsyncChannel<BitcoinMessage, BitcoinMessage>(wrappingChannelSynchronously: connection)
             }
         }
         self.serverChannel = serverChannel

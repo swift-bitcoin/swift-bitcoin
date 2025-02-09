@@ -4,7 +4,7 @@ import CLMDB
 /// A database contained in an environment.
 /// The database can either be named (if maxDBs > 0 on the environment) or
 /// it can be the single anonymous/unnamed database inside the environment.
-public class Database {
+public final class Database {
 
     public struct Flags: OptionSet, Sendable {
         public let rawValue: Int32

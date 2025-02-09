@@ -8,17 +8,17 @@ private let maxPayload = 1_000_000 // 1MB
 // 1 byte: a colon (":", 0x3a), not included in LEN
 // LEN bytes: a JSON/RPC message, no leading or trailing whitespace
 // 1 byte: a newline (0x0a), not included in LEN
-final class JSONPosCodec: ByteToMessageDecoder, MessageToByteEncoder {
-    typealias InboundIn = ByteBuffer
-    typealias InboundOut = ByteBuffer
-    typealias OutboundIn = ByteBuffer
-    typealias OutboundOut = ByteBuffer
+public struct JSONPosCodec: ByteToMessageDecoder, MessageToByteEncoder, Sendable {
+    public typealias InboundIn = ByteBuffer
+    public typealias InboundOut = ByteBuffer
+    public typealias OutboundIn = ByteBuffer
+    public typealias OutboundOut = ByteBuffer
 
     private let newline = UInt8(ascii: "\n")
     private let colon = UInt8(ascii: ":")
 
     // inbound
-    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+    public mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         guard buffer.readableBytes < maxPayload else {
             throw CodecError.requestTooLarge
         }
@@ -52,7 +52,7 @@ final class JSONPosCodec: ByteToMessageDecoder, MessageToByteEncoder {
         return .continue
     }
 
-    func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+    public mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
         while try self.decode(context: context, buffer: &buffer) == .continue {}
         if buffer.readableBytes > buffer.readerIndex {
             throw CodecError.badFraming
@@ -61,7 +61,7 @@ final class JSONPosCodec: ByteToMessageDecoder, MessageToByteEncoder {
     }
 
     // outbound
-    func encode(data: OutboundIn, out: inout ByteBuffer) throws {
+    public func encode(data: OutboundIn, out: inout ByteBuffer) throws {
         var payload = data
         // length
         out.writeString(String(payload.readableBytes, radix: 16).leftPadding(toLength: 8, withPad: "0"))

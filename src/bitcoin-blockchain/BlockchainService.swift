@@ -5,7 +5,7 @@ import _NIOFileSystem
 import BitcoinCrypto
 import BitcoinBase
 
-private let logger = Logger(label: "swift-bitcoin.blockchain")
+private let logger = Logger(label: "swift-bitcoin|BlockchainService")
 
 public actor BlockchainService: Sendable {
 
@@ -63,6 +63,7 @@ public actor BlockchainService: Sendable {
             dataDir = .init(fm.homeDirectoryForCurrentUser.path).appending(".swift-bitcoin/data") // TODO: Centralize this logic. Make async with NIOFileSystem and move to start()?
         case .customDirectory(let customDataDir):
             let customDataDirPath = FilePath(customDataDir)
+            precondition(customDataDirPath.isAbsolute)
             dataDir = customDataDirPath
         default:
             dataDir = .none
@@ -74,7 +75,7 @@ public actor BlockchainService: Sendable {
         status = .starting
         defer { status = .running }
 
-        let fm = FileManager.default
+        let fm = FileManager.default // TODO: Switch for NIOFileSystem
         if let dataDir {
             do {
                 try fm.createDirectory(atPath: dataDir.string, withIntermediateDirectories: true)
@@ -86,7 +87,7 @@ public actor BlockchainService: Sendable {
 
         blockIndex = .init(path: dataDir)
         headers = .init(path: dataDir)
-        coins = .init(path: dataDir)
+        coins = if let dataDir { DBCoinsIndex(path: dataDir) } else { InMemoryCoinsIndex() }
 
         do {
             try await blockStorage.start()
@@ -562,10 +563,16 @@ public actor BlockchainService: Sendable {
     }
 
     @discardableResult public func generateTo(_ pubkey: PubKey, blockTime: Date = .now) async -> TxBlock {
-        await generateTo(Data(Hash160.hash(data: pubkey.data)), blockTime: blockTime)
+        logger.info("Generating blocks with coinbase reward going to public key.")
+        return await generateTo(Data(Hash160.hash(data: pubkey.data)), blockTime: blockTime)
     }
 
+    /// Generates a block using the mempool transactions and locks the coinbase reward output to the provided public key hash.
+    ///
+    /// This function essentially mines a block in current thread so it has the potential to completely block. Future versions of this method will provide asynchronous control via detached background task.
     @discardableResult public func generateTo(_ pubkeyHash: Data, blockTime: Date = .now) async -> TxBlock {
+        // TODO:
+        logger.info("Generating blocks with coinbase reward going to public key hash.")
 
         guard await synchronized else {
             // Waiting for pending block transactions for known headers

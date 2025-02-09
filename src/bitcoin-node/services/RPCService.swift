@@ -50,16 +50,17 @@ actor RPCService: Service {
             .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
             .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
-            .bind(host: host, port: port) { channel in
+            .bind(host: host, port: port) { connection in
                 // This closure is called for every inbound connection.
-                channel.pipeline.addHandlers([
-                    IdleStateHandler(readTimeout: TimeAmount.seconds(5)),
-                    HalfCloseOnTimeout(),
-                    ByteToMessageHandler(NewlineEncoder()),
-                    MessageToByteHandler(NewlineEncoder()),
-                    CodableCodec<JSONRequest, JSONResponse>()
-                ]).eventLoop.makeCompletedFuture {
-                    try NIOAsyncChannel<JSONRequest, JSONResponse>(wrappingChannelSynchronously: channel)
+                connection.eventLoop.makeCompletedFuture {
+                    try connection.pipeline.syncOperations.addHandlers([
+                        IdleStateHandler(readTimeout: TimeAmount.seconds(5)),
+                        HalfCloseOnTimeout(),
+                        ByteToMessageHandler(NewlineEncoder()),
+                        MessageToByteHandler(NewlineEncoder()),
+                        CodableCodec<JSONRequest, JSONResponse>()
+                    ])
+                    return try NIOAsyncChannel<JSONRequest, JSONResponse>(wrappingChannelSynchronously: connection)
                 }
             }
 

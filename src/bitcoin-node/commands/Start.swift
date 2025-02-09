@@ -1,3 +1,4 @@
+import Foundation
 import ArgumentParser
 import BitcoinBlockchain
 import BitcoinTransport
@@ -13,11 +14,15 @@ struct Start: AsyncParsableCommand {
         abstract: "Launch a Bitcoin node instance."
     )
 
-    @Option(name: .shortAndLong, help: "The P2P network to connect to.")
-    var network = NodeNetwork.main
+    @Option(name: .shortAndLong, help: """
+        The P2P network to connect to.
+        
+        During development this value will default to regtest.
+    """)
+    var network = NodeNetwork.regtest // TODO: Eventually switch to testnet4 and then mainnet.
 
-    @Option(name: .shortAndLong, help: "Use `default` to use the default location `~/.swift-bitcoin/data` or `in-memory` for ephemeral in-memory database.")
-    var dataLocation = "in-memory" // TODO: Allow user to specify a custom path to the config/data directory.
+    @Option(name: .shortAndLong, help: "The absolute path to Swift Bitcoin's data directory (will be created if it does not yet exist). Use value `default` which will point to `~/.swift-bitcoin/data` or use value `in-memory` for ephemeral in-memory database.")
+    var dataLocation = "in-memory"
 
     @Option(name: .shortAndLong, help: "The address to bind the RPC server to.")
     var host = "0.0.0.0"
@@ -31,7 +36,7 @@ struct Start: AsyncParsableCommand {
     }
 }
 
-private func launchNode(network: NodeNetwork, dataLocation: String, host: String, port: Int) async throws {
+private func launchNode(network: NodeNetwork, dataLocation dataLocationUnresolved: String, host: String, port: Int) async throws {
     let params = switch network {
     case .main:
         ConsensusParams.mainnet
@@ -42,9 +47,14 @@ private func launchNode(network: NodeNetwork, dataLocation: String, host: String
     case .regtest:
         ConsensusParams.regtest
     }
+    let dataLocation: BlockchainService.Config.DataLocation = switch dataLocationUnresolved {
+    case "in-memory": .memory
+    case "default": .defaultDirectory
+    default:.customDirectory(dataLocationUnresolved)
+    }
     let blockchain = BlockchainService(
         params: params,
-        config: .init(dataLocation: dataLocation == "in-memory" ? .memory : .defaultDirectory)
+        config: .init(dataLocation: dataLocation)
     )
     await blockchain.start()
 

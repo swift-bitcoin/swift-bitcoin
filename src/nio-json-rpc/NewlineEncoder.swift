@@ -3,7 +3,7 @@ import NIOCore
 private let maxPayload = 1_000_000 // 1MB
 
 // aggregate bytes till delimiter and add delimiter at end
-public final class NewlineEncoder: ByteToMessageDecoder, MessageToByteEncoder {
+public struct NewlineEncoder: ByteToMessageDecoder, MessageToByteEncoder, Sendable {
 
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
@@ -17,7 +17,7 @@ public final class NewlineEncoder: ByteToMessageDecoder, MessageToByteEncoder {
     private var lastIndex = 0
 
     // inbound
-    public func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+    public mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         guard buffer.readableBytes < maxPayload else {
             throw CodecError.requestTooLarge
         }
@@ -45,7 +45,7 @@ public final class NewlineEncoder: ByteToMessageDecoder, MessageToByteEncoder {
         return .continue
     }
 
-    public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+    public mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
         while try self.decode(context: context, buffer: &buffer) == .continue {}
         if buffer.readableBytes > buffer.readerIndex {
             throw CodecError.badFraming

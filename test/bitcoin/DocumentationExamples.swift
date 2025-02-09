@@ -36,7 +36,7 @@ struct DocumentationExamples {
 
         // # We now need to sign the transaction using our secret key.
 
-        let signer = TxSigner(tx: spendingTx, prevouts: [prevout])
+        var signer = TxSigner(tx: spendingTx, prevouts: [prevout])
         let signedTx = signer.sign(txIn: 0, with: secretKey)
 
         // # We can verify that the transaction was signed correctly.

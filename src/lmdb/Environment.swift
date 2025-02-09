@@ -4,7 +4,7 @@ import CLMDB
 
 /// An environment is the base of LMDB.
 /// It is opened at a path and may contain 0 or more databases.
-public class Environment {
+public final class Environment {
 
     public struct Flags: OptionSet, Sendable {
         public let rawValue: Int32
@@ -46,7 +46,7 @@ public class Environment {
         }
 
         // Set the maximum number of named databases that can be opened in the environment.
-        if let maxDBs = maxDBs {
+        if let maxDBs {
             let envSetMaxDBsStatus = mdb_env_set_maxdbs(handle, MDB_dbi(maxDBs))
             guard envSetMaxDBsStatus == 0 else {
                 throw LMDBError(returnCode: envSetMaxDBsStatus)
@@ -54,7 +54,7 @@ public class Environment {
         }
 
         // Set the maximum number of threads/reader slots for the environment.
-        if let maxReaders = maxReaders {
+        if let maxReaders {
             let envSetMaxReadersStatus = mdb_env_set_maxreaders(handle, maxReaders)
             guard envSetMaxReadersStatus == 0 else {
                 throw LMDBError(returnCode: envSetMaxReadersStatus)
@@ -62,7 +62,7 @@ public class Environment {
         }
 
         // Set the size of the memory map.
-        if let mapSize = mapSize {
+        if let mapSize {
             let envSetMapSizeStatus = mdb_env_set_mapsize(handle, mapSize)
             guard envSetMapSizeStatus == 0 else {
                 throw LMDBError(returnCode: envSetMapSizeStatus)
