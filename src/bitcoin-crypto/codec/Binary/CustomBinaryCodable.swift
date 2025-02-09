@@ -33,14 +33,16 @@ public extension CustomBinaryEncodable {
 }
 
 public protocol CustomBinaryDecodable: BinaryDecodable {
+
+    associatedtype Error: Swift.Error
     associatedtype Encoding
 
-    init(from decoder: inout BinaryDecoder, encoding: Encoding) throws
+    init(from decoder: inout BinaryDecoder, encoding: Encoding) throws(Error)
 }
 
 public extension CustomBinaryDecodable {
 
-    init<D: DataProtocol>(binaryData: D, encoding: Encoding) throws {
+    init<D: DataProtocol>(binaryData: D, encoding: Encoding) throws(Error) {
         var decoder = BinaryDecoder(binaryData)
         try self.init(from: &decoder, encoding: encoding)
     }

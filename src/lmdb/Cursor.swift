@@ -55,7 +55,7 @@ public class Cursor {
     }
 }
 
-extension Cursor: IteratorProtocol {
+extension Cursor: IteratorProtocol { // TODO: Remove conformance and make cursor ~Copyable
 
     public typealias Element = (key: Data, value: Data)
 

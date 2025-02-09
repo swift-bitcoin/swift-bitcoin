@@ -2,7 +2,7 @@ import BitcoinCrypto
 
 extension String: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let data = try decoder.decode()
         guard let maybeSelf = Self(data: data, encoding: .utf8) else {
             throw BinaryDecodingError.limitExceeded

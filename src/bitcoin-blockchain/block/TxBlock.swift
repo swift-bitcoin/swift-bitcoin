@@ -89,12 +89,12 @@ public struct TxBlock: Equatable, Sendable {
 
 extension TxBlock: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         try self.init(fromHeaderOnly: &decoder)
         txs = try decoder.decode()
     }
 
-    public init(fromHeaderOnly decoder: inout BinaryDecoder) throws {
+    public init(fromHeaderOnly decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         version = Int(try decoder.decode() as Int32)
         previous = try decoder.decode(TxBlock.idLength, byteSwapped: true)
         merkleRoot = try decoder.decode(TxBlock.idLength, byteSwapped: true)
@@ -201,7 +201,7 @@ extension TxBlock: CustomBinaryCodable {
 
     public enum Encoding { case file(magicBytes: Int) }
 
-    public init(from decoder: inout BinaryDecoder, encoding: Encoding) throws {
+    public init(from decoder: inout BinaryDecoder, encoding: Encoding) throws(BinaryDecodingError) {
         switch encoding {
         case .file(let magicBytes):
             let magic = Int(try decoder.decode() as UInt32)

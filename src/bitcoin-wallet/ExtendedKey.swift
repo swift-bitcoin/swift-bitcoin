@@ -26,7 +26,7 @@ public struct ExtendedKey {
         try self.init(secretKey: secretKey, chaincode: chaincode, fingerprint: 0, depth: 0, keyIndex: 0, mainnet: mainnet)
     }
 
-    fileprivate init(secretKey: SecretKey? = .none, pubkey: PubKey? = .none, chaincode: Data, fingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws {
+    fileprivate init(secretKey: SecretKey? = .none, pubkey: PubKey? = .none, chaincode: Data, fingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws(Error) {
         guard secretKey == .none && pubkey != .none || (secretKey != .none && pubkey == .none) else {
             preconditionFailure()
         }
@@ -135,15 +135,25 @@ public struct ExtendedKey {
 
 /// Error
 public extension ExtendedKey {
-    enum Error: Swift.Error {
-        case invalidEncoding, wrongDataLength, unknownNetwork, invalidPrivateKeyLength, invalidSecretKey, invalidPublicKeyEncoding, invalidPublicKey, zeroDepthNonZeroFingerprint, zeroDepthNonZeroIndex, invalidSeed
+    enum Error: Swift.Error, Equatable {
+        case invalidEncoding, wrongDataLength, unknownNetwork, invalidPrivateKeyLength, invalidSecretKey, invalidPublicKeyEncoding, invalidPublicKey, zeroDepthNonZeroFingerprint, zeroDepthNonZeroIndex, invalidSeed, binaryDecodingError(BinaryDecodingError)
+
+        init(_ error: BinaryDecodingError) {
+            self = .binaryDecodingError(error)
+        }
     }
 }
 
 extension ExtendedKey: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
-        let version: UInt32 = try decoder.decode()
+    public init(from decoder: inout BinaryDecoder) throws(Error) {
+
+        let version: UInt32
+        do {
+             version = try decoder.decode()
+        } catch {
+            throw .init(error) // or `.binaryDecodingError(error)`
+        }
 
         guard version == mainHDKeyVersionPrivate || version == mainHDKeyVersionPublic || version == testHDKeyVersionPrivate || version == testHDKeyVersionPublic else {
             throw Error.unknownNetwork
@@ -151,10 +161,18 @@ extension ExtendedKey: BinaryCodable {
         let isMainnet = version == mainHDKeyVersionPrivate || version == mainHDKeyVersionPublic
         let isPrivate = version == mainHDKeyVersionPrivate || version == testHDKeyVersionPrivate
 
-        let depth = Int(try decoder.decode() as UInt8)
-        let fingerprint = Int(try decoder.decode() as UInt32)
-        let keyIndex = Int((try decoder.decode() as UInt32).byteSwapped)
-        let chaincode = try decoder.decode(32)
+        let depth: Int
+        let fingerprint: Int
+        let keyIndex: Int
+        let chaincode: Data
+        do {
+            depth = Int(try decoder.decode() as UInt8)
+            fingerprint = Int(try decoder.decode() as UInt32)
+            keyIndex = Int((try decoder.decode() as UInt32).byteSwapped)
+            chaincode = try decoder.decode(32)
+        } catch {
+            throw .binaryDecodingError(error)
+        }
 
         var secretKey = SecretKey?.none
         var pubkey = PubKey?.none
@@ -162,14 +180,29 @@ extension ExtendedKey: BinaryCodable {
             guard let len = decoder.peek(), len == 0 else {
                 throw Error.invalidPrivateKeyLength
             }
-            try decoder.decode(1)
-            let secretKeyData = try decoder.decode(SecretKey.keyLength)
+            do {
+                try decoder.decode(1)
+            } catch {
+                throw .binaryDecodingError(error)
+            }
+
+            let secretKeyData: Data
+            do {
+                secretKeyData = try decoder.decode(SecretKey.keyLength)
+            } catch {
+                throw .binaryDecodingError(error)
+            }
             guard let parsedSecretKey = SecretKey(secretKeyData) else {
                 throw Error.invalidSecretKey
             }
             secretKey = parsedSecretKey
         } else {
-            let pubkeyData = try decoder.decode(PubKey.compressedLength)
+            let pubkeyData: Data
+            do {
+                pubkeyData = try decoder.decode(PubKey.compressedLength)
+            } catch {
+                throw .binaryDecodingError(error)
+            }
             guard let parsedPubkey = PubKey(pubkeyData, skipCheck: true) else {
                 throw Error.invalidPublicKeyEncoding
             }

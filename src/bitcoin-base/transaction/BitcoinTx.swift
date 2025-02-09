@@ -165,7 +165,7 @@ extension BitcoinTx {
 
 extension BitcoinTx: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         version = try decoder.decode()
 
         // BIP144 - Check for marker and segwit flag

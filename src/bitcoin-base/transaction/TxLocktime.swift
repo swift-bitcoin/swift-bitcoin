@@ -34,7 +34,7 @@ public struct TxLocktime: Equatable, Sendable {
 
 /// Binary data extensions.
 extension TxLocktime: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let rawValue: UInt32 = try decoder.decode()
         self.init(Int(rawValue))
     }

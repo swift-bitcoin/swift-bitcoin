@@ -22,8 +22,10 @@ public protocol BinaryEncodable {
 /// A type that can decode itself from an external binary representation.
 public protocol BinaryDecodable {
 
+    associatedtype Error: Swift.Error
+
     /// Creates a new instance by decoding from the given decoder.
-    init(from decoder: inout BinaryDecoder) throws
+    init(from decoder: inout BinaryDecoder) throws(Error)
 }
 
 public extension BinaryEncodable {
@@ -49,7 +51,7 @@ public extension BinaryDecodable {
     /// - Parameter binaryData: The binary representation to decode.
     ///
     /// This initializer is generic over `DataProtocol`  meaning it can be passed a `Data` instance or a `UInt8` array.
-    init<D: DataProtocol>(binaryData: D) throws {
+    init<D: DataProtocol>(binaryData: D) throws(Error) {
         var decoder = BinaryDecoder(binaryData)
         try self.init(from: &decoder)
     }

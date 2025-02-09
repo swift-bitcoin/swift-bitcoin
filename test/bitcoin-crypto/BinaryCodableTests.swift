@@ -51,7 +51,7 @@ private struct ParentStruct: Equatable {
 }
 
 extension ParentStruct: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         int1 = try decoder.decode()
         child = try decoder.decode()
         int2 = try decoder.decode()
@@ -84,7 +84,7 @@ private struct CustomStruct: Equatable {
 }
 
 extension CustomStruct: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         int = try decoder.decode()
         intArray = try decoder.decode()
         data = try decoder.decode(variable: true)

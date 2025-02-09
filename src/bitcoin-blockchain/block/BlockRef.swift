@@ -47,7 +47,7 @@ struct BlockRef: Equatable, Sendable {
 }
 
 extension BlockRef.ValidationStatus: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         guard let maybeSelf = Self(rawValue: try decoder.decode()) else {
             throw BinaryDecodingError.limitExceeded // TODO: find better error
         }
@@ -65,7 +65,7 @@ extension BlockRef.ValidationStatus: BinaryCodable {
 }
 
 extension BlockRef: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         blockID = try decoder.decode(TxBlock.idLength)
         previous = try decoder.decode(TxBlock.idLength)
         time = try decoder.decode()

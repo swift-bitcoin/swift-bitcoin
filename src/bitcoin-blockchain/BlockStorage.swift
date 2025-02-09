@@ -296,7 +296,7 @@ actor BlockStorage {
 }
 
 extension BlockStorage.Locator: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         file = try decoder.decode()
         offset = try decoder.decode()
     }

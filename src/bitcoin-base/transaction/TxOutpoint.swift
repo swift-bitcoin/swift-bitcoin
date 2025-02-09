@@ -29,7 +29,7 @@ public struct TxOutpoint: Equatable, Hashable, Sendable {
 /// Data extensions.
 extension TxOutpoint: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let tx = try decoder.decode(BitcoinTx.idLength, byteSwapped: true)
         let txOut = Int(try decoder.decode() as UInt32)
         self.init(tx: tx, txOut: txOut)

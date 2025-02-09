@@ -2,7 +2,7 @@ import Foundation
 
 extension Date: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         let interval: TimeInterval = try decoder.decode()
         self.init(timeIntervalSince1970: interval)
     }

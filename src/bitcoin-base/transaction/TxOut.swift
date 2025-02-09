@@ -22,7 +22,7 @@ public struct TxOut: Equatable, Sendable {
 
 /// Data extensions.
 extension TxOut: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         value = try decoder.decode()
         script = try BitcoinScript(prefixedFrom: &decoder)
     }

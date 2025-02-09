@@ -24,7 +24,7 @@ struct UnspentOut: Equatable, Sendable {
 
 extension UnspentOut: BinaryCodable {
 
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
         txOut = try decoder.decode()
         height = try decoder.decode()
         isCoinbase = try decoder.decode()
