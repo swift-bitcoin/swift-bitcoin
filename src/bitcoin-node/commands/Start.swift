@@ -37,15 +37,15 @@ struct Start: AsyncParsableCommand {
 }
 
 private func launchNode(network: NodeNetwork, dataLocation dataLocationUnresolved: String, host: String, port: Int) async throws {
-    let params = switch network {
+    let params: ConsensusParams = switch network {
     case .main:
-        ConsensusParams.mainnet
+        .mainnet
     case .test: // TODO: Use real testnet4 params
-        ConsensusParams.regtest
+        .regtest
     case .signet: // TODO: Use signet params
-        ConsensusParams.regtest
+        .regtest
     case .regtest:
-        ConsensusParams.regtest
+        .regtest
     }
     let dataLocation: BlockchainService.Config.DataLocation = switch dataLocationUnresolved {
     case "in-memory": .memory

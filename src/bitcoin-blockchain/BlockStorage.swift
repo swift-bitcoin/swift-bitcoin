@@ -55,6 +55,8 @@ actor BlockStorage {
 
     private var blocks = [TxBlock]() // Use only for in-memory
 
+    internal private(set) var sizeOnDisk = 0
+
     func start() async throws(Error) {
         status = .starting
         defer { status = .running }
@@ -81,40 +83,57 @@ actor BlockStorage {
 
         // Find the last file.
         let initialFileNumber = fileNumber // Will be -1
-        let (maxNumber, totalFiles) = try! await fs.withDirectoryHandle(atPath: blocksDir) { dir in
-            var maxNumber = initialFileNumber // Will be -1
-            var totalFiles = 0
-            for try await file in dir.listContents() {
-                logger.debug("\(file.path)")
-                let name = file.name
-                let stem = name.stem
-                let digits = /\d{8}/
-                let match = try digits.wholeMatch(in: stem)
-                guard file.type == .regular, let ext = name.extension, ext == "dat", match != nil, let number = Int(stem) else {
-                    logger.debug("skiping \(name)")
-                    continue
+        let maxNumber: Int
+        let totalFiles: Int
+        let totalSize: Int
+        do {
+            (maxNumber, totalFiles, totalSize) = try await fs.withDirectoryHandle(atPath: blocksDir) { dir in
+                var maxNumber = initialFileNumber // Will be -1
+                var totalFiles = 0
+                var totalSize = 0
+                for try await file in dir.listContents() {
+                    logger.debug("\(file.path)")
+                    let name = file.name
+                    let stem = name.stem
+                    let digits = /\d{8}/
+                    let match = try digits.wholeMatch(in: stem)
+                    guard file.type == .regular, let ext = name.extension, ext == "dat", match != nil, let number = Int(stem) else {
+                        logger.debug("skiping \(name)")
+                        continue
+                    }
+                    guard let info = try? await fs.info(forFileAt: file.path) else {
+                        logger.error("Could not find the file at \(file.path.string).")
+                        throw Error.dataLocationIssue
+                    }
+                    totalSize += Int(info.size)
+
+                    logger.debug("Evaluating \(name)")
+                    maxNumber = max(number, maxNumber)
+                    totalFiles += 1
+
                 }
-                logger.debug("Evaluating \(name)")
-                maxNumber = max(number, maxNumber)
-                totalFiles += 1
+                return (
+                    maxNumber: maxNumber,
+                    totalFiles: totalFiles,
+                    totalSize: totalSize
+                )
             }
-            return (
-                maxNumber: maxNumber,
-                totalFiles: totalFiles
-            )
+        } catch let error as Error {
+            throw error
+        } catch {
+            logger.error("Data location issue.")
+            throw .dataLocationIssue
         }
         logger.debug("Max number: \(maxNumber)")
         logger.debug("Total files: \(totalFiles)")
+        logger.info("Total size: \(totalSize)")
         guard maxNumber == totalFiles - 1 else {
             logger.error("Missing some block data files.")
             throw .missingBlockFiles
         }
         fileNumber = maxNumber
+        self.sizeOnDisk = totalSize
 
-        // Sanity check that we can read from the last file.
-        if let lastFileInfo = try await lastFileInfo {
-            logger.debug("Last file \(filePath(for: maxNumber)) size: \(lastFileInfo.size)")
-        }
         // TODO: Prepopulate cache with the last `Self.cacheSize` blocks.
     }
 
@@ -159,8 +178,10 @@ actor BlockStorage {
         let maxSize = Int64(config.maxFileSize) // Accounts for magic bytes header and block length prefix
         let encoding = TxBlock.Encoding.file(magicBytes: config.magic)
 
+        let serializedBlock = block.binaryData(encoding: encoding)
+
         var offset: Int64
-        if let info = try await lastFileInfo, info.size + Int64(block.binarySize(encoding: encoding)) <= maxSize {
+        if let info = try await lastFileInfo, info.size + Int64(serializedBlock.count) <= maxSize {
             offset = info.size
         } else {
             offset = 0
@@ -173,12 +194,14 @@ actor BlockStorage {
                 forWritingAt: path,
                 options: offset == 0 ? .newFile(replaceExisting: false) : .modifyFile(createIfNecessary: false)
             ) { handle in
-                try await handle.write(contentsOf: block.binaryData(encoding: encoding), toAbsoluteOffset: offset)
+                try await handle.write(contentsOf: serializedBlock, toAbsoluteOffset: offset)
             }
         } catch {
             logger.error("Could not open block data file for writing.")
             throw offset == 0 ? .blockFileCreateIssue : .blockFileWriteIssue
         }
+
+        sizeOnDisk += serializedBlock.count
 
         // Sanity check
         if let info = try await lastFileInfo {

@@ -15,13 +15,14 @@ struct BlockRef: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    public init(_ block: TxBlock, height: Int, chainwork: DifficultyTarget, status: ValidationStatus = .header, locator: BlockStorage.Locator? = .none) {
+    init(_ block: TxBlock, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorage.Locator? = .none) {
         self.blockID = block.id
         self.previous = block.previous
         self.time = block.time
         self.target = block.target
         self.height = height
         self.chainwork = chainwork
+        self.chainTxCount = chainTxCount
         self.status = status
         self.locator = locator
     }
@@ -34,10 +35,16 @@ struct BlockRef: Equatable, Sendable {
     public let target: Int
     public let height: Int
     public let chainwork: DifficultyTarget
+    public let chainTxCount: Int
     public internal(set) var status: ValidationStatus
     public internal(set) var locator: BlockStorage.Locator?
 
     // MARK: - Computed Properties
+
+    /// Calculate the difficulty for a given block index.
+    var difficulty: Double {
+        DifficultyTarget.getDifficulty(target)
+    }
 
     // MARK: - Instance Methods
 
@@ -72,13 +79,14 @@ extension BlockRef: BinaryCodable {
         target = try decoder.decode()
         height = try decoder.decode()
         chainwork = try decoder.decode()
+        chainTxCount = try decoder.decode()
         status = try decoder.decode()
         let hasLocator: Bool = try decoder.decode()
         if hasLocator {
             locator = try decoder.decode()
         }
     }
-    
+
     func encode(to encoder: inout BinaryEncoder) {
         encoder.encode(blockID)
         encoder.encode(previous)
@@ -86,6 +94,7 @@ extension BlockRef: BinaryCodable {
         encoder.encode(target)
         encoder.encode(height)
         encoder.encode(chainwork)
+        encoder.encode(chainTxCount)
         encoder.encode(status)
         if let locator {
             encoder.encode(true)
@@ -102,6 +111,7 @@ extension BlockRef: BinaryCodable {
         counter.count(target)
         counter.count(height)
         counter.count(chainwork)
+        counter.count(chainTxCount)
         counter.count(status)
         counter.count(Bool.self)
         if let locator {

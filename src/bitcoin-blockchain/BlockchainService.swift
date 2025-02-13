@@ -1,4 +1,5 @@
 import Foundation
+import Atomics
 import AsyncAlgorithms
 import Logging
 import _NIOFileSystem
@@ -38,7 +39,7 @@ public actor BlockchainService: Sendable {
 
     private var blockStorage: BlockStorage!
     private var blockIndex: BlockIndex!
-    private var chainTip: BlockID! = .none
+    public private(set) var chainTip: BlockID! = .none
 
     public private(set) var mempool = [BitcoinTx]()
 
@@ -53,6 +54,9 @@ public actor BlockchainService: Sendable {
 
     /// Subscriptions to new transactions.
     private var txChannels = [AsyncChannel<BitcoinTx>]()
+
+    /// Cache of initial block download status, uses Swift Atomics to copy the behavior of `m_cached_finished_ibd` in Bitcoin Core.
+    private var finishedIDB = ManagedAtomic<Bool>(false)
 
     public init(params: ConsensusParams = .regtest, config: Config = .init()) {
         self.params = params
@@ -129,6 +133,55 @@ public actor BlockchainService: Sendable {
         get async {
             let height = await blockIndex.height
             return await validatedHeight == height
+        }
+    }
+
+    public var tipTime: Date {
+        get async {
+            precondition(status == .running)
+            return await blockIndex.get(chainTip).time
+        }
+    }
+
+    public var tipDifficulty: Double {
+        get async {
+            precondition(status == .running)
+            return await blockIndex.get(chainTip).difficulty
+        }
+    }
+
+    public var medianTime: Date {
+        get async {
+            precondition(status == .running)
+            return await getMedianTimePast()
+        }
+    }
+
+    public var verificationProgress: Double {
+        get async {
+            precondition(status == .running)
+            return await guessVerificationProgress()
+        }
+    }
+
+    public var initialBlockDownload: Bool {
+        get async {
+            precondition(status == .running)
+            return await isInitialBlockDownload()
+        }
+    }
+
+    public var chainwork: Data {
+        get async {
+            precondition(status == .running)
+            return Data(await blockIndex.get(chainTip).chainwork.binaryData.reversed())
+        }
+    }
+
+    public var sizeOnDisk: Int {
+        get async {
+            precondition(status == .running)
+            return await blockStorage.sizeOnDisk
         }
     }
 
@@ -761,6 +814,50 @@ public actor BlockchainService: Sendable {
         return median[median.count / 2]
     }
 
+    private func guessVerificationProgress(for height: Int? = .none) async -> Double {
+        let maxHeight = await blockIndex.get(chainTip).height
+        let height = height ?? maxHeight
+        precondition(height >= 0 && height <= maxHeight)
+
+        let blockRef = await blockIndex.get(at: height)
+
+        let now = nowSeconds()
+        let blockTime = floor(blockRef.time.timeIntervalSince1970) // TODO: floor may be redundant as block always resets seconds (or at least it should)
+
+        let chainData = params.chainData
+        let chainDataTime = floor(blockRef.time.timeIntervalSince1970)
+
+        let txTotal: Double
+        if blockRef.chainTxCount <= chainData.txCount {
+            txTotal = Double(chainData.txCount) + (now - chainDataTime) * chainData.txRate
+        } else {
+            txTotal = Double(blockRef.chainTxCount)  + (now - blockTime) * chainData.txRate
+        }
+        return min(Double(blockRef.chainTxCount) / txTotal, 1.0)
+    }
+
+    private func isInitialBlockDownload() async -> Bool {
+        if finishedIDB.load(ordering: .relaxed) { return false }
+
+        // Currently this function is never called before the service has started including all blocks indexed. The process could become more async in the future so leaving this line here.
+        if await blockStorage.status == .starting { return true }
+
+        // This is for the active chain only.
+        if chainTip == .none { return true }
+
+        let blockRef = await blockIndex.get(chainTip)
+
+        if try! DifficultyTarget(binaryData: params.minChainwork.reversed()) > blockRef.chainwork { return true }
+
+        let maxTipAge = TimeInterval(24 * 60 * 60) // 24 hours
+        let maxTipTime = Date(timeIntervalSince1970: nowSeconds() - maxTipAge)
+        if (blockRef.time < maxTipTime ) { return true }
+
+        logger.info("Leaving InitialBlockDownload (latching to false)")
+        finishedIDB.store(true, ordering: .relaxed)
+        return false
+    }
+
     /// BIP68 - Untested - Entrypoint 1.
     private func checkSequenceLocks(_ tx: BitcoinTx, verifyLockTimeSequence: Bool, coins: [TxOutpoint : UnspentOut], previousBlockMedianTimePast: Int) async throws {
         // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate
@@ -786,4 +883,10 @@ public actor BlockchainService: Sendable {
         let lockPair = tx.calculateSequenceLocks(verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &heights, blockHeight: nextBlockHeight)
         try tx.evaluateSequenceLocks(blockHeight: nextBlockHeight, previousBlockMedianTimePast: previousBlockMedianTimePast, lockPair: lockPair)
     }
+}
+
+private func nowSeconds() -> Double {
+    var calendar = Calendar(identifier: .iso8601)
+    calendar.timeZone = .gmt
+    return floor(calendar.date(bySetting: .nanosecond, value: 0, of: Date.now)!.timeIntervalSince1970)
 }
