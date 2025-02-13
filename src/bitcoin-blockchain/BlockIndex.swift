@@ -64,7 +64,8 @@ actor BlockIndex {
         }
         let height = if let previous { previous.height + 1 } else { 0 }
         let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
-        let blockRef = BlockRef(block, height: height, chainwork: chainwork, status: status, locator: locator)
+        let chainTxCount = if let previous { previous.chainTxCount + block.txs.count } else { block.txs.count }
+        let blockRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
         add(blockRef)
         return blockRef
     }
