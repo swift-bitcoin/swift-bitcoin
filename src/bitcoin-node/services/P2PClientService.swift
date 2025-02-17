@@ -115,6 +115,7 @@ actor P2PClient: Service {
                         }
                     }
                     // Channel was closed
+                    logger.info("Removing outgoing peer \(peerID)")
                     await self.node.removePeer(peerID) // stop sibbling tasks
                 }
             }

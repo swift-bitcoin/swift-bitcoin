@@ -4,25 +4,26 @@ import BitcoinCrypto
 import BitcoinBlockchain
 
 /// Generates blocks with the coinbase output spending to the provided public key.
-public struct GenerateToPubkeyCommand: Sendable {
+public struct GenerateToPubkeyCommand: RPCCommand, Sendable {
 
-    public init(blockchain: BlockchainService) {
-        self.blockchain = blockchain
-    }
-
-    let blockchain: BlockchainService
-
-    /// Request must contain single public key ( hex string) parameter.
-    public func run(_ request: JSONRequest) async throws -> JSONResponse {
-
+    public init(_ request: JSONRequest) throws(RPCError) {
         precondition(request.method == Self.method)
 
         guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(pubkeyHex) = first else {
-            throw RPCError(.invalidParams("pubkey"), description: "Pubkey (hex string) is required.")
+            throw .init(.invalidParams("pubkey"), description: "Pubkey (hex string) is required.")
         }
         guard let pubkeyData = Data(hex: pubkeyHex), let pubkey = PubKey(compressed: pubkeyData) else {
-            throw RPCError(.invalidParams("pubkey"), description: "Pubkey hex encoding or content invalid.")
+            throw .init(.invalidParams("pubkey"), description: "Pubkey hex encoding or content invalid.")
         }
+        self.request = request
+        self.pubkey = pubkey
+    }
+
+    let request: JSONRequest
+    let pubkey: PubKey
+
+    /// Request must contain single public key ( hex string) parameter.
+    public func run(blockchain: BlockchainService) async -> JSONResponse {
 
         let newBlock = await blockchain.generateTo(pubkey /*, blockTime: Date(timeIntervalSince1970: 1739295700) */)
         let result = newBlock.idHex
@@ -31,4 +32,6 @@ public struct GenerateToPubkeyCommand: Sendable {
     }
 
     public static let method = "generate-to"
+    public static let params = "<pubkey>"
+    public static let description = "Generates a block to the specified public key."
 }

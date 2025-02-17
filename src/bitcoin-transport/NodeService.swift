@@ -199,6 +199,13 @@ public actor NodeService: Sendable {
         return id
     }
 
+    /// Deregisters all peers.
+    public func removeAllPeers() {
+        for id in state.peers.keys {
+            removePeer(id)
+        }
+    }
+
     /// Deregisters a peer and cleans up outbound channels.
     public func removePeer(_ id: PeerID) {
         state.peers[id]?.nextPingTask?.cancel()
@@ -387,6 +394,10 @@ public actor NodeService: Sendable {
 
         if peerVersion.nonce == nonce {
             throw .connectionToSelf
+        }
+
+        if state.peers.values.compactMap(\.version?.nonce).contains(peerVersion.nonce) {
+            throw .repeatConnection
         }
 
         if peerVersion.services.intersection(config.services) != config.services {

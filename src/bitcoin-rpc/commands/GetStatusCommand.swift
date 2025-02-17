@@ -4,21 +4,16 @@ import BitcoinBase
 import BitcoinBlockchain
 
 /// Status of the RPC and Peer-to-Peer services.
-public struct GetStatusCommand: Sendable {
+public struct GetStatusCommand: RPCCommand, Sendable {
 
-    public init(rpcStatus: RPCServiceStatus, p2pStatus: P2PServiceStatus, p2pClientStatus: [P2PClientStatus]) {
-        self.rpcStatus = rpcStatus
-        self.p2pStatus = p2pStatus
-        self.p2pClientStatus = p2pClientStatus
+    public init(_ request: JSONRequest) {
+        precondition(request.method == Self.method)
+        self.request = request
     }
 
-    let rpcStatus: RPCServiceStatus
-    let p2pStatus: P2PServiceStatus
-    let p2pClientStatus: [P2PClientStatus]
+    let request: JSONRequest
 
-    public func run(_ request: JSONRequest) async -> JSONResponse {
-
-        precondition(request.method == Self.method)
+    public func run(rpcStatus: RPCServiceStatus, p2pStatus: P2PServiceStatus, p2pClientStatus: [P2PClientStatus]) async -> JSONResponse {
 
         let result = """
         RPC server status:
@@ -35,4 +30,6 @@ public struct GetStatusCommand: Sendable {
     }
 
     public static let method = "status"
+    public static let params = ""
+    public static let description = "Displays status for all of the node's services."
 }

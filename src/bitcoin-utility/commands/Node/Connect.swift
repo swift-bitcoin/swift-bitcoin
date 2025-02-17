@@ -1,11 +1,12 @@
 import ArgumentParser
 import JSONRPC
 import BitcoinTransport
+import BitcoinRPC
 
 struct Connect: AsyncParsableCommand {
 
     static let configuration = CommandConfiguration(
-        abstract: "Starts the P2P service."
+        abstract: ConnectCommand.description
     )
 
     @OptionGroup
@@ -22,6 +23,6 @@ struct Connect: AsyncParsableCommand {
         let params = JSONObject.list([
             .string(p2pHost),
             .integer(p2pPort)])
-        try await launchRPCClient(host: parent.host, port: parent.resolvedPort, method: "connect", params: params)
+        try await launchRPCClient(host: parent.host, port: parent.resolvedPort, method: ConnectCommand.method, params: params)
     }
 }

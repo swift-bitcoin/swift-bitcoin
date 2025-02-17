@@ -16,7 +16,7 @@ public struct NodeState: Sendable {
     public var ibdComplete : Bool
 
     /// Peer information.
-    var peers = [UUID : PeerState]()
+    public internal(set) var peers = [UUID : PeerState]()
 
     @usableFromInline static let initial = Self()
 }

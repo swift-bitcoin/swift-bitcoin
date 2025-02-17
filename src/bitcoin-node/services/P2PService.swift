@@ -80,7 +80,9 @@ actor P2PService: Service {
     }
 
     private func clientDisconnected() {
-        activeConnections -= 1
+        if listening {
+            activeConnections -= 1
+        }
     }
 
     private func startListening() async throws {
@@ -145,15 +147,17 @@ actor P2PService: Service {
                                         for try await message in inbound.cancelOnGracefulShutdown() {
                                             do {
                                                 try await self.node.processMessage(message, from: peerID)
-                                            } catch is NodeService.Error {
+                                            } catch let error as NodeService.Error {
+                                                logger.error("An error has occurred while processing message:\n\(error)")
                                                 try await connectionChannel.channel.close()
+                                                break // Important that we don't return or continue here as the removal of the peer happens on this task but we don't want to process any more incoming/outgoing messages once an exception occurred.
                                             }
                                             while let message = await self.node.popMessage(peerID) {
                                                 try await outbound.write(message)
                                             }
                                         }
                                         // Disconnected
-                                        logger.info("P2P server disconnected from peer @ \(connectionChannel.channel.remoteAddress?.description ?? "").")
+                                        logger.info("Removing incoming peer \(peerID).")
                                         await self.node.removePeer(peerID) // stop sibbling tasks
                                     }
                                 }

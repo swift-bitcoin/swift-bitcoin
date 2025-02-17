@@ -185,6 +185,14 @@ public actor BlockchainService: Sendable {
         }
     }
 
+    /// Gets a fully validated block by height complete with transactions.
+    public func getBlockID(at height: Int) async -> BlockID? {
+        guard height >= 0, await validatedHeight >= height else {
+            return .none
+        }
+        return await blockIndex.get(at: height).blockID
+    }
+
     /// Returns a block header, meaning a block without it's transactions.
     public func getHeader(_ id: BlockID) async -> TxBlock? {
         guard await blockIndex.has(id) else {
