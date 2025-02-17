@@ -17,7 +17,7 @@ struct CommandTests {
 
         let satoshi = NodeService(blockchain: satoshiChain, config: .init(feeFilterRate: 2))
 
-        let output1 = await GetBlockchainInfoCommand(blockchain: satoshiChain).run()
+        let output1 = await GetBlockchainInfoCommand(.init(id: "1", method: "get-blockchain-info", params: .none)).runInner(blockchain: satoshiChain)
         #expect(output1.chain == "swift-testing")
         #expect(output1.blocks == 0)
         #expect(output1.headers == 0)
@@ -34,7 +34,7 @@ struct CommandTests {
         let fixedTime = 1739295700
         await satoshiChain.generateTo(pubkey, blockTime: Date(timeIntervalSince1970: TimeInterval(fixedTime)))
 
-        let output2 = await GetBlockchainInfoCommand(blockchain: satoshiChain).run()
+        let output2 = await GetBlockchainInfoCommand(.init(id: "2", method: "get-blockchain-info", params: .none)).runInner(blockchain: satoshiChain)
         #expect(output2.chain == "swift-testing")
         #expect(output2.blocks == 1)
         #expect(output2.headers == 1)
@@ -54,7 +54,7 @@ struct CommandTests {
 
         await satoshiChain.generateTo(pubkey, blockTime: nowSeconds)
 
-        let output3 = await GetBlockchainInfoCommand(blockchain: satoshiChain).run()
+        let output3 = await GetBlockchainInfoCommand(.init(id: "3", method: "get-blockchain-info", params: .none)).runInner(blockchain: satoshiChain)
         #expect(output3.chain == "swift-testing")
         #expect(output3.blocks == 2)
         #expect(output3.headers == 2)

@@ -4,14 +4,15 @@ import BitcoinTransport
 struct Node: AsyncParsableCommand {
 
     static let configuration = CommandConfiguration(
-        subcommands: [SendRPC.self, StartP2P.self, Connect.self],
-        defaultSubcommand: SendRPC.self)
+        abstract: "Connects to a runing node and sends it an RPC command.",
+        discussion: """
+        Use one of the subcommands to specify which RPC method to call.
+        """,
+        subcommands: [SendCommand.self, StartP2P.self, Connect.self, DisconnectPeer.self, StopP2P.self, Stop.self],
+        defaultSubcommand: SendCommand.self
+    )
 
-    @Option(name: .shortAndLong, help: """
-        The P2P network to connect to.
-        
-        During development this value will default to regtest.
-    """)
+    @Option(name: .shortAndLong, help: "The P2P network to connect to. During development this value will default to regtest.")
     var network = NodeNetwork.regtest // TODO: Eventually switch to testnet4 and then mainnet.
 
     @Option(name: .shortAndLong, help: "The hostname or address of the RPC service to connect to.")

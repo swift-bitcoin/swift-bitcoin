@@ -4,7 +4,7 @@ import BitcoinBase
 import BitcoinBlockchain
 
 /// Summary of current blockchain information such as total number of headers, blocks and a list of block IDs (hashes).
-public struct GetBlockchainInfoCommand: Sendable {
+public struct GetBlockchainInfoCommand: RPCCommand, Sendable {
 
     public struct Output: JSONStringConvertible {
 
@@ -44,13 +44,14 @@ public struct GetBlockchainInfoCommand: Sendable {
         public let hashes: [String]
     }
 
-    public init(blockchain: BlockchainService) {
-        self.blockchain = blockchain
+    public init(_ request: JSONRequest) {
+        precondition(request.method == Self.method)
+        self.request = request
     }
 
-    let blockchain: BlockchainService
+    let request: JSONRequest
 
-    public func run() async -> Output {
+    public func runInner(blockchain: BlockchainService) async -> Output {
         let chain = await blockchain.params.chain
         let blocks = await blockchain.validatedHeight
         let headerIDs = await blockchain.headerIDs
@@ -67,7 +68,7 @@ public struct GetBlockchainInfoCommand: Sendable {
         let chainwork = await blockchain.chainwork
         let sizeOnDisk = await blockchain.sizeOnDisk
 
-        let result = Output(
+        return Output(
             chain: chain,
             blocks: blocks,
             headers: headerIDs.count - 1,
@@ -81,15 +82,13 @@ public struct GetBlockchainInfoCommand: Sendable {
             sizeOnDisk: sizeOnDisk,
             hashes: headerIDs.map(\.hex)
         )
-        return result
     }
 
-    public func run(_ request: JSONRequest) async -> JSONResponse {
-        precondition(request.method == Self.method)
-
-        let result = await run()
-        return .init(id: request.id, result: JSONObject.string(result.description))
+    public func run(blockchain: BlockchainService) async -> JSONResponse {
+        await .init(id: request.id, result: JSONObject.string(runInner(blockchain: blockchain).description))
     }
 
     public static let method = "get-blockchain-info"
+    public static let params = ""
+    public static let description: String = "Returns an object containing various state info regarding blockchain processing."
 }

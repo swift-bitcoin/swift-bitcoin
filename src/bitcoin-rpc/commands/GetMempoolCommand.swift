@@ -4,23 +4,21 @@ import BitcoinBase
 import BitcoinBlockchain
 
 /// Summary of current mempool information including a list of transaction IDs.
-public struct GetMempoolCommand: Sendable {
+public struct GetMempoolCommand: RPCCommand, Sendable {
 
-    internal struct Output: JSONStringConvertible {
+    struct Output: JSONStringConvertible {
         let size: Int
         let txs: [String]
     }
 
-    public init(blockchain: BlockchainService) {
-        self.blockchain = blockchain
+    public init(_ request: JSONRequest) {
+        precondition(request.method == Self.method)
+        self.request = request
     }
 
-    let blockchain: BlockchainService
+    let request: JSONRequest
 
-    public func run(_ request: JSONRequest) async -> JSONResponse {
-
-        precondition(request.method == Self.method)
-
+    public func run(blockchain: BlockchainService) async -> JSONResponse {
         let mempool = await blockchain.mempool
         let result = Output(
             size: mempool.count,
@@ -30,4 +28,6 @@ public struct GetMempoolCommand: Sendable {
     }
 
     public static let method = "get-mempool"
+    public static let params = ""
+    public static let description: String = "Returns a list of transactions that are in the node's mempool."
 }

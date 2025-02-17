@@ -4,7 +4,7 @@ import BitcoinBase
 import BitcoinBlockchain
 
 /// Transaction information including ID, witness ID, inputs and outputs. For each output a raw value is also included in order to facilitate the signing of transactions which require the serialization of previous outputs.
-public struct GetTransactionCommand: Sendable {
+public struct GetTransactionCommand: RPCCommand, Sendable {
 
     internal struct Output: JSONStringConvertible {
 
@@ -25,24 +25,26 @@ public struct GetTransactionCommand: Sendable {
         let outputs: [Output]
     }
 
-    public init(blockchain: BlockchainService) {
-        self.blockchain = blockchain
-    }
-
-    let blockchain: BlockchainService
-
-    public func run(_ request: JSONRequest) async throws -> JSONResponse {
-
+    public init(_ request: JSONRequest) throws(RPCError) {
         precondition(request.method == Self.method)
+        self.request = request
 
         guard case let .list(objects) = RPCObject(request.params), let first = objects.first, case let .string(txIDHex) = first else {
-            throw RPCError(.invalidParams("txID"), description: "TxID (hex string) is required.")
+            throw .init(.invalidParams("txID"), description: "TxID (hex string) is required.")
         }
         guard let txID = Data(hex: txIDHex), txID.count == BitcoinTx.idLength else {
-            throw RPCError(.invalidParams("txID"), description: "TxID hex encoding or length is invalid.")
+            throw .init(.invalidParams("txID"), description: "TxID hex encoding or length is invalid.")
         }
+        self.txID = txID
+    }
+
+    let request: JSONRequest
+    let txID: TxID
+
+    public func run(blockchain: BlockchainService) async throws(RPCError) -> JSONResponse {
+
         guard let tx = await blockchain.getTx(txID) else {
-            throw RPCError(.invalidParams("txID"), description: "Transaction not found.")
+            throw .init(.invalidParams("txID"), description: "Transaction not found.")
         }
         let ins = tx.ins.map {
             Output.Input(
@@ -67,4 +69,6 @@ public struct GetTransactionCommand: Sendable {
     }
 
     public static let method = "get-transaction"
+    public static let params = "<transaction-id>"
+    public static let description = "Returns transaction data for the specified transaction ID."
 }
