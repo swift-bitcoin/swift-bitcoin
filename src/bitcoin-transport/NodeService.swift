@@ -200,8 +200,11 @@ public actor NodeService: Sendable {
     }
 
     /// Deregisters all peers.
-    public func removeAllPeers() {
+    public func removeAllPeers(incomingOnly: Bool = false) {
         for id in state.peers.keys {
+            if incomingOnly, !state.peers[id]!.incoming {
+                continue
+            }
             removePeer(id)
         }
     }

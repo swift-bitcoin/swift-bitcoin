@@ -210,7 +210,7 @@ actor RPCService: Service {
         _ = StopP2PCommand(request) // Enforces precondition
         try await outbound.write(.init(id: request.id, result: .string("Stopping P2P server…") as JSONObject))
         try await p2pService.stopListening()
-        await node.removeAllPeers()
+        await node.removeAllPeers(incomingOnly: true)
     }
 
     private func rpcConnect(_ request: JSONRequest, outbound: NIOAsyncChannelOutboundWriter<JSONResponse>) async throws {
