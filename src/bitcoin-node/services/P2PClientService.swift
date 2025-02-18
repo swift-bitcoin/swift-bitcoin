@@ -109,6 +109,8 @@ actor P2PClient: Service {
                         } catch let error as NodeService.Error {
                             logger.error("An error has occurred while processing message:\n\(error)")
                             try await clientChannel.channel.close()
+                            break // Important that we don't return or continue here as the removal of the peer happens on this task but we don't want to process any more incoming/outgoing messages once an exception occurred.
+
                         }
                         while let message = await self.node.popMessage(peerID) {
                             try await outbound.write(message)
