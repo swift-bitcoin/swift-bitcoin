@@ -52,8 +52,4 @@ public struct TaprootAddress: BitcoinAddress {
     public var script: BitcoinScript {
         .payToTaproot(outputKey)
     }
-
-    public func out(_ value: SatoshiAmount) -> TxOut {
-        .init(value: value, script: script)
-    }
 }

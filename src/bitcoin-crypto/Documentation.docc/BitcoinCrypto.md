@@ -59,11 +59,11 @@ Encode and decode binary data into and from strings using Base58 or Bech32 encod
 
 <!-- links -->
 
-[swiftbitcoin]: https://swift-bitcoin.github.io/docc/documentation/bitcoin/
-[base]: https://swift-bitcoin.github.io/docc/base/documentation/bitcoinbase/
-[wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
-[blockchain]: https://swift-bitcoin.github.io/docc/blockchain/documentation/bitcoinblockchain/
-[transport]: https://swift-bitcoin.github.io/docc/transport/documentation/bitcointransport/
-[rpc]: https://swift-bitcoin.github.io/docc/rpc/documentation/bitcoinrpc/
-[bcnode]: https://swift-bitcoin.github.io/docc/bcnode/documentation/bitcoinnode/
-[bcutil]: https://swift-bitcoin.github.io/docc/bcutil/documentation/bitcoinutility/
+[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
+[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
+[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
+[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
+[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
+[rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
+[bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/
+[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/

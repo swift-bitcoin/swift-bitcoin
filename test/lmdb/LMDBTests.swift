@@ -209,7 +209,6 @@ struct LMDBTests {
         #expect(throws: (any Error).self) {
             try readOnlyDB.put("newValue".data(using: .utf8)!, forKey: key.data(using: .utf8)!)
         }
-
     }
 
     @Test func cursor() throws {

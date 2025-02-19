@@ -137,6 +137,9 @@ actor RPCService: Service {
                 try await outbound.write(command.run())
             case GetStatusCommand.method:
                 try await rpcStatus(request, outbound: outbound)
+            case GenerateToAddressCommand.method:
+                let command = try GenerateToAddressCommand(request)
+                try await outbound.write(command.run(blockchain: blockchain))
             case GenerateToPubkeyCommand.method:
                 let command = try GenerateToPubkeyCommand(request)
                 try await outbound.write(command.run(blockchain: blockchain))

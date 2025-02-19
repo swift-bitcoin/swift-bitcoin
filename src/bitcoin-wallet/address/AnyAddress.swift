@@ -12,13 +12,13 @@ public enum AnyAddress: BitcoinAddress {
         else { return nil }
     }
 
-    public func out(_ value: BitcoinBase.SatoshiAmount) -> BitcoinBase.TxOut {
+    public var script: BitcoinScript {
         let address: any BitcoinAddress = switch self {
         case .legacy(let a): a
         case .segwit(let a): a
         case .taproot(let a): a
         }
-        return address.out(value)
+        return address.script
     }
 
     public var description: String {
@@ -28,5 +28,22 @@ public enum AnyAddress: BitcoinAddress {
         case .taproot(let a): a
         }
         return address.description
+    }
+
+    /// Whether the address is compatible with a chain identifier from `BitcoinBlockchain/ConsensusParams`.
+    public func isCompatibleWithChain(_ chain: String) -> Bool {
+        let network: WalletNetwork
+        switch self {
+        case .legacy(let a):
+            return a.isMainnet && chain == "mainnet" || (!a.isMainnet && chain != "mainnet")
+        case .segwit(let a):
+            network = a.network
+        case .taproot(let a):
+            network = a.network
+        }
+        // TODO: What about signet? Should all non-identified chains be linked to regtest network type? Should we add a network type param to ConsensusParams on top of the chain ID?
+        return network == .main && chain == "mainnet" ||
+               (network == .test && (chain == "testnet" || chain == "testnet4")) ||
+               (network == .regtest && !["mainnet", "testnet", "testnet4"].contains(chain))
     }
 }

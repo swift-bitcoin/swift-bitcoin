@@ -106,11 +106,7 @@ public struct BitcoinTx: Equatable, Sendable {
         return genesisTx
     }
 
-    public static func makeCoinbaseTx(blockHeight: Int, pubkey: PubKey, witnessMerkleRoot: Data, blockSubsidy: Int) -> Self {
-        makeCoinbaseTx(blockHeight: blockHeight, pubkeyHash: Data(Hash160.hash(data: pubkey.data)), witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: blockSubsidy)
-    }
-
-    public static func makeCoinbaseTx(blockHeight: Int, pubkeyHash: Data, witnessMerkleRoot: Data, blockSubsidy: Int) -> Self {
+    public static func makeCoinbaseTx(blockHeight: Int, out: TxOut, witnessMerkleRoot: Data) -> Self {
         // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
         let witnessReservedValue = Data(count: 32)
 
@@ -126,14 +122,7 @@ public struct BitcoinTx: Equatable, Sendable {
         let coinbaseTx = BitcoinTx(version: .v2, ins: [
             .init(outpoint: .coinbase, script: .init([.encodeMinimally(blockHeight), .zero]), witness: .init([witnessReservedValue]))
         ], outs: [
-            .init(value: blockSubsidy, script: .init([
-                // Standard p2pkh
-                .dup,
-                .hash160,
-                .pushBytes(pubkeyHash),
-                .equalVerify,
-                .checkSig
-            ])),
+            out,
             .init(value: 0, script: witnessCommitmentScript)
         ])
         return coinbaseTx

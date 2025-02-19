@@ -56,10 +56,6 @@ public struct LegacyAddress: BitcoinAddress {
             .payToPubkeyHash(hash)
         }
     }
-
-    public func out(_ value: SatoshiAmount) -> TxOut {
-        .init(value: value, script: script)
-    }
 }
 
 /// Base58-check version for encoding public keys into addresses.

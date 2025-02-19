@@ -26,9 +26,13 @@ public struct GenerateToPubkeyCommand: RPCCommand, Sendable {
     public func run(blockchain: BlockchainService) async -> JSONResponse {
 
         let newBlock = await blockchain.generateTo(pubkey /*, blockTime: Date(timeIntervalSince1970: 1739295700) */)
-        let result = newBlock.idHex
+        let result: JSONObject = if let newBlock {
+            .string(newBlock.idHex)
+        } else {
+            .none
+        }
 
-        return .init(id: request.id, result: JSONObject.string(result))
+        return .init(id: request.id, result: (result))
     }
 
     public static let method = "generate-to"

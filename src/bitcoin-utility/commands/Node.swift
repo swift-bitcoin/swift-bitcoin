@@ -8,7 +8,7 @@ struct Node: AsyncParsableCommand {
         discussion: """
         Use one of the subcommands to specify which RPC method to call.
         """,
-        subcommands: [SendCommand.self, StartP2P.self, Connect.self, DisconnectPeer.self, StopP2P.self, Stop.self],
+        subcommands: [SendCommand.self, StartP2P.self, Connect.self, DisconnectPeer.self, StopP2P.self, Stop.self, GenerateToAddress.self],
         defaultSubcommand: SendCommand.self
     )
 
