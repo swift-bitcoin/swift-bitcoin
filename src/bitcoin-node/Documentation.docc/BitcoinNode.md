@@ -9,7 +9,7 @@ Use the `bcnode` command to start a new Bitcoin node instance.
 
 ## Overview
 
-> Swift Bitcoin: This tool is part of the [Swift Bitcoin](https://swift-bitcoin.github.io/docc/documentation/bitcoin/) suite.
+> Swift Bitcoin: This tool is part of the [Swift Bitcoin](https://swiftbitcoin.org/docs/documentation/bitcoin/) suite.
 
 To launch a Bitcoin RPC server instance use the `start` subcommand.
 
@@ -38,11 +38,11 @@ Use `--help` to find out about other subcommands and general usage.
 
 <!-- links -->
 
-[swiftbitcoin]: https://swift-bitcoin.github.io/docc/documentation/bitcoin/
-[crypto]: https://swift-bitcoin.github.io/docc/crypto/documentation/bitcoincrypto/
-[base]: https://swift-bitcoin.github.io/docc/base/documentation/bitcoinbase/
-[wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
-[blockchain]: https://swift-bitcoin.github.io/docc/blockchain/documentation/bitcoinblockchain/
-[transport]: https://swift-bitcoin.github.io/docc/transport/documentation/bitcointransport/
-[rpc]: https://swift-bitcoin.github.io/docc/rpc/documentation/bitcoinrpc/
-[bcutil]: https://swift-bitcoin.github.io/docc/bcutil/documentation/bitcoinutility/
+[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
+[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
+[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
+[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
+[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
+[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
+[rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
+[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/

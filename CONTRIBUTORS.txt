@@ -1,2 +1,3 @@
+- Daniel Pfeifer <daniel@pfeifer-mail.de>
 - Workchain Manipulator ⚡️ <95532896+craigwrong@users.noreply.github.com>
 - craigwrong <95532896+craigwrong@users.noreply.github.com>

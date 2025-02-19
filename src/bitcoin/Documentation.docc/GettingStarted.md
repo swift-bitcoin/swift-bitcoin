@@ -44,7 +44,7 @@ await blockchain.start()
 
 // Mine 100 blocks so block 1's coinbase output reaches maturity.
 for _ in 0 ..< 100 {
-    await blockchain.generateTo(pubkey)
+    await blockchain.generateTo(address.script)!
 }
 ```
 
@@ -97,8 +97,8 @@ After confirming the transaction was accepted we can mine a block and get it con
 // In this case we can re-use the address we created before.
 let pubkeyHash = Data(Hash160.hash(data: pubkey.data))
 
-// Minde to the public key hash
-await blockchain.generateTo(pubkeyHash)
+// Mine one block to our address.
+let lastBlock = await blockchain.generateTo(address.script)!
 
 // The mempool should now be empty.
 #expect(await blockchain.mempool.count == 0)

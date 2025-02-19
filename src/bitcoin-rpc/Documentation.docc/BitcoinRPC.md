@@ -39,11 +39,11 @@ print(blockchainInfo)
 
 <!-- links -->
 
-[swiftbitcoin]: https://swift-bitcoin.github.io/docc/documentation/bitcoin/
-[crypto]: https://swift-bitcoin.github.io/docc/crypto/documentation/bitcoincrypto/
-[base]: https://swift-bitcoin.github.io/docc/base/documentation/bitcoinbase/
-[wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
-[blockchain]: https://swift-bitcoin.github.io/docc/blockchain/documentation/bitcoinblockchain/
-[transport]: https://swift-bitcoin.github.io/docc/transport/documentation/bitcointransport/
-[bcnode]: https://swift-bitcoin.github.io/docc/bcnode/documentation/bitcoinnode/
-[bcutil]: https://swift-bitcoin.github.io/docc/bcutil/documentation/bitcoinutility/
+[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
+[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
+[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
+[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
+[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
+[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
+[bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/
+[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/

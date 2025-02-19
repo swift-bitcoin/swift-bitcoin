@@ -54,8 +54,4 @@ public struct SegwitAddress: BitcoinAddress {
             .payToWitnessScriptHash(hash)
         }
     }
-
-    public func out(_ value: SatoshiAmount) -> TxOut {
-        .init(value: value, script: script)
-    }
 }

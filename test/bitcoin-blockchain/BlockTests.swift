@@ -135,7 +135,7 @@ struct BlockTests {
 
         let blockchain = BlockchainService()
         await blockchain.start()
-        let block = await blockchain.generateTo(pubkey, blockTime: .init(timeIntervalSince1970: 1704890713))
+        let block = try #require(await blockchain.generateTo(pubkey, blockTime: .init(timeIntervalSince1970: 1704890713)))
 
         let coinbaseTx = block.txs[0]
         let expectedWitnessCommitmentHash = "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9"

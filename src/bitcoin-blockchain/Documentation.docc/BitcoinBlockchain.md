@@ -20,7 +20,7 @@ await blockchain.start()
 
 // Mine 100 blocks so block 1's coinbase output reaches maturity.
 for _ in 0 ..< 100 {
-    await service.generateTo(pubkey)
+    await service.generateTo(BitcoinScript.payToPubkeyHash(pubkey))
 }
 …
 
@@ -34,8 +34,8 @@ await blockchain.addTx(signedTx)
 
 // In this case we can use the address we created before.
 
-// Minde to the public key hash
-await blockchain.generateTo(pubkey)
+// Mine one block to our address.
+let lastBlock = await blockchain.generateTo(address.script)!
 
 // The mempool should now be empty.
 #expect(await blockchain.mempool.count == 0)
@@ -73,11 +73,11 @@ await blockchain.stop()
 
 <!-- links -->
 
-[swiftbitcoin]: https://swift-bitcoin.github.io/docc/documentation/bitcoin/
-[crypto]: https://swift-bitcoin.github.io/docc/crypto/documentation/bitcoincrypto/
-[base]: https://swift-bitcoin.github.io/docc/base/documentation/bitcoinbase/
-[wallet]: https://swift-bitcoin.github.io/docc/wallet/documentation/bitcoinwallet/
-[transport]: https://swift-bitcoin.github.io/docc/transport/documentation/bitcointransport/
-[rpc]: https://swift-bitcoin.github.io/docc/rpc/documentation/bitcoinrpc/
-[bcnode]: https://swift-bitcoin.github.io/docc/bcnode/documentation/bitcoinnode/
-[bcutil]: https://swift-bitcoin.github.io/docc/bcutil/documentation/bitcoinutility/
+[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
+[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
+[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
+[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
+[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
+[rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
+[bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/
+[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/

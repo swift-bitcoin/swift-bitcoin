@@ -7,6 +7,14 @@ public protocol BitcoinAddress: CustomStringConvertible, Equatable, Sendable {
     /// Decodes a string representation of an address into a Bitcoin address instance.
     init?(_ address: String)
 
+    /// Generates an output script.
+    var script: BitcoinScript { get }
+}
+
+extension BitcoinAddress {
+
     /// Generates an output for use in transactions.
-    func out(_ value: SatoshiAmount) -> TxOut
+    public func out(_ value: SatoshiAmount) -> TxOut {
+        .init(value: value, script: script)
+    }
 }

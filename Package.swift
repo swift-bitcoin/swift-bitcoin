@@ -42,7 +42,7 @@ let package = Package(
         .target(name: "Bitcoin",
             dependencies: ["BitcoinRPC", "BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto"],
             path: "src/bitcoin"),
-        .target(name: "BitcoinRPC", dependencies: ["BitcoinTransport", "BitcoinBlockchain", "JSONRPC"], path: "src/bitcoin-rpc"),
+        .target(name: "BitcoinRPC", dependencies: ["BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "JSONRPC"], path: "src/bitcoin-rpc"),
         .target(
             name: "BitcoinTransport",
             dependencies: ["BitcoinBlockchain", "BitcoinBase", "BitcoinCrypto",

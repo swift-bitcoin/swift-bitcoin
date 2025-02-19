@@ -14,7 +14,7 @@ struct BlockchainServiceTests {
 
         let alice = BlockchainService()
         await alice.start()
-        let header1 = await alice.generateTo(pubkey)
+        let header1 = try #require(await alice.generateTo(pubkey))
 
         let bob = BlockchainService()
         await bob.start()
@@ -105,7 +105,7 @@ struct BlockchainServiceTests {
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         for _ in 0 ..< 100 {
-            await blockchain.generateTo(pubkey)
+            await blockchain.generateTo(BitcoinScript.payToPubkeyHash(pubkey))
         }
 
         // Grab block 1's coinbase transaction and output.
@@ -155,7 +155,7 @@ struct BlockchainServiceTests {
         #expect(mempoolBefore == 1)
 
         // Let's mine another block to confirm our transaction.
-        let lastBlock = await blockchain.generateTo(pubkey)
+        let lastBlock = try #require(await blockchain.generateTo(pubkey))
         let mempoolAfter = await blockchain.mempool.count
 
         // Verify the mempool is empty once again.
@@ -213,7 +213,7 @@ struct BlockchainServiceTests {
         for i in 1...15 {
             let minutes = if i < 5 { 4 } else if i < 10 { 2 } else { 4 }
             date = calendar.date(byAdding: .minute, value: minutes, to: date)!
-            let header = await blockchain.generateTo(pubkey, blockTime: date)
+            let header = try #require(await blockchain.generateTo(pubkey, blockTime: date))
             let expectedTarget = if (1...4).contains(i) {
                 0x207fffff // 0x7fffff0000000000000000000000000000000000000000000000000000000000 DifficultyTarget(compact: block.target).data.reversed().hex
             } else if (5...9).contains(i) {

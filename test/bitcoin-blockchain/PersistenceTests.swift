@@ -28,7 +28,7 @@ struct PersistenceTests {
         #expect(dataDirContents.contains("headers"))
         #expect(dataDirContents.contains("coins"))
 
-        let header1 = await alice.generateTo(pubkey)
+        let header1 = try #require(await alice.generateTo(pubkey))
 
         let bob = BlockchainService()
         await bob.start()
@@ -67,7 +67,7 @@ struct PersistenceTests {
         let alice = BlockchainService()
         await alice.start()
 
-        let header1 = await alice.generateTo(pubkey)
+        let header1 = try #require(await alice.generateTo(pubkey))
 
         let bob = BlockchainService(config: .init(dataLocation: .customDirectory(dataDir.string)))
         await bob.start()

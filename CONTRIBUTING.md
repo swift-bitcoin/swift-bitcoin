@@ -8,4 +8,4 @@ Use the following command:
 WWW_ROOT=~/Developer/CraigWrong/swift-bitcoin.github.io/static tools/generate-docs.sh
 ```
 
-On your website make sure to link to `/docc/documentation/bitcoin/`.
+On your website make sure to link to `/docs/documentation/bitcoin/`.

@@ -1,6 +1,6 @@
 # Swift Bitcoin
 
-[documentation](https://swift-bitcoin.github.io/docc/documentation/bitcoin/) ∙ [blog](https://swift-bitcoin.github.io)
+[documentation](https://swiftbitcoin.org/docs/documentation/bitcoin/) ∙ [blog](https://swiftbitcoin.org)
 
 Swift Bitcoin aims to become the first Bitcoin full node implementation and library written entirely in Swift.
 
@@ -8,7 +8,7 @@ Swift Bitcoin aims to become the first Bitcoin full node implementation and libr
 
 This repository contains a single Swift Package which exposes a series of library and executable products: crypto, base, wallet, blockchain, transport, RPC, node and utility.
 
-Refer to each module's [documentation](https://swift-bitcoin.github.io/docc/documentation/bitcoin/) to understand the exact functionality they each cover.
+Refer to each module's [documentation](https://swiftbitcoin.org/docs/documentation/bitcoin/) to understand the exact functionality they each cover.
 
 ## Use as library
 
@@ -41,7 +41,7 @@ In your source files make sure to import the corresponding module:
 import Bitcoin
 ```
 
-Refer to this [Getting Started](https://swift-bitcoin.github.io/docc/documentation/bitcoin/gettingstarted) documentation article to learn about some of the library's capabilities.
+Refer to this [Getting Started](https://swiftbitcoin.org/docs/documentation/bitcoin/gettingstarted) documentation article to learn about some of the library's capabilities.
 
 ## Building and running
 
@@ -68,7 +68,7 @@ The Bitcoin Node `bcnode` tool launches a fresh node instance listening to RPC c
 swift run bcnode --help
 ```
 
-Refer to this [Building](https://swift-bitcoin.github.io/docc/documentation/bitcoin/building) documentation article to learn how to produce a release build on multiple platforms.
+Refer to this [Building](https://swiftbitcoin.org/docs/documentation/bitcoin/building) documentation article to learn how to produce a release build on multiple platforms.
 
 ## Technologies
 
@@ -104,7 +104,7 @@ Blockchain, mempool, coins view are working in-memory but their APIs have not ye
 
 At this time the peer-to-peer client is able to connect and perform an extended handshake, send and respond to pings and synchronize headers. It is not yet ready to fully synchronize against a testnet node or even a regtest node.
 
-Make sure to check the project's [blog](https://swift-bitcoin.github.io) for the latest news and updates. 
+Make sure to check the project's [blog](https://swiftbitcoin.org) for the latest news and updates. 
 
 ## Roadmap
 

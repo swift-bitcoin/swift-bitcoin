@@ -19,7 +19,7 @@ struct DocumentationExamples {
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         var blocks = [TxBlock]()
         for _ in 1 ... 100 {
-            blocks.append(await blockchain.generateTo(pubkey))
+            blocks.append(await blockchain.generateTo(address.script)!)
         }
 
         // # Prepare our transaction.
@@ -59,11 +59,8 @@ struct DocumentationExamples {
 
         // Let's mine another block to confirm our transaction.
 
-        // In this case we can re-use the address we created before.
-        let pubkeyHash = Data(Hash160.hash(data: pubkey.data))
-
-        // Mine to the public key hash
-        let lastBlock = await blockchain.generateTo(pubkeyHash)
+        // Mine one block to our address.
+        let lastBlock = await blockchain.generateTo(address.script)!
 
         // The mempool should now be empty.
         #expect(await blockchain.mempool.count == 0)

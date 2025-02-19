@@ -36,7 +36,8 @@ struct BlockchainIntegrationTests {
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         var newBlocks = [TxBlock]()
         for _ in 1 ... 100 {
-            newBlocks.append(await alice.generateTo(alicePK))
+            let newBlock = try #require(await alice.generateTo(alicePK))
+            newBlocks.append(newBlock)
         }
         #expect(await alice.height == 100)
 
@@ -68,7 +69,7 @@ struct BlockchainIntegrationTests {
         try #require(await bob.addTx(t_a3))
         #expect(await bob.mempool.count == 1)
 
-        let aliceLastBlock = await alice.generateTo(alicePK)
+        let aliceLastBlock = try #require(await alice.generateTo(alicePK))
         #expect(await alice.mempool.count == 0)
 
         #expect(await bob.height == 100)
@@ -110,7 +111,7 @@ struct BlockchainIntegrationTests {
         #expect(await alice.mempool.count == 1)
 
 
-        let bobLastBlock = await bob.generateTo(bobPK)
+        let bobLastBlock = try #require(await bob.generateTo(bobPK))
         #expect(await bob.mempool.isEmpty)
         #expect(bobLastBlock.txs[2] == tA0_A2_c2)
         #expect(await bob.height == 102)

@@ -21,6 +21,8 @@ public actor BlockchainService: Sendable {
         }
 
         let dataLocation: DataLocation
+
+        public static let defaultMaxTries = 1_000_000
     }
 
     public enum Status: Sendable {
@@ -28,7 +30,7 @@ public actor BlockchainService: Sendable {
     }
 
     public enum Error: Swift.Error {
-        case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew, dataDirIssue
+        case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRooot, invalidTransactionInBlock, dataDirIssue
     }
 
     public let params: ConsensusParams
@@ -61,10 +63,9 @@ public actor BlockchainService: Sendable {
     public init(params: ConsensusParams = .regtest, config: Config = .init()) {
         self.params = params
         self.config = config
-        let fm = FileManager.default
         switch config.dataLocation {
         case .defaultDirectory:
-            dataDir = .init(fm.homeDirectoryForCurrentUser.path).appending(".swift-bitcoin/data") // TODO: Centralize this logic. Make async with NIOFileSystem and move to start()?
+            dataDir = FilePath(URL.homeDirectory.relativePath).appending(".swift-bitcoin/data") // TODO: Centralize this logic. Make async with NIOFileSystem and move to start()?
         case .customDirectory(let customDataDir):
             let customDataDirPath = FilePath(customDataDir)
             precondition(customDataDirPath.isAbsolute)
@@ -430,33 +431,31 @@ public actor BlockchainService: Sendable {
 
     /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``check()``
     private func checkTxIns(_ tx: BitcoinTx, exclude: [TxOutpoint], auxCoins: [TxOutpoint : UnspentOut]) async throws(TxError) {
+        precondition(!tx.isCoinbase)
 
-        let nextHeight = await validatedHeight + 1
         let valueIn: SatoshiAmount
-        if tx.isCoinbase {
-            valueIn = getBlockSubsidy(nextHeight)
-        } else {
-            var valueInAcc = SatoshiAmount(0)
-            for txIn in tx.ins.enumerated() {
-                let outpoint = txIn.element.outpoint
+        let nextHeight = await validatedHeight + 1
 
-                // are the actual inputs available?
-                guard let coin = await coins.get(outpoint) ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
-                    throw .inputMissingOrSpent
-                }
-                guard !coin.isCoinbase || nextHeight - coin.height >= params.coinbaseMaturity else {
-                    throw .prematureCoinbaseSpend
-                }
-                valueInAcc += coin.txOut.value
-                guard coin.txOut.value >= 0 && coin.txOut.value <= BitcoinTx.maxMoney else {
-                    throw .inputValueOutOfRange
-                }
-                guard valueInAcc >= 0 && valueInAcc <= BitcoinTx.maxMoney else {
-                    throw .inputValueOutOfRange
-                }
+        var valueInAcc = SatoshiAmount(0)
+        for txIn in tx.ins.enumerated() {
+            let outpoint = txIn.element.outpoint
+
+            // are the actual inputs available?
+            guard let coin = await coins.get(outpoint) ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
+                throw .inputMissingOrSpent
             }
-            valueIn = valueInAcc
+            guard !coin.isCoinbase || nextHeight - coin.height >= params.coinbaseMaturity else {
+                throw .prematureCoinbaseSpend
+            }
+            valueInAcc += coin.txOut.value
+            guard coin.txOut.value >= 0 && coin.txOut.value <= BitcoinTx.maxMoney else {
+                throw .inputValueOutOfRange
+            }
+            guard valueInAcc >= 0 && valueInAcc <= BitcoinTx.maxMoney else {
+                throw .inputValueOutOfRange
+            }
         }
+        valueIn = valueInAcc
 
         // This is guaranteed by calling Tx.check() before this function.
         precondition(tx.valueOut >= 0 && tx.valueOut <= BitcoinTx.maxMoney)
@@ -471,6 +470,20 @@ public actor BlockchainService: Sendable {
         }
     }
 
+    private func calculateFees(_ tx: BitcoinTx, exclude: [TxOutpoint], auxCoins: [TxOutpoint : UnspentOut]) async -> SatoshiAmount {
+        precondition(!tx.isCoinbase)
+        var valueIn = SatoshiAmount(0)
+        for txIn in tx.ins {
+            let outpoint = txIn.outpoint
+
+            guard let coin = await coins.get(outpoint) ?? auxCoins[outpoint] else {
+                preconditionFailure()
+            }
+            valueIn += coin.txOut.value
+        }
+        return valueIn - tx.valueOut
+    }
+
     private func checkTx(_ tx: BitcoinTx, exclude: [TxOutpoint]? = .none, auxCoins: [TxOutpoint : UnspentOut]? = .none) async -> Bool {
         let exclude = exclude ?? mempoolExclude
         let auxCoins = auxCoins ?? mempoolCoins
@@ -478,8 +491,9 @@ public actor BlockchainService: Sendable {
         // Check tx
         do {
             try tx.check(weightLimit: ConsensusParams.maxBlockWeight)
-            try await checkTxIns(tx, exclude: exclude, auxCoins: auxCoins)
-
+            if !tx.isCoinbase {
+                try await checkTxIns(tx, exclude: exclude, auxCoins: auxCoins)
+            }
 
             // TODO: `checkSequenceLocks(tx, verifyLockTimeSequence: Bool, coins: [TxOutpoint : UnspentOut], previousBlockMedianTimePast: Int)`
         } catch {
@@ -580,14 +594,21 @@ public actor BlockchainService: Sendable {
         // Verify merkle root
         let expectedMerkleRoot = calculateMerkleRoot(block.txs)
         guard block.merkleRoot == expectedMerkleRoot else {
-            return
+            throw .wrongMerkleRooot
         }
 
         var tmpExclude = [TxOutpoint]()
         var tmpCoins = [TxOutpoint: UnspentOut]()
+        guard let coinbaseTx = block.txs.first, coinbaseTx.isCoinbase else {
+            throw .missingCoinbaseTransaction
+        }
+        var fees = SatoshiAmount(0)
         for tx in block.txs {
             guard await checkTx(tx, exclude: tmpExclude, auxCoins: tmpCoins) else {
-                return // Error, invalid tx in block
+                throw .invalidTransactionInBlock
+            }
+            if !tx.isCoinbase {
+                fees += await calculateFees(tx, exclude: tmpExclude, auxCoins: tmpCoins)
             }
             // Remove coins
             tmpExclude += tx.ins.map(\.outpoint)
@@ -597,6 +618,18 @@ public actor BlockchainService: Sendable {
                 tmpCoins[.init(tx: txid, txOut: out.offset)] = .init(out.element, height: nextTipHeight, isCoinbase: tx.isCoinbase)
             }
         }
+
+        // Check coinbase
+        let nextHeight = await validatedHeight + 1
+        let blockReward = getBlockSubsidy(nextHeight) + fees
+
+        // We allow for a portion of the block reward to be left unclaimed.
+        guard blockReward >= coinbaseTx.valueOut else {
+            throw .coinbaseTransactionOverspends
+        }
+
+        let unclaimed = blockReward - coinbaseTx.valueOut
+        precondition(unclaimed >= 0 && unclaimed <= BitcoinTx.maxMoney) // coinbase "fee" our of range, can this ever happen??
 
         await connectBlock(block) // Will update chain tip and coins
 
@@ -623,16 +656,25 @@ public actor BlockchainService: Sendable {
         mempoolCoins = mpCoins
     }
 
-    @discardableResult public func generateTo(_ pubkey: PubKey, blockTime: Date = .now) async -> TxBlock {
+    @discardableResult public func generateToScript(_ script: BitcoinScript, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now) async -> [BlockID] {
+        var ids = [BlockID]()
+        for _ in 0 ..< blocks {
+            if let block = await generateTo(script, maxTries: maxTries, blockTime: blockTime) {
+                ids.append(block.id)
+            }
+        }
+        return ids
+    }
+
+    @discardableResult public func generateTo(_ pubkey: PubKey, blockTime: Date = .now) async -> TxBlock? {
         logger.info("Generating blocks with coinbase reward going to public key.")
-        return await generateTo(Data(Hash160.hash(data: pubkey.data)), blockTime: blockTime)
+        return await generateTo(BitcoinScript.payToPubkeyHash(pubkey), blockTime: blockTime)
     }
 
     /// Generates a block using the mempool transactions and locks the coinbase reward output to the provided public key hash.
     ///
     /// This function essentially mines a block in current thread so it has the potential to completely block. Future versions of this method will provide asynchronous control via detached background task.
-    @discardableResult public func generateTo(_ pubkeyHash: Data, blockTime: Date = .now) async -> TxBlock {
-        // TODO:
+    @discardableResult public func generateTo(_ script: BitcoinScript, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now) async -> TxBlock? {
         logger.info("Generating blocks with coinbase reward going to public key hash.")
 
         guard await synchronized else {
@@ -641,15 +683,26 @@ public actor BlockchainService: Sendable {
         }
         let chainTipRef = await blockIndex.get(chainTip)
         let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool)
-        let coinbaseTx = BitcoinTx.makeCoinbaseTx(blockHeight: chainTipRef.height + 1, pubkeyHash: pubkeyHash, witnessMerkleRoot: witnessMerkleRoot, blockSubsidy: params.blockSubsidy)
+
+        let mempoolTxs = mempool
+
+        // Calculate fees
+        var totalFees = SatoshiAmount(0)
+        for tx in mempoolTxs {
+            totalFees += await calculateFees(tx, exclude: [], auxCoins: mempoolCoins) // TODO: Double-check `exclude` needs to be empty as well as the auxCoins parameter.
+        }
+
+        let blockReward = params.blockSubsidy + totalFees
+        let coinbaseTx = BitcoinTx.makeCoinbaseTx(blockHeight: chainTipRef.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot)
 
         let previousBlockHash = chainTip!
-        let txs = [coinbaseTx] + mempool
+        let txs = [coinbaseTx] + mempoolTxs
         let merkleRoot = calculateMerkleRoot(txs)
 
         let target = await getNextWorkRequired(forHeight: chainTipRef.height, newBlockTime: blockTime, params: params)
 
         var nonce = 0
+        var tries = maxTries
         var block: TxBlock
         repeat {
             block = .init(
@@ -661,7 +714,12 @@ public actor BlockchainService: Sendable {
                 nonce: nonce
             )
             nonce += 1
-        } while try! DifficultyTarget(binaryData: block.hash) > DifficultyTarget(compact: target)
+            tries -= 1
+        } while tries > 0 && (try! DifficultyTarget(binaryData: block.hash) > DifficultyTarget(compact: target))
+
+        guard try! DifficultyTarget(binaryData: block.hash) <= DifficultyTarget(compact: target) else {
+            return .none
+        }
 
         block.txs = txs
 

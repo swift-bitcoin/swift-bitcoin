@@ -107,7 +107,7 @@ struct NodeBootstrapTests {
         var bobToCarol = await bob.getChannel(for: peerC).makeAsyncIterator()
 
         // Begin testing
-        let block1 = await alice.blockchain.generateTo(pubkey)
+        let block1 = try #require(await alice.blockchain.generateTo(pubkey))
 
         // Alice --(cmpctblock)->> …
         let messageAB0_cmpctblock = try #require(await aliceToBob.next())
@@ -162,7 +162,7 @@ struct NodeBootstrapTests {
         await carol.blockchain.start()
 
         // Setup blockchains
-        let aliceBlock1 = await alice.blockchain.generateTo(pubkey)
+        let aliceBlock1 = try #require(await alice.blockchain.generateTo(pubkey))
         let aliceTip  = await alice.blockchain.validatedHeight
         #expect(aliceTip == 1)
 
@@ -291,7 +291,7 @@ struct NodeBootstrapTests {
         await carol.blockchain.start()
 
         // Setup blockchains
-        let aliceBlock1 = await alice.blockchain.generateTo(pubkey)
+        let aliceBlock1 = try #require(await alice.blockchain.generateTo(pubkey))
         try await bob.blockchain.processBlock(aliceBlock1)
         try await carol.blockchain.processBlock(aliceBlock1)
 
@@ -325,7 +325,7 @@ struct NodeBootstrapTests {
         var bobToCarol = await bob.getChannel(for: peerC).makeAsyncIterator()
 
         // Begin testing
-        let aliceBlock2 = await alice.blockchain.generateTo(pubkey)
+        let aliceBlock2 = try #require(await alice.blockchain.generateTo(pubkey))
 
         // Alice --(cmpctblock)->> …
         let messageAB0_cmpctblock = try #require(await aliceToBob.next())
@@ -400,7 +400,7 @@ struct NodeBootstrapTests {
         await carol.blockchain.start()
 
         // Setup blockchains
-        let aliceBlock1 = await alice.blockchain.generateTo(pubkey)
+        let aliceBlock1 = try #require(await alice.blockchain.generateTo(pubkey))
         try await bob.blockchain.processBlock(aliceBlock1)
         try await carol.blockchain.processBlock(aliceBlock1)
 
@@ -441,7 +441,7 @@ struct NodeBootstrapTests {
         var bobToCarol = await bob.getChannel(for: peerC).makeAsyncIterator()
 
         // Begin testing
-        let aliceBlock2 = await alice.blockchain.generateTo(pubkey)
+        let aliceBlock2 = try #require(await alice.blockchain.generateTo(pubkey))
 
         #expect(await alice.blockchain.height == 2)
         #expect(await alice.blockchain.validatedHeight == 2)
