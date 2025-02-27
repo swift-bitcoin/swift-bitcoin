@@ -136,11 +136,7 @@ public struct ExtendedKey {
 /// Error
 public extension ExtendedKey {
     enum Error: Swift.Error, Equatable {
-        case invalidEncoding, wrongDataLength, unknownNetwork, invalidPrivateKeyLength, invalidSecretKey, invalidPublicKeyEncoding, invalidPublicKey, zeroDepthNonZeroFingerprint, zeroDepthNonZeroIndex, invalidSeed, binaryDecodingError(BinaryDecodingError)
-
-        init(_ error: BinaryDecodingError) {
-            self = .binaryDecodingError(error)
-        }
+        case invalidEncoding, wrongDataLength, unknownNetwork, invalidPrivateKeyLength, invalidSecretKey, invalidPublicKeyEncoding, invalidPublicKey, zeroDepthNonZeroFingerprint, zeroDepthNonZeroIndex, invalidSeed, binaryDecodingError
     }
 }
 
@@ -152,7 +148,7 @@ extension ExtendedKey: BinaryCodable {
         do {
              version = try decoder.decode()
         } catch {
-            throw .init(error) // or `.binaryDecodingError(error)`
+            throw .binaryDecodingError
         }
 
         guard version == mainHDKeyVersionPrivate || version == mainHDKeyVersionPublic || version == testHDKeyVersionPrivate || version == testHDKeyVersionPublic else {
@@ -171,7 +167,7 @@ extension ExtendedKey: BinaryCodable {
             keyIndex = Int((try decoder.decode() as UInt32).byteSwapped)
             chaincode = try decoder.decode(32)
         } catch {
-            throw .binaryDecodingError(error)
+            throw .binaryDecodingError
         }
 
         var secretKey = SecretKey?.none
@@ -183,14 +179,14 @@ extension ExtendedKey: BinaryCodable {
             do {
                 try decoder.decode(1)
             } catch {
-                throw .binaryDecodingError(error)
+                throw .binaryDecodingError
             }
 
             let secretKeyData: Data
             do {
                 secretKeyData = try decoder.decode(SecretKey.keyLength)
             } catch {
-                throw .binaryDecodingError(error)
+                throw .binaryDecodingError
             }
             guard let parsedSecretKey = SecretKey(secretKeyData) else {
                 throw Error.invalidSecretKey
@@ -201,7 +197,7 @@ extension ExtendedKey: BinaryCodable {
             do {
                 pubkeyData = try decoder.decode(PubKey.compressedLength)
             } catch {
-                throw .binaryDecodingError(error)
+                throw .binaryDecodingError
             }
             guard let parsedPubkey = PubKey(pubkeyData, skipCheck: true) else {
                 throw Error.invalidPublicKeyEncoding

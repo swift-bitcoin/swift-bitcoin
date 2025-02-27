@@ -11,36 +11,60 @@ public typealias CustomBinaryCodable = CustomBinaryEncodable & CustomBinaryDecod
 public protocol CustomBinaryEncodable: BinaryEncodable {
     associatedtype Encoding
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding)
-    func encode(to encoder: inout BinaryEncoder, encoding: Encoding)
+    func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?)
+    func encode(to encoder: inout BinaryEncoder, encoding: Encoding?)
 }
 
 public extension CustomBinaryEncodable {
 
-    func binarySize(encoding: Encoding) -> Int {
+    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+        encodingSize(&counter, encoding: .none)
+    }
+
+    func encode(to encoder: inout BinaryEncoder) {
+        encode(to: &encoder, encoding: .none)
+    }
+
+    func binarySize(encoding: Encoding?) -> Int {
         var counter = BinaryEncodingSizeCounter()
         encodingSize(&counter, encoding: encoding)
         return counter.size
     }
 
-    func binaryData(encoding: Encoding) -> Data {
+//    var binarySize: Int {
+//        binarySize(encoding: .none)
+//    }
+
+    func binaryData(encoding: Encoding?) -> Data {
         var counter = BinaryEncodingSizeCounter()
         encodingSize(&counter, encoding: encoding)
         var encoder = BinaryEncoder(counter)
         encode(to: &encoder, encoding: encoding)
         return encoder.data
     }
+
+//    var binaryData: Data {
+//        binaryData(encoding: .none)
+//    }
 }
 
-public protocol CustomBinaryDecodable: BinaryDecodable where Error: Swift.Error {
+public protocol CustomBinaryDecodable: BinaryDecodable {
     associatedtype Encoding
 
-    init(from decoder: inout BinaryDecoder, encoding: Encoding) throws(Error)
+    init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws
 }
 
 public extension CustomBinaryDecodable {
 
-    init<D: DataProtocol>(binaryData: D, encoding: Encoding) throws(Error) {
+    init(from decoder: inout BinaryDecoder) throws {
+        try self.init(from: &decoder, encoding: .none)
+    }
+
+    init<D: DataProtocol>(binaryData: D) throws {
+        try self.init(binaryData: binaryData, encoding: .none)
+    }
+
+    init<D: DataProtocol>(binaryData: D, encoding: Encoding?) throws {
         var decoder = BinaryDecoder(binaryData)
         try self.init(from: &decoder, encoding: encoding)
     }

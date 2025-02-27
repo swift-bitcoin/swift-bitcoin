@@ -14,7 +14,7 @@ public struct BinaryDecoder {
     private var checkpointLimit = Int?.none
 
     /// Decodes data which may appear prefixed by its length as a variable integer.
-    public mutating func decode(variable: Bool, byteSwapped: Bool = false) throws(BinaryDecodingError) -> Data {
+    public mutating func decode(variable: Bool, byteSwapped: Bool = false) throws -> Data {
         if variable {
             let varInt: VarInt = try decode()
             return try decode(varInt.value, byteSwapped: byteSwapped)
@@ -23,7 +23,7 @@ public struct BinaryDecoder {
     }
 
     /// Decodes data of the specified length or until there are no more bytes available.
-    @discardableResult public mutating func decode(_ count: Int? = .none, byteSwapped: Bool = false) throws(BinaryDecodingError) -> Data {
+    @discardableResult public mutating func decode(_ count: Int? = .none, byteSwapped: Bool = false) throws -> Data {
         let remaining = data.count - offset
         let count = if let count { count }
                     else if let limit { limit }
@@ -46,8 +46,13 @@ public struct BinaryDecoder {
     }
 
     /// Decodes a binary decodable object.
-    public mutating func decode<T: BinaryDecodable>() throws(T.Error) -> T {
+    public mutating func decode<T: BinaryDecodable>() throws -> T {
         try T(from: &self)
+    }
+
+    /// Decodes a custom binary decodable object.
+    public mutating func decode<T: CustomBinaryDecodable>(encoding: T.Encoding?) throws -> T {
+        try T(from: &self, encoding: encoding)
     }
 
     /// Sets a limit on the number of bytes to decode before issuing a ``BinaryDecodingError/limitExceeded``.
@@ -95,7 +100,7 @@ public struct BinaryDecoder {
     }
 
     /// Decodes a primitive type value.
-    mutating func decodePrimitive<T: BinaryEncodingPrimitive>() throws(BinaryDecodingError) -> T {
+    mutating func decodePrimitive<T: BinaryEncodingPrimitive>() throws -> T {
         let count = MemoryLayout<T>.size
         if let limit {
             if count <= limit { self.limit = limit - count }

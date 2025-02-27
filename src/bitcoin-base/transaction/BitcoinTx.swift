@@ -44,14 +44,14 @@ public struct BitcoinTx: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var id: Data { Data(Hash256.hash(data: dataNonWitness).reversed()) }
+    public var id: Data { Data(Hash256.hash(data: binaryData(encoding: .nonWitness)).reversed()) }
 
     /// BIP141
     /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
     public var witnessID: Data { Data(Hash256.hash(data: binaryData).reversed()) }
 
     /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
-    public var weight: Int { sizeNonWitness * 4 + witnessSize }
+    public var weight: Int { binarySize(encoding: .nonWitness) * 3 + binarySize }
 
     ///  BIP141: Virtual transaction size is defined as Transaction weight / 4 (rounded up to the next integer).
     public var virtualSize: Int { Int((Double(weight) / 4).rounded(.up)) }
@@ -152,9 +152,15 @@ extension BitcoinTx {
     // No type methods yet.
 }
 
-extension BitcoinTx: BinaryCodable {
+extension BitcoinTx: CustomBinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public enum Encoding: Equatable, Sendable {
+        case nonWitness
+    }
+
+    public typealias DecodingError = BinaryDecodingError
+
+    public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws {
         version = try decoder.decode()
 
         // BIP144 - Check for marker and segwit flag
@@ -179,16 +185,16 @@ extension BitcoinTx: BinaryCodable {
         locktime = try decoder.decode()
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
         encoder.encode(version)
         // BIP144
-        if hasWitness {
+        if encoding != .nonWitness, hasWitness {
             encoder.encode(BitcoinTx.segwitMarkerAndFlag)
         }
         encoder.encode(ins)
         encoder.encode(outs)
         // BIP144
-        if hasWitness {
+        if encoding != .nonWitness, hasWitness {
             for witness in ins.map(\.witness) {
                 encoder.encode(witness)
             }
@@ -196,49 +202,20 @@ extension BitcoinTx: BinaryCodable {
         encoder.encode(locktime)
     }
 
-    public func encodeNonWitness(to encoder: inout BinaryEncoder) {
-        encoder.encode(version)
-        encoder.encode(ins)
-        encoder.encode(outs)
-        encoder.encode(locktime)
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
         counter.count(version)
         // BIP144
-        if hasWitness {
+        if encoding != .nonWitness, hasWitness {
             counter.count(BitcoinTx.segwitMarkerAndFlag)
         }
         counter.count(ins)
         counter.count(outs)
         // BIP144
-        if hasWitness {
+        if encoding != .nonWitness, hasWitness {
             for witness in ins.compactMap({ $0.witness }) {
                 counter.count(witness)
             }
         }
         counter.count(locktime)
-    }
-
-    public func encodingSizeNonWitness(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(version)
-        counter.count(ins)
-        counter.count(outs)
-        counter.count(locktime)
-    }
-
-    /// Data used for the transaction identifier ``BitcoinTx/id``.
-    public var dataNonWitness: Data {
-        var encoder = BinaryEncoder(size: sizeNonWitness)
-        encodeNonWitness(to: &encoder)
-        return encoder.data
-    }
-
-    /// BIP141: Base transaction size is the size of the transaction serialised with the witness data stripped.
-    /// AKA `identifierSize`
-    public var sizeNonWitness: Int {
-        var counter = BinaryEncodingSizeCounter()
-        self.encodingSizeNonWitness(&counter)
-        return counter.size
     }
 }

@@ -34,7 +34,6 @@ public struct NewlineEncoder: ByteToMessageDecoder, MessageToByteEncoder, Sendab
         guard readableBytesView[index - 1] == delimiter1 else {
             return .needMoreData
         }
-
         // slice the buffer
         let length = index - buffer.readerIndex - 1
         let slice = buffer.readSlice(length: length)!

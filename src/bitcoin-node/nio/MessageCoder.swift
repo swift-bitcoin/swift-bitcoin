@@ -1,5 +1,6 @@
 import BitcoinTransport
 import NIOCore
+import NIOFoundationCompat
 
 /// Bitcoin Message encoder/decoder.
 struct MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {

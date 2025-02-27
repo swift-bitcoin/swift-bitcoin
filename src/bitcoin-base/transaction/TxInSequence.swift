@@ -78,7 +78,7 @@ public struct TxInSequence: Equatable, Sendable {
 
 /// Data extensions.
 extension TxInSequence: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         let rawValue: UInt32 = try decoder.decode()
         self.init(Int(rawValue))
     }

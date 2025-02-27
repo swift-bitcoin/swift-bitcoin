@@ -70,8 +70,7 @@ let package = Package(
             name: "NIOJSONRPC",
             dependencies: [
                 "JSONRPC",
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOFoundationCompat", package: "swift-nio")],
+                .product(name: "NIOCore", package: "swift-nio")],
             path: "src/nio-json-rpc"),
         .target(name: "JSONRPC", path: "src/json-rpc"),
         .target(name: "LMDB", dependencies: [
@@ -115,6 +114,7 @@ let package = Package(
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "NIOFoundationCompat", package: "swift-nio"),
                 .product(name: "NIOExtras", package: "swift-nio-extras")],
             path: "src/bitcoin-node"),
         .executableTarget(
@@ -122,7 +122,8 @@ let package = Package(
                 "BitcoinRPC", "BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC", "JSONRPC",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio")],
+                .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "NIOFoundationCompat", package: "swift-nio")],
             path: "src/bitcoin-utility")
     ]
 )

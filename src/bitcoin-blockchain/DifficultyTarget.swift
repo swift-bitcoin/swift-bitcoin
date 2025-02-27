@@ -261,7 +261,7 @@ public struct DifficultyTarget: Comparable, Sendable {
 
 extension DifficultyTarget: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         n = .init(repeating: 0, count: Self.width)
         for i in n.indices {
             n[i] = try decoder.decode()

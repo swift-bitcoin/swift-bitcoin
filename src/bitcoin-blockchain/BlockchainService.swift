@@ -233,6 +233,27 @@ public actor BlockchainService: Sendable {
         return try? await blockStorage.retrieve(locator)
     }
 
+    /// Gets a fully validated block by ID complete with transactions.
+    public func getBlockHeight(_ id: BlockID) async -> Int? {
+        guard await blockIndex.has(id) else {
+            return .none
+        }
+        let blockRef = await blockIndex.get(id)
+        return blockRef.height
+    }
+
+    public func getBlockInfo(_ id: BlockID) async -> BlockInfo? {
+        guard await blockIndex.has(id) else {
+            return .none
+        }
+        let ref = await blockIndex.get(id)
+        return .init(
+            height: ref.height,
+            confirmations: await validatedHeight - ref.height,
+            chainwork: ref.chainwork.binaryData
+        )
+    }
+
     /// Adds a transaction to the mempool.
     public func addTx(_ tx: BitcoinTx) async throws {
         guard !mempool.contains(tx) else { return }
@@ -656,10 +677,10 @@ public actor BlockchainService: Sendable {
         mempoolCoins = mpCoins
     }
 
-    @discardableResult public func generateToScript(_ script: BitcoinScript, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now) async -> [BlockID] {
+    @discardableResult public func generateToScript(_ script: BitcoinScript, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = .none) async -> [BlockID] {
         var ids = [BlockID]()
         for _ in 0 ..< blocks {
-            if let block = await generateTo(script, maxTries: maxTries, blockTime: blockTime) {
+            if let block = await generateTo(script, maxTries: maxTries, blockTime: blockTime ?? .now) {
                 ids.append(block.id)
             }
         }
