@@ -53,13 +53,14 @@ actor RPCService: Service {
                 // This closure is called for every inbound connection.
                 connection.eventLoop.makeCompletedFuture {
                     try connection.pipeline.syncOperations.addHandlers([
-                        IdleStateHandler(readTimeout: TimeAmount.seconds(5)),
+                        IdleStateHandler(readTimeout: TimeAmount.seconds(1)),
                         HalfCloseOnTimeout(),
                         ByteToMessageHandler(NewlineEncoder()),
+                        ByteToMessageHandler(RequestDecoder()),
                         MessageToByteHandler(NewlineEncoder()),
-                        CodableCodec<JSONRequest, JSONResponse>()
+                        MessageToByteHandler(ResponseEncoder()),
                     ])
-                    return try NIOAsyncChannel<JSONRequest, JSONResponse>(wrappingChannelSynchronously: connection)
+                    return try NIOAsyncChannel<JSONRPCRequest, JSONRPCResponse>(wrappingChannelSynchronously: connection)
                 }
             }
 
@@ -118,73 +119,71 @@ actor RPCService: Service {
         activeConnections -= 1
     }
 
-    private func handleRequest(_ request: JSONRequest, _ inbound: NIOAsyncChannelInboundStream<JSONRequest>, _ outbound: NIOAsyncChannelOutboundWriter<JSONResponse>) async throws -> () {
+    private func handleRequest(_ request: JSONRPCRequest, _ inbound: NIOAsyncChannelInboundStream<JSONRPCRequest>, _ outbound: NIOAsyncChannelOutboundWriter<JSONRPCResponse>) async throws -> () {
         do {
-            switch request.method {
-            case StopCommand.method:
-                try await rpcStop(request, outbound: outbound)
-            case StartP2PCommand.method:
-                try await rpcStartP2P(request, outbound: outbound)
-            case StopP2PCommand.method:
-                try await rpcStopP2P(request, outbound: outbound)
-            case ConnectCommand.method:
-                try await rpcConnect(request, outbound: outbound)
-            case DisconnectPeerCommand.method:
-                let command = try DisconnectPeerCommand(request)
-                await command.run(node: node)
-            case HelpCommand.method:
-                let command = HelpCommand(request)
-                try await outbound.write(command.run())
-            case GetStatusCommand.method:
-                try await rpcStatus(request, outbound: outbound)
-            case GenerateToAddressCommand.method:
-                let command = try GenerateToAddressCommand(request)
-                try await outbound.write(command.run(blockchain: blockchain))
-            case GenerateToPubkeyCommand.method:
-                let command = try GenerateToPubkeyCommand(request)
-                try await outbound.write(command.run(blockchain: blockchain))
-            case GetBlockHashCommand.method:
-                let command = try GetBlockHashCommand(request)
-                try await outbound.write(command.run(blockchain: blockchain))
-            case GetBlockCommand.method:
-                let command = try GetBlockCommand(request)
-                try await outbound.write(command.run(blockchain: blockchain))
-            case GetTransactionCommand.method:
-                let command = try GetTransactionCommand(request)
-                try await outbound.write(command.run(blockchain: blockchain))
-            case GetBlockchainInfoCommand.method:
-                let command = GetBlockchainInfoCommand(request)
-                try await outbound.write(command.run(blockchain: blockchain))
-            case GetMempoolCommand.method:
-                let command = GetMempoolCommand(request)
-                try await outbound.write(command.run(blockchain: blockchain))
-            case GetPeerInfoCommand.method:
-                let command = GetPeerInfoCommand(request)
-                try await outbound.write(command.run(node: node))
-            case SendTransactionCommand.method:
-                let command = try SendTransactionCommand(request)
-                try await command.run(blockchain: blockchain)
-            default:
-                try await outbound.write(.init(id: request.id, error: .init(.invalidParams("method"), description: "Method `\(request.method)` does not exist.")))
+            switch request.params {
+            case .help(let params):
+                let result = try await HelpRPC(params).run()
+                try await outbound.write(.init(id: request.id, result: .help(result)))
+            case .status:
+                let result = await rpcStatus()
+                try await outbound.write(.init(id: request.id, result: .status(result)))
+            case .stop:
+                await rpcStop()
+            case .startP2P(let params):
+                await rpcStartP2P(params)
+            case .stopP2P:
+                try await rpcStopP2P()
+            case .connect(let params):
+                let result = try await rpcConnect(params)
+                try await outbound.write(.init(id: request.id, result: .connect(result)))
+            case .disconnectPeer(let params):
+                let result = await DisconnectPeerRPC(params).run(node: node)
+                try await outbound.write(.init(id: request.id, result: .disconnectPeer(result)))
+            case .getBlockHash(let params):
+                let result = try await GetBlockHashRPC(params).run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .getBlockHash(result)))
+            case .getBlock(let params):
+                let result = try await GetBlockRPC(params).run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .getBlock(result)))
+            case .generateToAddress(let params):
+                let result = try await GenerateToAddressRPC(params).run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .generateToAddress(result)))
+            case .getBlockchainInfo:
+                let result = await GetBlockchainInfoRPC().run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .getBlockchainInfo(result)))
+            case .getMempool:
+                let result = await GetMempoolRPC().run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .getMempool(result)))
+            case .getPeerInfo:
+                let result = await GetPeerInfoRPC().run(node: node)
+                try await outbound.write(.init(id: request.id, result: .getPeerInfo(result)))
+            case .getTransaction(let params):
+                let result = try await GetTransactionRPC(params).run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .getTransaction(result)))
+            case .sendTransaction(let params):
+                let result = try await SendTransactionRPC(params).run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .sendTransaction(result)))
             }
-        } catch let error as RPCError {
+        } catch let error as JSONRPCResponse.Error {
+            // try await outbound.write(.init(id: request.id, error: error))
             try await outbound.write(.init(id: request.id, error: error))
         }
     }
 
-    private func rpcStatus(_ request: JSONRequest, outbound: NIOAsyncChannelOutboundWriter<JSONResponse>) async throws {
+    private func rpcStatus() async -> StatusRPC.Result {
 
-        let status = RPCServiceStatus(listening: listening, host: host, port: port, overallConnections: overallConnections, activeConnections: activeConnections)
+        let status = StatusRPC.Result.RPCService(listening: listening, host: host, port: port, overallConnections: overallConnections, activeConnections: activeConnections)
 
         // Collect P2P Client Services' statuses in order
-        let p2pClientStatus = await withTaskGroup(of: (Int, P2PClientStatus).self, returning: [P2PClientStatus].self) { group in
+        let p2pClientStatus = await withTaskGroup(of: (Int, StatusRPC.Result.P2PClient).self, returning: [StatusRPC.Result.P2PClient].self) { group in
             for i in p2pClients.indices {
                 group.addTask {
                     let status = await self.p2pClients[i].status
                     return (i, status)
                 }
             }
-            var items = [(Int, P2PClientStatus)]()
+            var items = [(Int, StatusRPC.Result.P2PClient)]()
             for await var result in group {
                 result.1.index = result.0 // Set the index inside the struct
                 items.append(result)
@@ -193,32 +192,27 @@ actor RPCService: Service {
         }
 
         // Execute RPC Command
-        let command = GetStatusCommand(request)
-        try await outbound.write(command.run(rpcStatus: status, p2pStatus: await p2pService.status, p2pClientStatus: p2pClientStatus))
+        return await StatusRPC().run(rpcStatus: status, p2pStatus: await p2pService.status, p2pClientStatus: p2pClientStatus)
     }
 
-    private func rpcStop(_ request: JSONRequest, outbound: NIOAsyncChannelOutboundWriter<JSONResponse>) async throws {
-        _ = StopCommand(request) // Enforces precondition
-        try await outbound.write(.init(id: request.id, result: .string("Stopping…") as JSONObject))
+    private func rpcStop() async {
         await serviceGroup?.triggerGracefulShutdown()
     }
 
-    private func rpcStartP2P(_ request: JSONRequest, outbound: NIOAsyncChannelOutboundWriter<JSONResponse>) async throws {
-        let command = try StartP2PCommand(request)
-        try await outbound.write(.init(id: request.id, result: .string("Staring P2P server on \(command.host):\(command.port)…") as JSONObject))
-        await p2pService.start(host: command.host, port: command.port)
+    private func rpcStartP2P(_ params: StartP2PRPC.Params) async {
+        await p2pService.start(host: params.host, port: params.port)
     }
 
-    private func rpcStopP2P(_ request: JSONRequest, outbound: NIOAsyncChannelOutboundWriter<JSONResponse>) async throws {
-        _ = StopP2PCommand(request) // Enforces precondition
-        try await outbound.write(.init(id: request.id, result: .string("Stopping P2P server…") as JSONObject))
-        try await p2pService.stopListening()
+    private func rpcStopP2P() async throws(JSONRPCResponse.Error) {
+        do {
+            try await p2pService.stopListening()
+        } catch {
+            throw .init(.internalError, error.localizedDescription)
+        }
         await node.removeAllPeers(incomingOnly: true)
     }
 
-    private func rpcConnect(_ request: JSONRequest, outbound: NIOAsyncChannelOutboundWriter<JSONResponse>) async throws {
-        let command = try ConnectCommand(request)
-
+    private func rpcConnect(_ params: ConnectRPC.Params) async throws(JSONRPCResponse.Error) -> ConnectRPC.Result {
         // Attempt to find an inactive client.
         var client = P2PClient?.none
         for c in p2pClients {
@@ -228,11 +222,9 @@ actor RPCService: Service {
             }
         }
         guard let client else {
-            try await outbound.write(.init(id: request.id, error: .init(.applicationError("Maximum P2P client instances reached."))))
-            return
+            throw .init(.internalError, "Maximum P2P client instances reached.")
         }
-
-        try await outbound.write(.init(id: request.id, result: .string("Connecting to peer @\(command.host):\(command.port)…") as JSONObject))
-        await client.connect(host: command.host, port: command.port)
+        await client.connect(host: params.host, port: params.port)
+        return UUID() // FIXME: Find a way to return real peer ID
     }
 }

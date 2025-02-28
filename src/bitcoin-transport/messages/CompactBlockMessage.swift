@@ -46,7 +46,7 @@ extension CompactBlockMessage {
         guard data.count >= 1 else { return nil }
         var data = data
 
-        guard let header = try? TxBlock(dataHeaderOnly: data) else { return nil }
+        guard let header = try? TxBlock(binaryData: data, encoding: .headerOnly) else { return nil }
         self.header = header
         data = data.dropFirst(TxBlock.headerSize) // Data does not include the empty transaction array
 
@@ -85,7 +85,7 @@ extension CompactBlockMessage {
 
     var data: Data {
         var ret = Data(count: size)
-        var offset = ret.addData(header.dataHeaderOnly)
+        var offset = ret.addData(header.binaryData(encoding: .headerOnly))
         offset = ret.addBytes(nonce, at: offset)
 
         offset = ret.addData(Data(varInt: UInt64(txIDs.count)), at: offset)

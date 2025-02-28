@@ -1,5 +1,5 @@
 import ArgumentParser
-import BitcoinTransport
+import BitcoinTransport // NodeNetwork
 
 struct Node: AsyncParsableCommand {
 
@@ -8,7 +8,24 @@ struct Node: AsyncParsableCommand {
         discussion: """
         Use one of the subcommands to specify which RPC method to call.
         """,
-        subcommands: [SendCommand.self, StartP2P.self, Connect.self, DisconnectPeer.self, StopP2P.self, Stop.self, GenerateToAddress.self],
+        subcommands: [
+            Help.self,
+            Status.self,
+            Stop.self,
+            StartP2P.self,
+            StopP2P.self,
+            Connect.self,
+            DisconnectPeer.self,
+            GetBlockHash.self,
+            GetBlock.self,
+            GenerateToAddress.self,
+            GetBlockchainInfo.self,
+            GetMempool.self,
+            GetPeerInfo.self,
+            GetTransaction.self,
+            SendTransaction.self,
+            SendCommand.self
+        ],
         defaultSubcommand: SendCommand.self
     )
 

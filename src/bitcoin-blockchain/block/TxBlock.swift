@@ -43,7 +43,7 @@ public struct TxBlock: Equatable, Sendable {
     // MARK: - Computed Properties
 
     public var hash: Data {
-        Data(Hash256.hash(data: dataHeaderOnly))
+        Data(Hash256.hash(data: binaryData(encoding: .headerOnly)))
     }
 
     public var id: BlockID {
@@ -59,6 +59,10 @@ public struct TxBlock: Equatable, Sendable {
         var header = self
         header.txs = []
         return header
+    }
+
+    public var weight: Int {
+        binarySize(encoding: .nonWitness) * 3 + binarySize
     }
 
     var work: DifficultyTarget { .getWork(target) }
@@ -87,69 +91,6 @@ public struct TxBlock: Equatable, Sendable {
     }
 }
 
-extension TxBlock: BinaryCodable {
-
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        try self.init(fromHeaderOnly: &decoder)
-        txs = try decoder.decode()
-    }
-
-    public init(fromHeaderOnly decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
-        version = Int(try decoder.decode() as Int32)
-        previous = try decoder.decode(TxBlock.idLength, byteSwapped: true)
-        merkleRoot = try decoder.decode(TxBlock.idLength, byteSwapped: true)
-        time = Date(timeIntervalSince1970: TimeInterval(try decoder.decode() as UInt32))
-        target = Int(try decoder.decode() as UInt32)
-        nonce = Int(try decoder.decode() as UInt32)
-        txs = []
-    }
-
-    public init(dataHeaderOnly: Data) throws {
-        var decoder = BinaryDecoder(dataHeaderOnly)
-        try self.init(fromHeaderOnly: &decoder)
-    }
-
-    public func encode(to encoder: inout BinaryEncoder) {
-        encodeHeaderOnly(to: &encoder)
-        encoder.encode(txs)
-    }
-
-    public func encodeHeaderOnly(to encoder: inout BinaryEncoder) {
-        encoder.encode(Int32(version))
-        encoder.encode(previous, byteSwapped: true)
-        encoder.encode(merkleRoot, byteSwapped: true)
-        encoder.encode(UInt32(time.timeIntervalSince1970))
-        encoder.encode(UInt32(target))
-        encoder.encode(UInt32(nonce))
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        encodingSizeHeaderOnly(&counter)
-        counter.count(txs)
-    }
-
-    public func encodingSizeHeaderOnly(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(Int32(version))
-        counter.count(previous)
-        counter.count(merkleRoot)
-        counter.count(UInt32(time.timeIntervalSince1970))
-        counter.count(UInt32(target))
-        counter.count(UInt32(nonce))
-    }
-
-    public var dataHeaderOnly: Data {
-        var encoder = BinaryEncoder(size: sizeHeaderOnly)
-        encodeHeaderOnly(to: &encoder)
-        return encoder.data
-    }
-
-    public var sizeHeaderOnly: Int {
-        var counter = BinaryEncodingSizeCounter()
-        self.encodingSizeHeaderOnly(&counter)
-        return counter.size
-    }
-}
-
 package extension TxBlock {
     /// Minimum size of data in bytes.
     static let minSize = headerSize + 1
@@ -164,7 +105,7 @@ package extension TxBlock {
     func makeShortIDParams(nonce: UInt64) -> (first: UInt64, second: UInt64) {
         // single-SHA256 hashing the block header with the nonce appended (in little-endian)
         var encoder = BinaryEncoder(size: TxBlock.headerSize + MemoryLayout<UInt64>.size)
-        encoder.encode(dataHeaderOnly)
+        encoder.encode(binaryData(encoding: .headerOnly))
         encoder.encode(nonce)
         let headerData = encoder.data
         let headerHash = Data(SHA256.hash(data: headerData))
@@ -199,10 +140,25 @@ package extension BitcoinTx {
 
 extension TxBlock: CustomBinaryCodable {
 
-    public enum Encoding { case file(magicBytes: Int) }
+    public enum Encoding: Equatable, Sendable {
+        case headerOnly, nonWitness, file(magicBytes: Int)
+    }
 
-    public init(from decoder: inout BinaryDecoder, encoding: Encoding) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws {
         switch encoding {
+        case .none, .headerOnly, .nonWitness:
+            let version = Int(try decoder.decode() as Int32)
+            let previous = try decoder.decode(TxBlock.idLength, byteSwapped: true)
+            let merkleRoot = try decoder.decode(TxBlock.idLength, byteSwapped: true)
+            let time = Date(timeIntervalSince1970: TimeInterval(try decoder.decode() as UInt32))
+            let target = Int(try decoder.decode() as UInt32)
+            let nonce = Int(try decoder.decode() as UInt32)
+            let txs: [BitcoinTx] = if encoding == .headerOnly {
+                []
+            } else {
+                try decoder.decode(encoding: encoding == .nonWitness ? .nonWitness : .none)
+            }
+            self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
         case .file(let magicBytes):
             let magic = Int(try decoder.decode() as UInt32)
             guard magic == magicBytes else { throw BinaryDecodingError.limitExceeded } // TODO: Replace error for something appropriate
@@ -213,8 +169,18 @@ extension TxBlock: CustomBinaryCodable {
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding) {
+    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
         switch encoding {
+        case .none, .headerOnly, .nonWitness:
+            encoder.encode(Int32(version))
+            encoder.encode(previous, byteSwapped: true)
+            encoder.encode(merkleRoot, byteSwapped: true)
+            encoder.encode(UInt32(time.timeIntervalSince1970))
+            encoder.encode(UInt32(target))
+            encoder.encode(UInt32(nonce))
+            if encoding != .headerOnly {
+                encoder.encode(txs, encoding: encoding == .nonWitness ? .nonWitness : .none)
+            }
         case .file(let magicBytes):
             encoder.encode(UInt32(magicBytes))
             encoder.encode(UInt32(binarySize))
@@ -222,9 +188,22 @@ extension TxBlock: CustomBinaryCodable {
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding) {
-        counter.count(UInt32.self)
-        counter.count(UInt32.self)
-        encodingSize(&counter)
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
+        switch encoding {
+        case .none, .headerOnly, .nonWitness:
+            counter.count(Int32(version))
+            counter.count(previous)
+            counter.count(merkleRoot)
+            counter.count(UInt32(time.timeIntervalSince1970))
+            counter.count(UInt32(target))
+            counter.count(UInt32(nonce))
+            if encoding != .headerOnly {
+                counter.count(txs, encoding: encoding == .nonWitness ? .nonWitness : .none)
+            }
+        case .file(_):
+            counter.count(UInt32.self)
+            counter.count(UInt32.self)
+            encodingSize(&counter)
+        }
     }
 }

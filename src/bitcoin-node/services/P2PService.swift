@@ -1,7 +1,7 @@
 import Foundation
 import NIOPosix
 import BitcoinTransport
-import BitcoinRPC
+import JSONRPC
 import AsyncAlgorithms
 import ServiceLifecycle
 import NIOCore
@@ -33,7 +33,7 @@ actor P2PService: Service {
     private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<BitcoinMessage, BitcoinMessage>, Never>?
     private var peerIDs = [UUID]()
 
-    var status: P2PServiceStatus {
+    var status: StatusRPC.Result.P2PService {
         .init(running: running, listening: listening, host: host, port: port, overallConnections: overallConnections, sessionConnections: sessionConnections, activeConnections: activeConnections)
     }
 

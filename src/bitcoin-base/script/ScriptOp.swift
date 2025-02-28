@@ -326,7 +326,7 @@ public enum ScriptOp: Equatable, Sendable {
 
 extension ScriptOp: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(BinaryDecodingError) {
+    public init(from decoder: inout BinaryDecoder) throws {
         decoder.setCheckpoint()
         let opCode: UInt8 = try decoder.decode()
         switch opCode {

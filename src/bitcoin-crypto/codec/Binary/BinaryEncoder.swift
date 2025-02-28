@@ -39,6 +39,10 @@ public struct BinaryEncoder {
         value.encode(to: &self)
     }
 
+    public mutating func encode<T: CustomBinaryEncodable>(_ value: T, encoding: T.Encoding?) {
+        value.encode(to: &self, encoding: encoding)
+    }
+
     mutating func encode<T: BinaryEncodingPrimitive>(_ value: T) {
         let count = MemoryLayout.size(ofValue: value)
         let nextOffset = offset + count

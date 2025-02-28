@@ -1,17 +1,15 @@
 import ArgumentParser
 import JSONRPC
-import BitcoinTransport
-import BitcoinRPC
+import BitcoinTransport // NodeNetwork
 
 struct StartP2P: AsyncParsableCommand {
 
     static let configuration = CommandConfiguration(
-        commandName: StartP2PCommand.method,
-        abstract: StartP2PCommand.description
+        commandName: StartP2PRPC.method,
+        abstract: StartP2PRPC.description
     )
 
-    @OptionGroup
-    var parent: Node
+    @OptionGroup var parent: Node
 
     @Option(name: [.customShort("i"), .customLong("p2p-host")], help: "The address to bind the RPC server to.")
     var p2pHost = "0.0.0.0"
@@ -20,10 +18,10 @@ struct StartP2P: AsyncParsableCommand {
     var p2pPort: Int?
 
     mutating func run() async throws {
-        let p2pPort = p2pPort ?? parent.network.defaultP2PPort
-        let params = JSONObject.list([
-            .string(p2pHost),
-            .integer(p2pPort)])
-        try await launchRPCClient(host: parent.host, port: parent.resolvedPort, method: StartP2PCommand.method, params: params)
+        let request = JSONRPCRequest(.startP2P(.init(
+            host: p2pHost,
+            port: p2pPort ?? parent.network.defaultP2PPort
+        )))
+        try await sendRPC(host: parent.host, port: parent.resolvedPort, request: request)
     }
 }
