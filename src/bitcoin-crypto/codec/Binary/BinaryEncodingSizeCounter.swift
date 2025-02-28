@@ -33,7 +33,6 @@ public struct BinaryEncodingSizeCounter {
         countSize(MemoryLayout<E>.size * array.count)
     }
 
-
     /// Counts the size of an encodable value.
     public mutating func count<T: BinaryEncodable>(_ value: T) {
         value.encodingSize(&self)

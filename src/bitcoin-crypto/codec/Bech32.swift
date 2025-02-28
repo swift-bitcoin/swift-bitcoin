@@ -84,19 +84,19 @@ public struct Bech32Decoder: Sendable {
     public let variant: Bech32Variant?
 
     /// Decode Bech32 string
-    public func decode(_ str: String) throws -> (hrp: String, checksum: Data, detectedVariant: Bech32Variant) {
+    public func decode(_ str: String) throws(Error) -> (hrp: String, checksum: Data, detectedVariant: Bech32Variant) {
         guard let strBytes = str.data(using: .utf8) else {
-            throw Error.nonUTF8String
+            throw .nonUTF8String
         }
         guard strBytes.count <= 90 else {
-            throw Error.stringLengthExceeded
+            throw .stringLengthExceeded
         }
         var lower: Bool = false
         var upper: Bool = false
         for c in strBytes {
             // printable range
             if c < 33 || c > 126 {
-                throw Error.nonPrintableCharacter
+                throw .nonPrintableCharacter
             }
             // 'a' to 'z'
             if c >= 97 && c <= 122 {
@@ -108,17 +108,17 @@ public struct Bech32Decoder: Sendable {
             }
         }
         if lower && upper {
-            throw Error.invalidCase
+            throw .invalidCase
         }
         guard let pos = str.range(of: checksumMarker, options: .backwards)?.lowerBound else {
-            throw Error.noChecksumMarker
+            throw .noChecksumMarker
         }
         let intPos: Int = str.distance(from: str.startIndex, to: pos)
         guard intPos >= 1 else {
-            throw Error.incorrectHrpSize
+            throw .incorrectHrpSize
         }
         guard intPos + 7 <= str.count else {
-            throw Error.incorrectChecksumSize
+            throw .incorrectChecksumSize
         }
         let vSize: Int = str.count - 1 - intPos
         var values: Data = Data(repeating: 0x00, count: vSize)
@@ -126,14 +126,14 @@ public struct Bech32Decoder: Sendable {
             let c = strBytes[i + intPos + 1]
             let decInt = decCharset[Int(c)]
             if decInt == -1 {
-                throw Error.invalidCharacter
+                throw .invalidCharacter
             }
             values[i] = UInt8(decInt)
         }
         let hrp = String(str[..<pos]).lowercased()
         let verificationResult = verifyChecksum(hrp: hrp, checksum: values)
         guard verificationResult.checksumValid, let detectedVariant = verificationResult.detectedVariant else {
-            throw Error.checksumMismatch
+            throw .checksumMismatch
         }
         return (hrp, values.prefix(vSize - 6), detectedVariant)
     }

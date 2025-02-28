@@ -71,8 +71,8 @@ public struct MnemonicPhrase {
         }
         do {
             let keyDerivation = try PBKDF2<SHA512>(password: password, salt: salt, iterations: 2048, keyLength: 64)
-            return Data(try keyDerivation.calculate()).hex
-        } catch _ as PBKDF2<SHA512>.Error {
+            return Data(keyDerivation.calculate()).hex
+        } catch {
             throw Error.invalidMnemonicOrPassphraseEncoding
         }
     }

@@ -24,7 +24,7 @@ private let lookup: [Int8] = [
 ]
 
 /// Produces checksumed Base58 strings used for legacy Bitcoin addresses.
-public struct Base58Encoder {
+public struct Base58Encoder: Sendable {
 
     public init(withChecksum: Bool = true) {
         self.withChecksum = withChecksum
@@ -38,7 +38,7 @@ public struct Base58Encoder {
 }
 
 /// Decodes raw data from Base58 strings.
-public struct Base58Decoder {
+public struct Base58Decoder: Sendable {
 
     public init(withChecksum: Bool = true) {
         self.withChecksum = withChecksum

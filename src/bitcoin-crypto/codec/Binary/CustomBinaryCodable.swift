@@ -9,6 +9,9 @@ import Foundation
 public typealias CustomBinaryCodable = CustomBinaryEncodable & CustomBinaryDecodable
 
 public protocol CustomBinaryEncodable: BinaryEncodable {
+
+    // TODO: Eventually remove extension of `BinaryEncodable` and provide defaults for `var binarySize: Int { binarySize(encoding: .none) }` and `var binaryData: Data { binaryData(encoding: .none) }`.
+
     associatedtype Encoding
 
     func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?)
@@ -31,10 +34,6 @@ public extension CustomBinaryEncodable {
         return counter.size
     }
 
-//    var binarySize: Int {
-//        binarySize(encoding: .none)
-//    }
-
     func binaryData(encoding: Encoding?) -> Data {
         var counter = BinaryEncodingSizeCounter()
         encodingSize(&counter, encoding: encoding)
@@ -42,10 +41,6 @@ public extension CustomBinaryEncodable {
         encode(to: &encoder, encoding: encoding)
         return encoder.data
     }
-
-//    var binaryData: Data {
-//        binaryData(encoding: .none)
-//    }
 }
 
 public protocol CustomBinaryDecodable: BinaryDecodable {

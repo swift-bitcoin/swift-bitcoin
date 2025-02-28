@@ -70,7 +70,7 @@ public struct RIPEMD160: HashFunction {
 
     public func finalize() -> Digest {
         var bigX = [UInt32](repeating: 0, count: 16)
-        /* append the bit m_n == 1 */
+        // append the bit `m_n == 1`
         var buffer = self.buffer
         var digestBuffer = digestBuffer // This function cannot be mutating
         buffer.append(0x80)
@@ -79,12 +79,12 @@ public struct RIPEMD160: HashFunction {
         }
 
         if (count & 63) > 55 {
-            /* length goes to next block */
+            // Length goes to next block
             digestBuffer = compress(bigX, digestBuffer: digestBuffer)
             bigX = [UInt32](repeating: 0, count: 16)
         }
 
-        /* append length in bits */
+        // Append length in bits
         let lswlen = UInt32(truncatingIfNeeded: count)
         let mswlen = UInt32(UInt64(count) >> 32)
         bigX[14] = lswlen << 3
@@ -101,13 +101,13 @@ public struct RIPEMD160: HashFunction {
 /// - Parameter bigX: `UnsafePointer<UInt32>`
 private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Digest.Buffer) -> RIPEMD160.Digest.Buffer {
 
-    /** ROL(x, n) cyclically rotates x over n bits to the left */
-    /** x must be of an unsigned 32 bits type and 0 <= n < 32. */
+    /// ROL(x, n) cyclically rotates x over n bits to the left.
+    /// x must be of an unsigned 32 bits type and `0 <= n < 32`.
     func ROL(_ x: UInt32, _ n: UInt32) -> UInt32 {
         (x << n) | ( x >> (32 - n))
     }
 
-    /* the five basic functions F(), G() and H() */
+    // he five basic functions F(), G() and H()
     func F(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 {
         x ^ y ^ z
     }
@@ -128,7 +128,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
         x ^ (y | ~z)
     }
 
-    /* the ten basic operations FF() through III() */
+    // The ten basic operations FF() through III()
     func FF(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
         a = a &+ F(b, c, d) &+ x
         a = ROL(a, s) &+ e
@@ -189,11 +189,11 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
         c = ROL(c, 10)
     }
 
-    /* The hashing function starts here */
+    // The hashing function starts here
     var (aa, bb, cc, dd, ee) = digestBuffer
     var (aaa, bbb, ccc, ddd, eee) = digestBuffer
 
-    /* Round 1 */
+    // Round 1
     FF(&aa, bb, &cc, dd, ee, bigX[ 0], 11)
     FF(&ee, aa, &bb, cc, dd, bigX[ 1], 14)
     FF(&dd, ee, &aa, bb, cc, bigX[ 2], 15)
@@ -211,7 +211,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     FF(&bb, cc, &dd, ee, aa, bigX[14],  9)
     FF(&aa, bb, &cc, dd, ee, bigX[15],  8)
 
-    /* Round 2 */
+    // Round 2
     GG(&ee, aa, &bb, cc, dd, bigX[ 7],  7)
     GG(&dd, ee, &aa, bb, cc, bigX[ 4],  6)
     GG(&cc, dd, &ee, aa, bb, bigX[13],  8)
@@ -229,7 +229,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     GG(&aa, bb, &cc, dd, ee, bigX[11], 13)
     GG(&ee, aa, &bb, cc, dd, bigX[ 8], 12)
 
-    /* Round 3 */
+    // Round 3
     HH(&dd, ee, &aa, bb, cc, bigX[ 3], 11)
     HH(&cc, dd, &ee, aa, bb, bigX[10], 13)
     HH(&bb, cc, &dd, ee, aa, bigX[14],  6)
@@ -247,7 +247,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     HH(&ee, aa, &bb, cc, dd, bigX[ 5],  7)
     HH(&dd, ee, &aa, bb, cc, bigX[12],  5)
 
-    /* Round 4 */
+    // Round 4
     II(&cc, dd, &ee, aa, bb, bigX[ 1], 11)
     II(&bb, cc, &dd, ee, aa, bigX[ 9], 12)
     II(&aa, bb, &cc, dd, ee, bigX[11], 14)
@@ -265,7 +265,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     II(&dd, ee, &aa, bb, cc, bigX[ 6],  5)
     II(&cc, dd, &ee, aa, bb, bigX[ 2], 12)
 
-    /* Round 5 */
+    // Round 5
     JJ(&bb, cc, &dd, ee, aa, bigX[ 4],  9)
     JJ(&aa, bb, &cc, dd, ee, bigX[ 0], 15)
     JJ(&ee, aa, &bb, cc, dd, bigX[ 5],  5)
@@ -283,7 +283,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     JJ(&cc, dd, &ee, aa, bb, bigX[15],  5)
     JJ(&bb, cc, &dd, ee, aa, bigX[13],  6)
 
-    /* Parallel round 1 */
+    // Parallel round 1
     JJJ(&aaa, bbb, &ccc, ddd, eee, bigX[ 5],  8)
     JJJ(&eee, aaa, &bbb, ccc, ddd, bigX[14],  9)
     JJJ(&ddd, eee, &aaa, bbb, ccc, bigX[ 7],  9)
@@ -301,7 +301,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     JJJ(&bbb, ccc, &ddd, eee, aaa, bigX[ 3], 12)
     JJJ(&aaa, bbb, &ccc, ddd, eee, bigX[12],  6)
 
-    /* Parallel round 2 */
+    // Parallel round 2
     III(&eee, aaa, &bbb, ccc, ddd, bigX[ 6],  9)
     III(&ddd, eee, &aaa, bbb, ccc, bigX[11], 13)
     III(&ccc, ddd, &eee, aaa, bbb, bigX[ 3], 15)
@@ -319,7 +319,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     III(&aaa, bbb, &ccc, ddd, eee, bigX[ 1], 13)
     III(&eee, aaa, &bbb, ccc, ddd, bigX[ 2], 11)
 
-    /* Parallel round 3 */
+    // Parallel round 3
     HHH(&ddd, eee, &aaa, bbb, ccc, bigX[15],  9)
     HHH(&ccc, ddd, &eee, aaa, bbb, bigX[ 5],  7)
     HHH(&bbb, ccc, &ddd, eee, aaa, bigX[ 1], 15)
@@ -337,7 +337,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     HHH(&eee, aaa, &bbb, ccc, ddd, bigX[ 4],  7)
     HHH(&ddd, eee, &aaa, bbb, ccc, bigX[13],  5)
 
-    /* Parallel round 4 */
+    // Parallel round 4
     GGG(&ccc, ddd, &eee, aaa, bbb, bigX[ 8], 15)
     GGG(&bbb, ccc, &ddd, eee, aaa, bigX[ 6],  5)
     GGG(&aaa, bbb, &ccc, ddd, eee, bigX[ 4],  8)
@@ -355,7 +355,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     GGG(&ddd, eee, &aaa, bbb, ccc, bigX[10], 15)
     GGG(&ccc, ddd, &eee, aaa, bbb, bigX[14],  8)
 
-    /* Parallel round 5 */
+    // Parallel round 5
     FFF(&bbb, ccc, &ddd, eee, aaa, bigX[12] ,  8)
     FFF(&aaa, bbb, &ccc, ddd, eee, bigX[15] ,  5)
     FFF(&eee, aaa, &bbb, ccc, ddd, bigX[10] , 12)
@@ -373,7 +373,7 @@ private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Dig
     FFF(&ccc, ddd, &eee, aaa, bbb, bigX[ 9] , 11)
     FFF(&bbb, ccc, &ddd, eee, aaa, bigX[11] , 11)
 
-    /* Combine results */
+    // Combine results
     return (digestBuffer.1 &+ cc &+ ddd,
                 digestBuffer.2 &+ dd &+ eee,
                 digestBuffer.3 &+ ee &+ aaa,
