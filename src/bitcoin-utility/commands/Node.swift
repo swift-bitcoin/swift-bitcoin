@@ -1,5 +1,5 @@
 import ArgumentParser
-import BitcoinTransport
+import BitcoinTransport // NodeNetwork
 
 struct Node: AsyncParsableCommand {
 
@@ -19,6 +19,11 @@ struct Node: AsyncParsableCommand {
             GetBlockHash.self,
             GetBlock.self,
             GenerateToAddress.self,
+            GetBlockchainInfo.self,
+            GetMempool.self,
+            GetPeerInfo.self,
+            GetTransaction.self,
+            SendTransaction.self,
             SendCommand.self
         ],
         defaultSubcommand: SendCommand.self

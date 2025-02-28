@@ -83,7 +83,7 @@ extension JSONRPCRequest.Params {
         case .disconnectPeer(_): DisconnectPeerRPC.method
         case .getBlockHash(_): GetBlockHashRPC.method
         case .getBlock(_): GetBlockRPC.method
-        case .generateToAddress(_): GetBlockRPC.method
+        case .generateToAddress(_): GenerateToAddressRPC.method
         case .getBlockchainInfo: GetBlockchainInfoRPC.method
         case .getMempool: GetMempoolRPC.method
         case .getPeerInfo: GetPeerInfoRPC.method

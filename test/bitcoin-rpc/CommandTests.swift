@@ -4,7 +4,7 @@ import Foundation
 import BitcoinBlockchain
 import BitcoinTransport
 import JSONRPC
-@testable import BitcoinRPC
+import BitcoinRPC
 
 struct CommandTests {
 

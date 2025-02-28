@@ -41,7 +41,7 @@ private func handleRPC(_ inbound: NIOAsyncChannelInboundStream<JSONRPCResponse>,
     for try await response in inbound {
         if let result = response.result {
             let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted]
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(result)
             print(String(data: data, encoding: .utf8)!)
         } else if let error = response.error {

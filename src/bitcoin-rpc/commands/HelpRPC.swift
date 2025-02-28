@@ -13,12 +13,12 @@ extension HelpRPC {
             USAGE: \(command.method) \(command.params)
             """
         } else {
-            result = .init(uniqueKeysWithValues: commands.map {(
+            result = .init(uniqueKeysWithValues: commands.filter{ $0.method != HelpRPC.method }.map {(
                 $0.method,
                 "\($0.params.isEmpty ? "" : " \($0.params)") - \($0.description)"
             )})
 
-            let intro = """
+            result["_\(HelpRPC.method)"] = """
             OVERVIEW: Help lists all available RPC commands with usage line.
 
             You can also pass it a method name to know more about that particular command.

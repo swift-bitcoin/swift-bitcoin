@@ -1,4 +1,4 @@
 import ArgumentParser
-import BitcoinTransport
+import BitcoinTransport // NodeNetwork
 
 extension NodeNetwork: Decodable, ExpressibleByArgument { }
