@@ -66,6 +66,31 @@ struct CommandTests {
         #expect(!output3.initialBlockDownload)
         #expect(output3.chainwork == "0000000000000000000000000000000000000000000000000000000000000006")
         #expect(output3.sizeOnDisk == 0) // Requires data dir, 552 (Swift Bitcoin, no undo data) or 593 (Bitcoin Core, with undo data)
+
+        // Block 1
+        let getBlockOut = try #require(await GetBlockRPC(.init(blockID: "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")).run(blockchain: satoshiChain))
+        #expect(getBlockOut.id == "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")
+        #expect(getBlockOut.confirmations == 2)
+        #expect(getBlockOut.height == 1)
+        #expect(getBlockOut.version == 536870912)
+        #expect(getBlockOut.versionHex == "20000000")
+        #expect(getBlockOut.merkleRoot == "71847446d61f87f01ea98e4c32f3ecd7a509cdb912c04a13a4b20736af5a0d49")
+        #expect(getBlockOut.time == fixedTime)
+        #expect(getBlockOut.medianTime == fixedTime)
+        #expect(getBlockOut.nonce == 0)
+        #expect(getBlockOut.bits == "207fffff")
+        #expect(getBlockOut.difficulty == 4.6565423739069247e-10)
+        #expect(getBlockOut.chainwork == "0000000000000000000000000000000000000000000000000000000000000004")
+        #expect(getBlockOut.transactionCount == 1)
+        #expect(getBlockOut.previous == "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")
+        #expect(getBlockOut.nextBlock == output3.bestBlockHash)
+        #expect(getBlockOut.strippedsize == 215)
+        #expect(getBlockOut.size == 251)
+        #expect(getBlockOut.weight == 896)
+        #expect(getBlockOut.txs == [
+            "71847446d61f87f01ea98e4c32f3ecd7a509cdb912c04a13a4b20736af5a0d49"
+        ])
+
         await satoshi.stop()
         await satoshiChain.stop()
     }

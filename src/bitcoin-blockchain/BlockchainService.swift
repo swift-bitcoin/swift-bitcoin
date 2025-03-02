@@ -247,10 +247,20 @@ public actor BlockchainService: Sendable {
             return .none
         }
         let ref = await blockIndex.get(id)
+        let validatedHeight = await validatedHeight
+        let refNext = if ref.height < validatedHeight {
+            await blockIndex.get(at: ref.height + 1)
+        } else {
+            BlockRef?.none
+        }
+        let medianTime = await getMedianTimePast(at: ref.height)
         return .init(
+            next: refNext?.blockID,
             height: ref.height,
-            confirmations: await validatedHeight - ref.height,
-            chainwork: ref.chainwork.binaryData
+            confirmations: validatedHeight - ref.height + 1,
+            difficulty: ref.difficulty,
+            chainwork: ref.chainwork.binaryData,
+            medianTime: medianTime
         )
     }
 
@@ -890,7 +900,7 @@ public actor BlockchainService: Sendable {
         return subsidy
     }
 
-    private func getMedianTimePast(for height: Int? = .none) async -> Date {
+    private func getMedianTimePast(at height: Int? = .none) async -> Date {
         let maxHeight = await blockIndex.get(chainTip).height
         let height = height ?? maxHeight
         precondition(height >= 0 && height <= maxHeight)

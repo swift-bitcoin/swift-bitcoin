@@ -1,7 +1,7 @@
 import Foundation
 
 /// Encodes data into hexadecimal strings.
-public struct Base16Encoder {
+public struct Base16Encoder: Sendable {
 
     public init() { }
 
@@ -21,17 +21,17 @@ public struct Base16Encoder {
 }
 
 /// Decodes raw data from hexadecimal strings.
-public struct Base16Decoder {
+public struct Base16Decoder: Sendable {
 
-    public enum Error: Swift.Error {
+    public enum Error: Swift.Error, Sendable {
         case invalidHexValue, invalidString
     }
 
     public init() { }
 
-    public func decode(_ hexString: String) throws -> Data {
+    public func decode(_ hexString: String) throws(Error) -> Data {
         guard hexString.count.isMultiple(of: 2) else {
-            throw Error.invalidString
+            throw .invalidString
         }
 
         let stringBytes: [UInt8] = Array(hexString.lowercased().data(using: String.Encoding.utf8)!)
@@ -54,7 +54,7 @@ private func itoh(_ value: UInt8) -> UInt8 {
     return (value > 9) ? (charA + value - 10) : (char0 + value)
 }
 
-private func htoi(_ value: UInt8) throws -> UInt8 {
+private func htoi(_ value: UInt8) throws(Base16Decoder.Error) -> UInt8 {
     switch value {
     case char0...char0 + 9:
         return value - char0

@@ -181,22 +181,13 @@ struct BIP341Tests {
         let tweakedPubkeyData = internalKey.tweakXOnly(tweak).xOnlyData
         let scriptPubKey = BitcoinScript([.constant(1), .pushBytes(tweakedPubkeyData)]).binaryData
 
-        // BIP350
-        // TODO: Restore address checking after moving this test up in the module hierarchy
-        /*
-        guard let bip350Address = try? SegwitAddressEncoder(hrp: WalletNetwork.main.bech32HRP, version: 1).encode(tweakedPubkey) else {
-            Issue.record("Could not encode BIP350 address")
-            return
-        }
-        */
+        // TODO: Restore address checking for BIP350 after moving this test up in the module hierarchy `guard let bip350Address = try? SegwitAddressEncoder(hrp: WalletNetwork.main.bech32HRP, version: 1).encode(tweakedPubkey) else { Issue.record("Could not encode BIP350 address"); return }` and `#expect(bip350Address == expectedBIP350Address)`.
 
         #expect(leafHashes == auxLeafHashes.map({ Data($0)}))
         #expect(merkleRoot == Data(auxMerkleRoot))
         #expect(tweak == Data(auxTweak))
         #expect(tweakedPubkeyData == Data(auxTweakedPubkey))
         #expect(scriptPubKey == Data(expectedScriptPubKey))
-        // TODO: Restore address checking after moving this test up in the module hierarchy
-        // #expect(bip350Address == expectedBIP350Address)
         #expect(controlBlocks == expectedScriptPathControlBlocks.map({ Data($0)}))
     }
 

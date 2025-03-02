@@ -51,4 +51,12 @@ public struct BinaryEncoder {
         }
         offset = nextOffset
     }
+
+    public static func encode<T: BinaryEncodingPrimitive>(_ value: T) -> Data {
+        var counter = BinaryEncodingSizeCounter()
+        counter.count(value)
+        var encoder = BinaryEncoder(counter)
+        encoder.encode(value)
+        return encoder.data
+    }
 }

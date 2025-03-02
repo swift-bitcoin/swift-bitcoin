@@ -1,16 +1,16 @@
 import Foundation
 import Crypto
 
+public enum PBKDF2Error: Error {
+    case invalidInput
+    case derivedKeyTooLong
+}
+
 /// Implementation of the Password-Based Key Derivation Function Version 2 (PBKDF2)  used by BIP39 seed generation from mnemonic.
 ///
 /// See [RFC2898](https://www.ietf.org/rfc/rfc2898.txt) for more information.
 /// 
 public struct PBKDF2<H: HashFunction> {
-
-    public enum Error: Swift.Error {
-        case invalidInput
-        case derivedKeyTooLong
-    }
 
     /// S
     private let salt: Data
@@ -31,18 +31,18 @@ public struct PBKDF2<H: HashFunction> {
     ///   - salt: The salt.
     ///   - iterations: Iteration count, a positive integer.
     ///   - keyLength: Intended length of derived key.
-    public init(password: Data, salt: Data, iterations: Int = 4096, keyLength: Int? = .none) throws {
+    public init(password: Data, salt: Data, iterations: Int = 4096, keyLength: Int? = .none) throws(PBKDF2Error) {
         precondition(iterations > 0)
 
         guard iterations > 0 && !salt.isEmpty else {
-            throw Error.invalidInput
+            throw .invalidInput
         }
 
-        self.dkLen = keyLength ?? H.Digest.byteCount
+        dkLen = keyLength ?? H.Digest.byteCount
         let keyLengthFinal = Double(dkLen)
         let hLen = Double(H.Digest.byteCount)
         if keyLengthFinal > (pow(2, 32) - 1) * hLen {
-            throw Error.derivedKeyTooLong
+            throw .derivedKeyTooLong
         }
 
         self.salt = salt
@@ -50,22 +50,22 @@ public struct PBKDF2<H: HashFunction> {
         self.password = password
 
         // l = ceil(keyLength / hLen)
-        self.numBlocks = Int(ceil(Double(keyLengthFinal) / hLen))
+        numBlocks = Int(ceil(Double(keyLengthFinal) / hLen))
     }
 
-    public func calculate() throws -> Array<UInt8> {
+    public func calculate() -> Array<UInt8> {
         var ret = Array<UInt8>()
-        ret.reserveCapacity(self.numBlocks * H.Digest.byteCount)
-        for i in 1 ... self.numBlocks {
+        ret.reserveCapacity(numBlocks * H.Digest.byteCount)
+        for i in 1 ... numBlocks {
             // for each block T_i = U_1 ^ U_2 ^ ... ^ U_iter
-            if let value = try calculateBlock(self.salt, blockNum: i) {
+            if let value = calculateBlock(salt, blockNum: i) {
                 ret.append(contentsOf: value)
             }
         }
-        return Array(ret.prefix(self.dkLen))
+        return Array(ret.prefix(dkLen))
     }
 
-    private func calculateBlock(_ salt: Data, blockNum: Int) throws -> Data? {
+    private func calculateBlock(_ salt: Data, blockNum: Int) -> Data? {
         // F (P, S, c, i) = U_1 \xor U_2 \xor ... \xor U_c
         // U_1 = PRF (P, S || INT (i))
 

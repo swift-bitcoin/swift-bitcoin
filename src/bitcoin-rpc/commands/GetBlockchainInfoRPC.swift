@@ -10,7 +10,7 @@ extension GetBlockchainInfoRPC {
         let headerIDs = await blockchain.headerIDs
         let bestBlockHash = await blockchain.chainTip
 
-        let formatter = FloatingPointFormatStyle<Double>().notation(.scientific).precision(.fractionLength(15))
+        let formatter = FloatingPointFormatStyle<Double>().notation(.scientific).precision(.fractionLength(15)) // .locale(US)
         // To output `4.656542373906925e-1` instead of 4.6565423739069247e-10
         let difficulty = await blockchain.tipDifficulty
 
