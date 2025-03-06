@@ -2,17 +2,11 @@
 
 [documentation](https://swiftbitcoin.org/docs/documentation/bitcoin/) ∙ [blog](https://swiftbitcoin.org)
 
-Swift Bitcoin aims to become the first Bitcoin full node implementation and library written entirely in Swift.
+Swift Bitcoin is both a fully-featured Bitcoin development framework and a standalone network client daemon plus utility written entirely in Swift.
 
-## Repository organization
+## Usage as library
 
-This repository contains a single Swift Package which exposes a series of library and executable products: crypto, base, wallet, blockchain, transport, RPC, node and utility.
-
-Refer to each module's [documentation](https://swiftbitcoin.org/docs/documentation/bitcoin/) to understand the exact functionality they each cover.
-
-## Use as library
-
-To integrate Swift Bitcoin into your Swift project add it to your `Package.swift` dependencies:
+To integrate Swift Bitcoin into your own project first add an entry to your `Package.swift` dependencies:
 
 ```swift
 let package = Package( …
@@ -20,30 +14,51 @@ let package = Package( …
         .package(url: "https://github.com/swift-bitcoin/swift-bitcoin", branch: "develop") …
 ```
 
-Then select the appropriate modules as dependencies for a specific target:
+Make sure to also include a `Bitcoin` product reference in the specific target's dependencies:
 
 ```swift
 … targets: [
     .target( …
         dependencies: [ …
-            .product(name: "BitcoinWallet", package: "swift-bitcoin") …
+            .product(name: "Bitcoin", package: "swift-bitcoin") …
 ```
 
-The umbrella module `Bitcoin` will make the entire framework available to your project.
-
-```swift
-.product(name: "Bitcoin", package: "swift-bitcoin") 
-``` 
-
-In your source files make sure to import the corresponding module:
+On your Swift sources import the `Bitcoin` module:
 
 ```swift
 import Bitcoin
 ```
 
-Refer to this [Getting Started](https://swiftbitcoin.org/docs/documentation/bitcoin/gettingstarted) documentation article to learn about some of the library's capabilities.
+Additional products/modules exist for specific areas of functionality:
 
-## Building and running
+- `BitcoinCrypto` - Cryptography, key management and encdodings.
+- `BitcoinBase` - Transactions and script interpretation. 
+- `BitcoinWallet` - Wallet, addresses, mnemonics and key derivation.
+- `BitcoinBlockchain` - Blockchain services and memory pool.
+- `BitcoinTransport` - Peer-to-peer protocol implementation.
+- `BitcoinRPC` - Support for RPC (Remote Procedure Call). 
+
+All functionalities above are included in the umbrella `Bitcoin` module.
+
+Check out our [Getting Started](https://swiftbitcoin.org/docs/documentation/bitcoin/gettingstarted) guide to begin leveraging some of Swift Bitcoin's capabilities. 
+
+## Usage as command line tool and daemon
+
+Use `swift run bcnode` to start a Bitcoin Node instance.
+
+Use `swift run bcutil` to run the Bitcoin Utility which can query/control node instances and perform off-chain operations. 
+
+See [Running](https://swiftbitcoin.org/docs/documentation/bitcoin/running) for additional information on how to invoke the CLI tools. 
+
+## Repository and package organization
+
+This repository contains a single Swift Package which exposes a series of library and executable products: crypto, base, wallet, blockchain, transport, RPC, node and utility.
+
+Refer to each module's [documentation](https://swiftbitcoin.org/docs/documentation/bitcoin/) to understand the exact functionality covered.
+
+There's test targets defined for each of the modules which can all be run with `swift test`.
+
+## Building
 
 To build the project and run the command line tools use the `swift` command.
 
@@ -68,9 +83,9 @@ The Bitcoin Node `bcnode` tool launches a fresh node instance listening to RPC c
 swift run bcnode --help
 ```
 
-Refer to this [Building](https://swiftbitcoin.org/docs/documentation/bitcoin/building) documentation article to learn how to produce a release build on multiple platforms.
+See [Building](https://swiftbitcoin.org/docs/documentation/bitcoin/building) to learn how to generate a release build on multiple platforms.
 
-## Technologies
+## Technology stack
 
 Many of the latest features from the extended Swift Language ecosystem are leveraged by Swift Bitcoin to keep usability, performance and reliability at the highest possible level.
 
@@ -90,9 +105,9 @@ Going forward we would like to experiment with Swift Macros, Swift Embedded and 
 
 ## Project dependencies
 
-Swift Bitcoin itself depends on Bitcoin Core's `libsecp256k1` as well as some official Swift Language packages that extend the standard library.
+Swift Bitcoin itself depends on Bitcoin Core's `libsecp256k1` as well as a reduced set of official Swift Language packages which extend the standard library.
 
-The transport component depends on the open source SwiftNIO library by Apple. 
+The transport and RPC modules depend on the open source SwiftNIO library by Apple. 
 
 ## Project status
 
