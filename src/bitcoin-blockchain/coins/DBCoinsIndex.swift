@@ -1,16 +1,9 @@
 import LMDB
 import SystemPackage
-import Collections
 import Logging
 import BitcoinBase
 
 private let logger = Logger(label: "swift-bitcoin.coins-index")
-
-protocol CoinsIndex: Sendable {
-    mutating func add(_ coin: UnspentOut, for outpoint: TxOutpoint) async
-    func get(_ outpoint: TxOutpoint) async -> UnspentOut?
-    mutating func remove(_ outpoint: TxOutpoint) async throws
-}
 
 /// An index plus on-disk LMDB storage for coins.
 actor DBCoinsIndex: CoinsIndex {
@@ -45,23 +38,5 @@ actor DBCoinsIndex: CoinsIndex {
             logger.error("Problem removing coin.")
             throw .deletionIssue
         }
-    }
-}
-
-/// An index plus in-memory storage for coins.
-struct InMemoryCoinsIndex: CoinsIndex {
-
-    private var coins = OrderedDictionary<TxOutpoint, UnspentOut>()
-
-    mutating func add(_ coin: UnspentOut, for outpoint: TxOutpoint) async {
-        coins[outpoint] = coin
-    }
-
-    func get(_ outpoint: TxOutpoint) async -> UnspentOut? { // TODO: Probably should throw
-        coins[outpoint]
-    }
-
-    mutating func remove(_ outpoint: TxOutpoint) async {
-        coins[outpoint] = .none
     }
 }

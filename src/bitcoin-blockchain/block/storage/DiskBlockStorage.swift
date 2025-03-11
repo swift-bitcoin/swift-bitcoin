@@ -1,5 +1,4 @@
 import Foundation
-import BitcoinCrypto
 import Collections
 import Logging
 import _NIOFileSystem
@@ -7,57 +6,23 @@ import _NIOFileSystem
 private let logger = Logger(label: "swift-bitcoin.block-storage")
 
 /// Block storage service.
-actor BlockStorage {
+actor DiskBlockStorage: BlockStorage {
 
-    struct Locator: Hashable {
-        let file: Int
-        let offset: Int
-    }
-
-    struct Config {
-        // TODO: change default maxFileSize to 0 and let blockchain service determine it.
-        init(path: FilePath? = .none, magic: Int = 0, maxBlock: Int = 0, maxFileSize: Int = 1000) {
-            self.path = path
-            self.magic = magic
-            self.maxBlock = maxBlock
-            self.maxFileSize = maxFileSize
-        }
-        
-        let path: FilePath?
-        let magic: Int
-        let maxBlock: Int
-
-        // In bytes.
-        let maxFileSize: Int
-
-        let blocksSubdirectoryName = "blocks"
-    }
-
-    enum Status {
-        case idle, starting, running, stopping, stopped
-    }
-
-    enum Error: Swift.Error {
-        case dataLocationIssue, missingBlockFiles, blockFileReadIssue, blockFileWriteIssue, blockFileCreateIssue, corruptedBlockData, invalidFileRef
-    }
-
-    init(config: Config = .init()) {
+    init(config: BlockStorageConfig = .init()) {
         self.config = config
     }
 
-    let config: Config
-    internal private(set) var status = Status.idle
+    let config: BlockStorageConfig
+    internal private(set) var status = BlockStorageStatus.idle
 
     private var blocksDir = FilePath?.none
     private var fileNumber = -1
 
-    private var cache = OrderedDictionary<Locator, TxBlock>()
-
-    private var blocks = [TxBlock]() // Use only for in-memory
+    private var cache = OrderedDictionary<BlockStorageLocator, TxBlock>()
 
     internal private(set) var sizeOnDisk = 0
 
-    func start() async throws(Error) {
+    func start() async throws(BlockStorageError) {
         status = .starting
         defer { status = .running }
         guard let path = config.path else { return }
@@ -103,7 +68,7 @@ actor BlockStorage {
                     }
                     guard let info = try? await fs.info(forFileAt: file.path) else {
                         logger.error("Could not find the file at \(file.path.string).")
-                        throw Error.dataLocationIssue
+                        throw BlockStorageError.dataLocationIssue
                     }
                     totalSize += Int(info.size)
 
@@ -118,7 +83,7 @@ actor BlockStorage {
                     totalSize: totalSize
                 )
             }
-        } catch let error as Error {
+        } catch let error as BlockStorageError {
             throw error
         } catch {
             logger.error("Data location issue.")
@@ -137,11 +102,11 @@ actor BlockStorage {
         // TODO: Prepopulate cache with the last `Self.cacheSize` blocks.
     }
 
-    var lastFileInfo: FileInfo? { get async throws(Error) {
+    private var lastFileInfo: FileInfo? { get async throws(BlockStorageError) {
         try await fileInfo(for: fileNumber)
     } }
 
-    func fileInfo(for number: Int) async throws(Error) -> FileInfo? {
+    private func fileInfo(for number: Int) async throws(BlockStorageError) -> FileInfo? {
         guard number >= 0 else { return .none }
         let fs = FileSystem.shared
         let filePath = filePath(for: number)
@@ -158,14 +123,8 @@ actor BlockStorage {
         status = .stopped
     }
 
-    func store(_ block: TxBlock) async throws(Error) -> Locator {
-        let locator: Locator
-        if config.path == .none {
-            locator = .init(file: -1, offset: blocks.endIndex)
-            blocks.append(block)
-        } else {
-            locator = try await storeToDisk(block)
-        }
+    func store(_ block: TxBlock) async throws(BlockStorageError) -> BlockStorageLocator {
+        let locator = try await storeToDisk(block)
         if cache.count == Self.cacheSize - 1 {
             cache.removeFirst()
         }
@@ -173,7 +132,7 @@ actor BlockStorage {
         return locator
     }
 
-    private func storeToDisk(_ block: TxBlock) async throws(Error) -> Locator {
+    private func storeToDisk(_ block: TxBlock) async throws(BlockStorageError) -> BlockStorageLocator {
         let fs = FileSystem.shared
         let maxSize = Int64(config.maxFileSize) // Accounts for magic bytes header and block length prefix
         let encoding = TxBlock.Encoding.file(magicBytes: config.magic)
@@ -210,18 +169,14 @@ actor BlockStorage {
         return .init(file: fileNumber, offset: Int(offset))
     }
 
-    func retrieve(_ locator: Locator) async throws(Error) -> TxBlock? {
+    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> TxBlock? {
         if let block = cache[locator] {
             return block
         }
-        return if config.path == .none {
-            blocks[locator.offset]
-        } else {
-            try await retrieveFromDisk(locator)
-        }
+        return try await retrieveFromDisk(locator)
     }
 
-    private func retrieveFromDisk(_ locator: Locator) async throws(Error) -> TxBlock? {
+    private func retrieveFromDisk(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> TxBlock? {
         let fs = FileSystem.shared
         let maxBlockSize = Int64(config.maxBlock + MemoryLayout<UInt32>.size * 2) // Accounts for magic bytes header and block length prefix
         let encoding = TxBlock.Encoding.file(magicBytes: config.magic)
@@ -261,7 +216,7 @@ actor BlockStorage {
         }
     }
 
-    func remove(_ locator: Locator) {
+    func remove(_ locator: BlockStorageLocator) {
         // We don't remove blocks from actual storage. The index will get marked as stale outside of this actor. We will just remove from the cache.
         cache.removeValue(forKey: locator)
     }
@@ -273,21 +228,4 @@ actor BlockStorage {
     }
 
     static let cacheSize = 3
-}
-
-extension BlockStorage.Locator: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
-        file = try decoder.decode()
-        offset = try decoder.decode()
-    }
-    
-    func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(file)
-        encoder.encode(offset)
-    }
-    
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(Int.self)
-        counter.count(Int.self)
-    }
 }
