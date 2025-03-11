@@ -73,7 +73,12 @@ public actor BlockchainService: Sendable {
         default:
             dataDir = .none
         }
-        blockStorage = .init(config: .init(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized))
+        let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
+        blockStorage = if dataDir == .none {
+            InMemoryBlockStorage(config: config)
+        } else {
+            DiskBlockStorage(config: config)
+        }
     }
 
     public func start() async { // TODO: Throw!
@@ -90,8 +95,8 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        blockIndex = .init(path: dataDir)
-        headers = .init(path: dataDir)
+        blockIndex = if let dataDir { DBBlockIndex(path: dataDir) } else { InMemoryBlockIndex() }
+        headers = if let dataDir { DBHeadersIndex(path: dataDir) } else { InMemoryHeadersIndex() }
         coins = if let dataDir { DBCoinsIndex(path: dataDir) } else { InMemoryCoinsIndex() }
 
         do {
@@ -104,7 +109,7 @@ public actor BlockchainService: Sendable {
         if await blockIndex.height == -1 {
             let genesisBlock = TxBlock.makeGenesisBlock(params: params)
             let locator = try! await blockStorage.store(genesisBlock) // TODO: Throw
-            try! await blockIndex.add(genesisBlock, locator: locator)
+            try! await blockIndex.add(genesisBlock, locator: locator, status: .header)
             chainTip = genesisBlock.id
         } else {
             chainTip = await blockIndex.lastHeaderID // TODO: Replace with findTip()!!
@@ -395,7 +400,7 @@ public actor BlockchainService: Sendable {
             try await checkHeader(header)
 
             // We can use `try!` because we already checked that the parent exists when we called `checkHeader()`.
-            try! await blockIndex.add(header)
+            try! await blockIndex.add(header, locator: .none, status: .header)
             await self.headers.add(header)
         }
     }

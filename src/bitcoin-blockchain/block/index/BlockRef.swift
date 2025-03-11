@@ -15,7 +15,7 @@ struct BlockRef: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    init(_ block: TxBlock, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorage.Locator? = .none) {
+    init(_ block: TxBlock, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = .none) {
         self.blockID = block.id
         self.previous = block.previous
         self.time = block.time
@@ -37,7 +37,7 @@ struct BlockRef: Equatable, Sendable {
     public let chainwork: DifficultyTarget
     public let chainTxCount: Int
     public internal(set) var status: ValidationStatus
-    public internal(set) var locator: BlockStorage.Locator?
+    public internal(set) var locator: BlockStorageLocator?
 
     // MARK: - Computed Properties
 
