@@ -18,3 +18,7 @@ public enum TxError: Error {
          feeOutOfRange,
          futureLockTime
 }
+
+public enum TxDecodingError: Error {
+    case witnessEncoded
+}

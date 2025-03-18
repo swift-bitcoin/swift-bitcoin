@@ -50,8 +50,16 @@ public struct BinaryDecoder {
         try T(from: &self)
     }
 
+    public mutating func decodeExplicit<T: BinaryDecodable>() throws -> T {
+        try T(from: &self)
+    }
+
     /// Decodes a custom binary decodable object.
     public mutating func decode<T: CustomBinaryDecodable>(encoding: T.Encoding?) throws -> T {
+        try T(from: &self, encoding: encoding)
+    }
+
+    public mutating func decodeExplicit<T: CustomBinaryDecodable>(encoding: T.Encoding?) throws -> T {
         try T(from: &self, encoding: encoding)
     }
 

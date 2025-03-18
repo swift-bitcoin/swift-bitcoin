@@ -172,6 +172,10 @@ extension BitcoinTx: CustomBinaryCodable {
             isSegwit = false
         }
 
+        if isSegwit && encoding == .nonWitness {
+            throw TxDecodingError.witnessEncoded
+        }
+
         ins = try decoder.decode()
         outs = try decoder.decode()
 
