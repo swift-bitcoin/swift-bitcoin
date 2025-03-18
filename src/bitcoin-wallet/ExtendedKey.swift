@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
-public struct ExtendedKey {
+public struct ExtendedKey: Equatable, Sendable {
     public let isMainnet: Bool
     public let secretKey: SecretKey?
     public let pubkey: PubKey?

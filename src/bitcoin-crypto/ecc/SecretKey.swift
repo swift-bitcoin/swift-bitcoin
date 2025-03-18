@@ -2,7 +2,7 @@ import Foundation
 import LibSECP256k1
 
 /// Elliptic curve SECP256K1 secret key.
-public struct SecretKey: Equatable, Sendable, CustomStringConvertible {
+public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible {
 
     /// Uses global secp256k1 signing context.
     public init() {

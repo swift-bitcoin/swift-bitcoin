@@ -45,7 +45,7 @@ public struct BitcoinScript: Equatable, Sendable {
     }
 
     /// BIP141
-    var isSegwit: Bool {
+    public var isSegwit: Bool {
         if binarySize >= 3 && binarySize <= 41,
            ops.count == 2,
            case .pushBytes(_) = ops[1]
