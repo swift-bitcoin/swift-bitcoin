@@ -65,7 +65,9 @@ await blockchain.stop()
 - [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
 - [Crypto Library][crypto]
 - [Base Library][base]
+- [Miniscript Library][miniscript]
 - [Wallet Library][wallet]
+- [PSBT Library][psbt]
 - [Transport Library][transport]
 - [RPC Library][rpc]
 - [Bitcoin Utility (bcutil) Command][bcutil]
@@ -76,7 +78,9 @@ await blockchain.stop()
 [swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
 [crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
 [base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
+[miniscript]: https://swiftbitcoin.org/docs/miniscript/documentation/bitcoinminiscript/
 [wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
+[psbt]: https://swiftbitcoin.org/docs/psbt/documentation/bitcoinpsbt/
 [transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
 [rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
 [bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/

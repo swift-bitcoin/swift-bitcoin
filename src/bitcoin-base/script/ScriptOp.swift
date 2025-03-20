@@ -211,7 +211,7 @@ public enum ScriptOp: Equatable, Sendable {
         case .negate: "OP_NEGATE"
         case .abs: "OP_ABS"
         case .not: "OP_NOT"
-        case .zeroNotEqual: "OP_ZERONOTEQUAL"
+        case .zeroNotEqual: "OP_0NOTEQUAL"
         case .add: "OP_ADD"
         case .sub: "OP_SUB"
         case .mul: "OP_MUL"
