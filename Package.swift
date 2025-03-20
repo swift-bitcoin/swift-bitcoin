@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "BitcoinBlockchain", targets: ["BitcoinBlockchain"]),
         .library(name: "BitcoinPSBT", targets: ["BitcoinPSBT"]),
         .library(name: "BitcoinWallet", targets: ["BitcoinWallet"]),
+        .library(name: "BitcoinMiniscript", targets: ["BitcoinMiniscript"]),
         .library(name: "BitcoinBase", targets: ["BitcoinBase"]),
         .library(name: "BitcoinCrypto", targets: ["BitcoinCrypto"]),
         .executable(name: "bcnode", targets: ["BitcoinNode"]),
@@ -41,7 +42,7 @@ let package = Package(
     targets: [
         // Exposed libraries
         .target(name: "Bitcoin",
-            dependencies: ["BitcoinRPC", "BitcoinTransport", "BitcoinBlockchain", "BitcoinPSBT", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto"],
+            dependencies: ["BitcoinRPC", "BitcoinTransport", "BitcoinBlockchain", "BitcoinPSBT", "BitcoinWallet", "BitcoinMiniscript", "BitcoinBase", "BitcoinCrypto"],
             path: "src/bitcoin"),
         .target(name: "BitcoinRPC", dependencies: ["BitcoinTransport", "BitcoinBlockchain", "BitcoinPSBT", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "JSONRPC"], path: "src/bitcoin-rpc"),
         .target(
@@ -64,6 +65,7 @@ let package = Package(
             dependencies: ["BitcoinWallet", "BitcoinBase", "BitcoinCrypto"],
             path: "src/bitcoin-psbt"),
         .target(name: "BitcoinWallet", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-wallet"),
+        .target(name: "BitcoinMiniscript", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-miniscript"),
         .target(name: "BitcoinBase", dependencies: ["BitcoinCrypto"], path: "src/bitcoin-base"),
         .target(name: "BitcoinCrypto", dependencies: ["ECCHelper",
                 .product(name: "Crypto", package: "swift-crypto")],
@@ -90,6 +92,7 @@ let package = Package(
         .testTarget(name: "BitcoinBlockchainTests", dependencies: ["BitcoinBlockchain"], path: "test/bitcoin-blockchain"),
         .testTarget(name: "BitcoinPSBTTests", dependencies: ["BitcoinPSBT", "BitcoinWallet", "BitcoinBase"], path: "test/bitcoin-psbt"),
         .testTarget(name: "BitcoinWalletTests", dependencies: ["BitcoinWallet"], path: "test/bitcoin-wallet"),
+        .testTarget(name: "BitcoinMiniscriptTests", dependencies: ["BitcoinMiniscript", "BitcoinBase", "BitcoinCrypto"], path: "test/bitcoin-miniscript"),
         .testTarget(name: "LMDBTests", dependencies: ["LMDB", "BitcoinCrypto"], path: "test/lmdb"),
         .testTarget(name: "BitcoinCryptoTests", dependencies: ["BitcoinCrypto"], path: "test/bitcoin-crypto"),
         .testTarget(name: "BitcoinBaseTests", dependencies: ["BitcoinBase"], path: "test/bitcoin-base",

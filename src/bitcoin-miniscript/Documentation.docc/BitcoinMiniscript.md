@@ -1,26 +1,32 @@
-# ``BitcoinRPC``
+# ``BitcoinMiniscript``
 
 @Metadata {
-    @DisplayName("Bitcoin RPC")
+    @DisplayName("Bitcoin Miniscript")
     @TitleHeading("Swift Bitcoin Library")
 }
 
-Bitcoin RPC (Remote Procedure Call) contains the basic JSON-RPC types along with implementations for the various commands.
+_Miniscript_ is a language for writing (a subset of) Bitcoin Scripts in a structured way, enabling analysis, composition, generic signing and more. Bitcoin Miniscript provides a DSL with all the checks and guarantees of Miniscript performed at compile-time.
 
 ## Overview
 
-_BitcoinRPC_ example:
+_BitcoinMiniscript_ example:
 
 ```swift
-import BitcoinRPC
+import BitcoinMiniscript
 
-let command = GetBlockchainInfoCommand(blockchain: satoshiChain)
-let output = await command.run(.init(id: "1", method: "get-blockchain-info", params: .none))
-let result = try #require(output.result)
-guard case .string(let blockchainInfo) = result else { fatalError() }
-print(blockchainInfo)
+// The BOLT #3 received HTLC policy
 
-// {"blocks": 2, "hashes": ["0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",    "23b822b7912cf1b96f1ec5bb07fba40fdd0e889b1f650662f2c0336db9220851"],"headers": 2}
+let key1 = …, key 2…, key3…
+
+// Remote key: key1; Local key: key2; Revocation: key3
+
+// The Miniscript
+let exp = AndOr(PK(key1), OrI(AndV(Vx(PKH(key2)), Hash160(key2HashData)), Older(1008)), PK(key3))
+
+#expect(exp.description == "andor(pk(\(key1Hex)),or_i(and_v(v:pkh(\(key2Hex)),hash160(\(key2Hash))),older(1008)),pk(\(key3Hex)))")
+let asm = BitcoinScript(exp.compiled).asm()
+#expect(asm == "\(key1Hex) OP_CHECKSIG OP_NOTIF \(key3Hex) OP_CHECKSIG OP_ELSE OP_IF OP_DUP OP_HASH160 \(key2Hash) OP_EQUALVERIFY OP_CHECKSIGVERIFY OP_SIZE 20 OP_EQUALVERIFY OP_HASH160 \(key2Hash) OP_EQUAL OP_ELSE f003 OP_CHECKSEQUENCEVERIFY OP_ENDIF OP_ENDIF ")
+
 ```
 
 ## See Also

@@ -147,6 +147,20 @@
                ReferencedContainer = "container:">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinMiniscript"
+               BuildableName = "BitcoinMiniscript"
+               BlueprintName = "BitcoinMiniscript"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -243,6 +257,16 @@
                BlueprintIdentifier = "BitcoinPSBTTests"
                BuildableName = "BitcoinPSBTTests"
                BlueprintName = "BitcoinPSBTTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinMiniscriptTests"
+               BuildableName = "BitcoinMiniscriptTests"
+               BlueprintName = "BitcoinMiniscriptTests"
                ReferencedContainer = "container:">
             </BuildableReference>
          </TestableReference>

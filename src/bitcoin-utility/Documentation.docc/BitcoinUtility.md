@@ -158,7 +158,9 @@ Use `--help` to find out about other subcommands and general usage.
 - [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
 - [Crypto Library][crypto]
 - [Base Library][base]
+- [Miniscript Library][miniscript]
 - [Wallet Library][wallet]
+- [PSBT Library][psbt]
 - [Blockchain Library][blockchain]
 - [Transport Library][transport]
 - [RPC Library][rpc]
@@ -169,7 +171,9 @@ Use `--help` to find out about other subcommands and general usage.
 [swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
 [crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
 [base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
+[miniscript]: https://swiftbitcoin.org/docs/miniscript/documentation/bitcoinminiscript/
 [wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
+[psbt]: https://swiftbitcoin.org/docs/psbt/documentation/bitcoinpsbt/
 [blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
 [transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
 [rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
