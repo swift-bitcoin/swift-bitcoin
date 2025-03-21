@@ -26,7 +26,7 @@ struct Miniscript {
 
     @Test("One of two keys (equally likely)") func oneOfTwoLikely() {
         // The Miniscript
-        let exp = OrB(PK(key1), Sx(PK(key2)))
+        let exp = OrB(PK(key1), S~PK(key2))
 
         #expect(exp.description == "or_b(pk(\(key1Hex)),s:pk(\(key2Hex)))")
         let asm = BitcoinScript(exp.compiled).asm()
@@ -44,7 +44,7 @@ struct Miniscript {
 
     @Test("A user and a 2FA service need to sign off, but after 90 days the user alone is enough") func userPlu2FA() {
         // The Miniscript
-        let exp = AndV(Vx(PK(key1)), OrD(PK(key2), Older(12960)))
+        let exp = AndV(V~PK(key1), OrD(PK(key2), Older(12960)))
 
         #expect(exp.description == "and_v(v:pk(\(key1Hex)),or_d(pk(\(key2Hex)),older(12960)))")
         let asm = BitcoinScript(exp.compiled).asm()
@@ -53,7 +53,7 @@ struct Miniscript {
 
     @Test("A 3-of-3 that turns into a 2-of-3 after 90 days") func threeOfThree() {
         // The Miniscript
-        let exp = Thresh(3, PK(key1), Sx(PK(key2)), Sx(PK(key3)), Sx(Lx(Nx(Older(12960)))))
+        let exp = Thresh(3, PK(key1), S~PK(key2), S~PK(key3), SLN~Older(12960))
 
         #expect(exp.description == "thresh(3,pk(\(key1Hex)),s:pk(\(key2Hex)),s:pk(\(key3Hex)),sln:older(12960))")
         let asm = BitcoinScript(exp.compiled).asm()
@@ -78,7 +78,7 @@ struct Miniscript {
         // H = hash key2
 
         // The Miniscript
-        let exp = Tx(OrC(PK(key1), AndV(Vx(PK(key2)), OrC(PK(key3), Vx(Hash160(key2HashData))))))
+        let exp = T~OrC(PK(key1), AndV(V~PK(key2), OrC(PK(key3), V~Hash160(key2HashData))))
 
         #expect(exp.description == "t:or_c(pk(\(key1Hex)),and_v(v:pk(\(key2Hex)),or_c(pk(\(key3Hex)),v:hash160(\(key2HashData.hex)))))")
         let asm = BitcoinScript(exp.compiled).asm()
@@ -89,7 +89,7 @@ struct Miniscript {
         let key2HashData = Data([0xbf, 0xeb, 0xfd, 0xdc, 0xc8, 0x14, 0x14, 0xd6, 0x99, 0x7c, 0xd3, 0xc1, 0x28, 0x72, 0x00, 0x6d, 0x64, 0x60, 0x4b, 0x07])
 
         // The Miniscript
-        let exp = AndOr(PK(key1), OrI(AndV(Vx(PKH(key2)), Hash160(key2HashData)), Older(1008)), PK(key3))
+        let exp = AndOr(PK(key1), OrI(AndV(V~PKH(key2), Hash160(key2HashData)), Older(1008)), PK(key3))
         // remote key: key1; local key: key2; revocation:key3
 
         #expect(exp.description == "andor(pk(\(key1Hex)),or_i(and_v(v:pkh(\(key2Hex)),hash160(\(key2Hash))),older(1008)),pk(\(key3Hex)))")
