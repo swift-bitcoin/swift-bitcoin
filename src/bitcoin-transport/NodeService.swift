@@ -19,7 +19,7 @@ public actor NodeService: Sendable {
     ///   - version: Protocol version number.
     ///   - services: Supported services.
     ///   - feeFilterRate: An arbitrary fee rate by which to filter transactions.
-    public init(blockchain: BlockchainService, config: NodeConfig = .default, state: NodeState = .initial) {
+    public init(blockchain: BlockchainService, config: NodeParams = .default, state: NodeState = .initial) {
         self.blockchain = blockchain
         self.config = config
         self.state = state
@@ -33,7 +33,7 @@ public actor NodeService: Sendable {
     /// The bitcoin service actor instance backing this node.
     public let blockchain: BlockchainService
 
-    public let config: NodeConfig
+    public let config: NodeParams
     public var state: NodeState
 
     /// Subscription to the bitcoin service's blocks channel.
