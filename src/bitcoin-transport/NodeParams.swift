@@ -1,7 +1,7 @@
 import Foundation
 import BitcoinBase
 
-public struct NodeConfig : Sendable {
+public struct NodeParams : Sendable {
 
     public init(network: NodeNetwork = .regtest, version: ProtocolVersion = .latest, services: ProtocolServices = .all, maxInTransitBlocks: Int = 16, feeFilterRate: SatoshiAmount = 1, highBandwidthCompactBlocks: Bool = false, keepAliveFrequency: Int? = 60, pongTolerance: Int = 15) {
         self.network = network

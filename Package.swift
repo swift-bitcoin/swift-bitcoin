@@ -100,6 +100,11 @@ let package = Package(
 
         // Plugins
         .plugin(
+            name: "CopyConfigSources",
+            capability: .buildTool,
+            path: "plugin/copy-config-sources"
+        ),
+        .plugin(
             name: "GenerateContributors",
             capability: .command(
                 intent: .custom(
@@ -123,8 +128,10 @@ let package = Package(
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio"),
-                .product(name: "NIOExtras", package: "swift-nio-extras")],
-            path: "src/bitcoin-node"),
+                .product(name: "NIOExtras", package: "swift-nio-extras"),
+                .product(name: "_NIOFileSystem", package: "swift-nio")],
+            path: "src/bitcoin-node",
+            resources: [.copy("dummy")], plugins: [.plugin(name: "CopyConfigSources")]),
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
                 "BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC", "JSONRPC",

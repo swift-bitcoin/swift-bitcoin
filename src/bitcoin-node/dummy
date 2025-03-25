@@ -1,0 +1,1 @@
+This file is referenced from the target's resources and exists only purpose of preventing Xcode 16 from raising an error when attempting to make use of `Bundle.module`.

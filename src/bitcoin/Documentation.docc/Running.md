@@ -74,7 +74,7 @@ Or vice-versa to connect the second to the first: `swift run bcutil -p 9332 conn
 To start an interactive container based on the official docker image use:
 
 ```sh
-docker run --rm -it -v $PWD:/opt/swift-bitcoin swift`.
+docker run --rm -it -v $PWD:/opt/swift-bitcoin swift
 ```
 
 From there you can run all the commands from the previous section:
