@@ -68,7 +68,7 @@ struct CommandTests {
         #expect(output3.sizeOnDisk == 0) // Requires data dir, 552 (Swift Bitcoin, no undo data) or 593 (Bitcoin Core, with undo data)
 
         // Block 1
-        let getBlockOut = try #require(await GetBlockRPC(.init(blockID: "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")).run(blockchain: satoshiChain))
+        let getBlockOut = try await GetBlockRPC(.init(blockID: "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")).run(blockchain: satoshiChain)
         #expect(getBlockOut.id == "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")
         #expect(getBlockOut.confirmations == 2)
         #expect(getBlockOut.height == 1)

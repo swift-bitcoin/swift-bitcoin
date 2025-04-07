@@ -62,11 +62,11 @@ struct BlockchainIntegrationTests {
         t_a3 = signer.tx
 
         #expect(await alice.mempool.count == 0)
-        try #require(await alice.addTx(t_a3))
+        try await alice.addTx(t_a3)
         #expect(await alice.mempool.count == 1)
 
         #expect(await bob.mempool.count == 0)
-        try #require(await bob.addTx(t_a3))
+        try await bob.addTx(t_a3)
         #expect(await bob.mempool.count == 1)
 
         let aliceLastBlock = try #require(await alice.generateTo(alicePK))
@@ -101,13 +101,13 @@ struct BlockchainIntegrationTests {
         signer.sign(txIn: 1, with: derekKey)
         tA0_A2_c2 = signer.tx
 
-        try #require(await bob.addTx(tA1_b2))
+        try await bob.addTx(tA1_b2)
         #expect(await bob.mempool.count == 1)
 
-        try #require(await bob.addTx(tA0_A2_c2))
+        try await bob.addTx(tA0_A2_c2)
         #expect(await bob.mempool.count == 2)
 
-        try #require(await alice.addTx(tA0_A2_c2))
+        try await alice.addTx(tA0_A2_c2)
         #expect(await alice.mempool.count == 1)
 
 
