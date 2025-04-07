@@ -225,6 +225,6 @@ actor RPCService: Service {
             throw .init(.internalError, "Maximum P2P client instances reached.")
         }
         await client.connect(host: params.host, port: params.port)
-        return UUID() // FIXME: Find a way to return real peer ID
+        return UUID().uuidString // FIXME: Find a way to return real peer ID
     }
 }

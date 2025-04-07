@@ -194,7 +194,7 @@ struct BinaryCodableBaseTests {
             .init(outpoint: .coinbase, witness: .init([.init()])),
         ], outs: [])
         let data = tx.binaryData
-        let tx2 = try #require(try BitcoinTx(binaryData: data))
+        let tx2 = try BitcoinTx(binaryData: data)
         #expect(tx == tx2)
     }
 }

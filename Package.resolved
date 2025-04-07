@@ -1,5 +1,5 @@
 {
-  "originHash" : "46c38101dd6f6635c4c0c99760360f7dcb8571e864643c3a56bb4e686851e157",
+  "originHash" : "89a5e7c016ba489893efc3b760e33876adc5c0b1c0b1c7baf4b5cff8d71d2d74",
   "pins" : [
     {
       "identity" : "secp256k1",
@@ -69,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
       "state" : {
-        "revision" : "45305d32cfb830faebcaa9a7aea66ad342637518",
-        "version" : "3.11.1"
+        "revision" : "a6ce32a18b81b04ce7e897d1d98df6eb2da04786",
+        "version" : "3.12.2"
       }
     },
     {
@@ -96,17 +96,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-http-structured-headers.git",
       "state" : {
-        "revision" : "d01361d32e14ae9b70ea5bd308a3794a198a2706",
-        "version" : "1.2.0"
+        "revision" : "8e769facea6b7d46ea60e5e93635a384fd573480",
+        "version" : "1.2.1"
       }
     },
     {
       "identity" : "swift-http-types",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-http-types",
+      "location" : "https://github.com/apple/swift-http-types.git",
       "state" : {
-        "revision" : "ef18d829e8b92d731ad27bb81583edd2094d1ce3",
-        "version" : "1.3.1"
+        "revision" : "a0a57e949a8903563aba4615869310c0ebf14c03",
+        "version" : "1.4.0"
       }
     },
     {
@@ -123,8 +123,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log.git",
       "state" : {
-        "revision" : "96a2f8a0fa41e9e09af4585e2724c4e825410b91",
-        "version" : "1.6.2"
+        "revision" : "3d8596ed08bd13520157f0355e35caed215ffbfa",
+        "version" : "1.6.3"
       }
     },
     {
@@ -159,8 +159,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-numerics.git",
       "state" : {
-        "revision" : "0a5bc04095a675662cf24757cc0640aa2204253b",
-        "version" : "1.0.2"
+        "revision" : "e0ec0f5f3af6f3e4d5e7a19d2af26b481acb6ba8",
+        "version" : "1.0.3"
       }
     },
     {
@@ -168,8 +168,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swift-server/swift-service-lifecycle.git",
       "state" : {
-        "revision" : "c2e97cf6f81510f2d6b4a69453861db65d478560",
-        "version" : "2.6.3"
+        "revision" : "7ee57f99fbe0073c3700997186721e74d925b59b",
+        "version" : "2.7.0"
       }
     },
     {

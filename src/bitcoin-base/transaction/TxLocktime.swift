@@ -28,8 +28,10 @@ public struct TxLocktime: Equatable, Sendable {
     var rawValue: UInt32 { UInt32(locktimeValue) }
 
     public static let disabled = Self(0)
+    public static let minBlock = Self(1)
     public static let maxBlock = Self(minClock.locktimeValue - 1)
     public static let minClock = Self(500_000_000)
+    public static let maxClock = Self(1 << 31)
 }
 
 /// Binary data extensions.

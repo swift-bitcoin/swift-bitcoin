@@ -22,7 +22,7 @@ struct SighashTests {
         filteredOps.removeAll { $0 == .codeSeparator }
         let scriptCode = BitcoinScript(filteredOps).binaryData
 
-        let sighashType = try #require(SighashType(rawValue: hashType))
+        let sighashType = SighashType(rawValue: hashType)
         let sighash = SigHash(tx: tx, txIn: txIn, sigVersion: .base, prevout: .init(value: 0), scriptCode: scriptCode, sighashType: sighashType)
         print("value: \(sighash.value.hex)")
         #expect(sighash.value == Data(expected.reversed()))

@@ -1,6 +1,7 @@
 /// Connects to a peer. Returns the new peer's ID if successful.
 
 import Foundation
+
 public struct ConnectRPC: RPCCommand, Sendable {
 
     public struct Params: Codable, Sendable {
@@ -13,7 +14,7 @@ public struct ConnectRPC: RPCCommand, Sendable {
         public let port: Int
     }
 
-    public typealias Result = UUID
+    public typealias Result = String // UUID
 
     public init(_ params: Params) {
         self.params = params

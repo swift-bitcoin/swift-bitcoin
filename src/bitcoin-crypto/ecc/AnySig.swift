@@ -335,7 +335,7 @@ private func internalRecoverPubkey(sigData: Data, hash: Data) -> Data? {
 ///   - secretKey: 32-byte secret key data.
 /// - Returns: 64-byte compact signature data.
 ///
-private func signCompact(hash: Data, secretKey: SecretKey) -> Data {
+private func signCompact(hash: Data, secretKey: SecretKey, requireLowR: Bool = true) -> Data {
     let hash = [UInt8](hash)
     let secretKeyBytes = [UInt8](secretKey.data)
 
@@ -347,7 +347,7 @@ private func signCompact(hash: Data, secretKey: SecretKey) -> Data {
     writeLE32(&extraEntropy, testCase)
     var sig = secp256k1_ecdsa_signature()
     var counter = UInt32(0)
-    var success = secp256k1_ecdsa_sign(eccSigningContext, &sig, hash, secretKeyBytes, secp256k1_nonce_function_rfc6979, testCase != 0 ? extraEntropy : nil) != 0
+    var success = secp256k1_ecdsa_sign(eccSigningContext, &sig, hash, secretKeyBytes, secp256k1_nonce_function_rfc6979, (requireLowR && testCase != 0) ? extraEntropy : nil) != 0
     // Grind for low R
     while success && !isLowR(sig: &sig) {
         counter += 1
