@@ -1,5 +1,7 @@
 [docs](https://swiftbitcoin.org/docs/documentation/bitcoin/) ∙ [blog](https://swiftbitcoin.org)
 
+![Swift Bitcoin](https://github.com/user-attachments/assets/e7f29e72-6aa9-4f2c-9ba0-1e2a973ee09b)
+
 # Swift Bitcoin
 
 Swift Bitcoin is a cross-platform fully-featured Bitcoin development framework for Swift projects. It includes a standalone network client daemon as well as a command line utility for on-chain and off-chain operations. Swift Bitcoin is written entirely in modern data-race safe Swift with minimal third-party dependencies.
@@ -25,7 +27,8 @@ Make sure to also include a `Bitcoin` product reference in the specific target's
 
 On your Swift sources import the `Bitcoin` module:
 
-```swift
+```swift![SwiftBitcoin](https://github.com/user-attachments/assets/f5a0d43a-5867-48b0-b585-4d8e345fdee7)
+
 import Bitcoin
 ```
 
