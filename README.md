@@ -27,8 +27,7 @@ Make sure to also include a `Bitcoin` product reference in the specific target's
 
 On your Swift sources import the `Bitcoin` module:
 
-```swift![SwiftBitcoin](https://github.com/user-attachments/assets/f5a0d43a-5867-48b0-b585-4d8e345fdee7)
-
+```swift
 import Bitcoin
 ```
 
