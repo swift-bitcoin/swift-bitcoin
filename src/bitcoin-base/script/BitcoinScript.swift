@@ -209,6 +209,7 @@ extension BitcoinScript: BinaryCodable {
         unparsable = try decoder.decode()
     }
 
+    // TODO: Replace conformance with public CustomBinaryEncodable with 2 encodings: default/nil for unprefixed and a prefixed one
     public init(prefixedFrom decoder: inout BinaryDecoder) throws {
         let size: VarInt = try decoder.decode()
         decoder.setLimit(size.value)

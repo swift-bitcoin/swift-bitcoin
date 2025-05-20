@@ -16,12 +16,12 @@ enum PSBTOutKeyType: Int, KeyType {
 
     /// BIP 32 Derivation Path. `PSBT_OUT_BIP32_DERIVATION` in BIP174.
     ///
-    /// The master key fingerprint concatenated with the derivation path of the public key. The derivation path is represented as 32-bit little endian unsigned integer indexes concatenated with each other. Public keys are those needed to spend this output.
+    /// The master key fingerprint concatenated with the derivation path of the public key. The derivation path is represented as 32-bit little endian unsigned integer indexes concatenated with each other. Public keys are those needed to spend this output. Format: `<4 byte fingerprint> <32-bit little endian uint path element>*`.
     ///
-    /// Key data: The public key.
+    /// Key data: The public key. Format: `<bytes public key>`.
     ///
     /// Optional for v0 and v2.
-    case bip32Derivation = 0x02
+    case derivationPath = 0x02
 
     /// Proprietary Use Type. `PSBT_OUT_PROPRIETARY` in BIP174.
     ///

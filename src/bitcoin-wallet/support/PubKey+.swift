@@ -13,4 +13,15 @@ extension PubKey {
             .none
         }
     }
+
+    var id: Data {
+        Data(Hash160.hash(data: data))
+    }
+
+    var fingerprint: Int {
+        let fingerprint32 = id.withUnsafeBytes {
+            $0.loadUnaligned(as: UInt32.self)
+        }
+        return Int(fingerprint32)
+    }
 }

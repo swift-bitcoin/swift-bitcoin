@@ -11,7 +11,7 @@ public struct SighashType: Equatable, Sendable {
         self.init(rawValue: Int32(unchecked))
     }
 
-    init?(_ value: UInt8) {
+    public init?(_ value: UInt8) {
         self.init(unchecked: value)
         if !isDefined { return nil }
     }
@@ -63,30 +63,67 @@ public struct SighashType: Equatable, Sendable {
     public static let singleAnyCanPay = Self(unchecked: Self.sighashSingle | Self.sighashAnyCanPay)
 }
 
-extension SighashType: BinaryEncodable {
+extension SighashType: CustomBinaryCodable {
 
-    public func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(value)
+    public enum Encoding: Equatable, Sendable {
+        case fullLength
     }
 
-    public func encode32(to encoder: inout BinaryEncoder) {
-        encoder.encode(rawValue)
+    public enum DecodingError: Error {
+        case invalidData, undefinedSighashType
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(value)
+    public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws(DecodingError) {
+        switch encoding {
+        case .none:
+            let value: UInt8
+            do {
+                value = try decoder.decode()
+            } catch {
+                throw .invalidData
+            }
+            guard let maybeSelf = Self(value) else {
+                throw .undefinedSighashType
+            }
+            self = maybeSelf
+        case .some(let encoding):
+            switch encoding {
+            case .fullLength:
+                let rawValue: Int32
+                do {
+                    rawValue = try decoder.decode()
+                } catch {
+                    throw .invalidData
+                }
+                let maybeSelf = Self(rawValue: rawValue)
+                guard maybeSelf.isDefined else {
+                    throw .undefinedSighashType
+                }
+                self = maybeSelf
+            }
+        }
     }
 
-    public func encodingSize32(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(rawValue)
+    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
+        switch encoding {
+        case .none: encoder.encode(value)
+        case .some(let encoding):
+            switch encoding {
+            case .fullLength:
+                encoder.encode(rawValue)
+            }
+        }
     }
 
-    var data32: Data {
-        var counter = BinaryEncodingSizeCounter()
-        encodingSize32(&counter)
-        var encoder = BinaryEncoder(counter)
-        encode32(to: &encoder)
-        return encoder.data
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
+        switch encoding {
+        case .none: counter.count(value)
+        case .some(let encoding):
+            switch encoding {
+            case .fullLength:
+                counter.count(rawValue)
+            }
+        }
     }
 }
 

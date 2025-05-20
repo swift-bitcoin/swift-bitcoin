@@ -2,7 +2,7 @@ import Foundation
 import LibSECP256k1
 
 /// Elliptic curve SECP256K1 public key.
-public struct PubKey: Equatable, Sendable, CustomStringConvertible {
+public struct PubKey: Equatable, Hashable, Sendable, CustomStringConvertible {
 
     /// Derives a public key from a secret key.
     /// - Parameters:

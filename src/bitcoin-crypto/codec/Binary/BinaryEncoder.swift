@@ -35,6 +35,16 @@ public struct BinaryEncoder {
         offset = nextOffset
     }
 
+    public mutating func encodeArray<T: BinaryEncodingPrimitive>(_ array: [T]) {
+        let nextOffset = offset + array.count * MemoryLayout<T>.size
+        self.data.withUnsafeMutableBytes { destination in
+            array.withUnsafeBytes { source in
+                destination[offset ..< nextOffset].copyBytes(from: source)
+            }
+        }
+        offset = nextOffset
+    }
+
     public mutating func encode<T: BinaryEncodable>(_ value: T) {
         value.encode(to: &self)
     }

@@ -2,12 +2,12 @@ import Foundation
 import BitcoinCrypto
 
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
-public struct ExtendedKey: Equatable, Sendable {
+public struct ExtendedKey: Equatable, Hashable, Sendable {
     public let isMainnet: Bool
     public let secretKey: SecretKey?
     public let pubkey: PubKey?
     public let chaincode: Data
-    public let fingerprint: Int
+    public let parentFingerprint: Int
     public let depth: Int
     public let keyIndex: Int
 
@@ -23,14 +23,14 @@ public struct ExtendedKey: Equatable, Sendable {
         guard let secretKey = SecretKey(secretKeyData) else {
             throw Error.invalidSeed
         }
-        try self.init(secretKey: secretKey, chaincode: chaincode, fingerprint: 0, depth: 0, keyIndex: 0, mainnet: mainnet)
+        try self.init(secretKey: secretKey, chaincode: chaincode, parentFingerprint: 0, depth: 0, keyIndex: 0, mainnet: mainnet)
     }
 
-    fileprivate init(secretKey: SecretKey? = .none, pubkey: PubKey? = .none, chaincode: Data, fingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws(Error) {
+    fileprivate init(secretKey: SecretKey? = .none, pubkey: PubKey? = .none, chaincode: Data, parentFingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws(Error) {
         guard secretKey == .none && pubkey != .none || (secretKey != .none && pubkey == .none) else {
             preconditionFailure()
         }
-        guard depth != 0 || fingerprint == 0 else {
+        guard depth != 0 || parentFingerprint == 0 else {
             throw Error.zeroDepthNonZeroFingerprint
         }
         guard depth != 0 || keyIndex == 0 else {
@@ -40,7 +40,7 @@ public struct ExtendedKey: Equatable, Sendable {
         self.secretKey = secretKey
         self.pubkey = pubkey
         self.chaincode = chaincode
-        self.fingerprint = fingerprint
+        self.parentFingerprint = parentFingerprint
         self.depth = depth
         self.keyIndex = keyIndex
     }
@@ -86,10 +86,6 @@ public struct ExtendedKey: Equatable, Sendable {
         } else {
             fatalError()
         }
-        let pubkeyID = Data(Hash160.hash(data: pubkey.data))
-        let fingerprint = pubkeyID.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        }
 
         // assert(IsValid());
         // assert(IsCompressed());
@@ -116,7 +112,7 @@ public struct ExtendedKey: Equatable, Sendable {
             pubkey.tweak(tweak)
         } else { .none }
 
-        guard let ret = try? Self(secretKey: newSecretKey, pubkey: newPubkey, chaincode: chaincode, fingerprint: Int(fingerprint), depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
+        guard let ret = try? Self(secretKey: newSecretKey, pubkey: newPubkey, chaincode: chaincode, parentFingerprint: pubkey.fingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
             preconditionFailure()
         }
         return ret
@@ -126,7 +122,7 @@ public struct ExtendedKey: Equatable, Sendable {
     public var neutered: Self {
         guard let secretKey else { preconditionFailure() }
         let pubkey = PubKey(secretKey)
-        guard let ret = try? Self(secretKey: .none, pubkey: pubkey, chaincode: chaincode, fingerprint: fingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
+        guard let ret = try? Self(secretKey: .none, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
             preconditionFailure()
         }
         return ret
@@ -158,12 +154,12 @@ extension ExtendedKey: BinaryCodable {
         let isPrivate = version == mainHDKeyVersionPrivate || version == testHDKeyVersionPrivate
 
         let depth: Int
-        let fingerprint: Int
+        let parentFingerprint: Int
         let keyIndex: Int
         let chaincode: Data
         do {
             depth = Int(try decoder.decode() as UInt8)
-            fingerprint = Int(try decoder.decode() as UInt32)
+            parentFingerprint = Int(try decoder.decode() as UInt32)
             keyIndex = Int((try decoder.decode() as UInt32).byteSwapped)
             chaincode = try decoder.decode(32)
         } catch {
@@ -207,13 +203,13 @@ extension ExtendedKey: BinaryCodable {
             }
             pubkey = parsedPubkey
         }
-        try self.init(secretKey: secretKey, pubkey: pubkey, chaincode: chaincode, fingerprint: fingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet)
+        try self.init(secretKey: secretKey, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet)
     }
 
     public func encode(to encoder: inout BinaryEncoder) {
         encodeVersion(to: &encoder)
         encoder.encode(UInt8(depth))
-        encoder.encode(UInt32(fingerprint))
+        encoder.encode(UInt32(parentFingerprint))
         encoder.encode(UInt32(keyIndex).bigEndian)
         encoder.encode(chaincode)
         if let secretKey {
