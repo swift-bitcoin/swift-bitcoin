@@ -20,7 +20,7 @@ extension PSBTMap {
     ///
     struct Keypair: CustomBinaryCodable {
 
-        init(key: Key, value: Value) {
+        init(key: Key, value: Data) {
             self.key = key
             self.value = value
         }
@@ -34,7 +34,7 @@ extension PSBTMap {
                 throw .invalidKeyEncoding
             }
             do {
-                value = try decoder.decodeExplicit()
+                value = try decoder.decode(variable: true)
             } catch let error as PSBTMapError {
                 throw error
             } catch {
@@ -43,16 +43,16 @@ extension PSBTMap {
         }
 
         let key: Key
-        let value: Value
+        let value: Data
 
         func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
             counter.count(key)
-            counter.count(value)
+            counter.count(value, variable: true)
         }
 
         func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
             encoder.encode(key)
-            encoder.encode(value)
+            encoder.encode(value, variable: true)
         }
     }
 }

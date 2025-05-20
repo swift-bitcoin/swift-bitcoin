@@ -42,6 +42,10 @@ public struct BinaryEncodingSizeCounter {
         value.encodingSize(&self, encoding: encoding)
     }
 
+    public mutating func countArray<T: BinaryEncodingPrimitive>(_ array: [T]) {
+        countSize(array.count * MemoryLayout<T>.size)
+    }
+
     /// Counts the size of a primitive type value.
     mutating func countPrimitive<T: BinaryEncodingPrimitive>(_ value: T) {
         countSize(MemoryLayout.size(ofValue: value))

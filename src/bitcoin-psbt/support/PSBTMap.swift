@@ -7,7 +7,7 @@ public enum PSBTMapError: Error {
 
 struct PSBTMap: CustomBinaryCodable {
 
-    init(entries: [Key : Value]) {
+    init(entries: [Key : Data]) {
         self.entries = entries
     }
 
@@ -15,7 +15,7 @@ struct PSBTMap: CustomBinaryCodable {
         guard let maybeDelimiter = decoder.peek() else {
             throw .missingDelimiter
         }
-        var entries = [Key : Value]()
+        var entries = [Key : Data]()
         var foundDelimiter = maybeDelimiter == Self.delimiter
         while !foundDelimiter {
             let keypair: Keypair
@@ -39,7 +39,7 @@ struct PSBTMap: CustomBinaryCodable {
         self.entries = entries
     }
 
-    let entries: [Key : Value]
+    let entries: [Key : Data]
 
     private var keypairs: [Keypair] {
         entries.map { Keypair(key: $0, value: $1) }

@@ -161,7 +161,7 @@ public struct SigHash: Sendable {
             ins: newIns,
             outs: newOuts
         )
-        return txCopy.binaryData + sighashType.data32
+        return txCopy.binaryData + sighashType.binaryData(encoding: .fullLength)
     }
 
     /// BIP143
@@ -224,8 +224,8 @@ public struct SigHash: Sendable {
         let amountData = withUnsafeBytes(of: amount) { Data($0) }
         let sequenceData = tx.ins[inIndex].sequence.binaryData
 
-        let remaindingData = sequenceData + hashOuts + tx.locktime.binaryData + sighashType.data32
-        return tx.version.binaryData + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remaindingData
+        let remainingData = sequenceData + hashOuts + tx.locktime.binaryData + sighashType.binaryData(encoding: .fullLength)
+        return tx.version.binaryData + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remainingData
     }
 
     /// BIP341

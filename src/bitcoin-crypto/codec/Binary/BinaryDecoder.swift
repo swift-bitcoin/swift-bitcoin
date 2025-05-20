@@ -63,6 +63,39 @@ public struct BinaryDecoder {
         try T(from: &self, encoding: encoding)
     }
 
+    public mutating func decodeArray<T: BinaryEncodingPrimitive>(count: Int? = .none) throws -> [T] {
+        let elementSize = MemoryLayout<T>.size
+        let userByteCount = if let count { count * elementSize } else { Int?.none }
+        let remaining = data.count - offset
+        let byteCount = if let userByteCount { userByteCount }
+                    else if let limit { limit }
+                    else { remaining }
+
+        guard byteCount % elementSize == 0 else {
+            throw BinaryDecodingError.outOfRange
+        }
+
+        if let limit {
+            if byteCount <= limit { self.limit = limit - byteCount }
+            else { throw BinaryDecodingError.limitExceeded }
+        }
+
+        let nextOffset = offset + byteCount
+        guard nextOffset <= data.count else {
+            throw BinaryDecodingError.outOfRange
+        }
+
+        let count = count ?? byteCount / elementSize
+
+        var result = [T]()
+        for _ in 0 ..< count {
+            result.append(try decode())
+        }
+
+        return result
+        // offset = nextOffset
+    }
+
     /// Sets a limit on the number of bytes to decode before issuing a ``BinaryDecodingError/limitExceeded``.
     public mutating func setLimit(_ limit: Int) {
         self.limit = limit
