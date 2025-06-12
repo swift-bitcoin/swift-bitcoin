@@ -3,9 +3,19 @@ import BitcoinCrypto
 
 public struct DerivationPath: Equatable, Sendable {
 
-    init(fingerprint: Int, indices: [Int]) {
+    package init(fingerprint: Int, indices: [Int], harden: [Bool]? = .none) {
+        let resolvedHarden: [Bool]
+        if let harden {
+            precondition(harden.count == indices.count)
+            resolvedHarden = harden
+        } else {
+            resolvedHarden = .init(repeating: false, count: indices.count)
+        }
         self.fingerprint = fingerprint
-        self.indices = indices
+        self.indices = zip(indices, resolvedHarden).map { i, h in
+            precondition(i < (1 << 31))
+            return h ? (1 << 31) + i : i
+        }
     }
 
     public let fingerprint: Int

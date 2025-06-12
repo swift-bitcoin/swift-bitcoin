@@ -16,7 +16,7 @@ struct PartiallySignedTxTests {
             .init(value: 2),
             .init(value: 4)
         ])
-        let psbt = try PartiallySignedTx(tx: tx, ins: [
+        let psbt = try PartiallySignedTx(tx, ins: [
             .init(
                 prevoutTx: fund0
             ), .init(
@@ -51,7 +51,7 @@ struct PartiallySignedTxTests {
             .init(value: 2),
             .init(value: 4)
         ])
-        let psbt = try PartiallySignedTx(tx: tx, proprietaryInfo: proprietaryInfo, ins: [
+        let psbt = try PartiallySignedTx(tx, proprietaryInfo: proprietaryInfo, ins: [
             .init(
                 prevoutTx: fund0, proprietaryInfo: proprietaryInfo
             ), .init(

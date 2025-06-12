@@ -16,7 +16,7 @@ extension BitcoinTx {
             do {
                 try verifyScript(&context)
             } catch {
-                print("\(error) \(error.localizedDescription)")
+                // print("\(error) \(error.localizedDescription)")
                 return false
             }
         }

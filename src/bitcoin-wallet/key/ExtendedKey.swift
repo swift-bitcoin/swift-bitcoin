@@ -11,6 +11,11 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
     public let depth: Int
     public let keyIndex: Int
 
+    package init(seed: Data, mainnet: Bool = true, derivation: DerivationPath) throws {
+        let key = try Self(seed: seed, mainnet: mainnet)
+        self = key.derive(derivation)
+    }
+
     public init(seed: Data, mainnet: Bool = true) throws {
         guard seed.count >= 16, seed.count <= 64 else {
             throw Error.invalidSeed
@@ -66,18 +71,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         Base58Encoder().encode(binaryData)
     }
 
-    /// Derives either a child private key from a parent private key, or a child public key form a parent public key.
-    ///
-    /// Part of  BIP32 implementation.
-    ///
-    /// - Parameters:
-    ///   - child: The child index.
-    ///   - harden: Whether to apply hardened derivation. Only applicable to private keys.
-    /// - Returns: The derived child key.
-    public func derive(child: Int, harden: Bool = false) -> Self {
-        precondition(!harden || hasSecretKey)
-
-        let keyIndex = harden ? (1 << 31) + child : child
+    private func derive(_ keyIndex: Int) -> Self {
         let depth = depth + 1
         let pubkey = if let secretKey {
             PubKey(secretKey)
@@ -118,6 +112,29 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         return ret
     }
 
+    /// Derives either a child private key from a parent private key, or a child public key form a parent public key.
+    ///
+    /// Part of  BIP32 implementation.
+    ///
+    /// - Parameters:
+    ///   - child: The child index.
+    ///   - harden: Whether to apply hardened derivation. Only applicable to private keys.
+    /// - Returns: The derived child key.
+    public func derive(child: Int, harden: Bool = false) -> Self {
+        precondition(!harden || hasSecretKey)
+        precondition(!harden || child < (1 << 31))
+        let keyIndex = harden ? (1 << 31) + child : child
+        return derive(keyIndex)
+    }
+
+    package func derive(_ derivation: DerivationPath) -> Self {
+        var key = self
+        for i in derivation.indices {
+            key = key.derive(i)
+        }
+        return key
+    }
+
     /// Turns a private key into a public key removing its ability to produce signatures.
     public var neutered: Self {
         guard let secretKey else { preconditionFailure() }
@@ -126,6 +143,16 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
             preconditionFailure()
         }
         return ret
+    }
+
+    package var fingerprint: Int {
+        if let secretKey {
+            PubKey(secretKey).fingerprint
+        } else if let pubkey {
+            pubkey.fingerprint
+        } else {
+            preconditionFailure()
+        }
     }
 }
 

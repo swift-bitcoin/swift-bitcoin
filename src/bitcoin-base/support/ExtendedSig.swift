@@ -2,14 +2,14 @@ import Foundation
 import BitcoinCrypto
 
 /// A signature with sighash type extension.
-public struct ExtendedSig {
+public struct ExtendedSig: Equatable, Sendable {
 
     public init(_ sig: AnySig, _ sighashType: SighashType?) {
         self.sig = sig
         self.sighashType = sighashType
     }
 
-    init?(_ data: Data, skipCheck: Bool = false) {
+    package init?(_ data: Data, skipCheck: Bool = false) {
         guard let last = data.last, let sig = AnySig(data.dropLast()) else {
             return nil
         }
