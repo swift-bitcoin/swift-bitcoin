@@ -28,15 +28,11 @@ struct MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
 
         guard let message = BitcoinMessage(messageData) else {
             print("Malformed message")
-            print(messageData.hex)
             // TODO: Throw corresponding errors.
             return .continue
 
         }
         guard message.isChecksumOk else {
-            print("Wrong message checksum")
-            debugPrint(message)
-            print(message.data.hex)
             fatalError() // TODO: Throw corresponding errors.
             // context.fireErrorCaught(T##error: Error##Error)
         }

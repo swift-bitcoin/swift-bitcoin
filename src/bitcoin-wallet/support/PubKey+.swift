@@ -18,7 +18,7 @@ extension PubKey {
         Data(Hash160.hash(data: data))
     }
 
-    var fingerprint: Int {
+    package var fingerprint: Int {
         let fingerprint32 = id.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         }

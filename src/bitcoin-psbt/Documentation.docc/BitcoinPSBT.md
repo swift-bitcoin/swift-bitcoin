@@ -36,7 +36,7 @@ let tx = BitcoinTx(ins: [
     .init(value: 2),
     .init(value: 4)
 ])
-let psbt = PartiallySignedTx(tx: tx, proprietaryInfo: proprietaryInfo, ins: [
+let psbt = PartiallySignedTx(tx, proprietaryInfo: proprietaryInfo, ins: [
     .init(
         prevoutTx: fund0, proprietaryInfo: proprietaryInfo
     ), .init(

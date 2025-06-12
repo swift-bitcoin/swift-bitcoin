@@ -10,7 +10,7 @@ extension BitcoinScript {
            ops[1] == .checkSig { true } else { false }
     }
 
-    var isPayToPubkeyHash: Bool {
+    package var isPayToPubkeyHash: Bool {
         if binarySize == RIPEMD160.Digest.byteCount + 5,
            ops.count == 5,
            ops[0] == .dup,
@@ -20,7 +20,7 @@ extension BitcoinScript {
            ops[4] == .checkSig { true } else { false }
     }
 
-    var isPayToMultisig: Bool {
+    package var isPayToMultisig: Bool {
         guard
             ops.count >= 5, unparsable.isEmpty,
             case .constant(let m) = ops[0],

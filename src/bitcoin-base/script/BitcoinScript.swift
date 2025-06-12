@@ -56,6 +56,10 @@ public struct BitcoinScript: Equatable, Sendable {
         }
     }
 
+    public var isPayToWitnessScriptHash: Bool {
+        witnessVersion == 0 && witnessProgram.count == SHA256.Digest.byteCount
+    }
+
     /// BIP141
     var witnessProgram: Data {
         precondition(isSegwit)

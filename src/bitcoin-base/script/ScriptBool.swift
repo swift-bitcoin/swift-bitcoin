@@ -2,18 +2,18 @@ import Foundation
 import BitcoinCrypto
 
 /// A boolean value in the context of SCRIPT execution.
-struct ScriptBool: Equatable {
+public struct ScriptBool: Equatable, Sendable {
 
-    static let `false` = Self(false)
-    static let `true` = Self(true)
+    public static let `false` = Self(false)
+    public static let `true` = Self(true)
 
-    let value: Bool
+    public let value: Bool
 
-    init(_ value: Bool) {
+    public init(_ value: Bool) {
         self.value = value
     }
 
-    func and(_ b: ScriptBool) -> ScriptBool {
+    public func and(_ b: ScriptBool) -> ScriptBool {
         Self(value && b.value)
     }
 }
@@ -41,13 +41,13 @@ extension ScriptBool: BinaryEncodable {
         }
     }
 
-    func encode(to encoder: inout BinaryEncoder) {
+    public func encode(to encoder: inout BinaryEncoder) {
         if value {
             encoder.encode(Data([1]))
         }
     }
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         if value {
             counter.countSize(1)
         }

@@ -15,7 +15,6 @@ struct MiniscriptTests {
     let key2Hash = "bfebfddcc81414d6997cd3c12872006d64604b07"
 
     @Test("A single key") func singleKey() throws {
-        print(SecretKey().pubkey.compressedData!.hex)
         // The Miniscript
         let exp = PK(key1)
 
