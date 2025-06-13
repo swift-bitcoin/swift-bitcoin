@@ -7,7 +7,7 @@ struct ScriptTests {
     /// It is evaluated as if there was a crediting coinbase transaction with two 0 pushes as scriptSig, and one output of 0 satoshi and given scriptPubKey, followed by a spending transaction which spends this output as only input (and correct prevout hash), using the given scriptSig. All nLockTimes are 0, all nSequences are max.
     @Test("Script test vectors", arguments: [
         // Format is: ([wit..., amount]?, scriptSig, scriptPubKey, flags, expected_scripterror, ... comments)
-        TestVector(.empty, [ScriptOp.depth, .zero, .equal], [.strictEncoding, .payToScriptHash], true, [], "Test the test: we should have an empty stack after scriptSig evaluation"),
+        TestVector(.empty, [Script.Operation.depth, .zero, .equal], [.strictEncoding, .payToScriptHash], true, [], "Test the test: we should have an empty stack after scriptSig evaluation"),
             // Some missing _test the test_ tests involving spaces in data which are not applicable here.
             .init(.init([.constant(1), .constant(2)]), .init([.constant(2), .equalVerify, .constant(1), .equal]), [.strictEncoding, .payToScriptHash], true, [], "Similarly whitespace around and between symbols"),
             // Additional missing _test the test_ tests involving spaces in data which are not applicable here.
@@ -25,9 +25,9 @@ struct ScriptTests {
             .init([.init([0x33 /* or 51 (?) */])], 0, .empty, .init([.zero, .pushBytes(Data([0x20, 0x6e, 0x34, 0x0b, 0x9c, 0xff, 0xb3, 0x7a, 0x98, 0x9c, 0xa5, 0x44, 0xe6, 0xbb, 0x78, 0x0a, 0x2c, 0x78, 0x90, 0x1d, 0x3f, 0xb3, 0x37, 0x38, 0x76, 0x85, 0x11, 0xa3, 0x06, 0x17, 0xaf, 0xa0, 0x1d]))]), [.payToScriptHash, .witness], false, [.witnessProgramWrongLength /* WITNESS_PROGRAM_MISMATCH */], "Witness script hash mismatch"),
     ])
     func allVectors(test: TestVector) throws {
-        let txCredit = BitcoinTx(
+        let txCredit = Transaction(
             ins: [
-                .init(outpoint: .coinbase, script: .init([ScriptOp.zero, .zero])),
+                .init(outpoint: .coinbase, script: .init([Script.Operation.zero, .zero])),
             ],
             outs: [
                 .init(value: test.amount, script: test.scriptPubKey)
@@ -35,12 +35,12 @@ struct ScriptTests {
         )
 
         let witness = if let witnessElements = test.witness {
-            TxWitness(witnessElements)
+            Transaction.Witness(witnessElements)
         } else {
-            TxWitness([])
+            Transaction.Witness([])
         }
 
-        let txSpend = BitcoinTx(
+        let txSpend = Transaction(
             ins: [
                 .init(outpoint: txCredit.outpoint(0), script: test.scriptSig, witness: witness),
             ],
@@ -54,7 +54,7 @@ struct ScriptTests {
         } else if test.expectedErrors.isEmpty {
             #expect(!result)
         } else {
-            var context = ScriptContext(test.flags, tx: txSpend, txIn: 0, prevouts: [txCredit.outs[0]])
+            var context = ScriptRuntime(test.flags, tx: txSpend, input: 0, prevouts: [txCredit.outs[0]])
             #expect {
                 try txSpend.verifyScript(&context)
             } throws: { error in
@@ -68,8 +68,8 @@ struct ScriptTests {
 
     struct TestVector {
         init(
-            _ scriptSig: BitcoinScript,
-            _ scriptPubKey: BitcoinScript,
+            _ scriptSig: Script,
+            _ scriptPubKey: Script,
             _ flags: ScriptConfig,
             _ evalTrue: Bool,
             _ expectedErrors: [ScriptError],
@@ -89,9 +89,9 @@ struct ScriptTests {
 
         init(
             _ witness: [Data]?,
-            _ amount: SatoshiAmount,
-            _ scriptSig: BitcoinScript,
-            _ scriptPubKey: BitcoinScript,
+            _ amount: Amount,
+            _ scriptSig: Script,
+            _ scriptPubKey: Script,
             _ flags: ScriptConfig,
             _ evalTrue: Bool,
             _ expectedErrors: [ScriptError],
@@ -108,9 +108,9 @@ struct ScriptTests {
         }
 
         let witness: [Data]?
-        let amount: SatoshiAmount
-        let scriptSig: BitcoinScript
-        let scriptPubKey: BitcoinScript
+        let amount: Amount
+        let scriptSig: Script
+        let scriptPubKey: Script
         let flags: ScriptConfig
         let evalTrue: Bool
         let expectedErrors: [ScriptError]

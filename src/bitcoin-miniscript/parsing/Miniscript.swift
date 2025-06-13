@@ -14,5 +14,5 @@ public struct Miniscript {
 
     let root: ASTNode?
     public let properties: MiniscriptProperties
-    public let evaluated: [ScriptOp]
+    public let evaluated: [Script.Operation]
 }

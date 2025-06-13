@@ -4,5 +4,5 @@ import BitcoinBase
 ///
 /// Every miniscript expression has one of four basic types: ``ExpB``, ``ExpK``, ``ExpV``, ``ExpW``.
 public protocol MiniscriptExp: Sendable, CustomStringConvertible {
-    var compiled: [ScriptOp] { get }
+    var compiled: [Script.Operation] { get }
 }

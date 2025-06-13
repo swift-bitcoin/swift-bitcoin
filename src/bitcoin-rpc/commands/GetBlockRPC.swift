@@ -8,7 +8,7 @@ extension GetBlockRPC {
 
     public func run(blockchain: BlockchainService) async throws(JSONRPCResponse.Error) -> Result {
 
-        guard let blockID = Data(hex: params.blockID), blockID.count == TxBlock.idLength else {
+        guard let blockID = Data(hex: params.blockID), blockID.count == Block.idLength else {
             throw .init(.invalidParams, "Invalid block hash.")
         }
         guard let block = await blockchain.getBlock(blockID) else {

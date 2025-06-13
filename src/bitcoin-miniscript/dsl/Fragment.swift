@@ -6,7 +6,7 @@ import BitcoinCrypto
 public struct Zero: ExpB, ModZ, ModU, ModD {
     public init() { }
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.zero]
     }
 
@@ -17,7 +17,7 @@ public struct Zero: ExpB, ModZ, ModU, ModD {
 public struct One: ExpB, ModZ, ModU {
     public init() { }
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.constant(1)]
     }
 
@@ -26,10 +26,10 @@ public struct One: ExpB, ModZ, ModU {
 
 /// Semantics: `check(key)`; Miniscript: `pk_k(key)`; BitcoinScript: `<key>`.
 public struct PK_K: ExpK, ModO, ModN, ModD, ModU {
-    public init(_ key: PubKey) { self.key = key }
-    let key: PubKey
+    public init(_ key: PublicKey) { self.key = key }
+    let key: PublicKey
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         // For tapscript should be key.xOnlyData
         [.pushBytes(key.compressedData!)]
     }
@@ -41,10 +41,10 @@ public struct PK_K: ExpK, ModO, ModN, ModD, ModU {
 
 /// Semantics: `check(key)`; Miniscript: `pk_h(key)`; BitcoinScript: `DUP HASH160 <HASH160(key)> EQUALVERIFY`.
 public struct PK_H: ExpK, ModN, ModD, ModU {
-    public init(_ key: PubKey) { self.key = key }
-    let key: PubKey
+    public init(_ key: PublicKey) { self.key = key }
+    let key: PublicKey
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         guard let keyData = key.compressedData else { // For tapscript should be key.xOnlyData
             preconditionFailure()
         }
@@ -59,9 +59,9 @@ public struct PK_H: ExpK, ModN, ModD, ModU {
 
 /// Semantics: `check(key)`; Miniscript: `pk(key) = c:pk_k(key)`; BitcoinScript: `<key> CHECKSIG`.
 public struct PK: ExpB, ModO, ModN, ModD, ModU {
-    public init(_ key: PubKey) { self.key = key }
-    let key: PubKey
-    public var compiled: [ScriptOp] { C_(PK_K(key)).compiled }
+    public init(_ key: PublicKey) { self.key = key }
+    let key: PublicKey
+    public var compiled: [Script.Operation] { C_(PK_K(key)).compiled }
 
     public var description: String {
         "pk(\(key.compressedData!.hex))"
@@ -70,9 +70,9 @@ public struct PK: ExpB, ModO, ModN, ModD, ModU {
 
 /// Semantics: `check(key)`; Miniscript: `pkh(key) = c:pk_h(key)`; BitcoinScript: `DUP HASH160 <HASH160(key)> EQUALVERIFY CHECKSIG`.
 public struct PKH: ExpB, ModN, ModD, ModU {
-    public init(_ key: PubKey) { self.key = key }
-    let key: PubKey
-    public var compiled: [ScriptOp] { C_(PK_H(key)).compiled }
+    public init(_ key: PublicKey) { self.key = key }
+    let key: PublicKey
+    public var compiled: [Script.Operation] { C_(PK_H(key)).compiled }
 
     public var description: String {
         "pkh(\(key.compressedData!.hex))"
@@ -84,7 +84,7 @@ public struct Older: ExpB, ModZ {
     public init(_ n: Int) { self.n = n }
     let n: Int
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.encodeMinimally(n), .checkSequenceVerify]
     }
 
@@ -98,7 +98,7 @@ public struct After: ExpB, ModZ {
     public init(_ n: Int) { self.n = n }
     let n: Int
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.encodeMinimally(n), .checkLockTimeVerify]
     }
 
@@ -116,7 +116,7 @@ public struct SHA256: ExpB, ModO, ModN, ModD, ModU {
     }
     let h: Data
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.size, .encodeMinimally(0x20), .equalVerify, .sha256, .pushBytes(h), .equal]
     }
 
@@ -135,7 +135,7 @@ public struct Hash256: ExpB, ModO, ModN, ModD, ModU {
 
     let h: Data
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.size, .encodeMinimally(0x20), .equalVerify, .hash256, .pushBytes(h), .equal]
     }
 
@@ -154,7 +154,7 @@ public struct RIPEMD160: ExpB, ModO, ModN, ModD, ModU {
 
     let h: Data
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.size, .encodeMinimally(0x20), .equalVerify, .ripemd160, .pushBytes(h), .equal]
     }
 
@@ -173,7 +173,7 @@ public struct Hash160: ExpB, ModO, ModN, ModD, ModU {
 
     let h: Data
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.size, .encodeMinimally(0x20), .equalVerify, .hash160, .pushBytes(h), .equal]
     }
 
@@ -188,7 +188,7 @@ public struct AndOr<X: ExpB, Y: ExpBKV, Z: ExpBKV>: ExpBKV {
 
     let x: X; let y: Y; let z: Z
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         x.compiled + [.notIf] + z.compiled + [.else] + y.compiled + [.endIf]
     }
 
@@ -221,7 +221,7 @@ public struct AndV<X: ExpV, Y: ExpBKV>: ExpBKV {
     public init(_ x: X, _ y: Y) { self.x = x; self.y = y }
     let x: X, y: Y
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         x.compiled + y.compiled
     }
 
@@ -248,7 +248,7 @@ public struct AndB<X: ExpB, Y: ExpW>: ExpB, ModU {
     public init(_ x: X, _ y: Y) { self.x = x; self.y = y }
     let x: X, y: Y
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         x.compiled + y.compiled + [.boolAnd]
     }
 
@@ -270,7 +270,7 @@ extension AndB: ModD where X: ModD, Y: ModD { }
 public struct AndN<X: ExpB, Y: ExpB>: ExpB {
     public init(_ x: X, _ y: Y) { self.x = x; self.y = y }
     let x: X, y: Y
-    public var compiled: [ScriptOp] { AndOr(x, y, Zero()).compiled }
+    public var compiled: [Script.Operation] { AndOr(x, y, Zero()).compiled }
 
     public var description: String {
         "and_n(\(x),\(y))"
@@ -316,7 +316,7 @@ public struct OrB<X: ExpB & ModD, X_: ExpB & ModD_, Z: ExpW & ModD, Z_: ExpW & M
     var x: ExpB { _x ?? __x! }
     var z: ExpW { _z ?? __z! }
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         x.compiled + z.compiled + [.boolOr]
     }
 
@@ -335,7 +335,7 @@ public struct OrC<X: ExpB, Z: ExpV>: ExpV {
     public init(_ x: X, _ z: Z) { self.x = x; self.z = z }
     let x: X, z: Z
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         x.compiled + [.notIf] + z.compiled + [.endIf]
     }
 
@@ -352,7 +352,7 @@ public struct OrD<X: ExpB, Z: ExpB>: ExpB {
     public init(_ x: X, _ z: Z) { self.x = x; self.z = z }
     let x: X, z: Z
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         x.compiled + [.ifDup, .notIf] + z.compiled + [.endIf]
     }
 
@@ -376,7 +376,7 @@ public struct OrI<X: ExpBKV, Z: ExpBKV>: ExpBKV {
 
     let x: X, z: Z
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.if] + x.compiled + [.else] + z.compiled + [.endIf]
     }
 
@@ -420,7 +420,7 @@ public struct Thresh<X0: ExpB, X1: ExpW, X2: ExpW, X3: ExpW>: ExpB, ModD, ModU {
     let x0: X0
     let x1: X1, x2: X2, x3: X3
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         let k = UInt8(k)
         return x0.compiled + x1.compiled + [.add] + x2.compiled + [.add] + x3.compiled + [.add] + [.constant(k), .equal]
     }
@@ -436,7 +436,7 @@ extension Thresh: ModZ where X0: ModZ, X1: ModZ, X2: ModZ, X3: ModZ { }
 /// Semantics: `check(key1) + ... + check(keyn) = k (P2WSH only)`; Miniscript: `multi(k,key1,...,keyn)`; BitcoinScript: `<k> <key1> ... <keyn> <n> CHECKMULTISIG`.
 public struct Multi: ExpB, ModN, ModD, ModU {
 
-    public init(_ k: Int, _ keys: PubKey...) {
+    public init(_ k: Int, _ keys: PublicKey...) {
         precondition(keys.count >= 1 && keys.count <= UInt8.max)
         precondition(k >= 1)
         precondition(k <= keys.count)
@@ -445,9 +445,9 @@ public struct Multi: ExpB, ModN, ModD, ModU {
     }
 
     let k: Int
-    let keys: [PubKey]
+    let keys: [PublicKey]
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         let k = UInt8(k)
         let n = UInt8(keys.count)
         let keysPushBytes = keys
@@ -455,7 +455,7 @@ public struct Multi: ExpB, ModN, ModD, ModU {
                 guard let keyData = $0.compressedData else { preconditionFailure() }
                 return keyData
             }
-            .map { ScriptOp.pushBytes($0) }
+            .map { Script.Operation.pushBytes($0) }
         return [.constant(k)] + keysPushBytes + [.constant(n), .checkMultiSig]
     }
 
@@ -468,7 +468,7 @@ public struct Multi: ExpB, ModN, ModD, ModU {
 /// Semantics: `check(key1) + ... + check(keyn) = k (Tapscript only)`; Miniscript: `multi_a(k,key1,...,keyn)`; BitcoinScript: `<key1> CHECKSIG <key2> CHECKSIGADD ... <keyn> CHECKSIGADD <k> NUMEQUAL`.
 public struct MultiA: ExpB, ModD, ModU {
 
-    public init(_ k: Int, _ keys: PubKey...) {
+    public init(_ k: Int, _ keys: PublicKey...) {
         precondition(keys.count >= 1 && keys.count <= UInt8.max)
         precondition(k >= 1)
         precondition(k <= keys.count)
@@ -477,14 +477,14 @@ public struct MultiA: ExpB, ModD, ModU {
     }
 
     let k: Int
-    let keys: [PubKey]
+    let keys: [PublicKey]
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         let k = UInt8(k)
         let keysPushBytes = keys.dropFirst()
             .map(\.xOnlyData)
             .flatMap {
-                [ScriptOp.pushBytes($0), .checkSigAdd]
+                [Script.Operation.pushBytes($0), .checkSigAdd]
             }
         return [.pushBytes(keys[0].xOnlyData), .checkSig] + keysPushBytes + [.checkSigAdd, .constant(k), .numEqual]
     }

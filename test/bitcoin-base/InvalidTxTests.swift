@@ -7,9 +7,9 @@ struct InvalidTxTests {
     @Test("Bitcoin Core Invalid Transactions")
     func invalidTx() throws {
         for vector in testVectors {
-            let tx = try BitcoinTx(binaryData: Data(vector.serializedTx))
+            let tx = try Transaction(binaryData: Data(vector.serializedTx))
             let prevouts = vector.prevouts.map { prevout in
-                TxOut(value: prevout.amount, script: BitcoinScript(prevout.ops))
+                TransactionOutput(value: prevout.amount, script: Script(prevout.ops))
             }
             var includeFlags = Set(vector.verifyFlags.split(separator: ","))
             includeFlags.remove("NONE")
@@ -54,7 +54,7 @@ fileprivate struct TestVector {
         let txID: [UInt8]
         let outIndex: Int
         let amount: Int
-        let ops: [ScriptOp]
+        let ops: [Script.Operation]
     }
 
     let prevouts: [Prevout]

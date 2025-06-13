@@ -23,7 +23,7 @@ struct BitcoinWalletTests {
 
         let message = "Hello, Bitcoin!"
         let messageData = try #require(message.data(using: .utf8))
-        let sig = AnySig(messageData: messageData, secretKey: secretKey2, type: .recoverable, recoverCompressedKeys: metadata.compressedPubkeys)
+        let sig = Signature(messageData: messageData, secretKey: secretKey2, type: .recoverable, recoverCompressedKeys: metadata.compressedPubkeys)
 
         #expect(sig.base64 == "IN97K44jABXPVVQ5dnPo0AcLpmG/Q0b73Yxr6JQvIFtPJJQhshb4NJ2nHjqtRhKIUNGnFGr+tlHxzoOw6xpmJ5I=")
 
@@ -42,13 +42,13 @@ struct BitcoinWalletTests {
     @Test func addressDecoding() throws {
         let addressText = "1MMgabnpMVKTnYXwJfupDJRpWNJmUay8cP"
         let pubkeyData = try #require(Data(hex: "029a3865b2488e2fee75336d1048c1d0795a088368a0caa4adc076425c90227bc3"))
-        let pubkey = try #require(PubKey(pubkeyData))
+        let pubkey = try #require(PublicKey(pubkeyData))
         let address1 = LegacyAddress(pubkey, mainnet: true)
         let addressText1 = address1.description
         #expect(addressText1 == addressText)
         let address2 = try #require(LegacyAddress(addressText1))
         #expect(address1 == address2)
-        let address3 = try #require(AnyAddress(addressText1))
+        let address3 = try #require(Address(addressText1))
         #expect(address3.description == addressText)
     }
 }

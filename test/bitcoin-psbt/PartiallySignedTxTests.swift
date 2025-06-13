@@ -6,9 +6,9 @@ import BitcoinBase
 struct PartiallySignedTxTests {
 
     @Test func basicRoundtrip() throws {
-        let fund0 = BitcoinTx(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 3)])
-        let fund1 = BitcoinTx(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 2), .init(value: 5)])
-        let tx = BitcoinTx(ins: [
+        let fund0 = Transaction(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 3)])
+        let fund1 = Transaction(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 2), .init(value: 5)])
+        let tx = Transaction(ins: [
             .init(outpoint: fund0.outpoint(0)),
             .init(outpoint: fund1.outpoint(1))
         ], outs: [
@@ -41,9 +41,9 @@ struct PartiallySignedTxTests {
                 ProprietaryKey(type: 1, data: .init([1, 1, 1, 1])) : Data([2, 3, 4, 5, 6])
             ]
         ]
-        let fund0 = BitcoinTx(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 3)])
-        let fund1 = BitcoinTx(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 2), .init(value: 5)])
-        let tx = BitcoinTx(ins: [
+        let fund0 = Transaction(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 3)])
+        let fund1 = Transaction(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 2), .init(value: 5)])
+        let tx = Transaction(ins: [
             .init(outpoint: fund0.outpoint(0)),
             .init(outpoint: fund1.outpoint(1))
         ], outs: [

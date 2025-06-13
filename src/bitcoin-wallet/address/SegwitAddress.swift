@@ -3,7 +3,7 @@ import BitcoinCrypto
 import BitcoinBase
 
 /// Witness version 0 Bitcoin address.
-public struct SegwitAddress: BitcoinAddress {
+public struct SegwitAddress: AddressProtocol {
 
     public init?(_ address: String) {
         walletLoop: for network in WalletNetwork.allCases {
@@ -33,12 +33,12 @@ public struct SegwitAddress: BitcoinAddress {
         self.init(secretKey.pubkey, network: network)
     }
 
-    public init(_ pubkey: PubKey, network: WalletNetwork = .main) {
+    public init(_ pubkey: PublicKey, network: WalletNetwork = .main) {
         self.network = network
         hash = Data(Hash160.hash(data: pubkey.data))
     }
 
-    public init(_ script: BitcoinScript, network: WalletNetwork = .main) {
+    public init(_ script: Script, network: WalletNetwork = .main) {
         self.network = network
         hash = Data(SHA256.hash(data: script.binaryData))
     }
@@ -47,7 +47,7 @@ public struct SegwitAddress: BitcoinAddress {
         try! SegwitAddressEncoder(hrp: network.bech32HRP, version: 0).encode(hash)
     }
 
-    public var script: BitcoinScript {
+    public var script: Script {
         if hash.count == RIPEMD160.Digest.byteCount {
             .payToWitnessPubkeyHash(hash)
         } else {

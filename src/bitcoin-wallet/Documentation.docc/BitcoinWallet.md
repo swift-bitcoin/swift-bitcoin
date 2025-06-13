@@ -21,7 +21,7 @@ let bobsSecretKey = SecretKey()
 let bobsAddress = LegacyAddress(bobsSecretKey)
 
 // The funding transaction, sending money to Bob.
-let fundingTx = BitcoinTx(ins: [.init(outpoint: .coinbase)], outs: [
+let fundingTx = Transaction(ins: [.init(outpoint: .coinbase)], outs: [
     bobsAddress.out(100) // 100 satoshis
 ])
 
@@ -33,7 +33,7 @@ let alicesAddress = LegacyAddress(alicesSecretKey)
 // Bob constructs, sings and broadcasts a transaction which pays Alice at her address.
 
 // The spending transaction by which Bob sends money to Alice
-let spendingTx = BitcoinTx(ins: [
+let spendingTx = Transaction(ins: [
     .init(outpoint: fundingTx.outpoint(0)),
 ], outs: [
     alicesAddress.out(50) // 50 satoshis
@@ -44,7 +44,7 @@ let prevouts = [fundingTx.outs[0]]
 let signer = TxSigner(
     tx: spendingTx, prevouts: prevouts, sighashType: .all
 )
-let signedTx = signer.sign(txIn: 0, with: bobsSecretKey)
+let signedTx = signer.sign(input: 0, with: bobsSecretKey)
 
 // Verify transaction signatures.
 let result = signedTx.verifyScript(prevouts: prevouts)
@@ -55,13 +55,16 @@ let result = signedTx.verifyScript(prevouts: prevouts)
 
 ### Addresses
 
-- ``BitcoinAddress``
+- ``Address``
+- ``LegacyAddress``
 - ``SegwitAddress``
 - ``TaprootAddress``
+- ``AddressProtocol``
 
 ### Hierarchically Deterministic (HD) extended keys
 
 - ``ExtendedKey``
+- ``DerivationPath``
 
 ### Mnemonic
 

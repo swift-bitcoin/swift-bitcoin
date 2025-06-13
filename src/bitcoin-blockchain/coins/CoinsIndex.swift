@@ -1,7 +1,7 @@
 import BitcoinBase
 
 protocol CoinsIndex: Sendable {
-    mutating func add(_ coin: UnspentOut, for outpoint: TxOutpoint) async
-    func get(_ outpoint: TxOutpoint) async -> UnspentOut?
-    mutating func remove(_ outpoint: TxOutpoint) async throws
+    mutating func add(_ coin: UnspentOutput, for outpoint: Outpoint) async
+    func get(_ outpoint: Outpoint) async -> UnspentOutput?
+    mutating func remove(_ outpoint: Outpoint) async throws
 }

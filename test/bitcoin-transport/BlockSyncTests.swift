@@ -10,12 +10,12 @@ final class BlockSyncTests {
     var aliceChain = BlockchainService?.none
     var alice = NodeService?.none
     var peerB = UUID?.none
-    var aliceToBob = AsyncChannel<BitcoinMessage>.Iterator?.none
+    var aliceToBob = AsyncChannel<Message>.Iterator?.none
 
     var bobChain = BlockchainService?.none
     var bob = NodeService?.none
     var peerA = UUID?.none
-    var bobToAlice = AsyncChannel<BitcoinMessage>.Iterator?.none
+    var bobToAlice = AsyncChannel<Message>.Iterator?.none
 
     init() async throws {
         let aliceChain = BlockchainService()
@@ -29,7 +29,7 @@ final class BlockSyncTests {
 
         let bobChain = BlockchainService()
         await bobChain.start()
-        let pubkey = try #require(PubKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
+        let pubkey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         await bobChain.generateTo(pubkey)
         await bobChain.generateTo(pubkey)
         await bobChain.generateTo(pubkey)
@@ -291,14 +291,14 @@ final class BlockSyncTests {
         let mBA10_block = try #require(await bob.popMessage(peerA))
         #expect(mBA10_block.command == .block)
 
-        let bobBlock1 = try TxBlock(binaryData: mBA10_block.payload)
+        let bobBlock1 = try Block(binaryData: mBA10_block.payload)
         #expect(bobBlock1.txs.count == 1)
 
         // Bob --(block)->> …
         let mBA11_block = try #require(await bob.popMessage(peerA))
         #expect(mBA11_block.command == .block)
 
-        let bobBlock2 = try TxBlock(binaryData: mBA11_block.payload)
+        let bobBlock2 = try Block(binaryData: mBA11_block.payload)
         #expect(bobBlock2.txs.count == 1)
 
         // No Response
@@ -329,7 +329,7 @@ final class BlockSyncTests {
         let mBA12_block = try #require(await bob.popMessage(peerA))
         #expect(mBA12_block.command == .block)
 
-        let bobBlock3 = try TxBlock(binaryData: mBA12_block.payload)
+        let bobBlock3 = try Block(binaryData: mBA12_block.payload)
         #expect(bobBlock3.txs.count == 1)
 
         // … --(block)->> Alice

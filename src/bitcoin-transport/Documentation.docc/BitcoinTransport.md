@@ -26,7 +26,7 @@ let satoshiPeer = await hal.addPeer(incoming: false)
 halOut = await hal.getChannel(for: satoshiPeer).makeAsyncIterator()
 
 // … --(version)->> Satoshi
-let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+let messageHS0_version = Message(.version, payload: VersionMessage().data)
 
 try await satoshi.processMessage(messageHS0_version, from: halPeer)
 
@@ -39,16 +39,16 @@ _ = try #require(await satoshi.popMessage(halPeer))
 // Satoshi --(sendaddrv2)->> …
 _ = try #require(await satoshi.popMessage(halPeer))
 
-let messageHS1_sendaddrv2 = BitcoinMessage(.sendaddrv2)
+let messageHS1_sendaddrv2 = Message(.sendaddrv2)
 try await satoshi.processMessage(messageHS1_sendaddrv2, from: halPeer)
 
-let messageHS2_wtxidrelay = BitcoinMessage(.wtxidrelay)
+let messageHS2_wtxidrelay = Message(.wtxidrelay)
 try await satoshi.processMessage(messageHS2_wtxidrelay, from: halPeer)
 
 // Satoshi --(verack)->> …
 _ = try #require(await satoshi.popMessage(halPeer))
 
-let messageHS3_verack = BitcoinMessage(.verack)
+let messageHS3_verack = Message(.verack)
 try await satoshi.processMessage(messageHS3_verack, from: halPeer)
 
 // Satoshi --(sendcmpct)->> …
@@ -68,10 +68,10 @@ await halChain.stop()
 ### Essentials
 
 - ``NodeService``
-- ``NodeConfig``
+- ``NodeParams``
 - ``NodeState``
 - ``PeerState``
-- ``BitcoinMessage``
+- ``Message``
 - ``MessageCommand``
 
 ## See Also

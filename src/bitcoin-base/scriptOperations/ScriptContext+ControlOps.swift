@@ -1,6 +1,6 @@
 import Foundation
 
-extension ScriptContext {
+extension ScriptRuntime {
 
     /// If the top stack value is not False, the statements are executed. The top stack value is removed.
     /// For the `isNotIf` variant, if the top stack value is False, the statements are executed. The top stack value is removed.

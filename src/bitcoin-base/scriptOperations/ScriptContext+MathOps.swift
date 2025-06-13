@@ -1,10 +1,10 @@
 import Foundation
 
-extension ScriptContext {
+extension ScriptRuntime {
 
     /// The number -1 is pushed onto the stack.
     mutating func op1Negate() {
-        stack.append(ScriptNum.negativeOne.binaryData)
+        stack.append(ScriptNumber.negativeOne.binaryData)
     }
 
     /// The input is made positive.
@@ -39,8 +39,8 @@ extension ScriptContext {
 
     /// a is added to b.
     mutating func opAdd() throws {
-        var a: ScriptNum
-        let b: ScriptNum
+        var a: ScriptNumber
+        let b: ScriptNumber
         (a, b) = try getBinaryNumericParams()
         try a.add(b)
         stack.append(a.binaryData)

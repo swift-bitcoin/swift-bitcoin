@@ -30,7 +30,7 @@ actor P2PService: Service {
 
     private let listenRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
 
-    private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<BitcoinMessage, BitcoinMessage>, Never>?
+    private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<Message, Message>, Never>?
     private var peerIDs = [UUID]()
 
     var status: StatusRPC.Result.P2PService {
@@ -105,7 +105,7 @@ actor P2PService: Service {
                     DebugInboundEventsHandler(),
                     DebugOutboundEventsHandler()
                 ])
-                return try NIOAsyncChannel<BitcoinMessage, BitcoinMessage>(wrappingChannelSynchronously: connection)
+                return try NIOAsyncChannel<Message, Message>(wrappingChannelSynchronously: connection)
             }
         }
         self.serverChannel = serverChannel

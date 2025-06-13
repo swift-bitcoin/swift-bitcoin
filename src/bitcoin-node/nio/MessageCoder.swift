@@ -6,27 +6,27 @@ import NIOFoundationCompat
 struct MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
 
     typealias InboundIn = ByteBuffer
-    typealias InboundOut = BitcoinMessage
-    typealias OutboundIn = BitcoinMessage
+    typealias InboundOut = Message
+    typealias OutboundIn = Message
     typealias OutboundOut = ByteBuffer
 
     func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
 
-        guard buffer.readableBytes >= BitcoinMessage.payloadSizeEndIndex else {
+        guard buffer.readableBytes >= Message.payloadSizeEndIndex else {
             return .needMoreData
         }
 
-        let peek = buffer.readableBytesView.dropFirst(BitcoinMessage.payloadSizeStartIndex)
+        let peek = buffer.readableBytesView.dropFirst(Message.payloadSizeStartIndex)
         let payloadLength = Int(peek.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         })
 
-        let messageLength = BitcoinMessage.baseSize + payloadLength
+        let messageLength = Message.baseSize + payloadLength
         guard let messageData = buffer.readData(length: messageLength) else {
             return .needMoreData
         }
 
-        guard let message = BitcoinMessage(messageData) else {
+        guard let message = Message(messageData) else {
             print("Malformed message")
             // TODO: Throw corresponding errors.
             return .continue

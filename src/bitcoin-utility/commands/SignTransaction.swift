@@ -12,7 +12,7 @@ struct SignTx: ParsableCommand {
     )
 
     @Option(name: .shortAndLong, help: "The input to sign.")
-    var txIn: Int
+    var input: Int
 
     @Option(name: .shortAndLong, help: "The previous transaction outputs in raw hexadecimal format.")
     var prevout: [String]
@@ -33,9 +33,9 @@ struct SignTx: ParsableCommand {
         guard let txData = Data(hex: tx) else {
             throw ValidationError("Invalid hexadecimal value: tx")
         }
-        let tx: BitcoinTx
+        let tx: Transaction
         do {
-            tx = try BitcoinTx(binaryData: txData)
+            tx = try Transaction(binaryData: txData)
         } catch {
             throw ValidationError("Invalid raw transaction data: tx")
         }
@@ -43,13 +43,13 @@ struct SignTx: ParsableCommand {
             guard let prevoutData = Data(hex: $0) else {
                 throw ValidationError("Invalid hexadecimal value: prevout")
             }
-            guard let prevout = try? TxOut(binaryData: prevoutData) else {
+            guard let prevout = try? TransactionOutput(binaryData: prevoutData) else {
                 throw ValidationError("Invalid raw prevout data: prevout")
             }
             return prevout
         }
-        var signer = TxSigner(tx: tx, prevouts: prevouts)
-        let signed = signer.sign(txIn: txIn, with: secretKey)
+        var signer = TransactionSigner(tx: tx, prevouts: prevouts)
+        let signed = signer.sign(input: input, with: secretKey)
         print(signed.binaryData.hex)
         destroyECCSigningContext()
     }

@@ -14,7 +14,7 @@ public struct PeerState: Sendable {
     /// Whether this peer has initiated the connection to us.
     public let incoming: Bool
 
-    var outbox = [BitcoinMessage]()
+    var outbox = [Message]()
 
     /// Whether our node has already sent the version message to this peer.
     var versionSent = false
@@ -62,17 +62,17 @@ public struct PeerState: Sendable {
 
     public internal(set) var height = 0
     public internal(set) var lastPingNonce = UInt64?.none
-    public private(set) var knownBlocks = [BlockID]()
-    public private(set) var knownTxs = [TxID]()
+    public private(set) var knownBlocks = [Block.ID]()
+    public private(set) var knownTxs = [Transaction.ID]()
 
     /// BIP152
-    var pendingBlockTxs = [BitcoinTx?]?.none
+    var pendingBlockTxs = [Transaction?]?.none
 
     var nextPingTask: Task<(), Never>?
     var checkPongTask: Task<(), Never>?
 
     /// BIP133
-    public internal(set) var feeFilterRate = SatoshiAmount?.none // TODO: Honor when relaying transacions (inv) to this peer, #188
+    public internal(set) var feeFilterRate = Amount?.none // TODO: Honor when relaying transacions (inv) to this peer, #188
 
     var outgoing: Bool { !incoming }
 
@@ -84,7 +84,7 @@ public struct PeerState: Sendable {
         versionAckReceived
     }
 
-    mutating func registerKnownBlocks(_ ids: [BlockID]) {
+    mutating func registerKnownBlocks(_ ids: [Block.ID]) {
         knownBlocks = knownBlocks + ids
         let count = knownBlocks.count
         if count > maxKnownBlocks {
@@ -92,7 +92,7 @@ public struct PeerState: Sendable {
         }
     }
 
-    mutating func registerKnownTxs(_ ids: [TxID]) {
+    mutating func registerKnownTxs(_ ids: [Transaction.ID]) {
         knownTxs = knownTxs + ids
         let count = knownTxs.count
         if count > maxKnownTxs {

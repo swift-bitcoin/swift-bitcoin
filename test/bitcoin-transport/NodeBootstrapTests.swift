@@ -9,7 +9,7 @@ import BitcoinBlockchain
 
 private let secretKey = SecretKey([0x49, 0xc3, 0xa4, 0x4b, 0xf0, 0xe2, 0xb8, 0x1e, 0x4a, 0x74, 0x11, 0x02, 0xb4, 0x08, 0xe3, 0x11, 0x70, 0x2c, 0x7e, 0x3b, 0xe0, 0x21, 0x5c, 0xa2, 0xc4, 0x66, 0xb3, 0xb5, 0x4d, 0x9c, 0x54, 0x63])!
 
-private let pubkey = PubKey([0x02, 0xc8, 0xd2, 0x1f, 0x79, 0x52, 0x9d, 0xee, 0xaa, 0x27, 0x69, 0x19, 0x8d, 0x3d, 0xf6, 0x20, 0x9a, 0x06, 0x4c, 0x99, 0x15, 0xae, 0x55, 0x7f, 0x7a, 0x9d, 0x01, 0xd7, 0x24, 0x59, 0x0d, 0x63, 0x34])!
+private let pubkey = PublicKey([0x02, 0xc8, 0xd2, 0x1f, 0x79, 0x52, 0x9d, 0xee, 0xaa, 0x27, 0x69, 0x19, 0x8d, 0x3d, 0xf6, 0x20, 0x9a, 0x06, 0x4c, 0x99, 0x15, 0xae, 0x55, 0x7f, 0x7a, 0x9d, 0x01, 0xd7, 0x24, 0x59, 0x0d, 0x63, 0x34])!
 
 /// Initializing node/peer state to avoid simulating the message sequence that would lead to that state.
 struct NodeBootstrapTests {
@@ -176,14 +176,14 @@ struct NodeBootstrapTests {
         // Grab block 1's coinbase transaction and output.
         let coinbaseTx = aliceBlock1.txs[0]
 
-        var tx = BitcoinTx(
+        var tx = Transaction(
             ins: [.init(outpoint: coinbaseTx.outpoint(0))],
             outs: [
                 .init(value: 1000, script: .payToPubkeyHash(pubkey))
             ])
 
-        var signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
-        signer.sign(txIn: 0, with: secretKey)
+        var signer = TransactionSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
+        signer.sign(input: 0, with: secretKey)
         tx = signer.tx
 
         // Start nodes
@@ -197,7 +197,7 @@ struct NodeBootstrapTests {
         var bobToCarol = await bob.getChannel(for: peerC).makeAsyncIterator()
 
         // Begin testing
-        try await alice.blockchain.addTx(tx)
+        try await alice.blockchain.addTransaction(tx)
 
         // Alice --(inv)->> …
         let messageAB0_inv = try #require(await aliceToBob.next())
@@ -223,7 +223,7 @@ struct NodeBootstrapTests {
         let messageAB1_tx = try #require(await alice.popMessage(peerB))
         #expect(messageAB1_tx.command == .tx)
 
-        let txMessage = try BitcoinTx(binaryData: messageAB1_tx.payload)
+        let txMessage = try Transaction(binaryData: messageAB1_tx.payload)
         #expect(txMessage == tx)
 
         // … --(tx)->> Bob
@@ -253,7 +253,7 @@ struct NodeBootstrapTests {
         let messageBC1_tx = try #require(await bob.popMessage(peerC))
         #expect(messageBC1_tx.command == .tx)
 
-        let txMessage1 = try BitcoinTx(binaryData: messageBC1_tx.payload)
+        let txMessage1 = try Transaction(binaryData: messageBC1_tx.payload)
         #expect(txMessage1 == tx)
 
         // … --(tx)->> Carol
@@ -298,21 +298,21 @@ struct NodeBootstrapTests {
         // Grab block 1's coinbase transaction and output.
         let coinbaseTx = aliceBlock1.txs[0]
 
-        var tx = BitcoinTx(
+        var tx = Transaction(
             ins: [.init(outpoint: coinbaseTx.outpoint(0))],
             outs: [
                 .init(value: 1000, script: .payToPubkeyHash(pubkey))
             ])
 
-        var signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
-        signer.sign(txIn: 0, with: secretKey)
+        var signer = TransactionSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
+        signer.sign(input: 0, with: secretKey)
         tx = signer.tx
 
-        try await alice.blockchain.addTx(tx)
-        try await bob.blockchain.addTx(tx)
+        try await alice.blockchain.addTransaction(tx)
+        try await bob.blockchain.addTransaction(tx)
 
         // Carol will not have a copy of the transaction therefore will have to request it
-        // try await carol.blockchain.addTx(tx)
+        // try await carol.blockchain.addTransaction(tx)
 
         // Start nodes
         Task { await alice.start() }
@@ -351,7 +351,7 @@ struct NodeBootstrapTests {
         let messageCB0_getblocktxn = try #require(await carol.popMessage(carolPeerB))
         #expect(messageCB0_getblocktxn.command == .getblocktxn)
 
-        let getblocktxn = try #require(GetBlockTxsMessage(messageCB0_getblocktxn.payload))
+        let getblocktxn = try #require(GetBlockTransactionsMessage(messageCB0_getblocktxn.payload))
         #expect(getblocktxn.blockHash == aliceBlock2.id)
         #expect(getblocktxn.txIndices == [1])
 
@@ -362,7 +362,7 @@ struct NodeBootstrapTests {
         let messageBC1_blocktxn = try #require(await bob.popMessage(peerC))
         #expect(messageBC1_blocktxn.command == .blocktxn)
 
-        let blocktxn = try #require(BlockTxsMessage(messageBC1_blocktxn.payload))
+        let blocktxn = try #require(BlockTransactionsMessage(messageBC1_blocktxn.payload))
         #expect(blocktxn.txs == [tx])
 
         // … --(blocktxn)->> Carol
@@ -414,21 +414,21 @@ struct NodeBootstrapTests {
         // Grab block 1's coinbase transaction and output.
         let coinbaseTx = aliceBlock1.txs[0]
 
-        var tx = BitcoinTx(
+        var tx = Transaction(
             ins: [.init(outpoint: coinbaseTx.outpoint(0))],
             outs: [
                 .init(value: 1000, script: .payToPubkeyHash(pubkey))
             ])
 
-        var signer = TxSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
-        signer.sign(txIn: 0, with: secretKey)
+        var signer = TransactionSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
+        signer.sign(input: 0, with: secretKey)
         tx = signer.tx
 
-        try await alice.blockchain.addTx(tx)
-        try await bob.blockchain.addTx(tx)
+        try await alice.blockchain.addTransaction(tx)
+        try await bob.blockchain.addTransaction(tx)
 
         // Carol will not have a copy of the transaction therefore will have to request it
-        // try await carol.blockchain.addTx(tx)
+        // try await carol.blockchain.addTransaction(tx)
 
         // Start nodes
         Task { await alice.start() }
@@ -514,7 +514,7 @@ struct NodeBootstrapTests {
         let messageCB0_getblocktxn = try #require(await carol.popMessage(carolPeerB))
         #expect(messageCB0_getblocktxn.command == .getblocktxn)
 
-        let getblocktxn = try #require(GetBlockTxsMessage(messageCB0_getblocktxn.payload))
+        let getblocktxn = try #require(GetBlockTransactionsMessage(messageCB0_getblocktxn.payload))
         #expect(getblocktxn.blockHash == aliceBlock2.id)
         #expect(getblocktxn.txIndices == [1])
 
@@ -525,7 +525,7 @@ struct NodeBootstrapTests {
         let messageBC1_blocktxn = try #require(await bob.popMessage(peerC))
         #expect(messageBC1_blocktxn.command == .blocktxn)
 
-        let blocktxn = try #require(BlockTxsMessage(messageBC1_blocktxn.payload))
+        let blocktxn = try #require(BlockTransactionsMessage(messageBC1_blocktxn.payload))
         #expect(blocktxn.txs == [tx])
 
         // … --(blocktxn)->> Carol

@@ -17,7 +17,7 @@ struct DocumentationExamples {
         await blockchain.start()
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
-        var blocks = [TxBlock]()
+        var blocks = [Block]()
         for _ in 1 ... 100 {
             blocks.append(await blockchain.generateTo(address.script)!)
         }
@@ -29,15 +29,15 @@ struct DocumentationExamples {
         let prevout = fundingTx.outs[0]
 
         // Create a new transaction spending from the previous transaction's outpoint.
-        let unsignedInput = TxIn(outpoint: fundingTx.outpoint(0))
+        let unsignedInput = Transaction.Input(outpoint: fundingTx.outpoint(0))
 
         // Specify the transaction's output. We'll leave 1000 sats on the table to tip miners. We'll re-use the origin address for simplicity.
-        let spendingTx = BitcoinTx(ins: [unsignedInput], outs: [address.out(100)])
+        let spendingTx = Transaction(ins: [unsignedInput], outs: [address.out(100)])
 
         // # We now need to sign the transaction using our secret key.
 
-        var signer = TxSigner(tx: spendingTx, prevouts: [prevout])
-        let signedTx = signer.sign(txIn: 0, with: secretKey)
+        var signer = TransactionSigner(tx: spendingTx, prevouts: [prevout])
+        let signedTx = signer.sign(input: 0, with: secretKey)
 
         // # We can verify that the transaction was signed correctly.
 
@@ -50,7 +50,7 @@ struct DocumentationExamples {
         // # Now we're ready to submit our signed transaction to the mempool.
 
         // Submit the signed transaction to the mempool.
-        try await blockchain.addTx(signedTx)
+        try await blockchain.addTransaction(signedTx)
 
         // The mempool should now contain our transaction.
         #expect(await blockchain.mempool.count == 1)

@@ -3,7 +3,7 @@ import BitcoinCrypto
 import BitcoinBase
 
 /// Legacy – i.e. base signature version – Bitcoin address.
-public struct LegacyAddress: BitcoinAddress {
+public struct LegacyAddress: AddressProtocol {
 
     public let isMainnet: Bool
     public let isScript: Bool
@@ -13,13 +13,13 @@ public struct LegacyAddress: BitcoinAddress {
         self.init(secretKey.pubkey, mainnet: mainnet)
     }
 
-    public init(_ pubkey: PubKey, mainnet: Bool = true) {
+    public init(_ pubkey: PublicKey, mainnet: Bool = true) {
         isMainnet = mainnet
         isScript = false
         hash = Data(Hash160.hash(data: pubkey.data))
     }
 
-    public init(_ script: BitcoinScript, mainnet: Bool = true) {
+    public init(_ script: Script, mainnet: Bool = true) {
         isMainnet = mainnet
         isScript = true
         hash = Data(Hash160.hash(data: script.binaryData))
@@ -49,7 +49,7 @@ public struct LegacyAddress: BitcoinAddress {
         return encoded
     }
 
-    public var script: BitcoinScript {
+    public var script: Script {
         if isScript {
             .payToScriptHash(hash)
         } else {

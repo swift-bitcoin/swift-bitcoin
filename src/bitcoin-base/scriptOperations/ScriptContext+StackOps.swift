@@ -1,6 +1,6 @@
 import Foundation
 
-extension ScriptContext {
+extension ScriptRuntime {
 
     /// Removes the top stack item.
     mutating func opDrop() throws {
@@ -141,7 +141,7 @@ extension ScriptContext {
 
     /// Puts the number of stack items onto the stack.
     mutating func opDepth() throws {
-        let count = try ScriptNum(stack.count)
+        let count = try ScriptNumber(stack.count)
         stack.append(count.binaryData)
     }
 

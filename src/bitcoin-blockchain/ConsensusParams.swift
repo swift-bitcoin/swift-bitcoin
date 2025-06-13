@@ -62,7 +62,7 @@ public struct ConsensusParams: Sendable {
     public let powNoRetargeting: Bool
 
     /// The initial block subsidy which defaults to 5 billion satoshis or 50 bitcoins.
-    public var blockSubsidy = SatoshiAmount(5_000_000_000)
+    public var blockSubsidy = Amount(5_000_000_000)
 
     public let genesisBlockTime: Int
     public let genesisBlockNonce: Int
