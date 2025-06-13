@@ -15,7 +15,7 @@ struct BlockRef: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    init(_ block: TxBlock, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = .none) {
+    init(_ block: Block, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = .none) {
         self.blockID = block.id
         self.previous = block.previous
         self.time = block.time
@@ -29,8 +29,8 @@ struct BlockRef: Equatable, Sendable {
 
     // MARK: - Instance Properties
 
-    public let blockID: BlockID
-    public let previous: BlockID
+    public let blockID: Block.ID
+    public let previous: Block.ID
     public let time: Date
     public let target: Int
     public let height: Int
@@ -73,8 +73,8 @@ extension BlockRef.ValidationStatus: BinaryCodable {
 
 extension BlockRef: BinaryCodable {
     init(from decoder: inout BinaryDecoder) throws {
-        blockID = try decoder.decode(TxBlock.idLength)
-        previous = try decoder.decode(TxBlock.idLength)
+        blockID = try decoder.decode(Block.idLength)
+        previous = try decoder.decode(Block.idLength)
         time = try decoder.decode()
         target = try decoder.decode()
         height = try decoder.decode()

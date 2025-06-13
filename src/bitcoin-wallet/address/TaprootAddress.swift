@@ -3,7 +3,7 @@ import BitcoinCrypto
 import BitcoinBase
 
 /// Witness version 1 or higher Bitcoin address.
-public struct TaprootAddress: BitcoinAddress {
+public struct TaprootAddress: AddressProtocol {
 
     public init?(_ address: String) {
         walletLoop: for network in WalletNetwork.allCases {
@@ -12,7 +12,7 @@ public struct TaprootAddress: BitcoinAddress {
             do {
                 (version, program) = try SegwitAddressDecoder(hrp: network.bech32HRP).decode(address)
                 self.network = network
-                guard version > 0, let outputKey = PubKey(xOnly: program) else {
+                guard version > 0, let outputKey = PublicKey(xOnly: program) else {
                     return nil
                 }
                 self.outputKey = outputKey
@@ -26,11 +26,11 @@ public struct TaprootAddress: BitcoinAddress {
         return nil
     }
 
-    public init(_ secretKey: SecretKey, scripts: [BitcoinScript] = [], network: WalletNetwork = .main) {
+    public init(_ secretKey: SecretKey, scripts: [Script] = [], network: WalletNetwork = .main) {
         self.init(secretKey.taprootInternalKey, scripts: scripts, network: network)
     }
 
-    public init(_ internalKey: PubKey, scripts: [BitcoinScript] = [], network: WalletNetwork = .main) {
+    public init(_ internalKey: PublicKey, scripts: [Script] = [], network: WalletNetwork = .main) {
         precondition(scripts.count <= 8)
         precondition(internalKey.hasEvenY)
         self.network = network
@@ -38,18 +38,18 @@ public struct TaprootAddress: BitcoinAddress {
             outputKey = internalKey.taprootOutputKey().xOnlyNormalized!
             return
         }
-        let scriptTree = ScriptTree(scripts.map(\.binaryData), leafVersion: 192)
+        let scriptTree = TapscriptTree(scripts.map(\.binaryData), leafVersion: 192)
         outputKey = internalKey.taprootOutputKey(scriptTree).xOnlyNormalized!
     }
 
     public let network: WalletNetwork
-    public let outputKey: PubKey
+    public let outputKey: PublicKey
 
     public var description: String {
         try! SegwitAddressEncoder(hrp: network.bech32HRP, version: 1).encode(outputKey.xOnlyData)
     }
 
-    public var script: BitcoinScript {
+    public var script: Script {
         .payToTaproot(outputKey)
     }
 }

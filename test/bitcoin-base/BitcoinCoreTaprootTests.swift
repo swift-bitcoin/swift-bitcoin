@@ -28,38 +28,38 @@ struct BitcoinCoreTaprootTests {
             if !includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.remove(.discourageUpgradableWitnessProgram) }
             if !includeFlags.contains("TAPROOT") { config.remove(.taproot) }
 
-            let unsignedTx = try BitcoinTx(binaryData: Data(testCase.tx))
-            let prevouts = testCase.prevouts.map { try! TxOut(binaryData: Data($0)) }
+            let unsignedTx = try Transaction(binaryData: Data(testCase.tx))
+            let prevouts = testCase.prevouts.map { try! TransactionOutput(binaryData: Data($0)) }
             let inIndex = testCase.inIndex
-            let txIn = unsignedTx.ins[inIndex]
+            let input = unsignedTx.ins[inIndex]
             if let success = testCase.success {
-                let successIn = TxIn(
-                    outpoint: txIn.outpoint,
-                    sequence: txIn.sequence,
+                let successIn = Transaction.Input(
+                    outpoint: input.outpoint,
+                    sequence: input.sequence,
                     script: .init(Data(success.scriptSig)),
                     witness: .init(success.witness.map { Data($0) })
 
                 )
                 var successIns = unsignedTx.ins
                 successIns[inIndex] = successIn
-                let successTx = BitcoinTx(version: unsignedTx.version, locktime: unsignedTx.locktime, ins: successIns, outs: unsignedTx.outs)
-                var context = ScriptContext(testCase.final ? config : [], tx: successTx, txIn: inIndex, prevouts: prevouts)
+                let successTx = Transaction(version: unsignedTx.version, locktime: unsignedTx.locktime, ins: successIns, outs: unsignedTx.outs)
+                var context = ScriptRuntime(testCase.final ? config : [], tx: successTx, input: inIndex, prevouts: prevouts)
                 #expect(throws: Never.self) {
                     try successTx.verifyScript(&context)
                 }
             }
             if let failure = testCase.failure, testCase.final {
-                let failureIn = TxIn(
-                    outpoint: txIn.outpoint,
-                    sequence: txIn.sequence,
+                let failureIn = Transaction.Input(
+                    outpoint: input.outpoint,
+                    sequence: input.sequence,
                     script: .init(Data(failure.scriptSig)),
                     witness: .init(failure.witness.map { Data($0) })
 
                 )
                 var failureIns = unsignedTx.ins
                 failureIns[inIndex] = failureIn
-                let failureTx = BitcoinTx(version: unsignedTx.version, locktime: unsignedTx.locktime, ins: failureIns, outs: unsignedTx.outs)
-                var context = ScriptContext(.standard, tx: failureTx, txIn: inIndex, prevouts: prevouts)
+                let failureTx = Transaction(version: unsignedTx.version, locktime: unsignedTx.locktime, ins: failureIns, outs: unsignedTx.outs)
+                var context = ScriptRuntime(.standard, tx: failureTx, input: inIndex, prevouts: prevouts)
 
                 #expect(throws: (any Error).self) {
                     try failureTx.verifyScript(&context)

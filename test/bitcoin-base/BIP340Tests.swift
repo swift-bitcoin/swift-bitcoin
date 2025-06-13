@@ -19,8 +19,8 @@ struct BIP340Tests {
         let sigData = Data(sig)
 
         let secretKey = try #require(SecretKey(secretKeyData))
-        let internalKey = try #require(PubKey(xOnly: internalKeyData))
-        let newSignature = AnySig(hash: msgData, secretKey: secretKey, type: .schnorr, additionalEntropy: auxData)
+        let internalKey = try #require(PublicKey(xOnly: internalKeyData))
+        let newSignature = Signature(hash: msgData, secretKey: secretKey, type: .schnorr, additionalEntropy: auxData)
         #expect(newSignature.data == sigData)
         // Verify those sigs for good measure.
         #expect(newSignature.verify(hash: msgData, pubkey: internalKey))
@@ -29,16 +29,16 @@ struct BIP340Tests {
         // and compare against the resulting tweaked keys, with random aux.
         // In iteration i=0 we tweak with empty Merkle tree.
         for i in 0 ..< 10 {
-            let merkleRoot: Data = i == 0 ? .init() : Data(getRandBytes(32))
-            let auxRnd = Data(getRandBytes(32))
-            let internalKey = try #require(PubKey(xOnly: internalKeyData))
+            let merkleRoot: Data = i == 0 ? .init() : Data(getRandomBytes(32))
+            let auxRnd = Data(getRandomBytes(32))
+            let internalKey = try #require(PublicKey(xOnly: internalKeyData))
             let tweak = internalKey.tapTweak(merkleRoot: merkleRoot)
             let outputKey = internalKey.tweakXOnly(tweak)
 
             #expect(internalKey.checkTweak(tweak, outputKey: outputKey))
 
             let tweakedSecretKey = secretKey.tweakXOnly(tweak)
-            let altSignature = AnySig(hash: msgData, secretKey: tweakedSecretKey, type: .schnorr, additionalEntropy: auxRnd)
+            let altSignature = Signature(hash: msgData, secretKey: tweakedSecretKey, type: .schnorr, additionalEntropy: auxRnd)
             let verificationResult = altSignature.verify(hash: msgData, pubkey: outputKey)
             #expect(verificationResult)
         }
@@ -65,8 +65,8 @@ struct BIP340Tests {
         let pubkeyData = Data(pubkeyBytes)
         let hash = Data(hashBytes)
         let sigData = Data(sigBytes)
-        let pubkey = try #require(PubKey(xOnly: pubkeyData))
-        let sig = try #require(AnySig(sigData, type: .schnorr))
+        let pubkey = try #require(PublicKey(xOnly: pubkeyData))
+        let sig = try #require(Signature(sigData, type: .schnorr))
         #expect(sig.verify(hash: hash, pubkey: pubkey) == expectedResult)
     }
 }

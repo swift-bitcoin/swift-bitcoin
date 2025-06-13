@@ -14,7 +14,7 @@ public struct A_<X: ExpB>: ExpW {
     public init(_ x: X) { self.x = x }
     let x: X
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.toAltStack] + x.compiled + [.fromAltStack]
     }
 
@@ -36,7 +36,7 @@ public struct S_<X: ExpB>: ExpW {
     public init(_ x: X) { self.x = x }
     let x: X
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.swap] + x.compiled
     }
 
@@ -62,7 +62,7 @@ public func T<X: ExpV>(_ x: X) -> T_<X> { T_(x) }
 public struct T_<X: ExpV>: ExpB, ModD, ModU {
     public init(_ x: X) { self.x = x }
     let x: X
-    public var compiled: [ScriptOp] { AndV(x, One()).compiled }
+    public var compiled: [Script.Operation] { AndV(x, One()).compiled }
 
     public var description: String {
         let xDescription = x.description
@@ -89,7 +89,7 @@ public struct C_<X: ExpK>: ExpB, ModU {
     public init(_ x: X) { self.x = x }
     let x: X
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         x.compiled + [.checkSig]
     }
 
@@ -120,7 +120,7 @@ public struct D_<X: ExpV>: ExpB, ModO, ModN, ModD, ModU {
     public init(_ x: X) { self.x = x }
     let x: X
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.dup, .if] + x.compiled + [.endIf]
     }
 
@@ -146,7 +146,7 @@ public struct V_<X: ExpB>: ExpV {
     public init(_ x: X) { self.x = x }
     let x: X
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         var xCompiled = x.compiled
         if let lastOp = xCompiled.popLast() {
             switch lastOp {
@@ -190,7 +190,7 @@ public struct J_<X: ExpB>: ExpB, ModN, ModD {
     public init(_ x: X) { self.x = x }
     let x: X
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         [.size, .zeroNotEqual, .if] + x.compiled + [.endIf]
     }
 
@@ -218,7 +218,7 @@ public struct N_<X: ExpB>: ExpB, ModU {
     public init(_ x: X) { self.x = x }
     let x: X
 
-    public var compiled: [ScriptOp] {
+    public var compiled: [Script.Operation] {
         x.compiled + [.zeroNotEqual]
     }
 
@@ -246,7 +246,7 @@ public func L<X: ExpB>(_ x: X) -> L_<X> { L_(x) }
 public struct L_<X: ExpB>: ExpB, ModD {
     public init(_ x: X) { self.x = x }
     let x: X
-    public var compiled: [ScriptOp] { OrI(Zero(), x).compiled }
+    public var compiled: [Script.Operation] { OrI(Zero(), x).compiled }
 
     public var description: String {
         let xDescription = x.description
@@ -271,7 +271,7 @@ public func U<X: ExpB>(_ x: X) -> U_<X> { U_(x) }
 public struct U_<X: ExpB>: ExpB, ModD {
     public init(_ x: X) { self.x = x }
     let x: X
-    public var compiled: [ScriptOp] { OrI(x, Zero()).compiled }
+    public var compiled: [Script.Operation] { OrI(x, Zero()).compiled }
 
     public var description: String {
         let xDescription = x.description

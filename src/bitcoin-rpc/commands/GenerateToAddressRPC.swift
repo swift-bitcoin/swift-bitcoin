@@ -12,7 +12,7 @@ extension GenerateToAddressRPC {
         guard params.blocks >= 1 else {
             throw .init(.invalidParams, "Parameter <blocks> must be an integer between 1 and \(Int.max).")
         }
-        guard let address = AnyAddress(params.address) else {
+        guard let address = Address(params.address) else {
             throw .init(.invalidParams, "Address '\(params.address)' is invalid.")
         }
 

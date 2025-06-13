@@ -15,7 +15,7 @@ public protocol ModD_: MiniscriptExp { }
 
 extension Never: @retroactive CustomStringConvertible {}
 extension Never: ExpB, ExpW, ModD, ModD_ {
-    public var compiled: [ScriptOp] { fatalError() }
+    public var compiled: [Script.Operation] { fatalError() }
     public var description: String { fatalError() }
 }
 

@@ -5,7 +5,7 @@ import BitcoinCrypto
 public struct ExtendedKey: Equatable, Hashable, Sendable {
     public let isMainnet: Bool
     public let secretKey: SecretKey?
-    public let pubkey: PubKey?
+    public let pubkey: PublicKey?
     public let chaincode: Data
     public let parentFingerprint: Int
     public let depth: Int
@@ -31,7 +31,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         try self.init(secretKey: secretKey, chaincode: chaincode, parentFingerprint: 0, depth: 0, keyIndex: 0, mainnet: mainnet)
     }
 
-    fileprivate init(secretKey: SecretKey? = .none, pubkey: PubKey? = .none, chaincode: Data, parentFingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws(Error) {
+    fileprivate init(secretKey: SecretKey? = .none, pubkey: PublicKey? = .none, chaincode: Data, parentFingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws(Error) {
         guard secretKey == .none && pubkey != .none || (secretKey != .none && pubkey == .none) else {
             preconditionFailure()
         }
@@ -74,7 +74,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
     private func derive(_ keyIndex: Int) -> Self {
         let depth = depth + 1
         let pubkey = if let secretKey {
-            PubKey(secretKey)
+            PublicKey(secretKey)
         } else if let pubkey {
             pubkey
         } else {
@@ -102,7 +102,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
             secretKey.tweak(tweak)
         } else { .none }
 
-        let newPubkey: PubKey? = if let pubkey = self.pubkey {
+        let newPubkey: PublicKey? = if let pubkey = self.pubkey {
             pubkey.tweak(tweak)
         } else { .none }
 
@@ -138,7 +138,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
     /// Turns a private key into a public key removing its ability to produce signatures.
     public var neutered: Self {
         guard let secretKey else { preconditionFailure() }
-        let pubkey = PubKey(secretKey)
+        let pubkey = PublicKey(secretKey)
         guard let ret = try? Self(secretKey: .none, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
             preconditionFailure()
         }
@@ -147,7 +147,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
 
     package var fingerprint: Int {
         if let secretKey {
-            PubKey(secretKey).fingerprint
+            PublicKey(secretKey).fingerprint
         } else if let pubkey {
             pubkey.fingerprint
         } else {
@@ -194,7 +194,7 @@ extension ExtendedKey: BinaryCodable {
         }
 
         var secretKey = SecretKey?.none
-        var pubkey = PubKey?.none
+        var pubkey = PublicKey?.none
         if isPrivate {
             guard let len = decoder.peek(), len == 0 else {
                 throw Error.invalidPrivateKeyLength
@@ -218,11 +218,11 @@ extension ExtendedKey: BinaryCodable {
         } else {
             let pubkeyData: Data
             do {
-                pubkeyData = try decoder.decode(PubKey.compressedLength)
+                pubkeyData = try decoder.decode(PublicKey.compressedLength)
             } catch {
                 throw .binaryDecodingError
             }
-            guard let parsedPubkey = PubKey(pubkeyData, skipCheck: true) else {
+            guard let parsedPubkey = PublicKey(pubkeyData, skipCheck: true) else {
                 throw Error.invalidPublicKeyEncoding
             }
             guard parsedPubkey.check() else {

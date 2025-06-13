@@ -1,17 +1,17 @@
 import Foundation
 
-extension ScriptContext {
+extension ScriptRuntime {
 
     /// Implementation of a constant script operation.
     mutating func opConstant(_ k: UInt8) {
-        stack.append(ScriptNum(k).binaryData)
+        stack.append(ScriptNumber(k).binaryData)
     }
 
     /// Pushes the string length of the top element of the stack (without popping it).
     mutating func opSize() throws {
         let first = try getUnaryParam()
         stack.append(first)
-        let n = try ScriptNum(first.count)
+        let n = try ScriptNumber(first.count)
         stack.append(n.binaryData)
     }
 
@@ -21,7 +21,7 @@ extension ScriptContext {
             throw ScriptError.nonMinimalPush
         }
         // BIP141, BIP342
-        if sigVersion != .base, data.count > BitcoinScript.maxStackElementSize {
+        if sigVersion != .base, data.count > Script.maxStackElementSize {
             throw ScriptError.stackMaxElementSizeExceeded
         }
         stack.append(data)

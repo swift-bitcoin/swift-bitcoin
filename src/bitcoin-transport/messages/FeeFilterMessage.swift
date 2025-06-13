@@ -4,12 +4,12 @@ import BitcoinBase
 /// BIP133 - https://github.com/bitcoin/bips/blob/master/bip-0133.mediawiki
 public struct FeeFilterMessage: Equatable {
 
-    init(feeRate: SatoshiAmount) {
+    init(feeRate: Amount) {
         self.feeRate = feeRate
     }
 
     /// Satoshis per virtual byte.
-    public let feeRate: SatoshiAmount
+    public let feeRate: Amount
 
     static let size = MemoryLayout<UInt64>.size
 }
@@ -25,7 +25,7 @@ extension FeeFilterMessage {
         let feeRateRaw = data.withUnsafeBytes {
             $0.loadUnaligned(as: UInt64.self)
         }
-        guard feeRateRaw <= SatoshiAmount.max else { return nil }
-        feeRate = SatoshiAmount(feeRateRaw)
+        guard feeRateRaw <= Amount.max else { return nil }
+        feeRate = Amount(feeRateRaw)
     }
 }

@@ -20,7 +20,7 @@ struct ECToPublic: ParsableCommand {
         guard let secretKey = SecretKey(secretKeyData) else {
             throw ValidationError("Invalid secret key data: secretKey")
         }
-        let result = PubKey(secretKey).data.hex
+        let result = PublicKey(secretKey).data.hex
         print(result)
         destroyECCSigningContext()
     }

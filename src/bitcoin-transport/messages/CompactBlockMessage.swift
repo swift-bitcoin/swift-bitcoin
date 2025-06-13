@@ -7,7 +7,7 @@ import BitcoinBlockchain
 ///
 public struct CompactBlockMessage: Equatable {
 
-    public init(header: TxBlock, nonce: UInt64, txIDs: [UInt64], txs: [PrefilledTx]) {
+    public init(header: Block, nonce: UInt64, txIDs: [UInt64], txs: [PrefilledTransaction]) {
         precondition(header.txs.isEmpty)
         self.header = header
         self.nonce = nonce
@@ -19,7 +19,7 @@ public struct CompactBlockMessage: Equatable {
     ///
     /// First 80 bytes of the block as defined by the encoding used by "block" messages.
     ///
-    public let header: TxBlock
+    public let header: Block
 
     /// A nonce for use in short transaction ID calculations.
     ///
@@ -37,7 +37,7 @@ public struct CompactBlockMessage: Equatable {
     ///
     /// `prefilledtxn_length`: The number of prefilled transactions in `prefilledtxn` (i.e. `block tx count - shortids_length`).
     ///
-    public let txs: [PrefilledTx]
+    public let txs: [PrefilledTransaction]
 }
 
 extension CompactBlockMessage {
@@ -46,9 +46,9 @@ extension CompactBlockMessage {
         guard data.count >= 1 else { return nil }
         var data = data
 
-        guard let header = try? TxBlock(binaryData: data, encoding: .headerOnly) else { return nil }
+        guard let header = try? Block(binaryData: data, encoding: .headerOnly) else { return nil }
         self.header = header
-        data = data.dropFirst(TxBlock.headerSize) // Data does not include the empty transaction array
+        data = data.dropFirst(Block.headerSize) // Data does not include the empty transaction array
 
         guard data.count >= MemoryLayout<UInt64>.size else { return nil }
         let nonce = data.withUnsafeBytes {
@@ -72,10 +72,10 @@ extension CompactBlockMessage {
 
         guard let txCount = data.varInt else { return nil }
         data = data.dropFirst(txCount.varIntSize)
-        var txs = [PrefilledTx]()
+        var txs = [PrefilledTransaction]()
         var previousIndex = -1
         for _ in 0 ..< txCount {
-            guard let tx = PrefilledTx(data, previousIndex: previousIndex) else { return nil }
+            guard let tx = PrefilledTransaction(data, previousIndex: previousIndex) else { return nil }
             previousIndex = tx.index
             txs.append(tx)
             data = data.dropFirst(tx.size)
@@ -109,6 +109,6 @@ extension CompactBlockMessage {
     }
 
     var size: Int {
-        TxBlock.headerSize + MemoryLayout<UInt64>.size + UInt64(txIDs.count).varIntSize + txIDs.count * 6 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.size }
+        Block.headerSize + MemoryLayout<UInt64>.size + UInt64(txIDs.count).varIntSize + txIDs.count * 6 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.size }
     }
 }

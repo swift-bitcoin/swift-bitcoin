@@ -34,15 +34,15 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
     public struct In: Equatable, Sendable, CustomBinaryCodable {
 
         public init(
-            prevoutTx: BitcoinTx? = nil,
-            witnessPrevout: TxOut? = nil,
-            partialSigs: [PubKey : ExtendedSig] = [:],
+            prevoutTx: Transaction? = nil,
+            witnessPrevout: TransactionOutput? = nil,
+            partialSigs: [PublicKey : ExtendedSig] = [:],
             sighashType: SighashType? = nil,
-            redeemScript: BitcoinScript? = nil,
-            witnessScript: BitcoinScript? = nil,
-            derivationPaths: [PubKey : DerivationPath] = [:],
-            finalScriptSig: BitcoinScript? = nil,
-            finalScriptWitness: TxWitness? = nil,
+            redeemScript: Script? = nil,
+            witnessScript: Script? = nil,
+            derivationPaths: [PublicKey : DerivationPath] = [:],
+            finalScriptSig: Script? = nil,
+            finalScriptWitness: Transaction.Witness? = nil,
             ripemd160Preimages: Set<Data> = [],
             sha256Preimages: Set<Data> = [],
             hash160Preimages: Set<Data> = [],
@@ -79,19 +79,19 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
 
         init(from map: PSBTMap) throws(PartiallySignedTxError) {
-            var prevoutTx = BitcoinTx?.none
-            var witnessPrevout = TxOut?.none
+            var prevoutTx = Transaction?.none
+            var witnessPrevout = TransactionOutput?.none
 
-            var partialSigs = [PubKey : ExtendedSig]()
+            var partialSigs = [PublicKey : ExtendedSig]()
             var sighashType = SighashType?.none
 
-            var redeemScript = BitcoinScript?.none
-            var witnessScript = BitcoinScript?.none
+            var redeemScript = Script?.none
+            var witnessScript = Script?.none
 
-            var derivationPaths = [PubKey: DerivationPath]()
+            var derivationPaths = [PublicKey: DerivationPath]()
 
-            var finalScriptSig = BitcoinScript?.none
-            var finalScriptWitness = TxWitness?.none
+            var finalScriptSig = Script?.none
+            var finalScriptWitness = Transaction.Witness?.none
 
             var ripemd160Preimages = Set<Data>()
             var sha256Preimages = Set<Data>()
@@ -103,31 +103,31 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
 
             for (k, v) in map.entries {
                 switch k.type {
-                case PSBTInKeyType.nonWitnessUTXO.rawValue:
+                case PSBTInputKeyType.nonWitnessUTXO.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Non-witness UTXO")
                     }
-                    guard let tx = try? BitcoinTx(binaryData: v) else {
+                    guard let tx = try? Transaction(binaryData: v) else {
                         throw .invalidInputPreviousTransaction
                     }
                     prevoutTx = tx
-                case PSBTInKeyType.witnessUTXO.rawValue:
+                case PSBTInputKeyType.witnessUTXO.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Witness UTXO")
                     }
-                    guard let out = try? TxOut(binaryData: v) else {
+                    guard let out = try? TransactionOutput(binaryData: v) else {
                         throw .invalidInputPreviousOutput
                     }
                     witnessPrevout = out
-                case PSBTInKeyType.partialSig.rawValue:
-                    guard let pubkey = PubKey(k.data) else {
+                case PSBTInputKeyType.partialSig.rawValue:
+                    guard let pubkey = PublicKey(k.data) else {
                         throw .invalidPublicKey
                     }
                     guard let sig = ExtendedSig(v) else {
                         throw .invalidSignature
                     }
                     partialSigs[pubkey] = sig
-                case PSBTInKeyType.sighashType.rawValue:
+                case PSBTInputKeyType.sighashType.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Sighath type")
                     }
@@ -135,75 +135,75 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                         throw .invalidInputSighashType
                     }
                     sighashType = s
-                case PSBTInKeyType.redeemScript.rawValue:
+                case PSBTInputKeyType.redeemScript.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Redeem script")
                     }
-                    guard let script = try? BitcoinScript(binaryData: v) else {
+                    guard let script = try? Script(binaryData: v) else {
                         throw .invalidInputRedeemScript
                     }
                     redeemScript = script
-                case PSBTInKeyType.witnessScript.rawValue:
+                case PSBTInputKeyType.witnessScript.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Witness script")
                     }
-                    guard let script = try? BitcoinScript(binaryData: v) else {
+                    guard let script = try? Script(binaryData: v) else {
                         throw .invalidInputWitnessScript
                     }
                     witnessScript = script
-                case PSBTInKeyType.derivationPath.rawValue:
-                    guard let pubkey = PubKey(k.data) else {
+                case PSBTInputKeyType.derivationPath.rawValue:
+                    guard let pubkey = PublicKey(k.data) else {
                         throw .invalidPublicKey
                     }
                     guard let path = try? DerivationPath(binaryData: v) else {
                         throw .invalidPublicKeyDerivation
                     }
                     derivationPaths[pubkey] = path
-                case PSBTInKeyType.finalScriptSig.rawValue:
+                case PSBTInputKeyType.finalScriptSig.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Final scriptSig")
                     }
-                    guard let script = try? BitcoinScript(binaryData: v) else {
+                    guard let script = try? Script(binaryData: v) else {
                         throw .invalidInputFinalScriptSig
                     }
                     finalScriptSig = script
-                case PSBTInKeyType.finalScriptWitness.rawValue:
+                case PSBTInputKeyType.finalScriptWitness.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Final script witness")
                     }
-                    guard let script = try? TxWitness(binaryData: v) else {
+                    guard let script = try? Transaction.Witness(binaryData: v) else {
                         throw .invalidInputFinalScriptWitness
                     }
                     finalScriptWitness = script
-                case PSBTInKeyType.ripemd160Preimage.rawValue:
+                case PSBTInputKeyType.ripemd160Preimage.rawValue:
                     let hash = k.data
                     let preimage = v
                     guard Data(RIPEMD160.hash(data: preimage)) == hash else {
                         throw .hashPreimageMismatch
                     }
                     ripemd160Preimages.insert(preimage)
-                case PSBTInKeyType.sha256Preimage.rawValue:
+                case PSBTInputKeyType.sha256Preimage.rawValue:
                     let hash = k.data
                     let preimage = v
                     guard Data(SHA256.hash(data: preimage)) == hash else {
                         throw .hashPreimageMismatch
                     }
                     sha256Preimages.insert(preimage)
-                case PSBTInKeyType.hash160Preimage.rawValue:
+                case PSBTInputKeyType.hash160Preimage.rawValue:
                     let hash = k.data
                     let preimage = v
                     guard Data(Hash160.hash(data: preimage)) == hash else {
                         throw .hashPreimageMismatch
                     }
                     hash160Preimages.insert(preimage)
-                case PSBTInKeyType.hash256Preimage.rawValue:
+                case PSBTInputKeyType.hash256Preimage.rawValue:
                     let hash = k.data
                     let preimage = v
                     guard Data(Hash256.hash(data: preimage)) == hash else {
                         throw .hashPreimageMismatch
                     }
                     hash256Preimages.insert(preimage)
-                case PSBTInKeyType.proprietary.rawValue:
+                case PSBTInputKeyType.proprietary.rawValue:
                     guard let key = try? ProprietarySuperKey(binaryData: k.data) else { throw .invalidProprietaryKey }
                     if proprietaryInfo[key.id] == nil { proprietaryInfo[key.id] = [:] }
                     proprietaryInfo[key.id]![.init(key.subkey)] = v
@@ -229,15 +229,15 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             self.additionalTypes = additionalTypes
         }
 
-        public internal(set) var prevoutTx: BitcoinTx?
-        public internal(set) var witnessPrevout: TxOut?
-        public internal(set) var partialSigs: [PubKey : ExtendedSig]
+        public internal(set) var prevoutTx: Transaction?
+        public internal(set) var witnessPrevout: TransactionOutput?
+        public internal(set) var partialSigs: [PublicKey : ExtendedSig]
         public internal(set) var sighashType: SighashType?
-        public internal(set) var redeemScript: BitcoinScript?
-        public internal(set) var witnessScript: BitcoinScript?
-        public internal(set) var derivationPaths: [PubKey: DerivationPath]
-        public internal(set) var finalScriptSig: BitcoinScript?
-        public internal(set) var finalScriptWitness: TxWitness?
+        public internal(set) var redeemScript: Script?
+        public internal(set) var witnessScript: Script?
+        public internal(set) var derivationPaths: [PublicKey: DerivationPath]
+        public internal(set) var finalScriptSig: Script?
+        public internal(set) var finalScriptWitness: Transaction.Witness?
         public internal(set) var ripemd160Preimages: Set<Data>
         public internal(set) var sha256Preimages: Set<Data>
         public internal(set) var hash160Preimages: Set<Data>
@@ -294,49 +294,49 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         var map: PSBTMap {
             var entries: KeyedValues = [:]
             if let prevoutTx {
-                entries[.init(PSBTInKeyType.nonWitnessUTXO)] = prevoutTx.binaryData
+                entries[.init(PSBTInputKeyType.nonWitnessUTXO)] = prevoutTx.binaryData
             }
             if let witnessPrevout {
-                entries[.init(PSBTInKeyType.witnessUTXO)] = witnessPrevout.binaryData
+                entries[.init(PSBTInputKeyType.witnessUTXO)] = witnessPrevout.binaryData
             }
             for (k, s) in partialSigs {
-                entries[.init(PSBTInKeyType.partialSig, data: k.data)] = s.data
+                entries[.init(PSBTInputKeyType.partialSig, data: k.data)] = s.data
             }
             if let sighashType {
-                entries[.init(PSBTInKeyType.sighashType)] = sighashType.binaryData(encoding: .fullLength)
+                entries[.init(PSBTInputKeyType.sighashType)] = sighashType.binaryData(encoding: .fullLength)
             }
             if let redeemScript {
-                entries[.init(PSBTInKeyType.redeemScript)] = redeemScript.binaryData
+                entries[.init(PSBTInputKeyType.redeemScript)] = redeemScript.binaryData
             }
             if let witnessScript {
-                entries[.init(PSBTInKeyType.witnessScript)] = witnessScript.binaryData
+                entries[.init(PSBTInputKeyType.witnessScript)] = witnessScript.binaryData
             }
             for (k, p) in derivationPaths {
-                entries[.init(PSBTInKeyType.derivationPath, data: k.data)] = p.binaryData
+                entries[.init(PSBTInputKeyType.derivationPath, data: k.data)] = p.binaryData
             }
             if let finalScriptSig {
-                entries[.init(PSBTInKeyType.finalScriptSig)] = finalScriptSig.binaryData
+                entries[.init(PSBTInputKeyType.finalScriptSig)] = finalScriptSig.binaryData
             }
             if let finalScriptWitness {
-                entries[.init(PSBTInKeyType.finalScriptWitness)] = finalScriptWitness.binaryData
+                entries[.init(PSBTInputKeyType.finalScriptWitness)] = finalScriptWitness.binaryData
             }
             for preimage in ripemd160Preimages {
-                entries[.init(PSBTInKeyType.ripemd160Preimage, data: Data(RIPEMD160.hash(data: preimage)))] = preimage
+                entries[.init(PSBTInputKeyType.ripemd160Preimage, data: Data(RIPEMD160.hash(data: preimage)))] = preimage
             }
             for preimage in sha256Preimages {
-                entries[.init(PSBTInKeyType.sha256Preimage, data: Data(SHA256.hash(data: preimage)))] = preimage
+                entries[.init(PSBTInputKeyType.sha256Preimage, data: Data(SHA256.hash(data: preimage)))] = preimage
             }
             for preimage in hash160Preimages {
-                entries[.init(PSBTInKeyType.hash160Preimage, data: Data(Hash160.hash(data: preimage)))] = preimage
+                entries[.init(PSBTInputKeyType.hash160Preimage, data: Data(Hash160.hash(data: preimage)))] = preimage
             }
             for preimage in hash256Preimages {
-                entries[.init(PSBTInKeyType.hash256Preimage, data: Data(Hash256.hash(data: preimage)))] = preimage
+                entries[.init(PSBTInputKeyType.hash256Preimage, data: Data(Hash256.hash(data: preimage)))] = preimage
             }
             var proprietaryTypes: KeyedValues = [:]
             for (id, subkey) in proprietaryInfo {
                 for (k, v) in subkey {
                     let keyData = ProprietarySuperKey(id: id, subkey: .init(type: k.type, data: k.data)).binaryData
-                    proprietaryTypes[.init(PSBTInKeyType.proprietary, data: keyData)] = v
+                    proprietaryTypes[.init(PSBTInputKeyType.proprietary, data: keyData)] = v
                 }
             }
             entries.merge(proprietaryTypes) { lhs, _ in lhs }
@@ -348,9 +348,9 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
     public struct Out: Equatable, Sendable, CustomBinaryCodable {
 
         public init(
-            redeemScript: BitcoinScript? = nil,
-            witnessScript: BitcoinScript? = nil,
-            derivationPaths: [PubKey : DerivationPath] = [:],
+            redeemScript: Script? = nil,
+            witnessScript: Script? = nil,
+            derivationPaths: [PublicKey : DerivationPath] = [:],
             proprietaryInfo: ProprietaryInfo = [:]
         ) {
             self.redeemScript = redeemScript
@@ -373,40 +373,40 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
 
         init(from map: PSBTMap) throws(PartiallySignedTxError) {
-            var redeemScript = BitcoinScript?.none
-            var witnessScript = BitcoinScript?.none
+            var redeemScript = Script?.none
+            var witnessScript = Script?.none
 
-            var derivationPaths = [PubKey : DerivationPath]()
+            var derivationPaths = [PublicKey : DerivationPath]()
 
             var proprietaryInfo: ProprietaryInfo = [:]
             var additionalTypes: KeyedValues = [:]
             for (k, v) in map.entries {
                 switch k.type {
-                case PSBTOutKeyType.redeemScript.rawValue:
+                case PSBTOutputKeyType.redeemScript.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyOutputKeyData("Redeem script")
                     }
-                    guard let script = try? BitcoinScript(binaryData: v) else {
+                    guard let script = try? Script(binaryData: v) else {
                         throw .invalidOutputRedeemScript
                     }
                     redeemScript = script
-                case PSBTOutKeyType.witnessScript.rawValue:
+                case PSBTOutputKeyType.witnessScript.rawValue:
                     guard k.data.isEmpty else {
                         throw .nonEmptyOutputKeyData("Witness script")
                     }
-                    guard let script = try? BitcoinScript(binaryData: v) else {
+                    guard let script = try? Script(binaryData: v) else {
                         throw .invalidOutputWitnessScript
                     }
                     witnessScript = script
-                case PSBTOutKeyType.derivationPath.rawValue:
-                    guard let pubkey = PubKey(k.data) else {
+                case PSBTOutputKeyType.derivationPath.rawValue:
+                    guard let pubkey = PublicKey(k.data) else {
                         throw .invalidPublicKey
                     }
                     guard let path = try? DerivationPath(binaryData: v) else {
                         throw .invalidPublicKeyDerivation
                     }
                     derivationPaths[pubkey] = path
-                case PSBTOutKeyType.proprietary.rawValue:
+                case PSBTOutputKeyType.proprietary.rawValue:
                     guard let key = try? ProprietarySuperKey(binaryData: k.data) else { throw .invalidProprietaryKey }
                     if proprietaryInfo[key.id] == nil { proprietaryInfo[key.id] = [:] }
                     proprietaryInfo[key.id]![.init(key.subkey)] = v
@@ -421,9 +421,9 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             self.additionalTypes = additionalTypes
         }
 
-        public internal(set) var redeemScript: BitcoinScript?
-        public internal(set) var witnessScript: BitcoinScript?
-        public internal(set) var derivationPaths: [PubKey : DerivationPath]
+        public internal(set) var redeemScript: Script?
+        public internal(set) var witnessScript: Script?
+        public internal(set) var derivationPaths: [PublicKey : DerivationPath]
         public internal(set) var proprietaryInfo: ProprietaryInfo
 
         private var additionalTypes: KeyedValues
@@ -435,19 +435,19 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         var map: PSBTMap {
             var entries: KeyedValues = [:]
             if let redeemScript {
-                entries[.init(PSBTOutKeyType.redeemScript)] = redeemScript.binaryData
+                entries[.init(PSBTOutputKeyType.redeemScript)] = redeemScript.binaryData
             }
             if let witnessScript {
-                entries[.init(PSBTOutKeyType.witnessScript)] = witnessScript.binaryData
+                entries[.init(PSBTOutputKeyType.witnessScript)] = witnessScript.binaryData
             }
             for (k, p) in derivationPaths {
-                entries[.init(PSBTOutKeyType.derivationPath, data: k.data)] = p.binaryData
+                entries[.init(PSBTOutputKeyType.derivationPath, data: k.data)] = p.binaryData
             }
             var proprietaryTypes = KeyedValues()
             for (id, subkey) in proprietaryInfo {
                 for (k, v) in subkey {
                     let keyData = ProprietarySuperKey(id: id, subkey: .init(type: k.type, data: k.data)).binaryData
-                    proprietaryTypes[.init(PSBTOutKeyType.proprietary, data: keyData)] = v
+                    proprietaryTypes[.init(PSBTOutputKeyType.proprietary, data: keyData)] = v
                 }
             }
             entries.merge(proprietaryTypes) { lhs, _ in lhs }
@@ -476,11 +476,11 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
     }
 
-    public init(_ tx: BitcoinTx, xpubDerivations: [ExtendedKey : DerivationPath] = [:], proprietaryInfo: ProprietaryInfo = [:], ins: [In]? = .none, outs: [Out]? = .none) throws(PartiallySignedTxError) {
+    public init(_ tx: Transaction, xpubDerivations: [ExtendedKey : DerivationPath] = [:], proprietaryInfo: ProprietaryInfo = [:], ins: [In]? = .none, outs: [Out]? = .none) throws(PartiallySignedTxError) {
         try self.init(tx, xpubDerivations: xpubDerivations, proprietaryInfo: proprietaryInfo, ins: ins, outs: outs, additionalTypes: [:])
     }
 
-    private init(_ tx: BitcoinTx, xpubDerivations: [ExtendedKey : DerivationPath], proprietaryInfo: ProprietaryInfo, ins: [In]? = .none, outs: [Out]? = .none, additionalTypes: KeyedValues) throws(PartiallySignedTxError) {
+    private init(_ tx: Transaction, xpubDerivations: [ExtendedKey : DerivationPath], proprietaryInfo: ProprietaryInfo, ins: [In]? = .none, outs: [Out]? = .none, additionalTypes: KeyedValues) throws(PartiallySignedTxError) {
         let ins = if let ins { ins } else { [In](repeating: In(), count: tx.ins.count) }
         let outs = if let outs { outs } else { [Out](repeating: Out(), count: tx.outs.count) }
         // TODO: Maybe extract signatures from signed transaction?
@@ -495,9 +495,9 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         self.outs = outs
         self.additionalTypes = additionalTypes
         for i in unsignedTx.ins.indices {
-            let txIn = unsignedTx.ins[i]
+            let input = unsignedTx.ins[i]
             if let prevoutTx = ins[i].prevoutTx {
-                guard txIn.outpoint.txID == prevoutTx.id else {
+                guard input.outpoint.txID == prevoutTx.id else {
                     throw .transactionIDMismatch
                 }
             }
@@ -526,7 +526,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             throw .invalidOrMissingGlobalMap
         }
 
-        var tx = BitcoinTx?.none
+        var tx = Transaction?.none
         var version = Version?.none
         var xpubDerivations = [ExtendedKey : DerivationPath]()
         var proprietaryInfo: ProprietaryInfo = [:]
@@ -538,7 +538,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     throw .invalidUnsignedTransactionKey
                 }
                 do {
-                    tx = try BitcoinTx(binaryData: v, encoding: .nonWitness)
+                    tx = try Transaction(binaryData: v, encoding: .nonWitness)
                 } catch {
                     throw .invalidUnsignedTransaction
                 }
@@ -600,7 +600,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
     }
 
     public let version = Version.v0
-    public let unsignedTx: BitcoinTx
+    public let unsignedTx: Transaction
     public internal(set) var xpubDerivations: [ExtendedKey : DerivationPath]
     public internal(set) var proprietaryInfo: ProprietaryInfo
     public internal(set) var ins: [In]
@@ -615,8 +615,8 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
         counter.count(Self.magic)
         counter.count(globalMap)
-        for txIn in ins {
-            counter.count(txIn)
+        for input in ins {
+            counter.count(input)
         }
         for out in outs {
             counter.count(out)
@@ -626,43 +626,43 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
     public func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
         encoder.encode(Self.magic)
         encoder.encode(globalMap)
-        for txIn in ins {
-            encoder.encode(txIn)
+        for input in ins {
+            encoder.encode(input)
         }
         for out in outs {
             encoder.encode(out)
         }
     }
 
-    public mutating func update(in i: Int, _ tx: BitcoinTx) {
+    public mutating func update(input i: Int, _ tx: Transaction) {
         ins[i].prevoutTx = tx
     }
 
-    public mutating func update(in i: Int, _ out: TxOut) {
+    public mutating func update(input i: Int, _ out: TransactionOutput) {
         ins[i].witnessPrevout = out
     }
 
-    public mutating func update(in i: Int, redeemScript: BitcoinScript) {
+    public mutating func update(input i: Int, redeemScript: Script) {
         ins[i].redeemScript = redeemScript
     }
 
-    public mutating func update(in i: Int, witnessScript: BitcoinScript) {
+    public mutating func update(input i: Int, witnessScript: Script) {
         ins[i].witnessScript = witnessScript
     }
 
-    public mutating func update(in i: Int, _ key: PubKey, _ path: DerivationPath) {
+    public mutating func update(input i: Int, _ key: PublicKey, _ path: DerivationPath) {
         ins[i].derivationPaths[key] = path
     }
 
-    public mutating func update(in i: Int, _ sighashType: SighashType) {
+    public mutating func update(input i: Int, _ sighashType: SighashType) {
         ins[i].sighashType = sighashType
     }
 
     public func checkForSigning() throws(PartiallySignedTxError) {
-        for (txIn, psbtIn) in zip(unsignedTx.ins, ins) {
+        for (input, psbtIn) in zip(unsignedTx.ins, ins) {
             if let witnessPrevout = psbtIn.witnessPrevout {
                 let isPayToWitnessScriptHash: Bool
-                let witnessProgram: BitcoinScript
+                let witnessProgram: Script
                 // Signer checks
                 if witnessPrevout.script.isPayToScriptHash {
                     guard let redeemScript = psbtIn.redeemScript else {
@@ -702,7 +702,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                 }
                 // If there's a prevout transaction, the outpoint must match the witness previous output
                 if let prevoutTx = psbtIn.prevoutTx {
-                    let prevout = prevoutTx.outs[txIn.outpoint.txOut]
+                    let prevout = prevoutTx.outs[input.outpoint.out]
                     guard prevout == witnessPrevout else {
                         throw .invalidInputPreviousOutput
                     }
@@ -712,7 +712,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                 guard let prevoutTx = psbtIn.prevoutTx else {
                     throw .missingPreviousOutput
                 }
-                let prevout = prevoutTx.outs[txIn.outpoint.txOut]
+                let prevout = prevoutTx.outs[input.outpoint.out]
                 guard !prevout.script.isSegwit else {
                     throw .missingWitnessPreviousOutput
                 }
@@ -736,7 +736,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
     }
 
-    public mutating func sign(in i: Int, using secretKey: SecretKey) throws(PartiallySignedTxError) {
+    public mutating func sign(input i: Int, using secretKey: SecretKey) throws(PartiallySignedTxError) {
 
         // Signer checks for all inputs
         try checkForSigning()
@@ -744,24 +744,24 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         guard let sighashType = ins[i].sighashType else {
             return
         }
-        let prevout: TxOut
+        let prevout: TransactionOutput
         if let witnessPrevout = ins[i].witnessPrevout {
             prevout = witnessPrevout
         } else if let prevoutTx = ins[i].prevoutTx {
             let outpoint = unsignedTx.ins[i].outpoint
-            prevout = prevoutTx.outs[outpoint.txOut]
+            prevout = prevoutTx.outs[outpoint.out]
         } else {
             preconditionFailure() // TODO: Should fail signer checks
         }
-        var signer = TxSigner(tx: unsignedTx, prevouts: [prevout], sighashType: sighashType)
+        var signer = TransactionSigner(tx: unsignedTx, prevouts: [prevout], sighashType: sighashType)
         if let redeemScript = ins[i].redeemScript, let witnessScript = ins[i].witnessScript {
-            signer.sign(txIn: i, redeemScript: redeemScript, witnessScript: witnessScript, with: [secretKey])
+            signer.sign(input: i, redeemScript: redeemScript, witnessScript: witnessScript, with: [secretKey])
         } else if let redeemScript = ins[i].redeemScript {
-            signer.sign(txIn: i, redeemScript: redeemScript, with: [secretKey])
+            signer.sign(input: i, redeemScript: redeemScript, with: [secretKey])
         } else if let witnessScript = ins[i].witnessScript {
-            signer.sign(txIn: i, witnessScript: witnessScript, with: [secretKey])
+            signer.sign(input: i, witnessScript: witnessScript, with: [secretKey])
         } else {
-            signer.sign(txIn: i, with: secretKey)
+            signer.sign(input: i, with: secretKey)
         }
         guard let lastSig = signer.lastSig else {
             return
@@ -769,7 +769,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         ins[i].partialSigs[secretKey.pubkey] = lastSig
     }
 
-    public mutating func update(out i: Int, _ key: PubKey, _ path: DerivationPath) {
+    public mutating func update(out i: Int, _ key: PublicKey, _ path: DerivationPath) {
         outs[i].derivationPaths[key] = path
     }
 
@@ -790,12 +790,12 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
     public mutating func finalize() {
         for i in ins.indices {
             let psbtIn = ins[i]
-            let prevout: TxOut
+            let prevout: TransactionOutput
             if let witnessPrevout = psbtIn.witnessPrevout {
                 prevout = witnessPrevout
             } else if let prevoutTx = psbtIn.prevoutTx {
                 let outpoint = unsignedTx.ins[i].outpoint
-                prevout = prevoutTx.outs[outpoint.txOut]
+                prevout = prevoutTx.outs[outpoint.out]
             } else {
                 preconditionFailure()
             }
@@ -821,8 +821,8 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     return
                 }
                 let sigs = ins[i].partialSigs.values
-                ins[i].finalScriptSig = BitcoinScript(sigs.map {
-                    ScriptOp.pushBytes($0.data)
+                ins[i].finalScriptSig = Script(sigs.map {
+                    Script.Operation.pushBytes($0.data)
                 })
             } else if prevout.script.isPayToScriptHash, let redeemScript = psbtIn.redeemScript, redeemScript.isPayToMultisig {
 
@@ -840,7 +840,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
 
                 ins[i].finalScriptSig = .init(
                     [.zero] +
-                    sigs.map { ScriptOp.pushBytes($0) } +
+                    sigs.map { Script.Operation.pushBytes($0) } +
                     [.pushBytes(redeemScript.binaryData)]
                 )
             } else if prevout.script.isPayToScriptHash, let redeemScript = psbtIn.redeemScript, redeemScript.isSegwit, redeemScript.isPayToWitnessScriptHash, let witness = psbtIn.witnessScript, witness.isPayToMultisig {
@@ -877,7 +877,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
     }
 
-    public func extractTx() -> BitcoinTx {
+    public func extractTx() -> Transaction {
         var tx = unsignedTx
         for i in ins.indices {
             let psbtIn = ins[i]

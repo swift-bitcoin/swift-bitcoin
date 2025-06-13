@@ -17,7 +17,7 @@ struct TxTests {
         for txInfo in TxInfoItems {
             guard
                 let expectedTransactionData = Data(hex: txInfo.hex),
-                let tx = try? BitcoinTx(binaryData: expectedTransactionData)
+                let tx = try? Transaction(binaryData: expectedTransactionData)
             else {
                 Issue.record("Transaction data could not be decoded."); continue
             }
@@ -56,10 +56,10 @@ struct TxTests {
                         Issue.record("Transaction input \(i) coinbase data could not be decoded."); continue
                     }
 
-                    let expectedOutpoint = TxOutpoint.coinbase
+                    let expectedOutpoint = Outpoint.coinbase
                     #expect(input.outpoint == expectedOutpoint)
 
-                    let expectedScript = BitcoinScript(expectedCoinbase)
+                    let expectedScript = Script(expectedCoinbase)
                     #expect(input.script == expectedScript)
 
                 } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig, let expectedScriptData = Data(hex: scriptSig.hex) {
@@ -68,13 +68,13 @@ struct TxTests {
                     }
 
                     #expect(input.outpoint.txID == expectedTx)
-                    #expect(input.outpoint.txOut == expectedOutput)
-                    let expectedScript = BitcoinScript(expectedScriptData)
+                    #expect(input.outpoint.out == expectedOutput)
+                    let expectedScript = Script(expectedScriptData)
                     #expect(input.script == expectedScript)
 
                     if let witness = vinData.txinwitness {
                         let expectedWitnessData = witness.compactMap { Data(hex: $0) }
-                        let expectedWitness = TxWitness(expectedWitnessData)
+                        let expectedWitness = Transaction.Witness(expectedWitnessData)
                         #expect(input.witness == expectedWitness)
                     }
                 } else {
@@ -91,7 +91,7 @@ struct TxTests {
                 guard let expectedScriptData = Data(hex: voutData.scriptPubKey.hex) else {
                     Issue.record("Transaction out \(i) script data could not be decoded."); continue
                 }
-                let expectedScript = BitcoinScript(expectedScriptData)
+                let expectedScript = Script(expectedScriptData)
                 #expect(out.script == expectedScript)
             }
         }

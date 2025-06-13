@@ -52,11 +52,11 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
 
     /// Response to ``cmpctblock`` when at least one transaction is missing.
     /// BIP152
-    /// The payload is a serialized ``GetBlockTxsMessage``.
+    /// The payload is a serialized ``GetBlockTransactionsMessage``.
     case getblocktxn
 
     /// Response to ``getblocktxn``.
-    /// The payload is a serialized ``BlockTxsMessage``.
+    /// The payload is a serialized ``BlockTransactionsMessage``.
     /// BIP152
     case blocktxn
 
@@ -86,7 +86,7 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
     /// A transaction block in reply to ``getdata`` which requests transaction information from a block hash. The payload is a serialized `TxBlock`.
     case block
 
-    /// A Bitcoin transaction in reply to ``getdata``. The payload is a serialized `BitcoinTx`.
+    /// A Bitcoin transaction in reply to ``getdata``. The payload is a serialized `Transaction`.
     case tx
 
     case unknown

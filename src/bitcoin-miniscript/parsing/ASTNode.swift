@@ -66,20 +66,20 @@ indirect enum ASTNode {
             let props = try args.map { arg throws(ParseError) in try arg.properties }
             switch name {
             case "older":
-                guard case let .arg(val) = args[0], let n = Int(val), n > TxInSequence.zeroLocktimeBlocks.sequenceValue, n <= TxInSequence.maxLocktimeSeconds.sequenceValue else {
+                guard case let .arg(val) = args[0], let n = Int(val), n > Transaction.Input.Sequence.zeroLocktimeBlocks.sequenceValue, n <= Transaction.Input.Sequence.maxLocktimeSeconds.sequenceValue else {
                     throw .invalidArgumentValue
                 }
-                olderBlocks = n >= TxInSequence.zeroLocktimeBlocks.sequenceValue && n <= TxInSequence.maxLocktimeBlocks.sequenceValue
-                olderSeconds = n >= TxInSequence.zeroLocktimeSeconds.sequenceValue && n <= TxInSequence.maxLocktimeSeconds.sequenceValue
+                olderBlocks = n >= Transaction.Input.Sequence.zeroLocktimeBlocks.sequenceValue && n <= Transaction.Input.Sequence.maxLocktimeBlocks.sequenceValue
+                olderSeconds = n >= Transaction.Input.Sequence.zeroLocktimeSeconds.sequenceValue && n <= Transaction.Input.Sequence.maxLocktimeSeconds.sequenceValue
                 afterBlocks = false
                 afterSeconds = false
             case "after":
                 guard args.count == 1 else { fatalError("missing or too many args") }
-                guard case let .arg(val) = args[0], let n = Int(val), n >= 0, n <= TxLocktime.maxClock.locktimeValue else {
+                guard case let .arg(val) = args[0], let n = Int(val), n >= 0, n <= Transaction.Locktime.maxClock.locktimeValue else {
                     throw .invalidArgumentValue
                 }
-                afterBlocks = n >= TxLocktime.minBlock.locktimeValue && n <= TxLocktime.maxBlock.locktimeValue
-                afterSeconds = n >= TxLocktime.minClock.locktimeValue && n <= TxLocktime.maxClock.locktimeValue
+                afterBlocks = n >= Transaction.Locktime.minBlock.locktimeValue && n <= Transaction.Locktime.maxBlock.locktimeValue
+                afterSeconds = n >= Transaction.Locktime.minClock.locktimeValue && n <= Transaction.Locktime.maxClock.locktimeValue
                 olderBlocks = false
                 olderSeconds = false
             default:
@@ -359,7 +359,7 @@ indirect enum ASTNode {
         return .init(type, mods, olderBlocks: olderBlocks, olderSeconds: olderSeconds, afterBlocks: afterBlocks, afterSeconds: afterSeconds)
     } }
 
-    var evaluated: [ScriptOp] { get throws(ParseError) {
+    var evaluated: [Script.Operation] { get throws(ParseError) {
         switch self {
         case let .wrapper(name, x):
             var x = try x.evaluated
@@ -386,12 +386,12 @@ indirect enum ASTNode {
         case let .fragment(name, args):
             switch name {
             case "pk_k":
-                guard case let .arg(val) = args[0], let data = Data(hex: val), let key = PubKey(compressed: data) else {
+                guard case let .arg(val) = args[0], let data = Data(hex: val), let key = PublicKey(compressed: data) else {
                     throw .invalidArgumentValue
                 }
                 return [.pushBytes(key.compressedData!)]
             case "pk_h":
-                guard case let .arg(val) = args[0], let data = Data(hex: val), let key = PubKey(compressed: data) else {
+                guard case let .arg(val) = args[0], let data = Data(hex: val), let key = PublicKey(compressed: data) else {
                     fatalError("invalid arg")
                 }
                 let hash = Data(BitcoinCrypto.Hash160.hash(data: key.compressedData!)) // TODO: For tapscript should be key.xOnlyData
@@ -461,7 +461,7 @@ indirect enum ASTNode {
                     throw .invalidArgumentValue
                 }
                 let x0 = args[1]
-                var extraOps = [ScriptOp]()
+                var extraOps = [Script.Operation]()
                 for xi in args.dropFirst(2) {
                     extraOps += (try xi.evaluated) + [.add]
                 }
@@ -472,20 +472,20 @@ indirect enum ASTNode {
                 }
                 let n = UInt8(args.count - 1)
                 let keysPushBytes = try args.dropFirst().map { arg throws(ParseError) in
-                    guard  case let .arg(val) = arg, let data = Data(hex: val), let key = PubKey(compressed: data), let keyData = key.compressedData else { throw .invalidArgumentValue }
+                    guard  case let .arg(val) = arg, let data = Data(hex: val), let key = PublicKey(compressed: data), let keyData = key.compressedData else { throw .invalidArgumentValue }
                     return keyData
-                }.map { ScriptOp.pushBytes($0) }
+                }.map { Script.Operation.pushBytes($0) }
                 return [.constant(k)] + keysPushBytes + [.constant(n), .checkMultiSig]
             case "multi_a":
                 guard case let .arg(val) = args[0], let k = UInt8(val) else {
                     throw .invalidArgumentValue
                 }
                 let keys = try args.dropFirst().map { arg throws(ParseError) in
-                    guard  case let .arg(val) = arg, let data = Data(hex: val), let key = PubKey(xOnly: data) else { throw .invalidArgumentValue }
+                    guard  case let .arg(val) = arg, let data = Data(hex: val), let key = PublicKey(xOnly: data) else { throw .invalidArgumentValue }
                     return key
                 }
                 let keysPushBytes = keys.dropFirst().map(\.xOnlyData).flatMap {
-                    [ScriptOp.pushBytes($0), .checkSigAdd]
+                    [Script.Operation.pushBytes($0), .checkSigAdd]
                 }
                 return [.pushBytes(keys[0].xOnlyData), .checkSig] + keysPushBytes + [.checkSigAdd, .constant(k), .numEqual]
             default: throw .unrecognizedFragment(name)

@@ -54,7 +54,7 @@ struct BIP174Tests {
             try PartiallySignedTx(binaryData: data)
         }
         if error == .invalidPrefix { // First case only
-            _ = try BitcoinTx(binaryData: data)
+            _ = try Transaction(binaryData: data)
         }
     }
 
@@ -111,7 +111,7 @@ struct BIP174Tests {
         #expect(psbt.outs.count == 2)
         #expect(psbt.ins[0].finalScriptSig == nil)
         #expect(psbt.ins[0].sighashType != nil)
-        let out = psbt.unsignedTx.ins[0].outpoint.txOut
+        let out = psbt.unsignedTx.ins[0].outpoint.out
         #expect(psbt.ins[0].prevoutTx?.outs[out].script.ops.count == 5) // TODO: Verify P2PKH
         #expect(psbt.outs.allSatisfy { $0.isEmpty })
     }
@@ -128,7 +128,7 @@ struct BIP174Tests {
         #expect(psbt.outs.count == 2)
         #expect(psbt.ins[0].finalScriptSig == nil)
         #expect(psbt.ins[0].sighashType == nil)
-        let out0 = psbt.unsignedTx.ins[0].outpoint.txOut
+        let out0 = psbt.unsignedTx.ins[0].outpoint.out
         #expect(psbt.ins[0].prevoutTx?.outs[out0].script.ops.count == 5) // TODO: Verify P2PKH
         #expect(psbt.ins[1].finalScriptSig == nil)
         let witnessPrevout = try #require(psbt.ins[1].witnessPrevout)
@@ -155,7 +155,7 @@ struct BIP174Tests {
         #expect(redeemScript.isSegwit) // TODO: Verify P2WPSH
         let witnessScript = try #require(psbt.ins[0].witnessScript)
         #expect(witnessScript.ops[0] == .constant(2) && witnessScript.ops[3] == .constant(2) && witnessScript.ops[4] == .checkMultiSig) // TODO: Verify 2 of 2 multisig
-        guard case let .pushBytes(keyData0) = witnessScript.ops[1], let pubkey0 = PubKey(keyData0) else {
+        guard case let .pushBytes(keyData0) = witnessScript.ops[1], let pubkey0 = PublicKey(keyData0) else {
             Issue.record(); return
         }
         _ = try #require(psbt.ins[0].derivationPaths[pubkey0])
@@ -175,7 +175,7 @@ struct BIP174Tests {
         let hashWitness2 = Data(SHA256.hash(data: witnessScript.binaryData))
         #expect(hashWitness == hashWitness2)
 
-        guard case let .pushBytes(keyData1) = witnessScript.ops[2], let pubkey1 = PubKey(keyData1) else {
+        guard case let .pushBytes(keyData1) = witnessScript.ops[2], let pubkey1 = PublicKey(keyData1) else {
             Issue.record(); return
         }
         _ = try #require(psbt.ins[0].derivationPaths[pubkey1])
@@ -198,12 +198,12 @@ struct BIP174Tests {
         #expect(witnessPrevout.script.isSegwit) // TODO: Verify P2WPSH
         let witnessScript = try #require(psbt.ins[0].witnessScript)
         #expect(witnessScript.ops[0] == .constant(2) && witnessScript.ops[3] == .constant(2) && witnessScript.ops[4] == .checkMultiSig) // TODO: Verify 2 of 2 multisig
-        guard case let .pushBytes(keyData0) = witnessScript.ops[1], let pubkey0 = PubKey(keyData0) else {
+        guard case let .pushBytes(keyData0) = witnessScript.ops[1], let pubkey0 = PublicKey(keyData0) else {
             Issue.record(); return
         }
         _ = try #require(psbt.ins[0].derivationPaths[pubkey0])
 
-        guard case let .pushBytes(keyData1) = witnessScript.ops[2], let pubkey1 = PubKey(keyData1) else {
+        guard case let .pushBytes(keyData1) = witnessScript.ops[2], let pubkey1 = PublicKey(keyData1) else {
             Issue.record(); return
         }
         _ = try #require(psbt.ins[0].derivationPaths[pubkey1])

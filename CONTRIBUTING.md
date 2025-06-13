@@ -5,7 +5,7 @@ Contribute to Swift Bitcoin
 Use the following command:
 
 ```sh
-WWW_ROOT=~/Developer/CraigWrong/swift-bitcoin.github.io/static tools/generate-docs.sh
+WWW_ROOT=~/Developer/CraigWrong/swiftbitcoin.org/static/docs tools/generate-docs.sh
 ```
 
 On your website make sure to link to `/docs/documentation/bitcoin/`.

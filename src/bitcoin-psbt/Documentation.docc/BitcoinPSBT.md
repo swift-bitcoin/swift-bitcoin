@@ -14,40 +14,52 @@ _BitcoinPSBT_ example:
 ```swift
 import BitcoinPSBT
 
-// Declare a PSBT with proprietary info. Serialize and parse again to see that all the information is in fact preserved.
+// Creator
+// `tx` is a multisig transaction with with P2SH and P2SH-P2WSH inputs and 2 outputs.
+let psbt = try PartiallySignedTx(tx)
 
-let proprietaryInfo = [
-    "satoshi".data(using: .utf8)! : [
-        ProprietaryKey(type: 0, data: .init([0])) : Data([0, 0, 0]),
-        ProprietaryKey(type: .max, data: .init([1, 2, 3])) : Data([1, 2, 3, 4, 5, 6])
-    ],
-    "hal".data(using: .utf8)! : [
-        ProprietaryKey(type: 101, data: .init([0, 0 , 0])) : Data([1, 0, 1]),
-        ProprietaryKey(type: 1, data: .init([1, 1, 1, 1])) : Data([2, 3, 4, 5, 6])
-    ]
-]
-let fund0 = BitcoinTx(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 3)])
-let fund1 = BitcoinTx(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 2), .init(value: 5)])
-let tx = BitcoinTx(ins: [
-    .init(outpoint: fund0.outpoint(0)),
-    .init(outpoint: fund1.outpoint(1))
-], outs: [
-    .init(value: 1),
-    .init(value: 2),
-    .init(value: 4)
-])
-let psbt = PartiallySignedTx(tx, proprietaryInfo: proprietaryInfo, ins: [
-    .init(
-        prevoutTx: fund0, proprietaryInfo: proprietaryInfo
-    ), .init(
-        prevoutTx: fund1, proprietaryInfo: proprietaryInfo
-    )
-], outs: [
-    .init(proprietaryInfo: proprietaryInfo), .init(proprietaryInfo: proprietaryInfo), .init(proprietaryInfo: proprietaryInfo)
-])
-let psbtData = psbt.binaryData
-let psbt2 = try PartiallySignedTx(binaryData: psbtData)
-#expect(psbt == psbt2)
+// Updater 1
+// …
+psbt.update(input: 0, fund1)
+psbt.update(input: 0, redeemScript: redeem0)
+psbt.update(input: 0, pubkey0, path0)
+psbt.update(input: 0, pubkey1, path1)
+
+psbt.update(input: 1, fund0.outs[1])
+psbt.update(input: 1, redeemScript: redeem1)
+psbt.update(input: 1, witnessScript: witness)
+psbt.update(input: 1, pubkey2, path2)
+psbt.update(input: 1, pubkey3, path3)
+
+psbt.update(out: 0, pubkey4, path4)
+psbt.update(out: 1, pubkey5, path5)
+
+// Second updater
+// …
+psbt.update(input: 0, SighashType.all)
+psbt.update(input: 1, SighashType.all)
+
+// Signer
+// …
+try psbt.sign(input: 0, using: secretKey0)
+try psbt.sign(input: 1, using: secretKey1)
+
+// Second signer
+// …
+try psbt.sign(input: 0, using: secretKey0)
+try psbt.sign(input: 1, using: secretKey1)
+
+// Combiner
+// …
+psbt.combine(with: psbt2)
+
+// Finalizer
+// …
+psbt.finalize()
+
+// Extractor
+// …
+let tx = psbt.extractTx()
 ```
 
 ## See Also

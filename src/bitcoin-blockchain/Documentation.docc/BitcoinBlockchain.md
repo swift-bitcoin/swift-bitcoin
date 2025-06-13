@@ -25,7 +25,7 @@ for _ in 0 ..< 100 {
 …
 
 // Submit the signed transaction to the mempool.
-await blockchain.addTx(signedTx)
+await blockchain.addTransaction(signedTx)
 
 // The mempool should now contain our transaction.
 #expect(await blockchain.mempool.count == 1)
@@ -56,7 +56,7 @@ await blockchain.stop()
 
 ### Essentials
 
-- ``TxBlock``
+- ``Block``
 - ``BlockchainService``
 - ``ConsensusParams``
 

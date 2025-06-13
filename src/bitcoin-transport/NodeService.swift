@@ -37,10 +37,10 @@ public actor NodeService: Sendable {
     public var state: NodeState
 
     /// Subscription to the bitcoin service's blocks channel.
-    public var blocks = AsyncChannel<TxBlock>?.none
+    public var blocks = AsyncChannel<Block>?.none
 
     /// Subscription to the bitcoin service's transactions channel.
-    public var txs = AsyncChannel<BitcoinTx>?.none
+    public var txs = AsyncChannel<Transaction>?.none
 
     /// IP address as string.
     var address = IPv6Address?.none
@@ -49,7 +49,7 @@ public actor NodeService: Sendable {
     var port = Int?.none
 
     /// Channel for delivering message to state.peers.
-    var peerOuts = [UUID : AsyncChannel<BitcoinMessage>]()
+    var peerOuts = [UUID : AsyncChannel<Message>]()
 
     /// The node's randomly generated identifier (nonce). This is sent with `version` messages.
     let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
@@ -88,7 +88,7 @@ public actor NodeService: Sendable {
     }
 
     /// Called when the blockchain notifies us that a new block has been found. Relays blocks to peers.
-    private func handleBlock(_ block: TxBlock) async {
+    private func handleBlock(_ block: Block) async {
         await withDiscardingTaskGroup {
             for id in state.peers.keys {
                 let peer = state.peers[id]!
@@ -111,7 +111,7 @@ public actor NodeService: Sendable {
     }
 
     /// Called when the blockchain notifies us that a new transaction has been accepted into the mempool. Relays transactions to peers.
-    private func handleTx(_ tx: BitcoinTx) async {
+    private func handleTx(_ tx: Transaction) async {
         await withDiscardingTaskGroup {
             for id in state.peers.keys {
                 let peer = state.peers[id]!
@@ -219,7 +219,7 @@ public actor NodeService: Sendable {
     }
 
     /// Returns a channel for a given peer's outbox. The caller can be notified of new messages generated for this peer.
-    public func getChannel(for id: PeerID) -> AsyncChannel<BitcoinMessage> {
+    public func getChannel(for id: PeerID) -> AsyncChannel<Message> {
         precondition(state.peers[id] != nil)
         return peerOuts[id]!
     }
@@ -251,13 +251,13 @@ public actor NodeService: Sendable {
         enqueue(.sendaddrv2, to: id)
     }
 
-    func sendTx(_ tx: BitcoinTx, to id: PeerID) async {
+    func sendTx(_ tx: Transaction, to id: PeerID) async {
         guard let _ = state.peers[id] else { return }
         let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTx, hash: tx.witnessID)])
         await send(.inv, payload: inventoryMessage.data, to: id)
     }
 
-    func sendBlock(_ block: TxBlock, to id: PeerID, useQueue: Bool = false) async {
+    func sendBlock(_ block: Block, to id: PeerID, useQueue: Bool = false) async {
         guard let _ = state.peers[id] else { return }
         let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
         let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, txIDs: block.makeShortTxIDs(nonce: nonce), txs: [.init(index: 0, tx: block.txs[0])])
@@ -294,13 +294,13 @@ public actor NodeService: Sendable {
         }
     }
 
-    public func popMessage(_ id: PeerID) -> BitcoinMessage? {
+    public func popMessage(_ id: PeerID) -> Message? {
         guard let peer = state.peers[id], !peer.outbox.isEmpty else { return .none }
         return state.peers[id]!.outbox.removeFirst()
     }
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
-    public func processMessage(_ message: BitcoinMessage, from id: PeerID) async throws {
+    public func processMessage(_ message: Message, from id: PeerID) async throws {
 
         // Postpone the next ping
         state.peers[id]?.nextPingTask?.cancel()
@@ -372,7 +372,7 @@ public actor NodeService: Sendable {
     }
 
     /// Processes an incoming version message as part of the handshake.
-    private func processVersion(_ message: BitcoinMessage, from id: PeerID) async throws(Error) {
+    private func processVersion(_ message: Message, from id: PeerID) async throws(Error) {
 
         // Inbound connection sequence:
         // <- version (we receive the first message from the connecting peer)
@@ -430,7 +430,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP339
-    private func processWTXIDRelay(_ message: BitcoinMessage, from id: PeerID) async throws {
+    private func processWTXIDRelay(_ message: Message, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
         // Disconnect state.peers that send a WTXIDRELAY message after VERACK.
@@ -447,7 +447,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP155
-    private func processSendAddrV2(_ message: BitcoinMessage, from id: PeerID) async throws {
+    private func processSendAddrV2(_ message: Message, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
         // Disconnect state.peers that send a SENDADDRV2 message after VERACK.
@@ -463,7 +463,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    private func processVerack(_ message: BitcoinMessage, from id: PeerID) async throws {
+    private func processVerack(_ message: Message, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
         if peer.versionAckReceived {
@@ -499,7 +499,7 @@ public actor NodeService: Sendable {
         enqueue(.feefilter, payload: FeeFilterMessage(feeRate: state.feeFilterRate).data, to: id)
     }
 
-    private func processPing(_ message: BitcoinMessage, from id: PeerID) async throws {
+    private func processPing(_ message: Message, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
         guard let ping = PingMessage(message.payload) else {
@@ -516,7 +516,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    private func processPong(_ message: BitcoinMessage, from id: PeerID) throws {
+    private func processPong(_ message: Message, from id: PeerID) throws {
 
         guard let peer = state.peers[id] else { return }
 
@@ -542,7 +542,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP152
-    private func processSendCompact(_ message: BitcoinMessage, from id: PeerID) throws {
+    private func processSendCompact(_ message: Message, from id: PeerID) throws {
         guard let peer = state.peers[id] else { return }
 
         guard let sendCompact = SendCompactMessage(message.payload) else {
@@ -557,7 +557,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP133
-    private func processFeeFilter(_ message: BitcoinMessage, from id: PeerID) throws {
+    private func processFeeFilter(_ message: Message, from id: PeerID) throws {
         guard let feeFilter = FeeFilterMessage(message.payload) else {
             throw Error.invalidPayload
         }
@@ -565,7 +565,7 @@ public actor NodeService: Sendable {
         state.peers[id]?.feeFilterRate = feeFilter.feeRate
     }
 
-    private func processGetHeaders(_ message: BitcoinMessage, from id: PeerID) async throws {
+    private func processGetHeaders(_ message: Message, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { return }
 
         guard let getHeaders = GetHeadersMessage(message.payload) else {
@@ -577,7 +577,7 @@ public actor NodeService: Sendable {
         enqueue(.headers, payload: headersMessage.data, to: id)
     }
 
-    private func processHeaders(_ message: BitcoinMessage, from id: PeerID) async throws {
+    private func processHeaders(_ message: Message, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { return }
 
         guard let headersMessage = HeadersMessage(message.payload) else {
@@ -604,10 +604,10 @@ public actor NodeService: Sendable {
         await requestNextMissingBlocks(id)
     }
 
-    func processBlock(_ message: BitcoinMessage, from id: PeerID) async throws {
+    func processBlock(_ message: Message, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        guard let block = try? TxBlock(binaryData: message.payload) else {
+        guard let block = try? Block(binaryData: message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -624,7 +624,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    func processGetData(_ message: BitcoinMessage, from id: PeerID) async throws {
+    func processGetData(_ message: Message, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let getDataMessage = GetDataMessage(message.payload) else {
@@ -650,22 +650,22 @@ public actor NodeService: Sendable {
 
         let txHashes = getDataMessage.items.filter { $0.type == .witnessTx }.map { $0.hash }
         if !txHashes.isEmpty {
-            let txs = await blockchain.getTxs(txHashes)
+            let txs = await blockchain.getTransactions(txHashes)
             for tx in txs {
                 enqueue(.tx, payload: tx.binaryData, to: id)
             }
         }
     }
 
-    func processInventory(_ message: BitcoinMessage, from id: PeerID) async throws {
+    func processInventory(_ message: Message, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let inventoryMessage = InventoryMessage(message.payload) else {
             throw Error.invalidPayload
         }
 
-        var blockIDs = [BlockID]()
-        var txIDs = [TxID]()
+        var blockIDs = [Block.ID]()
+        var txIDs = [Transaction.ID]()
         for item in inventoryMessage.items {
             if item.type == .witnessBlock {
                 blockIDs.append(item.hash)
@@ -685,20 +685,20 @@ public actor NodeService: Sendable {
         enqueue(.getdata, payload: getData.data, to: id)
     }
 
-    func processTx(_ message: BitcoinMessage, from id: PeerID) async throws {
+    func processTx(_ message: Message, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        let tx: BitcoinTx
+        let tx: Transaction
         do {
-            tx = try BitcoinTx(binaryData: message.payload)
+            tx = try Transaction(binaryData: message.payload)
         } catch {
             throw Error.invalidPayload
         }
         state.peers[id]!.registerKnownTxs([tx.id])
-        try await blockchain.addTx(tx)
+        try await blockchain.addTransaction(tx)
     }
 
-    func processCompactBlock(_ message: BitcoinMessage, from id: PeerID) async throws {
+    func processCompactBlock(_ message: Message, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let compactBlockMessage = CompactBlockMessage(message.payload) else {
@@ -724,31 +724,31 @@ public actor NodeService: Sendable {
             try await blockchain.processBlock(block)
         } else {
             state.peers[id]?.pendingBlockTxs = txs
-            let getBlockTxs = GetBlockTxsMessage(blockHash: compactBlockMessage.header.id, txIndices: missingTxIndices)
+            let getBlockTxs = GetBlockTransactionsMessage(blockHash: compactBlockMessage.header.id, txIndices: missingTxIndices)
             enqueue(.getblocktxn, payload: getBlockTxs.data, to: id)
         }
     }
 
-    func processGetBlockTxs(_ message: BitcoinMessage, from id: PeerID) async throws(Error) {
+    func processGetBlockTxs(_ message: Message, from id: PeerID) async throws(Error) {
         guard let _ = state.peers[id] else { preconditionFailure() }
-        guard let getBlockTxsMessage = GetBlockTxsMessage(message.payload) else {
+        guard let getBlockTxsMessage = GetBlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
         }
         guard let block = await blockchain.getBlock(getBlockTxsMessage.blockHash) else {
             throw .blockNotFound
         }
-        var txs = [BitcoinTx]()
+        var txs = [Transaction]()
         for i in getBlockTxsMessage.txIndices {
             txs.append(block.txs[i])
         }
-        let blockTxs = BlockTxsMessage(blockHash: block.id, txs: txs)
+        let blockTxs = BlockTransactionsMessage(blockHash: block.id, txs: txs)
         enqueue(.blocktxn, payload: blockTxs.data, to: id)
     }
 
-    func processBlockTxs(_ message: BitcoinMessage, from id: PeerID) async throws(Error) {
+    func processBlockTxs(_ message: Message, from id: PeerID) async throws(Error) {
         guard let peer = state.peers[id] else { preconditionFailure() }
 
-        guard let blockTxsMessage = BlockTxsMessage(message.payload) else {
+        guard let blockTxsMessage = BlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
         }
 

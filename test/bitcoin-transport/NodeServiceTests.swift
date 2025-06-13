@@ -10,17 +10,17 @@ final class NodeServiceTests {
     var satoshiChain = BlockchainService?.none
     var satoshi = NodeService?.none
     var halPeer = UUID?.none
-    var satoshiOut = AsyncChannel<BitcoinMessage>.Iterator?.none
+    var satoshiOut = AsyncChannel<Message>.Iterator?.none
 
     var halChain = BlockchainService?.none
     var hal = NodeService?.none
     var satoshiPeer = UUID?.none
-    var halOut = AsyncChannel<BitcoinMessage>.Iterator?.none
+    var halOut = AsyncChannel<Message>.Iterator?.none
 
     init() async throws {
         let satoshiChain = BlockchainService()
         await satoshiChain.start()
-        let pubkey = try #require(PubKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
+        let pubkey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         await satoshiChain.generateTo(pubkey)
 
         self.satoshiChain = satoshiChain
@@ -333,7 +333,7 @@ final class NodeServiceTests {
         let messageSH10_block = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH10_block.command == .block)
 
-        let satoshiBlock = try TxBlock(binaryData: messageSH10_block.payload)
+        let satoshiBlock = try Block(binaryData: messageSH10_block.payload)
         #expect(satoshiBlock.txs.count == 1)
 
         let halBlocksBefore = await halChain.validatedHeight + 1
@@ -360,7 +360,7 @@ final class NodeServiceTests {
     func badInitialMessage() async throws {
         guard let satoshi, let halPeer else { preconditionFailure() }
 
-        let messageHS0_verack = BitcoinMessage(.verack)
+        let messageHS0_verack = Message(.verack)
         await #expect(throws: NodeService.Error.versionMissing) {
             try await satoshi.processMessage(messageHS0_verack, from: halPeer)
         }
@@ -372,7 +372,7 @@ final class NodeServiceTests {
         guard let satoshi, let halPeer else { preconditionFailure() }
 
         // … --(version)->> Satoshi
-        let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+        let messageHS0_version = Message(.version, payload: VersionMessage().data)
 
         try await satoshi.processMessage(messageHS0_version, from: halPeer)
 
@@ -385,7 +385,7 @@ final class NodeServiceTests {
         // Satoshi --(sendaddrv2)->> …
         _ = try #require(await satoshi.popMessage(halPeer))
 
-        let messageHS1_verack = BitcoinMessage(.verack)
+        let messageHS1_verack = Message(.verack)
         await #expect(throws: NodeService.Error.missingWTXIDRelayPreference) {
             try await satoshi.processMessage(messageHS1_verack, from: halPeer)
         }
@@ -397,7 +397,7 @@ final class NodeServiceTests {
         guard let satoshi, let halPeer else { preconditionFailure() }
 
         // … --(version)->> Satoshi
-        let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+        let messageHS0_version = Message(.version, payload: VersionMessage().data)
 
         try await satoshi.processMessage(messageHS0_version, from: halPeer)
 
@@ -410,10 +410,10 @@ final class NodeServiceTests {
         // Satoshi --(sendaddrv2)->> …
         _ = try #require(await satoshi.popMessage(halPeer))
 
-        let messageHS1_wtxidrelay = BitcoinMessage(.wtxidrelay)
+        let messageHS1_wtxidrelay = Message(.wtxidrelay)
         try await satoshi.processMessage(messageHS1_wtxidrelay, from: halPeer)
 
-        let messageHS2_verack = BitcoinMessage(.verack)
+        let messageHS2_verack = Message(.verack)
         await #expect(throws: NodeService.Error.missingV2AddrPreference) {
             try await satoshi.processMessage(messageHS2_verack, from: halPeer)
         }
@@ -425,7 +425,7 @@ final class NodeServiceTests {
         guard let satoshi, let halPeer else { preconditionFailure() }
 
         // … --(version)->> Satoshi
-        let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+        let messageHS0_version = Message(.version, payload: VersionMessage().data)
 
         try await satoshi.processMessage(messageHS0_version, from: halPeer)
 
@@ -438,10 +438,10 @@ final class NodeServiceTests {
         // Satoshi --(sendaddrv2)->> …
         _ = try #require(await satoshi.popMessage(halPeer))
 
-        let messageHS1_sendaddrv2 = BitcoinMessage(.sendaddrv2)
+        let messageHS1_sendaddrv2 = Message(.sendaddrv2)
         try await satoshi.processMessage(messageHS1_sendaddrv2, from: halPeer)
 
-        let messageHS2_verack = BitcoinMessage(.verack)
+        let messageHS2_verack = Message(.verack)
         await #expect(throws: NodeService.Error.missingWTXIDRelayPreference) {
             try await satoshi.processMessage(messageHS2_verack, from: halPeer)
         }
@@ -453,7 +453,7 @@ final class NodeServiceTests {
         guard let satoshi, let halPeer else { preconditionFailure() }
 
         // … --(version)->> Satoshi
-        let messageHS0_version = BitcoinMessage(.version, payload: VersionMessage().data)
+        let messageHS0_version = Message(.version, payload: VersionMessage().data)
 
         try await satoshi.processMessage(messageHS0_version, from: halPeer)
 
@@ -466,16 +466,16 @@ final class NodeServiceTests {
         // Satoshi --(sendaddrv2)->> …
         _ = try #require(await satoshi.popMessage(halPeer))
 
-        let messageHS1_sendaddrv2 = BitcoinMessage(.sendaddrv2)
+        let messageHS1_sendaddrv2 = Message(.sendaddrv2)
         try await satoshi.processMessage(messageHS1_sendaddrv2, from: halPeer)
 
-        let messageHS2_wtxidrelay = BitcoinMessage(.wtxidrelay)
+        let messageHS2_wtxidrelay = Message(.wtxidrelay)
         try await satoshi.processMessage(messageHS2_wtxidrelay, from: halPeer)
 
         // Satoshi --(verack)->> …
         _ = try #require(await satoshi.popMessage(halPeer))
 
-        let messageHS3_verack = BitcoinMessage(.verack)
+        let messageHS3_verack = Message(.verack)
         try await satoshi.processMessage(messageHS3_verack, from: halPeer)
 
         // Satoshi --(sendcmpct)->> …

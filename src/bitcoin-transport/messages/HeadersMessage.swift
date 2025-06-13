@@ -9,11 +9,11 @@ import BitcoinBlockchain
 ///
 public struct HeadersMessage: Equatable {
 
-    public init(items: [TxBlock]) {
+    public init(items: [Block]) {
         self.items = items
     }
 
-    public let items: [TxBlock]
+    public let items: [Block]
 
     public static let maxItems = 2000
 
@@ -31,9 +31,9 @@ extension HeadersMessage {
         guard let itemCount = data.varInt, itemCount <= 2_000 else { return nil }
         data = data.dropFirst(itemCount.varIntSize)
 
-        var items = [TxBlock]()
+        var items = [Block]()
         for _ in 0 ..< itemCount {
-            guard let block = try? TxBlock(binaryData: data), block.txs.isEmpty else { return nil }
+            guard let block = try? Block(binaryData: data), block.txs.isEmpty else { return nil }
             items.append(block)
             data = data.dropFirst(block.binarySize)
         }
@@ -51,6 +51,6 @@ extension HeadersMessage {
     }
 
     var size: Int {
-        UInt64(items.count).varIntSize + TxBlock.minSize * items.count
+        UInt64(items.count).varIntSize + Block.minSize * items.count
     }
 }

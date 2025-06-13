@@ -7,18 +7,18 @@ extension GetTransactionRPC {
 
     public func run(blockchain: BlockchainService) async throws(JSONRPCResponse.Error) -> Result {
 
-        guard let txID = Data(hex: params.transactionID), txID.count == BitcoinTx.idLength else {
+        guard let txID = Data(hex: params.transactionID), txID.count == Transaction.idLength else {
             throw .init(.invalidParams, "Transaction ID hex encoding or length is invalid.")
         }
 
-        guard let tx = await blockchain.getTx(txID) else {
+        guard let tx = await blockchain.getTransaction(txID) else {
             throw .init(.invalidParams, "Transaction not found.")
         }
 
         let ins = tx.ins.map {
             Result.Input(
                 tx: $0.outpoint.txID.hex,
-                output: $0.outpoint.txOut
+                output: $0.outpoint.out
             )
         }
 

@@ -9,8 +9,8 @@ protocol BlockStorage: Sendable {
 
     func start() async throws(BlockStorageError)
     func stop() async
-    func store(_ block: TxBlock) async throws(BlockStorageError) -> BlockStorageLocator
-    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> TxBlock?
+    func store(_ block: Block) async throws(BlockStorageError) -> BlockStorageLocator
+    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> Block?
     func remove(_ locator: BlockStorageLocator) async
 
     static var cacheSize: Int { get }

@@ -8,7 +8,7 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
     public init() {
         var bytes: [UInt8]
         repeat {
-            bytes = getRandBytes(32)
+            bytes = getRandomBytes(32)
         } while secp256k1_ec_seckey_verify(eccSigningContext, bytes) == 0
         self.data = Data(bytes)
     }
@@ -45,15 +45,15 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
 
     public var description: String { data.hex }
 
-    public var pubkey: PubKey { .init(self) }
+    public var pubkey: PublicKey { .init(self) }
 
-    package var xOnlyPubkey: PubKey { .init(self, requireEvenY: true) }
+    package var xOnlyPubkey: PublicKey { .init(self, requireEvenY: true) }
 
-    public func sign(_ message: String, sigType: SigType = .ecdsa, recoverCompressedKeys: Bool = true) -> AnySig? {
+    public func sign(_ message: String, sigType: SigType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature? {
         .init(message: message, secretKey: self, type: sigType, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public func sign(hash: Data, sigType: SigType = .ecdsa, recoverCompressedKeys: Bool = true) -> AnySig {
+    public func sign(hash: Data, sigType: SigType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature {
         .init(hash: hash, secretKey: self, type: sigType, recoverCompressedKeys: recoverCompressedKeys)
     }
 

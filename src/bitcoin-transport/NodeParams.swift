@@ -3,7 +3,7 @@ import BitcoinBase
 
 public struct NodeParams : Sendable {
 
-    public init(network: NodeNetwork = .regtest, version: ProtocolVersion = .latest, services: ProtocolServices = .all, maxInTransitBlocks: Int = 16, feeFilterRate: SatoshiAmount = 1, highBandwidthCompactBlocks: Bool = false, keepAliveFrequency: Int? = 60, pongTolerance: Int = 15) {
+    public init(network: NodeNetwork = .regtest, version: ProtocolVersion = .latest, services: ProtocolServices = .all, maxInTransitBlocks: Int = 16, feeFilterRate: Amount = 1, highBandwidthCompactBlocks: Bool = false, keepAliveFrequency: Int? = 60, pongTolerance: Int = 15) {
         self.network = network
         self.version = version
         self.services = services
@@ -21,7 +21,7 @@ public struct NodeParams : Sendable {
     public let services: ProtocolServices
 
     public let maxInTransitBlocks: Int
-    public let feeFilterRate: SatoshiAmount
+    public let feeFilterRate: Amount
     public let highBandwidthCompactBlocks: Bool
 
     /// Optional frequency to send keep-alive ping to peers in seconds. Default value is `60`. Nil value means regular pings will not be sent.

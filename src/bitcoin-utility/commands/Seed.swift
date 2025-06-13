@@ -15,6 +15,6 @@ struct Seed: ParsableCommand {
     var bytes = 32
 
     mutating func run() throws {
-        print(getRandBytes(bytes).hex)
+        print(getRandomBytes(bytes).hex)
     }
 }

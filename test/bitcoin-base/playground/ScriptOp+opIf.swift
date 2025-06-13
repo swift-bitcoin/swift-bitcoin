@@ -8,7 +8,7 @@ struct OpIfTests {
     func ifBranch() throws {
         // If branch
         //var script = Script([.constant(1), .if, .constant(2), .else, .constant(3), .endIf]
-        var script = BitcoinScript([.constant(1), .if, .constant(2), .endIf])
+        var script = Script([.constant(1), .if, .constant(2), .endIf])
         var stack = [Data]()
         try script.run(&stack)
         #expect(stack == [Data([2])])
@@ -23,7 +23,7 @@ struct OpIfTests {
     @Test("Not If")
     func notIf() throws {
         // Not-if (activated)
-        var script = BitcoinScript([.zero, .notIf, .constant(2), .endIf])
+        var script = Script([.zero, .notIf, .constant(2), .endIf])
         var stack = [Data]()
         try script.run(&stack)
         #expect(stack == [Data([2])])
@@ -39,7 +39,7 @@ struct OpIfTests {
     func ifElse() throws {
         // If branch
         //var script = Script([.constant(1), .if, .constant(2), .else, .constant(3), .endIf]
-        var script = BitcoinScript([.constant(1), .if, .constant(2), .else, .constant(3), .endIf])
+        var script = Script([.constant(1), .if, .constant(2), .else, .constant(3), .endIf])
         var stack = [Data]()
         try script.run(&stack)
         #expect(stack == [Data([2])])
@@ -66,7 +66,7 @@ struct OpIfTests {
     @Test("Nested If")
     func nestedIf() throws {
         // If branch
-        var script = BitcoinScript([.constant(1), .if, .constant(1), .if, .constant(2), .endIf, .endIf])
+        var script = Script([.constant(1), .if, .constant(1), .if, .constant(2), .endIf, .endIf])
         var stack = [Data]()
         try script.run(&stack)
         #expect(stack == [Data([2])])
@@ -81,7 +81,7 @@ struct OpIfTests {
     @Test("Nested Else")
     func nestedElse() throws {
         // Inner else
-        var script = BitcoinScript([.constant(1), .if, .zero, .if, .constant(2), .else, .constant(3) , .endIf, .endIf])
+        var script = Script([.constant(1), .if, .zero, .if, .constant(2), .else, .constant(3) , .endIf, .endIf])
         var stack = [Data]()
         try script.run(&stack)
         #expect(stack == [Data([3])])
@@ -132,7 +132,7 @@ struct OpIfTests {
     @Test("Empty Branched")
     func emptyBranches() throws {
         // Empty if branch
-        var script = BitcoinScript([.constant(1), .if, .else, .constant(3), .endIf])
+        var script = Script([.constant(1), .if, .else, .constant(3), .endIf])
         var stack = [Data]()
         try script.run(&stack)
         #expect(stack == [])
@@ -171,7 +171,7 @@ struct OpIfTests {
     @Test("Minimal If")
     func minimalif() throws {
         // True-ish value
-        var script = BitcoinScript([.constant(2), .if, .constant(2), .else, .constant(3), .endIf])
+        var script = Script([.constant(2), .if, .constant(2), .else, .constant(3), .endIf])
         var stack = [Data]()
         #expect(throws: (any Error).self) { try script.run(&stack, sigVersion: .witnessV0) }
 
@@ -193,7 +193,7 @@ struct OpIfTests {
 
     @Test("VerIf")
     func verIf() throws {
-        var script = BitcoinScript([.constant(1), .if, .verIf, .else, .constant(2), .endIf])
+        var script = Script([.constant(1), .if, .verIf, .else, .constant(2), .endIf])
         var stack = [Data]()
         #expect(throws: (any Error).self) { try script.run(&stack) }
 
@@ -208,7 +208,7 @@ struct OpIfTests {
 
     @Test("If + Op Success")
     func opSuccess() throws {
-        var script = BitcoinScript([.constant(1), .if, .constant(2), .else, .success(80)])
+        var script = Script([.constant(1), .if, .constant(2), .else, .success(80)])
         var stack = [Data]()
         try script.runV1(&stack)
 
@@ -220,7 +220,7 @@ struct OpIfTests {
     @Test("Malformed If")
     func malformedIf() throws {
         // Missing endif
-        var script = BitcoinScript([.constant(1), .if, .constant(1), .if, .constant(2), .endIf])
+        var script = Script([.constant(1), .if, .constant(1), .if, .constant(2), .endIf])
         var stack = [Data]()
         #expect(throws: (any Error).self) { try script.run(&stack) }
 

@@ -4,11 +4,11 @@ import BitcoinCrypto
 /// Extensions for BIP341 taproot.
 extension SecretKey {
 
-    public var taprootInternalKey: PubKey {
-        PubKey(self, requireEvenY: true)
+    public var taprootInternalKey: PublicKey {
+        PublicKey(self, requireEvenY: true)
     }
 
-    public func taprootSecretKey(_ scriptTree: ScriptTree? = .none) -> Self {
+    public func taprootSecretKey(_ scriptTree: TapscriptTree? = .none) -> Self {
         let merkleRoot = if let scriptTree { scriptTree.calcMerkleRoot().1 } else { Data() }
         let tweak = taprootInternalKey.tapTweak(merkleRoot: merkleRoot)
         return tweakXOnly(tweak)
@@ -16,7 +16,7 @@ extension SecretKey {
 }
 
 /// Extensions for BIP341 taproot.
-extension PubKey {
+extension PublicKey {
 
     /// Self is an x-only internal public key.
     func tapTweak(merkleRoot: Data) -> Data {
@@ -25,19 +25,19 @@ extension PubKey {
     }
 
     /// Used in BitcoinWallet/TaprootAddress.
-    package func taprootOutputKey(_ scriptTree: ScriptTree? = .none) -> PubKey {
+    package func taprootOutputKey(_ scriptTree: TapscriptTree? = .none) -> PublicKey {
         let merkleRoot = if let scriptTree { scriptTree.calcMerkleRoot().1 } else { Data() }
         return taprootOutputKey(merkleRoot: merkleRoot)
     }
 
     /// Used in BIP341 tests as well as internally.
-    package func taprootOutputKey(merkleRoot: Data) -> PubKey {
+    package func taprootOutputKey(merkleRoot: Data) -> PublicKey {
         return tweakXOnly(tapTweak(merkleRoot: merkleRoot))
     }
 
     /// Used exclusively  in `BIP341Tests`.
     /// Self is an x-only public key.
-    public func computeControlBlocks(_ givenScriptTree: ScriptTree?) -> (merkleRoot: Data, leafHashes: [Data], controlBlocks: [Data]) {
+    public func computeControlBlocks(_ givenScriptTree: TapscriptTree?) -> (merkleRoot: Data, leafHashes: [Data], controlBlocks: [Data]) {
         precondition(hasEvenY)
         guard let givenScriptTree else {
             return (.init(), [], [])
@@ -64,7 +64,7 @@ extension PubKey {
     }
 }
 
-extension AnySig {
+extension Signature {
     /// Standard Schnorr signature extended with the sighash type byte.
     public static let schnorrSignatureExtendedLength = 65
 }

@@ -34,7 +34,7 @@ struct BlockchainIntegrationTests {
         #expect(await bob.genesisBlock == genesisBlock)
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
-        var newBlocks = [TxBlock]()
+        var newBlocks = [Block]()
         for _ in 1 ... 100 {
             let newBlock = try #require(await alice.generateTo(alicePK))
             newBlocks.append(newBlock)
@@ -49,7 +49,7 @@ struct BlockchainIntegrationTests {
         // Grab block 1's coinbase transaction and output.
         let coinbaseTx = newBlocks[0].txs[0]
 
-        var t_a3 = BitcoinTx(
+        var t_a3 = Transaction(
             ins: [.init(outpoint: coinbaseTx.outpoint(0))],
             outs: [
                 .init(value: 10, script: .payToPubkeyHash(bobPK)),
@@ -57,16 +57,16 @@ struct BlockchainIntegrationTests {
                 .init(value: 20, script: .payToPubkeyHash(derekPK))
             ])
 
-        var signer = TxSigner(tx: t_a3, prevouts: [coinbaseTx.outs[0]])
-        signer.sign(txIn: 0, with: aliceKey)
+        var signer = TransactionSigner(tx: t_a3, prevouts: [coinbaseTx.outs[0]])
+        signer.sign(input: 0, with: aliceKey)
         t_a3 = signer.tx
 
         #expect(await alice.mempool.count == 0)
-        try await alice.addTx(t_a3)
+        try await alice.addTransaction(t_a3)
         #expect(await alice.mempool.count == 1)
 
         #expect(await bob.mempool.count == 0)
-        try await bob.addTx(t_a3)
+        try await bob.addTransaction(t_a3)
         #expect(await bob.mempool.count == 1)
 
         let aliceLastBlock = try #require(await alice.generateTo(alicePK))
@@ -77,17 +77,17 @@ struct BlockchainIntegrationTests {
         #expect(await bob.height == 101)
         #expect(await bob.mempool.count == 0)
 
-        var tA1_b2 = BitcoinTx(
+        var tA1_b2 = Transaction(
             ins: [.init(outpoint: t_a3.outpoint(1))],
             outs: [
                 .init(value: 10, script: .payToPubkeyHash(derekPK)),
                 .init(value: 5, script: .payToPubkeyHash(errolPK))
             ])
-        signer = TxSigner(tx: tA1_b2, prevouts: [t_a3.outs[1]])
-        signer.sign(txIn: 0, with: carolKey)
+        signer = TransactionSigner(tx: tA1_b2, prevouts: [t_a3.outs[1]])
+        signer.sign(input: 0, with: carolKey)
         tA1_b2 = signer.tx
 
-        var tA0_A2_c2 = BitcoinTx(
+        var tA0_A2_c2 = Transaction(
             ins: [
                 .init(outpoint: t_a3.outpoint(0)),
                 .init(outpoint: t_a3.outpoint(2))
@@ -96,18 +96,18 @@ struct BlockchainIntegrationTests {
                 .init(value: 15, script: .payToPubkeyHash(fionaPK)),
                 .init(value: 15, script: .payToPubkeyHash(gabrielPK))
             ])
-        signer = TxSigner(tx: tA0_A2_c2, prevouts: [t_a3.outs[0], t_a3.outs[2]])
-        signer.sign(txIn: 0, with: bobKey)
-        signer.sign(txIn: 1, with: derekKey)
+        signer = TransactionSigner(tx: tA0_A2_c2, prevouts: [t_a3.outs[0], t_a3.outs[2]])
+        signer.sign(input: 0, with: bobKey)
+        signer.sign(input: 1, with: derekKey)
         tA0_A2_c2 = signer.tx
 
-        try await bob.addTx(tA1_b2)
+        try await bob.addTransaction(tA1_b2)
         #expect(await bob.mempool.count == 1)
 
-        try await bob.addTx(tA0_A2_c2)
+        try await bob.addTransaction(tA0_A2_c2)
         #expect(await bob.mempool.count == 2)
 
-        try await alice.addTx(tA0_A2_c2)
+        try await alice.addTransaction(tA0_A2_c2)
         #expect(await alice.mempool.count == 1)
 
 

@@ -28,7 +28,7 @@ public extension SecretKey {
         let isMainnet = versionByte == Self.base58VersionMain
 
         let compressedPubkeys: Bool
-        if secretKeyData.count == PubKey.compressedLength, let last = secretKeyData.popLast() {
+        if secretKeyData.count == PublicKey.compressedLength, let last = secretKeyData.popLast() {
             guard last == 0x01 else {
                 // throw WalletError.invalidSecretKeyEncoding
                 return nil

@@ -7,12 +7,12 @@ extension SendTransactionRPC {
 
     public func run(blockchain: BlockchainService) async throws(JSONRPCResponse.Error) -> Result {
 
-        guard let txData = Data(hex: params.transactionData), let tx = try? BitcoinTx(binaryData: txData) else {
+        guard let txData = Data(hex: params.transactionData), let tx = try? Transaction(binaryData: txData) else {
             throw .init(.invalidParams, "Transaction hex encoding or content invalid.")
         }
 
         do {
-            try await blockchain.addTx(tx)
+            try await blockchain.addTransaction(tx)
         } catch {
             throw .init(.invalidParams, "Transaction was not accepted into the mempool.")
         }

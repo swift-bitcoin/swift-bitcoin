@@ -1,7 +1,7 @@
 import Foundation
 import BitcoinCrypto
 
-extension ScriptContext {
+extension ScriptRuntime {
 
     /// The entire transaction's outputs, inputs, and script (from the most recently-executed `OP_CODESEPARATOR` to the end) are hashed. The signature used by `OP_CHECKSIG` must be a valid signature for this hash and public key. If it is, `1` is returned, `0` otherwise.
     mutating func opCheckSig() throws {
@@ -34,12 +34,12 @@ extension ScriptContext {
         precondition(pubkeys.count == n)
         precondition(sigs.count == m)
 
-        guard n <= BitcoinScript.maxMultiSigPubkeys else {
+        guard n <= Script.maxMultiSigPubkeys else {
             throw ScriptError.maxPublicKeysExceeded
         }
 
         nonPushOps += n
-        guard nonPushOps <= BitcoinScript.maxOps else {
+        guard nonPushOps <= Script.maxOps else {
             throw ScriptError.operationsLimitExceeded
         }
 
@@ -82,7 +82,7 @@ extension ScriptContext {
         // If fewer than 3 elements are on the stack, the script MUST fail and terminate immediately.
         let (sig, nData, pubkeyData) = try getTernaryParams()
 
-        var n = try ScriptNum(nData, minimal: config.contains(.minimalData))
+        var n = try ScriptNumber(nData, minimal: config.contains(.minimalData))
         guard n.binarySize <= 4 else {
             // - If n is larger than 4 bytes, the script MUST fail and terminate immediately.
             throw ScriptError.invalidCheckSigAddArgument
@@ -137,10 +137,10 @@ extension ScriptContext {
         guard stack.count > 4 else {
             throw ScriptError.missingMultiSigArgument
         }
-        let n = try ScriptNum(stack.removeLast(), minimal: config.contains(.minimalData)).value
+        let n = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
         let pubkeys = Array(stack.suffix(n).reversed())
         stack.removeLast(n)
-        let m = try ScriptNum(stack.removeLast(), minimal: config.contains(.minimalData)).value
+        let m = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
         let sigs = Array(stack.suffix(m).reversed())
         stack.removeLast(m)
         guard stack.count > 0 else {
@@ -157,13 +157,13 @@ extension ScriptContext {
 
         // Check public key
         if config.contains(.strictEncoding) {
-            guard let _ = PubKey(pubkeyData, skipCheck: true) else {
+            guard let _ = PublicKey(pubkeyData, skipCheck: true) else {
                 throw ScriptError.invalidPublicKeyEncoding
             }
         }
         // Only compressed keys are accepted in segwit
         if sigVersion == .witnessV0 && config.contains(.witnessCompressedPubkey) {
-            guard let _ = PubKey(compressed: pubkeyData, skipCheck: true) else {
+            guard let _ = PublicKey(compressed: pubkeyData, skipCheck: true) else {
                 throw ScriptError.invalidPublicKeyEncoding
             }
         }
@@ -192,8 +192,8 @@ extension ScriptContext {
             throw ScriptError.undefinedSighashType
         }
 
-        let sighash = SigHash(tx: tx, txIn: txIn, sigVersion: sigVersion, prevout: prevout, scriptCode: scriptCode, sighashType: sighashType).value
-        if let pubkey = PubKey(pubkeyData) {
+        let sighash = SignatureHasher(tx: tx, input: input, sigVersion: sigVersion, prevout: prevout, scriptCode: scriptCode, sighashType: sighashType).value
+        if let pubkey = PublicKey(pubkeyData) {
             return extendedSig.sig.verify(hash: sighash, pubkey: pubkey)
         }
         return false
@@ -209,11 +209,11 @@ extension ScriptContext {
         guard !pubkeyData.isEmpty else { throw ScriptError.emptyPublicKey }
 
         // If the public key size is 32 bytes, it is considered to be a public key as described in BIP340:
-        if let pubkey = PubKey(xOnly: pubkeyData), !sig.isEmpty {
+        if let pubkey = PublicKey(xOnly: pubkeyData), !sig.isEmpty {
 
             let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
             let extendedSig = try ExtendedSig(schnorrData: sig)
-            let hasher = SigHash(tx: tx, txIn: txIn, prevouts: prevouts, tapscriptExtension: ext, sighashType: extendedSig.sighashType)
+            let hasher = SignatureHasher(tx: tx, input: input, prevouts: prevouts, tapscriptExtension: ext, sighashType: extendedSig.sighashType)
             let sighash = hasher.sigHashSchnorr(sighashCache: &sighashCache)
 
             // Validation failure in this case immediately terminates script execution with failure.

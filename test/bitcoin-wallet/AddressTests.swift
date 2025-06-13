@@ -14,20 +14,20 @@ struct AddressTests {
         let legacyAddressText = legacyAddress.description
         let legacyAddressAgain = try #require(LegacyAddress(legacyAddressText))
         #expect(legacyAddress == legacyAddressAgain)
-        let anyAddressLegacy = try #require(AnyAddress(legacyAddressText))
+        let anyAddressLegacy = try #require(Address(legacyAddressText))
         let anyAddressLegacyText = anyAddressLegacy.description
         #expect(anyAddressLegacyText == legacyAddressText)
-        let anyAddressLegacyAgain = try #require(AnyAddress(anyAddressLegacyText))
+        let anyAddressLegacyAgain = try #require(Address(anyAddressLegacyText))
         #expect(anyAddressLegacy == anyAddressLegacyAgain)
 
         let segwitAddress = SegwitAddress(pubkey)
         let segwitAddressText = segwitAddress.description
         let segwitAddressAgain = try #require(SegwitAddress(segwitAddressText))
         #expect(segwitAddress == segwitAddressAgain)
-        let anyAddressSegwit = try #require(AnyAddress(segwitAddressText))
+        let anyAddressSegwit = try #require(Address(segwitAddressText))
         let anyAddressSegwitText = anyAddressSegwit.description
         #expect(anyAddressSegwitText == segwitAddressText)
-        let anyAddressSegwitAgain = try #require(AnyAddress(anyAddressSegwitText))
+        let anyAddressSegwitAgain = try #require(Address(anyAddressSegwitText))
         #expect(anyAddressSegwit == anyAddressSegwitAgain)
         #expect(anyAddressLegacy != anyAddressSegwit)
 
@@ -39,10 +39,10 @@ struct AddressTests {
         let taprootAddressText = taprootAddress.description
         let taprootAddressAgain = try #require(TaprootAddress(taprootAddressText))
         #expect(taprootAddress == taprootAddressAgain)
-        let anyAddressTaproot = try #require(AnyAddress(taprootAddressText))
+        let anyAddressTaproot = try #require(Address(taprootAddressText))
         let anyAddressTaprootText = anyAddressTaproot.description
         #expect(anyAddressTaprootText == taprootAddressText)
-        let anyAddressTaprootAgain = try #require(AnyAddress(anyAddressTaprootText))
+        let anyAddressTaprootAgain = try #require(Address(anyAddressTaprootText))
         #expect(anyAddressTaproot == anyAddressTaprootAgain)
         #expect(anyAddressLegacy != anyAddressTaproot)
     }

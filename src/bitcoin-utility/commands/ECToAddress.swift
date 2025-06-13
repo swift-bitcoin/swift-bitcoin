@@ -25,7 +25,7 @@ struct ECToAddress: ParsableCommand {
         guard let pubkeyData = Data(hex: pubkeyHex) else {
             throw ValidationError("Invalid hexadecimal value: pubkey")
         }
-        guard let pubkey = PubKey(pubkeyData) else {
+        guard let pubkey = PublicKey(pubkeyData) else {
             throw ValidationError("Invalid public key data: pubkey")
         }
         let result = switch sigVersion {

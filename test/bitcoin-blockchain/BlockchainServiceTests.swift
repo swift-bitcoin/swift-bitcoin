@@ -105,7 +105,7 @@ struct BlockchainServiceTests {
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         for _ in 0 ..< 100 {
-            await blockchain.generateTo(BitcoinScript.payToPubkeyHash(pubkey))
+            await blockchain.generateTo(Script.payToPubkeyHash(pubkey))
         }
 
         // Grab block 1's coinbase transaction and output.
@@ -113,24 +113,24 @@ struct BlockchainServiceTests {
         let prevout = previousTx.outs[0]
 
         // Create a new transaction spending from the previous transaction's outpoint.
-        let unsignedInput = TxIn(outpoint: previousTx.outpoint(0))
+        let unsignedInput = Transaction.Input(outpoint: previousTx.outpoint(0))
 
         // Specify the transaction's output. We'll leave 1000 sats on the table to tip miners. We'll re-use the origin address for simplicity.
-        let unsignedTx = BitcoinTx(
+        let unsignedTx = Transaction(
             ins: [unsignedInput],
             outs: [
                 .init(value: 49_99_999_000, script: .payToPubkeyHash(pubkey))
             ])
 
         // Sign the transaction by first calculating the signature hash.
-        let sighash = SigHash(tx: unsignedTx, txIn: 0, prevout: prevout).value
+        let sighash = SignatureHasher(tx: unsignedTx, input: 0, prevout: prevout).value
 
         // Obtain the signature using our secret key and append the signature hash type.
-        let sig = AnySig(hash: sighash, secretKey: secretKey)
+        let sig = Signature(hash: sighash, secretKey: secretKey)
         let sigData = ExtendedSig(sig, .all).data
 
         // Sign our input by including the signature and public key.
-        let signedInput = TxIn(
+        let signedInput = Transaction.Input(
             outpoint: unsignedInput.outpoint,
             sequence: unsignedInput.sequence,
             script: .init([
@@ -140,7 +140,7 @@ struct BlockchainServiceTests {
             witness: unsignedInput.witness)
 
         // Put the signed input back into the transaction.
-        let signedTx = BitcoinTx(
+        let signedTx = Transaction(
             version: unsignedTx.version,
             locktime: unsignedTx.locktime,
             ins: [signedInput],
@@ -150,7 +150,7 @@ struct BlockchainServiceTests {
         #expect(signedTx.verifyScript(prevouts: [prevout]))
 
         // Submit the signed transaction to the mempool.
-        try await blockchain.addTx(signedTx)
+        try await blockchain.addTransaction(signedTx)
         let mempoolBefore = await blockchain.mempool.count
         #expect(mempoolBefore == 1)
 
@@ -209,7 +209,7 @@ struct BlockchainServiceTests {
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = .gmt
 
-        let pubkey = try #require(PubKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
+        let pubkey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         for i in 1...15 {
             let minutes = if i < 5 { 4 } else if i < 10 { 2 } else { 4 }
             date = calendar.date(byAdding: .minute, value: minutes, to: date)!
