@@ -146,7 +146,7 @@ extension Block: CustomBinaryCodable {
 
     public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws {
         switch encoding {
-        case .none, .headerOnly, .nonWitness:
+        case nil, .headerOnly, .nonWitness:
             let version = Int(try decoder.decode() as Int32)
             let previous = try decoder.decode(Block.idLength, byteSwapped: true)
             let merkleRoot = try decoder.decode(Block.idLength, byteSwapped: true)
@@ -156,7 +156,7 @@ extension Block: CustomBinaryCodable {
             let txs: [Transaction] = if encoding == .headerOnly {
                 []
             } else {
-                try decoder.decode(encoding: encoding == .nonWitness ? .nonWitness : .none)
+                try decoder.decode(encoding: encoding == .nonWitness ? .nonWitness : nil)
             }
             self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
         case .file(let magicBytes):
@@ -171,7 +171,7 @@ extension Block: CustomBinaryCodable {
 
     public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
         switch encoding {
-        case .none, .headerOnly, .nonWitness:
+        case nil, .headerOnly, .nonWitness:
             encoder.encode(Int32(version))
             encoder.encode(previous, byteSwapped: true)
             encoder.encode(merkleRoot, byteSwapped: true)
@@ -179,7 +179,7 @@ extension Block: CustomBinaryCodable {
             encoder.encode(UInt32(target))
             encoder.encode(UInt32(nonce))
             if encoding != .headerOnly {
-                encoder.encode(txs, encoding: encoding == .nonWitness ? .nonWitness : .none)
+                encoder.encode(txs, encoding: encoding == .nonWitness ? .nonWitness : nil)
             }
         case .file(let magicBytes):
             encoder.encode(UInt32(magicBytes))
@@ -190,7 +190,7 @@ extension Block: CustomBinaryCodable {
 
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
         switch encoding {
-        case .none, .headerOnly, .nonWitness:
+        case nil, .headerOnly, .nonWitness:
             counter.count(Int32(version))
             counter.count(previous)
             counter.count(merkleRoot)
@@ -198,7 +198,7 @@ extension Block: CustomBinaryCodable {
             counter.count(UInt32(target))
             counter.count(UInt32(nonce))
             if encoding != .headerOnly {
-                counter.count(txs, encoding: encoding == .nonWitness ? .nonWitness : .none)
+                counter.count(txs, encoding: encoding == .nonWitness ? .nonWitness : nil)
             }
         case .file(_):
             counter.count(UInt32.self)

@@ -30,7 +30,7 @@ actor P2PClient: Service {
 
     private let connectRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
 
-    private var clientChannel: NIOAsyncChannel<Message, Message>?
+    private var clientChannel: NIOAsyncChannel<NetworkMessage, NetworkMessage>?
 
     var status: StatusRPC.Result.P2PClient {
         .init(running: running, connected: connected, remoteHost: remoteHost, remotePort: remotePort, localPort: localPort, overallConnections: overallConnections)
@@ -75,7 +75,7 @@ actor P2PClient: Service {
                         DebugInboundEventsHandler(),
                         DebugOutboundEventsHandler()
                     ])
-                    return try NIOAsyncChannel<Message, Message>(wrappingChannelSynchronously: connection)
+                    return try NIOAsyncChannel<NetworkMessage, NetworkMessage>(wrappingChannelSynchronously: connection)
                 }
             }
 
@@ -127,10 +127,10 @@ actor P2PClient: Service {
 
     private func peerDisconnected() {
         logger.info("P2P client @\(localPort ?? -1) disconnected from remote peer @\(remoteHost ?? ""):\(remotePort ?? -1)…")
-        clientChannel = .none
+        clientChannel = nil
         connected = false
-        localPort = .none
-        remoteHost = .none
-        remotePort = .none
+        localPort = nil
+        remoteHost = nil
+        remotePort = nil
     }
 }

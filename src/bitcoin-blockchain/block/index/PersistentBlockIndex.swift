@@ -44,7 +44,7 @@ actor PersistentBlockIndex: BlockIndex {
         } else {
             BlockRef?.none
         }
-        guard db.count == 0 || previous != .none else {
+        guard db.count == 0 || previous != nil else {
             throw BlockIndexError.parentMissing
         }
         let height = if let previous { previous.height + 1 } else { 0 }
@@ -80,7 +80,7 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func has(_ id: Block.ID) -> Bool {
-        try! db.get(id) != .none
+        try! db.get(id) != nil
     }
 
     func get(_ id: Block.ID) -> BlockRef { // TODO: Probably throws and return value nil-able
@@ -89,7 +89,7 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func get(at height: Int) -> BlockRef {
-        // guard height < byHeight.endIndex else { return .none }
+        // guard height < byHeight.endIndex else { return nil }
         let blockID = try! byHeightDB.get(height)!
         let blockRefData = try! db.get(blockID)
         return try! BlockRef(binaryData: blockRefData!)
@@ -102,7 +102,7 @@ actor PersistentBlockIndex: BlockIndex {
     func getParent(for childID: Block.ID) -> BlockRef? {
         let child = get(childID)
         if child.previous == Block.nullParent {
-            return .none
+            return nil
         }
         return get(child.previous)
     }

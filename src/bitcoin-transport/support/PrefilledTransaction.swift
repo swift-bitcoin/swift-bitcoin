@@ -1,7 +1,7 @@
 import Foundation
 import BitcoinBase
 
-/// BIP152: A `PrefilledTx` structure is used in `HeaderAndShortIDs` to provide a list of a few transactions explicitly.
+/// BIP152: A `PrefilledTransaction` structure is used in `HeaderAndShortIDs` to provide a list of a few transactions explicitly.
 public struct PrefilledTransaction: Equatable {
 
     public init(index: Int, tx: Transaction) {
@@ -11,7 +11,7 @@ public struct PrefilledTransaction: Equatable {
 
     /// The index into the block at which this transaction is.
     ///
-    /// Compact Size, differentially encoded since the last `PrefilledTx` in a list.
+    /// Compact Size, differentially encoded since the last `PrefilledTransaction` in a list.
     ///
     public let index: Int
 

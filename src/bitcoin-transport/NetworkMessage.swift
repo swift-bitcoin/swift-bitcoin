@@ -3,7 +3,7 @@ import BitcoinCrypto
 import BitcoinBlockchain
 
 /// Any message sent or received by nodes on the peer-to-peer network.
-public struct Message: Equatable, Sendable {
+public struct NetworkMessage: Equatable, Sendable {
 
     public init(_ command: MessageCommand, payload: Data = .init(), network: NodeNetwork = .regtest) {
         self.network = network
@@ -39,7 +39,7 @@ public struct Message: Equatable, Sendable {
     public static let payloadSizeEndIndex = 20
 }
 
-extension Message {
+extension NetworkMessage {
 
     public init?(_ data: Data) {
         guard data.count >= Self.baseSize else { return nil }

@@ -24,7 +24,7 @@ extension Data {
     ///   - offset: The destination position at which the source bytes will be copied.
     /// - Returns: An discardable offset right after the copied bytes to use when calling this method repeteadly.
     @discardableResult
-    mutating func addBytes<T>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
+    mutating func addBytes<T>(_ value: T, at offset: Self.Index? = nil) -> Self.Index {
         let offset = offset ?? startIndex
         let count = MemoryLayout.size(ofValue: value)
         precondition(self[offset...].count >= count)
@@ -33,7 +33,7 @@ extension Data {
     }
 
     @discardableResult
-    mutating func addData<T: DataProtocol>(_ value: T, at offset: Self.Index? = .none) -> Self.Index {
+    mutating func addData<T: DataProtocol>(_ value: T, at offset: Self.Index? = nil) -> Self.Index {
         let offset = offset ?? startIndex
         let count = value.count
         precondition(self[offset...].count >= count)
@@ -69,7 +69,7 @@ extension Data {
     /// Parses bytes interpreted as variable length – i.e. compact integer – data into a 64-bit integer.
     var varInt: UInt64? {
         guard let firstByte = first else {
-            return .none
+            return nil
         }
         let tail = dropFirst()
         if firstByte < 0xfd {

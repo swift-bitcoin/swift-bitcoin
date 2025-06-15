@@ -15,7 +15,7 @@ struct BlockRef: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    init(_ block: Block, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = .none) {
+    init(_ block: Block, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = nil) {
         self.blockID = block.id
         self.previous = block.previous
         self.time = block.time

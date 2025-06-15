@@ -41,7 +41,7 @@ let spendingTx = Transaction(ins: [
 
 // Sign the spending transaction.
 let prevouts = [fundingTx.outs[0]]
-let signer = TxSigner(
+let signer = TransactionSigner(
     tx: spendingTx, prevouts: prevouts, sighashType: .all
 )
 let signedTx = signer.sign(input: 0, with: bobsSecretKey)

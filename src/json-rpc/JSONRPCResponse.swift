@@ -46,12 +46,12 @@ public struct JSONRPCResponse: Codable, Sendable {
     public init(id: UUID, result: Result) {
         self.id = id
         self.result = result
-        self.error = .none
+        self.error = nil
     }
 
     public init(id: UUID, error: Error) {
         self.id = id
-        self.result = .none
+        self.result = nil
         self.error = error
     }
 

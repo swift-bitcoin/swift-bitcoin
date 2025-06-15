@@ -20,7 +20,7 @@ extension Transaction {
             if elements.count > 1, let maybeAnnex = elements.last, let firstElem = maybeAnnex.first, firstElem == 0x50 {
                 return maybeAnnex
             } else {
-                return .none
+                return nil
             }
         }
     }

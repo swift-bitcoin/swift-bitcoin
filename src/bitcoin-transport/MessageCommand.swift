@@ -83,7 +83,7 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
     /// This message command does not carry a payload.
     case notfound
 
-    /// A transaction block in reply to ``getdata`` which requests transaction information from a block hash. The payload is a serialized `TxBlock`.
+    /// A transaction block in reply to ``getdata`` which requests transaction information from a block hash. The payload is a serialized `Block`.
     case block
 
     /// A Bitcoin transaction in reply to ``getdata``. The payload is a serialized `Transaction`.

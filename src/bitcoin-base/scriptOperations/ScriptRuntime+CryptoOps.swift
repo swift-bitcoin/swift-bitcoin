@@ -172,7 +172,7 @@ extension ScriptRuntime {
         // Empty signature. Not strictly DER encoded, but allowed to provide a
         // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
         guard /* !sig.isEmpty, */
-              let extendedSig = ExtendedSig(sig, skipCheck: true) else {
+              let extendedSig = ECDSASignature.Extended(sig, skipCheck: true) else {
             return false
         }
 
@@ -185,14 +185,17 @@ extension ScriptRuntime {
             throw ScriptError.nonLowSSignature
         }
 
-        // sighashType is never nil for ECDSA
-        guard let sighashType = extendedSig.sighashType else { preconditionFailure() }
+        let sighashType = extendedSig.sighashType
 
         if config.contains(.strictEncoding) && !sighashType.isDefined {
             throw ScriptError.undefinedSighashType
         }
 
-        let sighash = SignatureHasher(tx: tx, input: input, sigVersion: sigVersion, prevout: prevout, scriptCode: scriptCode, sighashType: sighashType).value
+        let sighash = if sigVersion == .base {
+            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode).data
+        } else {
+            SignatureHash.Segwit(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode, prevout: prevout).data
+        }
         if let pubkey = PublicKey(pubkeyData) {
             return extendedSig.sig.verify(hash: sighash, pubkey: pubkey)
         }
@@ -212,9 +215,8 @@ extension ScriptRuntime {
         if let pubkey = PublicKey(xOnly: pubkeyData), !sig.isEmpty {
 
             let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
-            let extendedSig = try ExtendedSig(schnorrData: sig)
-            let hasher = SignatureHasher(tx: tx, input: input, prevouts: prevouts, tapscriptExtension: ext, sighashType: extendedSig.sighashType)
-            let sighash = hasher.sigHashSchnorr(sighashCache: &sighashCache)
+            let extendedSig = try SchnorrSignature.Extended(sig)
+            let sighash = SignatureHash.Taproot(tx: tx, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, tapscriptExtension: ext, sighashCache: &sighashCache).data
 
             // Validation failure in this case immediately terminates script execution with failure.
             guard extendedSig.sig.verify(hash: sighash, pubkey: pubkey) else {

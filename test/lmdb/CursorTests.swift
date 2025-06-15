@@ -20,8 +20,8 @@ struct CursorTests {
         #expect(db.count == 0)
         let firsNil = try db.first
         let lastNil = try db.last
-        #expect(firsNil == .none)
-        #expect(lastNil == .none)
+        #expect(firsNil == nil)
+        #expect(lastNil == nil)
 
 
         try db.put(val0, key: key0)
@@ -53,8 +53,8 @@ struct CursorTests {
         #expect(db.count == 0)
         let firsNil = try db.first
         let lastNil = try db.last
-        #expect(firsNil == .none)
-        #expect(lastNil == .none)
+        #expect(firsNil == nil)
+        #expect(lastNil == nil)
 
 
         try db.put(val0, forKey: key0)
@@ -94,7 +94,7 @@ struct CursorTests {
     }
 }
 
-private func createDB(_ name: String?, path: FilePath? = .none, envFlags: Environment.Flags = [], dbFlags: Database.Flags = [.create]) throws -> Database {
+private func createDB(_ name: String?, path: FilePath? = nil, envFlags: Environment.Flags = [], dbFlags: Database.Flags = [.create]) throws -> Database {
     let fm = FileManager.default
     let envPath: FilePath
     if let path {

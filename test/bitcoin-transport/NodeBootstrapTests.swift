@@ -20,7 +20,7 @@ struct NodeBootstrapTests {
         let peerB = PeerID()
         let alice = NodeService(
             blockchain: .init(params: .swiftTesting),
-            config: .init(keepAliveFrequency: .none),
+            config: .init(keepAliveFrequency: nil),
             state: NodeState(ibdComplete: true, peers: [peerB : makePeerState()])
         )
         await #expect(alice.state.peers[peerB]!.handshakeComplete)
@@ -29,7 +29,7 @@ struct NodeBootstrapTests {
         let peerA = PeerID()
         let bob = NodeService(
             blockchain: .init(params: .swiftTesting),
-            config: .init(keepAliveFrequency: .none),
+            config: .init(keepAliveFrequency: nil),
             state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true)])
         )
         await #expect(bob.state.peers[peerA]!.handshakeComplete)
@@ -80,7 +80,7 @@ struct NodeBootstrapTests {
         let peerB = PeerID()
         let alice = NodeService(
             blockchain: .init(params: .swiftTesting),
-            config: .init(keepAliveFrequency: .none),
+            config: .init(keepAliveFrequency: nil),
             state: NodeState(ibdComplete: true, peers: [peerB : makePeerState()])
         )
         await alice.blockchain.start()
@@ -88,12 +88,12 @@ struct NodeBootstrapTests {
         // Bob's node
         let peerA = PeerID()
         let peerC = PeerID() // Carol on Bob's node
-        let bob = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: .none), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
         await bob.blockchain.start()
 
         // Carol's node
         let carolPeerB = PeerID() // Bob on Carol's node
-        let carol = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: .none), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
+        let carol = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
         await carol.blockchain.start()
 
         // Start nodes
@@ -145,7 +145,7 @@ struct NodeBootstrapTests {
         let peerB = PeerID()
         let alice = NodeService(
             blockchain: .init(params: .swiftTesting),
-            config: .init(keepAliveFrequency: .none),
+            config: .init(keepAliveFrequency: nil),
             state: NodeState(ibdComplete: true, peers: [peerB : makePeerState()])
         )
         await alice.blockchain.start()
@@ -153,12 +153,12 @@ struct NodeBootstrapTests {
         // Bob's node
         let peerA = PeerID()
         let peerC = PeerID() // Carol on Bob's node
-        let bob = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: .none), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
         await bob.blockchain.start()
 
         // Carol node
         let carolPeerB = PeerID() // Bob on Carol's node
-        let carol = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: .none), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
+        let carol = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
         await carol.blockchain.start()
 
         // Setup blockchains
@@ -259,7 +259,7 @@ struct NodeBootstrapTests {
         // … --(tx)->> Carol
         try await carol.processMessage(messageBC1_tx, from: carolPeerB)
 
-        #expect(await carol.popMessage(carolPeerB) == .none)
+        #expect(await carol.popMessage(carolPeerB) == nil)
 
         let bobsMempool = await bob.blockchain.mempool
         #expect(await alice.blockchain.mempool == bobsMempool)
@@ -274,7 +274,7 @@ struct NodeBootstrapTests {
         let peerB = PeerID()
         let alice = NodeService(
             blockchain: .init(params: .swiftTesting),
-            config: .init(keepAliveFrequency: .none),
+            config: .init(keepAliveFrequency: nil),
             state: NodeState(ibdComplete: true, peers: [peerB : makePeerState()])
         )
         await alice.blockchain.start()
@@ -282,12 +282,12 @@ struct NodeBootstrapTests {
         // Bob's node
         let peerA = PeerID()
         let peerC = PeerID() // Carol on Bob's node
-        let bob = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: .none), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
         await bob.blockchain.start()
 
         // Carol's node
         let carolPeerB = PeerID() // Bob on Carol's node
-        let carol = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: .none), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
+        let carol = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
         await carol.blockchain.start()
 
         // Setup blockchains
@@ -368,7 +368,7 @@ struct NodeBootstrapTests {
         // … --(blocktxn)->> Carol
         try await carol.processMessage(messageBC1_blocktxn, from: carolPeerB)
 
-        #expect(await carol.popMessage(carolPeerB) == .none)
+        #expect(await carol.popMessage(carolPeerB) == nil)
 
         let bobsHeight = await bob.blockchain.height
         #expect(await alice.blockchain.height == bobsHeight)
@@ -383,7 +383,7 @@ struct NodeBootstrapTests {
         let peerB = PeerID()
         let alice = NodeService(
             blockchain: .init(params: .swiftTesting),
-            config: .init(keepAliveFrequency: .none),
+            config: .init(keepAliveFrequency: nil),
             state: NodeState(ibdComplete: true, peers: [peerB : makePeerState(highBandwidth: false)])
         )
         await alice.blockchain.start()
@@ -391,12 +391,12 @@ struct NodeBootstrapTests {
         // Bob's node
         let peerA = PeerID()
         let peerC = PeerID() // Carol on Bob's node
-        let bob = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: .none), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState(highBandwidth: false)]))
+        let bob = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState(highBandwidth: false)]))
         await bob.blockchain.start()
 
         // Carol's node
         let carolPeerB = PeerID() // Bob on Carol's node
-        let carol = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: .none), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
+        let carol = NodeService(blockchain: .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
         await carol.blockchain.start()
 
         // Setup blockchains
@@ -531,7 +531,7 @@ struct NodeBootstrapTests {
         // … --(blocktxn)->> Carol
         try await carol.processMessage(messageBC1_blocktxn, from: carolPeerB)
 
-        #expect(await carol.popMessage(carolPeerB) == .none)
+        #expect(await carol.popMessage(carolPeerB) == nil)
 
         let bobsHeight = await bob.blockchain.height
         #expect(await alice.blockchain.height == bobsHeight)

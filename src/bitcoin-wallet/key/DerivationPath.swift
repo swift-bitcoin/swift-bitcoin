@@ -3,7 +3,7 @@ import BitcoinCrypto
 
 public struct DerivationPath: Equatable, Sendable {
 
-    package init(fingerprint: Int, indices: [Int], harden: [Bool]? = .none) {
+    package init(fingerprint: Int, indices: [Int], harden: [Bool]? = nil) {
         let resolvedHarden: [Bool]
         if let harden {
             precondition(harden.count == indices.count)

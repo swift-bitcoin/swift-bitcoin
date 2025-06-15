@@ -54,9 +54,9 @@ struct ScriptTests {
         } else if test.expectedErrors.isEmpty {
             #expect(!result)
         } else {
-            var context = ScriptRuntime(test.flags, tx: txSpend, input: 0, prevouts: [txCredit.outs[0]])
+            var runtime = ScriptRuntime(test.flags, tx: txSpend, input: 0, prevouts: [txCredit.outs[0]])
             #expect {
-                try txSpend.verifyScript(&context)
+                try txSpend.verifyScript(&runtime)
             } throws: { error in
                 guard let error = error as? ScriptError else {
                     return false

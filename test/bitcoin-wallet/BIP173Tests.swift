@@ -73,7 +73,7 @@ struct BIP173Tests {
             hrp = "tb"
             decodedTestnet = try SegwitAddressDecoder(hrp: hrp).decode(address)
         } else {
-            decodedTestnet = .none
+            decodedTestnet = nil
         }
 
         let decoded = try #require(decodedMainnet ?? decodedTestnet)

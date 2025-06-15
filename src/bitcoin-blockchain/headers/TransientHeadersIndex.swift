@@ -12,14 +12,14 @@ actor TransientHeadersIndex: HeadersIndex {
 
     var first: Block? {
         guard !isEmpty else {
-            return .none
+            return nil
         }
         return headers[headers.keys.first!]
     }
 
     var last: Block? {
         guard !isEmpty else {
-            return .none
+            return nil
         }
         return headers[headers.keys.last!]
     }
@@ -29,7 +29,7 @@ actor TransientHeadersIndex: HeadersIndex {
     }
 
     func has(_ id: Block.ID) -> Bool {
-        headers[id] != .none
+        headers[id] != nil
     }
 
     func get(_ id: Block.ID) -> Block? {

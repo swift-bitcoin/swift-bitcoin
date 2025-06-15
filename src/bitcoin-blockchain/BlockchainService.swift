@@ -41,7 +41,7 @@ public actor BlockchainService: Sendable {
 
     private var blockStorage: BlockStorage!
     private var blockIndex: BlockIndex!
-    public private(set) var chainTip: Block.ID! = .none
+    public private(set) var chainTip: Block.ID! = nil
 
     public private(set) var mempool = [Transaction]()
 
@@ -71,10 +71,10 @@ public actor BlockchainService: Sendable {
             precondition(customDataDirPath.isAbsolute)
             dataDir = customDataDirPath
         default:
-            dataDir = .none
+            dataDir = nil
         }
         let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
-        blockStorage = if dataDir == .none {
+        blockStorage = if dataDir == nil {
             TransientBlockStorage(config: config)
         } else {
             PersistentBlockStorage(config: config)
@@ -194,7 +194,7 @@ public actor BlockchainService: Sendable {
     /// Gets a fully validated block by height complete with transactions.
     public func getBlockID(at height: Int) async -> Block.ID? {
         guard height >= 0, await validatedHeight >= height else {
-            return .none
+            return nil
         }
         return await blockIndex.get(at: height).blockID
     }
@@ -202,7 +202,7 @@ public actor BlockchainService: Sendable {
     /// Returns a block header, meaning a block without it's transactions.
     public func getHeader(_ id: Block.ID) async -> Block? {
         guard await blockIndex.has(id) else {
-            return .none
+            return nil
         }
         let blockRef = await blockIndex.get(id)
         return if let locator = blockRef.locator {
@@ -217,11 +217,11 @@ public actor BlockchainService: Sendable {
     /// Gets a fully validated block by height complete with transactions.
     public func getBlock(at height: Int) async -> Block? {
         guard height >= 0, await validatedHeight >= height else {
-            return .none
+            return nil
         }
         let blockRef = await blockIndex.get(at: height)
         guard let locator = blockRef.locator else {
-            return .none
+            return nil
         }
         return try? await blockStorage.retrieve(locator)
     }
@@ -229,11 +229,11 @@ public actor BlockchainService: Sendable {
     /// Gets a fully validated block by ID complete with transactions.
     public func getBlock(_ id: Block.ID) async -> Block? {
         guard await blockIndex.has(id) else {
-            return .none
+            return nil
         }
         let blockRef = await blockIndex.get(id)
         guard let locator = blockRef.locator, await validatedHeight >= blockRef.height else {
-            return .none
+            return nil
         }
         return try? await blockStorage.retrieve(locator)
     }
@@ -241,7 +241,7 @@ public actor BlockchainService: Sendable {
     /// Gets a fully validated block by ID complete with transactions.
     public func getBlockHeight(_ id: Block.ID) async -> Int? {
         guard await blockIndex.has(id) else {
-            return .none
+            return nil
         }
         let blockRef = await blockIndex.get(id)
         return blockRef.height
@@ -249,7 +249,7 @@ public actor BlockchainService: Sendable {
 
     public func getBlockInfo(_ id: Block.ID) async -> BlockInfo? {
         guard await blockIndex.has(id) else {
-            return .none
+            return nil
         }
         let ref = await blockIndex.get(id)
         let validatedHeight = await validatedHeight
@@ -400,7 +400,7 @@ public actor BlockchainService: Sendable {
             try await checkHeader(header)
 
             // We can use `try!` because we already checked that the parent exists when we called `checkHeader()`.
-            try! await blockIndex.add(header, locator: .none, status: .header)
+            try! await blockIndex.add(header, locator: nil, status: .header)
             await self.headers.add(header)
         }
     }
@@ -493,7 +493,7 @@ public actor BlockchainService: Sendable {
         }
         valueIn = valueInAcc
 
-        // This is guaranteed by calling Tx.check() before this function.
+        // This is guaranteed by calling Transaction.check() before this function.
         precondition(tx.valueOut >= 0 && tx.valueOut <= Transaction.maxMoney)
 
         guard valueIn >= tx.valueOut else {
@@ -520,7 +520,7 @@ public actor BlockchainService: Sendable {
         return valueIn - tx.valueOut
     }
 
-    private func checkTx(_ tx: Transaction, exclude: [Outpoint]? = .none, auxCoins: [Outpoint : UnspentOutput]? = .none) async -> Bool {
+    private func checkTx(_ tx: Transaction, exclude: [Outpoint]? = nil, auxCoins: [Outpoint : UnspentOutput]? = nil) async -> Bool {
         let exclude = exclude ?? mempoolExclude
         let auxCoins = auxCoins ?? mempoolCoins
 
@@ -692,7 +692,7 @@ public actor BlockchainService: Sendable {
         mempoolCoins = mpCoins
     }
 
-    @discardableResult public func generateToScript(_ script: Script, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = .none) async -> [Block.ID] {
+    @discardableResult public func generateToScript(_ script: Script, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = nil) async -> [Block.ID] {
         var ids = [Block.ID]()
         for _ in 0 ..< blocks {
             if let block = await generateTo(script, maxTries: maxTries, blockTime: blockTime ?? .now) {
@@ -754,7 +754,7 @@ public actor BlockchainService: Sendable {
         } while tries > 0 && (try! DifficultyTarget(binaryData: block.hash) > DifficultyTarget(compact: target))
 
         guard try! DifficultyTarget(binaryData: block.hash) <= DifficultyTarget(compact: target) else {
-            return .none
+            return nil
         }
 
         block.txs = txs
@@ -824,7 +824,7 @@ public actor BlockchainService: Sendable {
         let mempoolShortIDs = mempool.map { tx in tx.makeShortTxID(nonce: nonce, first: first, second: second)}
         return shortIDs.map { id in
             guard let i = mempoolShortIDs.firstIndex(of: id) else {
-                return .none
+                return nil
             }
             return mempool[i]
         }
@@ -905,7 +905,7 @@ public actor BlockchainService: Sendable {
         return subsidy
     }
 
-    private func getMedianTimePast(at height: Int? = .none) async -> Date {
+    private func getMedianTimePast(at height: Int? = nil) async -> Date {
         let maxHeight = await blockIndex.get(chainTip).height
         let height = height ?? maxHeight
         precondition(height >= 0 && height <= maxHeight)
@@ -916,7 +916,7 @@ public actor BlockchainService: Sendable {
         return median[median.count / 2]
     }
 
-    private func guessVerificationProgress(for height: Int? = .none) async -> Double {
+    private func guessVerificationProgress(for height: Int? = nil) async -> Double {
         let maxHeight = await blockIndex.get(chainTip).height
         let height = height ?? maxHeight
         precondition(height >= 0 && height <= maxHeight)
@@ -945,7 +945,7 @@ public actor BlockchainService: Sendable {
         if await blockStorage.status == .starting { return true }
 
         // This is for the active chain only.
-        if chainTip == .none { return true }
+        if chainTip == nil { return true }
 
         let blockRef = await blockIndex.get(chainTip)
 

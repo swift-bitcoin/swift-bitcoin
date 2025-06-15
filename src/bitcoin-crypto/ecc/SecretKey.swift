@@ -49,12 +49,24 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
 
     package var xOnlyPubkey: PublicKey { .init(self, requireEvenY: true) }
 
-    public func sign(_ message: String, sigType: SigType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature? {
-        .init(message: message, secretKey: self, type: sigType, recoverCompressedKeys: recoverCompressedKeys)
+    public func sign(_ message: String, signatureFormat: ECDSASignature.Format = .full, recoverCompressedKeys: Bool = true) -> ECDSASignature? {
+        .init(message: message, secretKey: self, format: signatureFormat)
     }
 
-    public func sign(hash: Data, sigType: SigType = .ecdsa, recoverCompressedKeys: Bool = true) -> Signature {
-        .init(hash: hash, secretKey: self, type: sigType, recoverCompressedKeys: recoverCompressedKeys)
+    public func sign(hash: Data, signatureFormat: ECDSASignature.Format = .full) -> ECDSASignature {
+        .init(hash: hash, secretKey: self, format: signatureFormat)
+    }
+
+    public func signSchnorr(_ message: String) -> SchnorrSignature? {
+        .init(message: message, secretKey: self)
+    }
+
+    public func signSchnorr(hash: Data) -> SchnorrSignature {
+        .init(hash: hash, secretKey: self)
+    }
+
+    public func signRecoverable(_ message: String, recoverCompressedKeys: Bool = true) -> RecoverableSignature? {
+        .init(message: message, secretKey: self, recoverCompressedKeys: recoverCompressedKeys)
     }
 
     /// BIP32: Used to derive private keys. Requires global signing context to be initialized.

@@ -14,7 +14,7 @@ public struct PeerState: Sendable {
     /// Whether this peer has initiated the connection to us.
     public let incoming: Bool
 
-    var outbox = [Message]()
+    var outbox = [NetworkMessage]()
 
     /// Whether our node has already sent the version message to this peer.
     var versionSent = false
@@ -78,7 +78,7 @@ public struct PeerState: Sendable {
 
     /// The connection has been established.
     public var handshakeComplete: Bool {
-        version != .none &&
+        version != nil &&
         witnessRelayPreferenceReceived &&
         v2AddressPreferenceReceived &&
         versionAckReceived

@@ -75,7 +75,7 @@ extension SighashType: CustomBinaryCodable {
 
     public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws(DecodingError) {
         switch encoding {
-        case .none:
+        case nil:
             let value: UInt8
             do {
                 value = try decoder.decode()
@@ -106,7 +106,7 @@ extension SighashType: CustomBinaryCodable {
 
     public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
         switch encoding {
-        case .none: encoder.encode(value)
+        case nil: encoder.encode(value)
         case .some(let encoding):
             switch encoding {
             case .fullLength:
@@ -117,7 +117,7 @@ extension SighashType: CustomBinaryCodable {
 
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
         switch encoding {
-        case .none: counter.count(value)
+        case nil: counter.count(value)
         case .some(let encoding):
             switch encoding {
             case .fullLength:

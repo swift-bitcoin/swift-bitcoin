@@ -14,13 +14,13 @@ struct BitcoinCryptoTests {
         #expect(pubkey == pubkeyCopy)
 
         let message = "Hello, Bitcoin!"
-        let sig = try #require(secretKey.sign(message, sigType: .schnorr))
+        let sig = try #require(secretKey.signSchnorr(message))
 
         let isSignatureValid = pubkey.verify(sig, for: message)
         #expect(isSignatureValid)
 
         // ECDSA signature
-        let sigECDSA = try #require(secretKey.sign(message, sigType: .compact))
+        let sigECDSA = try #require(secretKey.sign(message, signatureFormat: .compact))
 
         let isECDSASignatureValid = sigECDSA.verify(message: message, pubkey: pubkey)
         #expect(isECDSASignatureValid)
@@ -36,21 +36,21 @@ struct BitcoinCryptoTests {
         #expect(pubkey == pubkeyCopy)
 
         let message = "Hello, Bitcoin!"
-        let sig = try #require(Signature("c211fc6a0d3b89170af26e1bfcc511de813a01e855b862788e1fa576280a7abc202f1bc1535dc51c54ecbae48dcc9b5752ffa4a8852f7d81aafb695f5efd8876", type: .schnorr))
+        let sig = try #require(SchnorrSignature("c211fc6a0d3b89170af26e1bfcc511de813a01e855b862788e1fa576280a7abc202f1bc1535dc51c54ecbae48dcc9b5752ffa4a8852f7d81aafb695f5efd8876"))
 
         let isSignatureValid = pubkey.verify(sig, for: message)
         #expect(isSignatureValid)
 
-        let sigCopy = try #require(secretKey.sign(message, sigType: .schnorr))
+        let sigCopy = try #require(secretKey.signSchnorr(message))
         #expect(sig == sigCopy)
 
         // ECDSA signature
-        let sigECDSA = try #require(Signature("151756497fb7ad7b910341814aed135e5835b8fa3c6b63132cb36f4b453bdc3c61defc72d99ef44170bd130ef66a9ef4122c96e623d20bff79d0b740c29af2af", type: .compact))
+        let sigECDSA = try #require(ECDSASignature("151756497fb7ad7b910341814aed135e5835b8fa3c6b63132cb36f4b453bdc3c61defc72d99ef44170bd130ef66a9ef4122c96e623d20bff79d0b740c29af2af", format: .compact))
 
         let isECDSASignatureValid = sigECDSA.verify(message: message, pubkey: pubkey)
         #expect(isECDSASignatureValid)
 
-        let sigECDSACopy = try #require(secretKey.sign(message, sigType: .compact))
+        let sigECDSACopy = try #require(secretKey.sign(message, signatureFormat: .compact))
         #expect(sigECDSA == sigECDSACopy)
     }
 
@@ -68,7 +68,7 @@ struct BitcoinCryptoTests {
         let secretKey = SecretKey()
 
         let message = "Hello, Bitcoin!"
-        let sig = try #require(secretKey.sign(message, sigType: .schnorr))
+        let sig = try #require(secretKey.signSchnorr(message))
 
         let pubkey = secretKey.pubkey
         #expect(pubkey.matches(secretKey))
@@ -78,7 +78,7 @@ struct BitcoinCryptoTests {
         // Tweak
         let tweak = Data(Hash256.hash(data: "I am Satoshi.".data(using: .utf8)!))
         let tweakedSecretKey = secretKey.tweakXOnly(tweak)
-        let sig2 = try #require(tweakedSecretKey.sign(message, sigType: .schnorr))
+        let sig2 = try #require(tweakedSecretKey.signSchnorr(message))
 
         let tweakedPubkey = pubkey.tweakXOnly(tweak)
         let valid2 = tweakedPubkey.verify(sig2, for: message)
@@ -92,7 +92,7 @@ struct BitcoinCryptoTests {
         let secretKey = SecretKey()
 
         let message = "Hello, Bitcoin!"
-        let sig = try #require(secretKey.sign(message, sigType: .recoverable))
+        let sig = try #require(secretKey.signRecoverable(message))
 
         let recovered = try #require(sig.recoverPubkey(from: message))
         #expect(recovered.matches(secretKey))

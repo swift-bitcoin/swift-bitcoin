@@ -1,6 +1,6 @@
 import Foundation
 
-extension SignatureHasher {
+extension SignatureMessage.Taproot {
     struct Cache {
         init(shaPrevouts: Data? = nil, shaAmounts: Data? = nil, shaScriptPubKeys: Data? = nil, shaSequences: Data? = nil, shaOuts: Data? = nil) {
             self.shaPrevouts = shaPrevouts
@@ -23,7 +23,7 @@ extension SignatureHasher {
     }
 }
 
-extension SignatureHasher.Cache {
+extension SignatureMessage.Taproot.Cache {
     mutating func resetHits() {
         shaPrevoutsHit = false
         shaAmountsHit = false

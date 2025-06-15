@@ -18,6 +18,6 @@ struct TransientCoinsIndex: CoinsIndex {
     }
 
     mutating func remove(_ outpoint: Outpoint) async {
-        coins[outpoint] = .none
+        coins[outpoint] = nil
     }
 }

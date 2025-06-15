@@ -23,7 +23,7 @@ struct SighashTests {
         let scriptCode = Script(filteredOps).binaryData
 
         let sighashType = SighashType(rawValue: hashType)
-        let sighash = SignatureHasher(tx: tx, input: input, sigVersion: .base, prevout: .init(value: 0), scriptCode: scriptCode, sighashType: sighashType)
-        #expect(sighash.value == Data(expected.reversed()))
+        let sighash = SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode)
+        #expect(sighash.data == Data(expected.reversed()))
     }
 }

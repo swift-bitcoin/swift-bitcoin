@@ -123,11 +123,11 @@ struct BlockchainServiceTests {
             ])
 
         // Sign the transaction by first calculating the signature hash.
-        let sighash = SignatureHasher(tx: unsignedTx, input: 0, prevout: prevout).value
+        let sighash = SignatureHash(tx: unsignedTx, input: 0, sighashType: .all, scriptCode: prevout.script.binaryData).data
 
         // Obtain the signature using our secret key and append the signature hash type.
-        let sig = Signature(hash: sighash, secretKey: secretKey)
-        let sigData = ExtendedSig(sig, .all).data
+        let sig = ECDSASignature(hash: sighash, secretKey: secretKey)
+        let sigData = ECDSASignature.Extended(sig, sighashType: .all).data
 
         // Sign our input by including the signature and public key.
         let signedInput = Transaction.Input(

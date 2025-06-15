@@ -7,7 +7,7 @@ extension ScriptRuntime {
     mutating func opIf(isNotIf: Bool = false) throws {
         pendingElseOps += 1
         guard evaluateBranch else {
-            pendingIfOps.append(.none)
+            pendingIfOps.append(nil)
             return
         }
         let first = try getUnaryParam()
@@ -38,7 +38,7 @@ extension ScriptRuntime {
             throw ScriptError.malformedIfElseEndIf // End if with no corresponding previous if
         }
         if pendingElseOps == pendingIfOps.count {
-            pendingElseOps -= 1 // try opElse(context: &context)
+            pendingElseOps -= 1 // try opElse(runtime: &runtime)
         } else if pendingElseOps != pendingIfOps.count - 1 {
             throw ScriptError.malformedIfElseEndIf // Unbalanced else
         }

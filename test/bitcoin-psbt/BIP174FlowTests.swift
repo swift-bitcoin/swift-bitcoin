@@ -189,25 +189,21 @@ struct BIP174FlowTests {
         #expect(psbt != expectedPSBT) // Official test vector did not grind for low R signature
 
         // Let's check each signature instead.
-        var hasher = SignatureHasher(tx: psbt.unsignedTx, prevouts: [psbt.ins[0].prevoutTx!.outs[0]], sighashType: psbt.ins[0].sighashType!)
-        hasher.set(input: 0, sigVersion: .base, scriptCode: psbt.ins[0].redeemScript!.binaryData)
-        let message = hasher.value
+        let sighash = SignatureHash(tx: psbt.unsignedTx, input: 0, sighashType: psbt.ins[0].sighashType!, scriptCode: psbt.ins[0].redeemScript!.binaryData).data
 
         let signatureA = try #require(psbt.ins[0].partialSigs[secretKey0.pubkey])
         let signatureA_ = try #require(expectedPSBT.ins[0].partialSigs[secretKey0.pubkey])
 
-        #expect(signatureA.sig.verify(hash: message, pubkey: secretKey0.pubkey))
-        #expect(signatureA_.sig.verify(hash: message, pubkey: secretKey0.pubkey))
+        #expect(signatureA.sig.verify(hash: sighash, pubkey: secretKey0.pubkey))
+        #expect(signatureA_.sig.verify(hash: sighash, pubkey: secretKey0.pubkey))
 
-        var hasherB = SignatureHasher(tx: psbt.unsignedTx, prevouts: [psbt.ins[1].witnessPrevout!], sighashType: psbt.ins[1].sighashType!)
-        hasherB.set(input: 1, sigVersion: .witnessV0, scriptCode: psbt.ins[1].witnessScript!.binaryData)
-        let messageB = hasherB.value
+        let sighashB = SignatureHash.Segwit(tx: psbt.unsignedTx, input: 1, sighashType: psbt.ins[1].sighashType!, scriptCode: psbt.ins[1].witnessScript!.binaryData, prevout: psbt.ins[1].witnessPrevout!).data
 
         let signatureB = try #require(psbt.ins[1].partialSigs[secretKey1.pubkey])
         let signatureB_ = try #require(expectedPSBT.ins[1].partialSigs[secretKey1.pubkey])
 
-        #expect(signatureB.sig.verify(hash: messageB, pubkey: secretKey1.pubkey))
-        #expect(signatureB_.sig.verify(hash: messageB, pubkey: secretKey1.pubkey))
+        #expect(signatureB.sig.verify(hash: sighashB, pubkey: secretKey1.pubkey))
+        #expect(signatureB_.sig.verify(hash: sighashB, pubkey: secretKey1.pubkey))
     }
 
     @Test func combiner() throws {

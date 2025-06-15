@@ -26,7 +26,7 @@ extension ScriptBool: BinaryEncodable {
             // Negative zero
             value = false
         } else {
-            value = firstNonZeroIndex != .none
+            value = firstNonZeroIndex != nil
         }
     }
 

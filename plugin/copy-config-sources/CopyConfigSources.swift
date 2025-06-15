@@ -26,7 +26,7 @@ struct CopyConfigSources: BuildToolPlugin {
             outputFilesDirectory: context.pluginWorkDirectoryURL)
 
         // let copyCommand = Command.buildCommand(
-        //     displayName: .none,
+        //     displayName: nil,
         //     executable: URL(fileURLWithPath: "/bin/cp"),
         //     arguments: [sourceFile.relativePath, destinationFile.relativePath],
         //     environment: [:],

@@ -6,16 +6,16 @@ extension Transaction {
 
 extension Script {
     func run(_ stack: inout [Data], sigVersion: SigVersion = .base) throws {
-        var context = ScriptRuntime(.standard, tx: .empty, input: -1, prevouts: [])
-        try context.run(self, stack: stack, sigVersion: sigVersion)
-        stack = context.stack
+        var runtime = ScriptRuntime(.standard, tx: .empty, input: -1, prevouts: [])
+        try runtime.run(self, stack: stack, sigVersion: sigVersion)
+        stack = runtime.stack
     }
 
     func runV1(_ stack: inout [Data]) throws {
         let config = ScriptConfig.standard.subtracting(.discourageOpSuccess)
-        var context = ScriptRuntime(config, tx: .init(version: .v1, locktime: .init(0), ins: [.init(outpoint: .coinbase, witness: .init([]))], outs: []), input: 0, prevouts: [])
-        try context.run(self, stack: stack, sigVersion: .witnessV1)
-        stack = context.stack
+        var runtime = ScriptRuntime(config, tx: .init(version: .v1, locktime: .init(0), ins: [.init(outpoint: .coinbase, witness: .init([]))], outs: []), input: 0, prevouts: [])
+        try runtime.run(self, stack: stack, sigVersion: .witnessV1)
+        stack = runtime.stack
     }
 }
 

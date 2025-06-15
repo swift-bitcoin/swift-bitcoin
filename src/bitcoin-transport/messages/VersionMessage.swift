@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 
 struct VersionMessage: Equatable, Sendable {
-    init(protocolVersion: ProtocolVersion = .latest, services: ProtocolServices = .all, receiverServices: ProtocolServices? = .none, receiverAddress: IPv6Address? = .none, receiverPort: Int? = .none, transmitterAddress: IPv6Address? = .none, transmitterPort: Int? = .none, nonce: UInt64 = 0, userAgent: String = "/SwiftBitcoin:0.1.0/", startHeight: Int = 0, relay: Bool = true) {
+    init(protocolVersion: ProtocolVersion = .latest, services: ProtocolServices = .all, receiverServices: ProtocolServices? = nil, receiverAddress: IPv6Address? = nil, receiverPort: Int? = nil, transmitterAddress: IPv6Address? = nil, transmitterPort: Int? = nil, nonce: UInt64 = 0, userAgent: String = "/SwiftBitcoin:0.1.0/", startHeight: Int = 0, relay: Bool = true) {
         self.protocolVersion = protocolVersion
         self.services = services
         self.timestamp = Date(timeIntervalSince1970: Date.now.timeIntervalSince1970.rounded(.down))

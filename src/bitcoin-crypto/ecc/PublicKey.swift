@@ -152,7 +152,15 @@ public struct PublicKey: Equatable, Hashable, Sendable, CustomStringConvertible 
         self == PublicKey(secretKey)
     }
 
-    public func verify(_ sig: Signature, for message: String) -> Bool {
+    public func verify(_ sig: ECDSASignature, for message: String) -> Bool {
+        sig.verify(message: message, pubkey: self)
+    }
+
+    public func verify(_ sig: SchnorrSignature, for message: String) -> Bool {
+        sig.verify(message: message, pubkey: self)
+    }
+
+    public func verify(_ sig: RecoverableSignature, for message: String) -> Bool {
         sig.verify(message: message, pubkey: self)
     }
 
@@ -248,7 +256,7 @@ private func compressedToUncompressed(_ pubkeyData: Data) -> Data? {
     let pubkeyBytes = [UInt8](pubkeyData)
     var pubkey = secp256k1_pubkey()
     guard secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, pubkeyBytes, pubkeyBytes.count) != 0 else {
-        return .none
+        return nil
     }
     var uncompressedPubkeyBytes = [UInt8](repeating: 0, count: PublicKey.uncompressedLength)
     var uncompressedPubkeyBytesCount = uncompressedPubkeyBytes.count
@@ -264,7 +272,7 @@ private func uncompressedToCompressed(_ pubkeyData: Data) -> Data? {
 
     var pubkey = secp256k1_pubkey()
     guard secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, pubkeyBytes, pubkeyBytes.count) != 0 else {
-        return .none
+        return nil
     }
     var compressedPubkeyBytes = [UInt8](repeating: 0, count: PublicKey.compressedLength)
     var compressedPubkeyBytesCount = compressedPubkeyBytes.count

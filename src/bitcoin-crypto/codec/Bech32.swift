@@ -77,7 +77,7 @@ public struct Bech32Encoder: Sendable {
 /// Decodes raw data from Bech32 and Bech32m strings.
 public struct Bech32Decoder: Sendable {
 
-    public init(_ variant: Bech32Variant? = .none) {
+    public init(_ variant: Bech32Variant? = nil) {
         self.variant = variant
     }
 
@@ -143,7 +143,7 @@ public struct Bech32Decoder: Sendable {
         data.append(checksum)
         let result = polymod(data)
         guard result == Bech32Variant.bech32.constant || result == Bech32Variant.m.constant else {
-            return (false, .none)
+            return (false, nil)
         }
         guard let variant else {
             // Decoder configuration does not specify a variant so we auto-detect.
