@@ -48,7 +48,7 @@ public struct Base58Decoder: Sendable {
 
     public func decode(_ string: String) -> Data? {
         guard let data = base58Decode(string) else {
-            return .none
+            return nil
         }
         guard withChecksum else {
             return data
@@ -57,7 +57,7 @@ public struct Base58Decoder: Sendable {
         let payload = data.prefix(upTo: data.count - checksumLength)
         let expectedChecksum = calculateChecksum(payload)
         guard checksum == expectedChecksum else {
-            return .none
+            return nil
         }
         return payload
     }

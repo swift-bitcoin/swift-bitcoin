@@ -65,7 +65,7 @@ let spendingTx = Transaction(ins: [unsignedInput], outs: [address.out(100)])
 We now need to sign the transaction using our secret key.
 
 ```swift
-let signer = TxSigner(tx: spendingTx, prevouts: [prevout])
+let signer = TransactionSigner(tx: spendingTx, prevouts: [prevout])
 let signedTx = signer.sign(input: 0, with: secretKey)
 ```
 

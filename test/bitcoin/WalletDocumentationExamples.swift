@@ -78,7 +78,7 @@ struct WalletDocumentationExamples {
         signer.sign(input: 1, with: sk)
         signer.sign(input: 2, with: sk) // P2SH-P2WPKH
         signer.sign(input: 3, with: sk)
-        signer.sighashType = Optional.none
+        signer.sighashType = nil
         let signed = signer.sign(input: 4, with: sk)
 
         // Verify transaction signatures.

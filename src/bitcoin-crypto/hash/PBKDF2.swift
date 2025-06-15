@@ -31,7 +31,7 @@ public struct PBKDF2<H: HashFunction> {
     ///   - salt: The salt.
     ///   - iterations: Iteration count, a positive integer.
     ///   - keyLength: Intended length of derived key.
-    public init(password: Data, salt: Data, iterations: Int = 4096, keyLength: Int? = .none) throws(PBKDF2Error) {
+    public init(password: Data, salt: Data, iterations: Int = 4096, keyLength: Int? = nil) throws(PBKDF2Error) {
         precondition(iterations > 0)
 
         guard iterations > 0 && !salt.isEmpty else {

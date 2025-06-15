@@ -62,7 +62,7 @@ public struct ScriptRuntime {
     var pendingElseOps = 0
 
     /// We keep the sighash cache instance inbetween resets / runs / input index updates.
-    var sighashCache = SignatureHasher.Cache()
+    var sighashCache = SignatureMessage.Taproot.Cache()
 
     var prevout: TransactionOutput {
         prevouts[input]
@@ -74,7 +74,7 @@ public struct ScriptRuntime {
 
     /// Support for `OP_IF`, `OP_NOTIF`, `OP_ELSE` and `OP_ENDIF`.
     var evaluateBranch: Bool {
-        guard let lastEvaluatedIfResult = pendingIfOps.last(where: { $0 != .none }), let lastEvaluatedIfResult else {
+        guard let lastEvaluatedIfResult = pendingIfOps.last(where: { $0 != nil }), let lastEvaluatedIfResult else {
             return true
         }
         return lastEvaluatedIfResult
@@ -97,7 +97,7 @@ public struct ScriptRuntime {
     }
 
     /// Evaluates the script with a new stack. All previous mutable state is reset.
-    public mutating func run(_ newScript: Script, stack newStack: [Data] = [], sigVersion newSigVersion: SigVersion? = .none, leafVersion: UInt8? = .none, tapLeafHash: Data? = .none) throws {
+    public mutating func run(_ newScript: Script, stack newStack: [Data] = [], sigVersion newSigVersion: SigVersion? = nil, leafVersion: UInt8? = nil, tapLeafHash: Data? = nil) throws {
 
         reset()
         script = newScript

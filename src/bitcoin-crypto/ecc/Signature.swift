@@ -17,11 +17,11 @@ public struct Signature: Equatable, Sendable, CustomStringConvertible {
         self.init(messageData: messageData, secretKey: secretKey, type: type, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public init(messageData: Data, secretKey: SecretKey, type: SigType = .ecdsa, additionalEntropy: Data? = .none, recoverCompressedKeys: Bool = true) {
+    public init(messageData: Data, secretKey: SecretKey, type: SigType = .ecdsa, additionalEntropy: Data? = nil, recoverCompressedKeys: Bool = true) {
         self.init(hash: getMessageHash(messageData: messageData, type: type), secretKey: secretKey, type: type, additionalEntropy: additionalEntropy, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public init(hash: Data, secretKey: SecretKey, type: SigType = .ecdsa, additionalEntropy: Data? = .none, recoverCompressedKeys: Bool = true) {
+    public init(hash: Data, secretKey: SecretKey, type: SigType = .ecdsa, additionalEntropy: Data? = nil, recoverCompressedKeys: Bool = true) {
         precondition(hash.count == Self.hashLength)
         switch type {
         case .ecdsa:
@@ -112,7 +112,7 @@ public struct Signature: Equatable, Sendable, CustomStringConvertible {
         case .compact:
             return verifyCompact(sigData: data, hash: hash, pubkey: pubkey)
         case .recoverable:
-            return internalRecoverPubkey(sigData: data, hash: hash) != .none
+            return internalRecoverPubkey(sigData: data, hash: hash) != nil
         case .schnorr:
             return verifySchnorr(sigData: data, hash: hash, pubkey: pubkey)
         }
@@ -120,7 +120,7 @@ public struct Signature: Equatable, Sendable, CustomStringConvertible {
 
     public func recoverPubkey(from message: String) -> PublicKey? {
         guard let messageData = message.data(using: .utf8) else {
-            return .none
+            return nil
         }
         return recoverPubkey(messageData: messageData)
     }
@@ -128,7 +128,7 @@ public struct Signature: Equatable, Sendable, CustomStringConvertible {
     public func recoverPubkey(messageData: Data) -> PublicKey? {
         precondition(type == .recoverable)
         guard let pubkeyData = internalRecoverPubkey(sigData: data, hash: getMessageHash(messageData: messageData, type: .recoverable)) else {
-            return .none
+            return nil
         }
         return PublicKey(pubkeyData)
     }
@@ -311,7 +311,7 @@ private func internalRecoverPubkey(sigData: Data, hash: Data) -> Data? {
 
     var pubkey = secp256k1_pubkey()
     guard secp256k1_ecdsa_recover(secp256k1_context_static, &pubkey, &sig, hashBytes) != 0 else {
-        return .none
+        return nil
     }
 
     var publen = comp ? PublicKey.compressedLength : PublicKey.uncompressedLength
@@ -537,7 +537,7 @@ private func internalIsLowS(compactSignatureData: Data) -> Bool {
     guard secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, &sig, sigBytes) != 0 else {
         preconditionFailure()
     }
-    let normalizationOccurred = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, .none, &sig)
+    let normalizationOccurred = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, nil, &sig)
     return normalizationOccurred == 0
 }
 
@@ -547,6 +547,6 @@ private func internalIsLowS(laxSignatureData: Data) -> Bool {
     guard ecdsa_signature_parse_der_lax(&sig, sigBytes, sigBytes.count) != 0 else {
         preconditionFailure()
     }
-    let normalizationOccurred = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, .none, &sig)
+    let normalizationOccurred = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, nil, &sig)
     return normalizationOccurred == 0
 }

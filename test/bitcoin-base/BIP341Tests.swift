@@ -217,9 +217,8 @@ struct BIP341Tests {
             hashSequences: Data([0x18, 0x95, 0x9c, 0x72, 0x21, 0xab, 0x5c, 0xe9, 0xe2, 0x6c, 0x3c, 0xd6, 0x7b, 0x22, 0xc2, 0x4f, 0x8b, 0xaa, 0x54, 0xba, 0xc2, 0x81, 0xd8, 0xe6, 0xb0, 0x5e, 0x40, 0x0e, 0x6c, 0x3a, 0x95, 0x7e])
         )
 
-        var cache = SignatureHasher.Cache()
-        let hasher = SignatureHasher(tx: tx, input: 0, prevouts: utxosSpent, sighashType: SighashType?.none)
-        _ = hasher.sigMessageSchnorr(sighashCache: &cache)
+        var cache = SignatureMessage.Taproot.Cache()
+        _ = SignatureMessage.Taproot(tx: tx, input: 0, sighashType: SighashType?.none, prevouts: utxosSpent, sighashCache: &cache)
         if let shaAmounts = cache.shaAmounts, let shaOuts = cache.shaOuts, let shaPrevouts = cache.shaPrevouts, let shaScriptPubKeys = cache.shaScriptPubKeys, let shaSequences = cache.shaSequences {
             #expect(shaAmounts == intermediary.hashAmounts)
             #expect(shaOuts == intermediary.hashOutputs)
@@ -333,7 +332,7 @@ struct BIP341Tests {
                     txinIndex: 4,
                     internalSecretKey: Data([0xf3, 0x6b, 0xb0, 0x7a, 0x11, 0xe4, 0x69, 0xce, 0x94, 0x1d, 0x16, 0xb6, 0x3b, 0x11, 0xb9, 0xb9, 0x12, 0x0a, 0x84, 0xd9, 0xd8, 0x7c, 0xff, 0x2c, 0x84, 0xa8, 0xd4, 0xaf, 0xfb, 0x43, 0x8f, 0x4e]),
                     merkleRoot: Data([0xcc, 0xbd, 0x66, 0xc6, 0xf7, 0xe8, 0xfd, 0xab, 0x47, 0xb3, 0xa4, 0x86, 0xf5, 0x9d, 0x28, 0x26, 0x2b, 0xe8, 0x57, 0xf3, 0x0d, 0x47, 0x73, 0xf2, 0xd5, 0xea, 0x47, 0xf7, 0x76, 0x1c, 0xe0, 0xe2]),
-                    sighashType: Optional.none
+                    sighashType: nil
                 ),
                 intermediary: (
                     internalPubkey: Data([0xe0, 0xdf, 0xe2, 0x30, 0x0b, 0x0d, 0xd7, 0x46, 0xa3, 0xf8, 0x67, 0x4d, 0xfd, 0x45, 0x25, 0x62, 0x36, 0x39, 0x04, 0x25, 0x69, 0xd8, 0x29, 0xc7, 0xf0, 0xee, 0xd9, 0x60, 0x2d, 0x26, 0x3e, 0x6f]),
@@ -456,17 +455,16 @@ struct BIP341Tests {
             let tweakedSecretKey = secretKey.tweakXOnly(tweak)
             #expect(tweakedSecretKey.data == expectedTweakedSecretKey)
 
-            let hasher = SignatureHasher(tx: tx, input: input, prevouts: utxosSpent, sighashType: sighashType)
-            let sigMsg = hasher.sigMessageSchnorr(sighashCache: &cache)
+            let sigMsg = SignatureMessage.Taproot(tx: tx, input: input, sighashType: sighashType, prevouts: utxosSpent, sighashCache: &cache)
 
             #expect(cache.shaAmountsHit == testCase.intermediary.precomputedUsed.hashAmounts)
             #expect(cache.shaOutsHit == testCase.intermediary.precomputedUsed.hashOutputs)
             #expect(cache.shaPrevoutsHit == testCase.intermediary.precomputedUsed.hashPrevouts)
             #expect(cache.shaSequencesHit == testCase.intermediary.precomputedUsed.hashSequences)
             #expect(cache.shaScriptPubKeysHit == testCase.intermediary.precomputedUsed.hashScriptPubkeys)
-            #expect(sigMsg == expectedSigMsg)
+            #expect(sigMsg.data == expectedSigMsg)
 
-            let sighash = hasher.sigHashSchnorr(sighashCache: &cache)
+            let sighash = SignatureHash.Taproot(tx: tx, input: input, sighashType: sighashType, prevouts: utxosSpent, sighashCache: &cache).data
             #expect(sighash == expectedSighash)
 
             let hashTypeSuffix: Data

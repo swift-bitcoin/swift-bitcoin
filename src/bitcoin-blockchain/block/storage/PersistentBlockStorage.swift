@@ -34,7 +34,7 @@ actor PersistentBlockStorage: BlockStorage {
         let blocksDir = path.appending(config.blocksSubdirectoryName) // TODO: use config.blocksPath instead or centralize "blocks"
         logger.info("Will attempt to create \"\(blocksDir.string)\".")
         let blocksDirInfo = try? await fs.info(forFileAt: blocksDir)
-        if blocksDirInfo == .none {
+        if blocksDirInfo == nil {
             do {
                 try await fs.createDirectory(at: blocksDir, withIntermediateDirectories: false)
             } catch {
@@ -107,7 +107,7 @@ actor PersistentBlockStorage: BlockStorage {
     } }
 
     private func fileInfo(for number: Int) async throws(BlockStorageError) -> FileInfo? {
-        guard number >= 0 else { return .none }
+        guard number >= 0 else { return nil }
         let fs = FileSystem.shared
         let filePath = filePath(for: number)
         guard let fileInfo = try? await fs.info(forFileAt: filePath) else {

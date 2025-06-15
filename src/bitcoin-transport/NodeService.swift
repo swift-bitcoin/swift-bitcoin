@@ -49,15 +49,15 @@ public actor NodeService: Sendable {
     var port = Int?.none
 
     /// Channel for delivering message to state.peers.
-    var peerOuts = [UUID : AsyncChannel<Message>]()
+    var peerOuts = [UUID : AsyncChannel<NetworkMessage>]()
 
     /// The node's randomly generated identifier (nonce). This is sent with `version` messages.
     let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
 
     /// Called when the peer-to-peer service stops listening for incoming connections.
     public func resetAddress() {
-        address = .none
-        port = .none
+        address = nil
+        port = nil
     }
 
     /// Receive address information from the peer-to-peer service whenever it's actively listening.
@@ -219,7 +219,7 @@ public actor NodeService: Sendable {
     }
 
     /// Returns a channel for a given peer's outbox. The caller can be notified of new messages generated for this peer.
-    public func getChannel(for id: PeerID) -> AsyncChannel<Message> {
+    public func getChannel(for id: PeerID) -> AsyncChannel<NetworkMessage> {
         precondition(state.peers[id] != nil)
         return peerOuts[id]!
     }
@@ -270,7 +270,7 @@ public actor NodeService: Sendable {
 
     // Sends a ping message to a peer. Creates a new child task.
     func sendPingTo(_ id: PeerID, useQueue: Bool = false) async {
-        guard let peer = state.peers[id], peer.lastPingNonce == .none else { return }
+        guard let peer = state.peers[id], peer.lastPingNonce == nil else { return }
 
         // Prepare pong check
         let pongTolerance = config.pongTolerance
@@ -279,7 +279,7 @@ public actor NodeService: Sendable {
                 try await Task.sleep(nanoseconds: UInt64(pongTolerance) * 1_000_000_000)
             } catch { return }
             guard !Task.isCancelled, let self else { return }
-            if let peer = await self.state.peers[id], peer.lastPingNonce != .none {
+            if let peer = await self.state.peers[id], peer.lastPingNonce != nil {
                 await peerOuts[id]?.finish() // Trigger disconnection
             }
         }
@@ -294,13 +294,13 @@ public actor NodeService: Sendable {
         }
     }
 
-    public func popMessage(_ id: PeerID) -> Message? {
-        guard let peer = state.peers[id], !peer.outbox.isEmpty else { return .none }
+    public func popMessage(_ id: PeerID) -> NetworkMessage? {
+        guard let peer = state.peers[id], !peer.outbox.isEmpty else { return nil }
         return state.peers[id]!.outbox.removeFirst()
     }
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
-    public func processMessage(_ message: Message, from id: PeerID) async throws {
+    public func processMessage(_ message: NetworkMessage, from id: PeerID) async throws {
 
         // Postpone the next ping
         state.peers[id]?.nextPingTask?.cancel()
@@ -317,7 +317,7 @@ public actor NodeService: Sendable {
         guard let peer = state.peers[id] else { return }
 
         // First message must always be `version`.
-        if peer.version == .none, message.command != .version {
+        if peer.version == nil, message.command != .version {
             throw Error.versionMissing
         }
 
@@ -372,7 +372,7 @@ public actor NodeService: Sendable {
     }
 
     /// Processes an incoming version message as part of the handshake.
-    private func processVersion(_ message: Message, from id: PeerID) async throws(Error) {
+    private func processVersion(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
 
         // Inbound connection sequence:
         // <- version (we receive the first message from the connecting peer)
@@ -430,7 +430,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP339
-    private func processWTXIDRelay(_ message: Message, from id: PeerID) async throws {
+    private func processWTXIDRelay(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
         // Disconnect state.peers that send a WTXIDRELAY message after VERACK.
@@ -447,7 +447,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP155
-    private func processSendAddrV2(_ message: Message, from id: PeerID) async throws {
+    private func processSendAddrV2(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
         // Disconnect state.peers that send a SENDADDRV2 message after VERACK.
@@ -463,7 +463,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    private func processVerack(_ message: Message, from id: PeerID) async throws {
+    private func processVerack(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
         if peer.versionAckReceived {
@@ -492,14 +492,14 @@ public actor NodeService: Sendable {
         state.peers[id]?.compactBlocksPreferenceSent = true
         if let pong = peer.pongOnHoldUntilCompactBlocksPreference {
             enqueue(.pong, payload: pong.data, to: id)
-            state.peers[id]?.pongOnHoldUntilCompactBlocksPreference = .none
+            state.peers[id]?.pongOnHoldUntilCompactBlocksPreference = nil
         }
         await sendPingTo(id, useQueue: true)
         await requestHeaders(id)
         enqueue(.feefilter, payload: FeeFilterMessage(feeRate: state.feeFilterRate).data, to: id)
     }
 
-    private func processPing(_ message: Message, from id: PeerID) async throws {
+    private func processPing(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
         guard let ping = PingMessage(message.payload) else {
@@ -516,7 +516,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    private func processPong(_ message: Message, from id: PeerID) throws {
+    private func processPong(_ message: NetworkMessage, from id: PeerID) throws {
 
         guard let peer = state.peers[id] else { return }
 
@@ -528,7 +528,7 @@ public actor NodeService: Sendable {
             throw Error.pingPongMismatch
         }
 
-        state.peers[id]?.lastPingNonce = .none
+        state.peers[id]?.lastPingNonce = nil
         state.peers[id]?.checkPongTask?.cancel()
 
         // BIP152: Lock compact block version on first pong.
@@ -542,7 +542,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP152
-    private func processSendCompact(_ message: Message, from id: PeerID) throws {
+    private func processSendCompact(_ message: NetworkMessage, from id: PeerID) throws {
         guard let peer = state.peers[id] else { return }
 
         guard let sendCompact = SendCompactMessage(message.payload) else {
@@ -550,14 +550,14 @@ public actor NodeService: Sendable {
         }
 
         // We let the negotiation play out for versions lower than our max supported. When version is finally locked we will enforce our minimum supported version as well.
-        if peer.compactBlocksVersion == .none, sendCompact.version <= Self.maxCompactBlocksVersion {
+        if peer.compactBlocksVersion == nil, sendCompact.version <= Self.maxCompactBlocksVersion {
             state.peers[id]?.highBandwidthCompactBlocks = sendCompact.highBandwidth
             state.peers[id]?.compactBlocksVersion = sendCompact.version
         }
     }
 
     /// BIP133
-    private func processFeeFilter(_ message: Message, from id: PeerID) throws {
+    private func processFeeFilter(_ message: NetworkMessage, from id: PeerID) throws {
         guard let feeFilter = FeeFilterMessage(message.payload) else {
             throw Error.invalidPayload
         }
@@ -565,7 +565,7 @@ public actor NodeService: Sendable {
         state.peers[id]?.feeFilterRate = feeFilter.feeRate
     }
 
-    private func processGetHeaders(_ message: Message, from id: PeerID) async throws {
+    private func processGetHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { return }
 
         guard let getHeaders = GetHeadersMessage(message.payload) else {
@@ -577,7 +577,7 @@ public actor NodeService: Sendable {
         enqueue(.headers, payload: headersMessage.data, to: id)
     }
 
-    private func processHeaders(_ message: Message, from id: PeerID) async throws {
+    private func processHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { return }
 
         guard let headersMessage = HeadersMessage(message.payload) else {
@@ -604,7 +604,7 @@ public actor NodeService: Sendable {
         await requestNextMissingBlocks(id)
     }
 
-    func processBlock(_ message: Message, from id: PeerID) async throws {
+    func processBlock(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let block = try? Block(binaryData: message.payload) else {
@@ -624,7 +624,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    func processGetData(_ message: Message, from id: PeerID) async throws {
+    func processGetData(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let getDataMessage = GetDataMessage(message.payload) else {
@@ -657,7 +657,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    func processInventory(_ message: Message, from id: PeerID) async throws {
+    func processInventory(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let inventoryMessage = InventoryMessage(message.payload) else {
@@ -685,7 +685,7 @@ public actor NodeService: Sendable {
         enqueue(.getdata, payload: getData.data, to: id)
     }
 
-    func processTx(_ message: Message, from id: PeerID) async throws {
+    func processTx(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         let tx: Transaction
@@ -698,7 +698,7 @@ public actor NodeService: Sendable {
         try await blockchain.addTransaction(tx)
     }
 
-    func processCompactBlock(_ message: Message, from id: PeerID) async throws {
+    func processCompactBlock(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let compactBlockMessage = CompactBlockMessage(message.payload) else {
@@ -715,7 +715,7 @@ public actor NodeService: Sendable {
         }
 
         let missingTxIndices = txs.enumerated().compactMap {
-            if $0.element == .none { $0.offset } else { .none }
+            if $0.element == nil { $0.offset } else { nil }
         }
 
         if missingTxIndices.isEmpty {
@@ -729,7 +729,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    func processGetBlockTxs(_ message: Message, from id: PeerID) async throws(Error) {
+    func processGetBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
         guard let _ = state.peers[id] else { preconditionFailure() }
         guard let getBlockTxsMessage = GetBlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
@@ -745,7 +745,7 @@ public actor NodeService: Sendable {
         enqueue(.blocktxn, payload: blockTxs.data, to: id)
     }
 
-    func processBlockTxs(_ message: Message, from id: PeerID) async throws(Error) {
+    func processBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
         guard let peer = state.peers[id] else { preconditionFailure() }
 
         guard let blockTxsMessage = BlockTransactionsMessage(message.payload) else {
@@ -753,11 +753,11 @@ public actor NodeService: Sendable {
         }
 
         guard var pendingBlockTxs = peer.pendingBlockTxs else { return }
-        state.peers[id]?.pendingBlockTxs = .none
+        state.peers[id]?.pendingBlockTxs = nil
 
         var j = 0
         for i in pendingBlockTxs.indices {
-            if pendingBlockTxs[i] == .none {
+            if pendingBlockTxs[i] == nil {
                 pendingBlockTxs[i] = blockTxsMessage.txs[j]
                 j += 1
             }

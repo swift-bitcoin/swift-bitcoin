@@ -8,7 +8,7 @@ extension SecretKey {
         PublicKey(self, requireEvenY: true)
     }
 
-    public func taprootSecretKey(_ scriptTree: TapscriptTree? = .none) -> Self {
+    public func taprootSecretKey(_ scriptTree: TapscriptTree? = nil) -> Self {
         let merkleRoot = if let scriptTree { scriptTree.calcMerkleRoot().1 } else { Data() }
         let tweak = taprootInternalKey.tapTweak(merkleRoot: merkleRoot)
         return tweakXOnly(tweak)
@@ -25,7 +25,7 @@ extension PublicKey {
     }
 
     /// Used in BitcoinWallet/TaprootAddress.
-    package func taprootOutputKey(_ scriptTree: TapscriptTree? = .none) -> PublicKey {
+    package func taprootOutputKey(_ scriptTree: TapscriptTree? = nil) -> PublicKey {
         let merkleRoot = if let scriptTree { scriptTree.calcMerkleRoot().1 } else { Data() }
         return taprootOutputKey(merkleRoot: merkleRoot)
     }

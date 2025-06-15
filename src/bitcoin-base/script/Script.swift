@@ -169,7 +169,7 @@ public struct Script: Equatable, Sendable {
         [.zero, .pushBytes(hash)]
     }
 
-    public static func payToTaproot(internalKey: PublicKey, script: TapscriptTree? = .none) -> Self {
+    public static func payToTaproot(internalKey: PublicKey, script: TapscriptTree? = nil) -> Self {
         precondition(internalKey.hasEvenY)
         let outputKey = internalKey.taprootOutputKey(script)
         return payToTaproot(outputKey)

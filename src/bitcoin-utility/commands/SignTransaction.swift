@@ -5,7 +5,7 @@ import BitcoinWallet
 import Foundation
 
 /// Signs a transaction input using a private key.
-struct SignTx: ParsableCommand {
+struct SignTransaction: ParsableCommand {
 
     static let configuration = CommandConfiguration(
         abstract: "Signs a transaction input using a private key."

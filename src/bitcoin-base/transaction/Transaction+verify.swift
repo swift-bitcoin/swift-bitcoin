@@ -88,8 +88,8 @@ extension Transaction {
                     }
                 } else {
                     isSegwit = false
-                    witnessVersion = .none
-                    witnessProgram = .none
+                    witnessVersion = nil
+                    witnessProgram = nil
 
                     try context.run(redeemScript, stack: stack)
                     if let last = context.stack.last, !ScriptBool(last).value {
@@ -99,8 +99,8 @@ extension Transaction {
 
             } else {
                 isSegwit = false
-                witnessVersion = .none
-                witnessProgram = .none
+                witnessVersion = nil
+                witnessProgram = nil
             }
 
             if !isSegwit && config.contains(.cleanStack) && context.stack.count != 1 { // BIP62, BIP16
@@ -193,7 +193,7 @@ extension Transaction {
         let outputKeyData = witnessProgram
 
         // this last element is called annex a and is removed from the witness stack
-        if witness.taprootAnnex != .none { stack.removeLast() }
+        if witness.taprootAnnex != nil { stack.removeLast() }
 
         // If there is exactly one element left in the witness stack, key path spending is used:
         if stack.count == 1 {
@@ -201,8 +201,7 @@ extension Transaction {
                 fatalError()
             }
             let extendedSig = try ExtendedSig(schnorrData: stack[0])
-            let hasher = SignatureHasher(tx: self, input: input, prevouts: prevouts, sighashType: extendedSig.sighashType)
-            let sighash = hasher.sigHashSchnorr(sighashCache: &context.sighashCache)
+            let sighash = SignatureHash.Taproot(tx: self, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, sighashCache: &context.sighashCache).data
             guard extendedSig.sig.verify(hash: sighash, pubkey: pubkey) else {
                 throw ScriptError.invalidSchnorrSignature
             }

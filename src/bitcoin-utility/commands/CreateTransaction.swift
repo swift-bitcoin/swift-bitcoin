@@ -4,7 +4,7 @@ import BitcoinWallet
 import Foundation
 
 /// Creates an unsigned raw transaction with the specified inputs and outputs.
-struct CreateTx: ParsableCommand {
+struct CreateTransaction: ParsableCommand {
 
     static let configuration = CommandConfiguration(
         abstract: "Creates an unsigned raw transaction with the specified inputs and outputs."

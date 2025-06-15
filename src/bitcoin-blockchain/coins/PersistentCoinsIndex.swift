@@ -13,7 +13,7 @@ actor PersistentCoinsIndex: CoinsIndex {
     }
 
     init(path: FilePath) {
-        db = try! Database(environment: .init(path: path.appending("coins"), flags: [.noSubDir], maxDBs: 1), name: .none, flags: [.create])
+        db = try! Database(environment: .init(path: path.appending("coins"), flags: [.noSubDir], maxDBs: 1), name: nil, flags: [.create])
     }
 
     private let db: Database!
@@ -27,7 +27,7 @@ actor PersistentCoinsIndex: CoinsIndex {
         if let data {
             return try! UnspentOutput(binaryData: data)
         } else {
-            return .none
+            return nil
         }
     }
 

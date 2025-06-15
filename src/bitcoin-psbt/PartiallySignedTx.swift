@@ -255,24 +255,24 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
 
         mutating func combine(with other: PartiallySignedTx.In) {
-            if witnessPrevout == .none, let newValue = other.witnessPrevout {
+            if witnessPrevout == nil, let newValue = other.witnessPrevout {
                 witnessPrevout = newValue
             }
             partialSigs.merge(other.partialSigs) { (current, _) in current }
-            if sighashType == Optional.none, let newValue = other.sighashType {
+            if sighashType == nil, let newValue = other.sighashType {
                 sighashType = newValue
             }
-            if redeemScript == .none, let newValue = other.redeemScript {
+            if redeemScript == nil, let newValue = other.redeemScript {
                 redeemScript = newValue
             }
-            if witnessScript == .none, let newValue = other.witnessScript {
+            if witnessScript == nil, let newValue = other.witnessScript {
                 witnessScript = newValue
             }
             derivationPaths.merge(other.derivationPaths) { (current, _) in current }
-            if finalScriptSig == .none, let newValue = other.finalScriptSig {
+            if finalScriptSig == nil, let newValue = other.finalScriptSig {
                 finalScriptSig = newValue
             }
-            if finalScriptWitness == .none, let newValue = other.finalScriptWitness {
+            if finalScriptWitness == nil, let newValue = other.finalScriptWitness {
                 finalScriptWitness = newValue
             }
             for newValue in other.ripemd160Preimages {
@@ -464,10 +464,10 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
 
         mutating func combine(with other: PartiallySignedTx.Out) {
-            if redeemScript == .none, let newValue = other.redeemScript {
+            if redeemScript == nil, let newValue = other.redeemScript {
                 redeemScript = newValue
             }
-            if witnessScript == .none, let newValue = other.witnessScript {
+            if witnessScript == nil, let newValue = other.witnessScript {
                 witnessScript = newValue
             }
             derivationPaths.merge(other.derivationPaths) { (current, _) in current }
@@ -476,11 +476,11 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
     }
 
-    public init(_ tx: Transaction, xpubDerivations: [ExtendedKey : DerivationPath] = [:], proprietaryInfo: ProprietaryInfo = [:], ins: [In]? = .none, outs: [Out]? = .none) throws(PartiallySignedTxError) {
+    public init(_ tx: Transaction, xpubDerivations: [ExtendedKey : DerivationPath] = [:], proprietaryInfo: ProprietaryInfo = [:], ins: [In]? = nil, outs: [Out]? = nil) throws(PartiallySignedTxError) {
         try self.init(tx, xpubDerivations: xpubDerivations, proprietaryInfo: proprietaryInfo, ins: ins, outs: outs, additionalTypes: [:])
     }
 
-    private init(_ tx: Transaction, xpubDerivations: [ExtendedKey : DerivationPath], proprietaryInfo: ProprietaryInfo, ins: [In]? = .none, outs: [Out]? = .none, additionalTypes: KeyedValues) throws(PartiallySignedTxError) {
+    private init(_ tx: Transaction, xpubDerivations: [ExtendedKey : DerivationPath], proprietaryInfo: ProprietaryInfo, ins: [In]? = nil, outs: [Out]? = nil, additionalTypes: KeyedValues) throws(PartiallySignedTxError) {
         let ins = if let ins { ins } else { [In](repeating: In(), count: tx.ins.count) }
         let outs = if let outs { outs } else { [Out](repeating: Out(), count: tx.outs.count) }
         // TODO: Maybe extract signatures from signed transaction?
@@ -589,12 +589,12 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
 
         var ins: [In] = []
         for _ in tx.ins {
-            ins.append(try In(from: &decoder, encoding: .none))
+            ins.append(try In(from: &decoder, encoding: nil))
         }
 
         var outs: [Out] = []
         for _ in tx.outs {
-            outs.append(try Out(from: &decoder, encoding: .none))
+            outs.append(try Out(from: &decoder, encoding: nil))
         }
         try self.init(tx, xpubDerivations: xpubDerivations, proprietaryInfo: proprietaryInfo, ins: ins, outs: outs, additionalTypes: additionalTypes)
     }

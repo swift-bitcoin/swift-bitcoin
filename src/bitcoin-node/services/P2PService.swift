@@ -30,7 +30,7 @@ actor P2PService: Service {
 
     private let listenRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
 
-    private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<Message, Message>, Never>?
+    private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<NetworkMessage, NetworkMessage>, Never>?
     private var peerIDs = [UUID]()
 
     var status: StatusRPC.Result.P2PService {
@@ -60,10 +60,10 @@ actor P2PService: Service {
 
     func stopListening() async throws {
         try await serverChannel?.channel.close()
-        serverChannel = .none
+        serverChannel = nil
         listening = false
-        host = .none
-        port = .none
+        host = nil
+        port = nil
         sessionConnections = 0
         activeConnections = 0
         await node.resetAddress()
@@ -105,7 +105,7 @@ actor P2PService: Service {
                     DebugInboundEventsHandler(),
                     DebugOutboundEventsHandler()
                 ])
-                return try NIOAsyncChannel<Message, Message>(wrappingChannelSynchronously: connection)
+                return try NIOAsyncChannel<NetworkMessage, NetworkMessage>(wrappingChannelSynchronously: connection)
             }
         }
         self.serverChannel = serverChannel

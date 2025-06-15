@@ -34,7 +34,7 @@ actor TransientBlockIndex: BlockIndex {
         } else {
             BlockRef?.none
         }
-        guard byID.isEmpty || previous != .none else {
+        guard byID.isEmpty || previous != nil else {
             throw BlockIndexError.parentMissing
         }
         let height = if let previous { previous.height + 1 } else { 0 }
@@ -62,7 +62,7 @@ actor TransientBlockIndex: BlockIndex {
     }
 
     func has(_ id: Block.ID) -> Bool {
-        byID[id] != .none
+        byID[id] != nil
     }
 
     func get(_ id: Block.ID) -> BlockRef { // TODO: Probably throws and return value nil-able
@@ -70,7 +70,7 @@ actor TransientBlockIndex: BlockIndex {
     }
 
     func get(at height: Int) -> BlockRef {
-        // guard height < byHeight.endIndex else { return .none }
+        // guard height < byHeight.endIndex else { return nil }
         get(byHeight[height])
     }
 
@@ -81,7 +81,7 @@ actor TransientBlockIndex: BlockIndex {
     func getParent(for childID: Block.ID) -> BlockRef? {
         let child = get(childID)
         if child.previous == Block.nullParent {
-            return .none
+            return nil
         }
         return get(child.previous)
     }
@@ -94,7 +94,7 @@ actor TransientBlockIndex: BlockIndex {
         }
         for ref in refs {
             if ref.status < .full {
-                byID[ref.blockID] = .none
+                byID[ref.blockID] = nil
 
             } else {
                 update(ref.blockID, status: .stale)

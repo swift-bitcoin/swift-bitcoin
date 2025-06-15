@@ -192,7 +192,11 @@ extension ScriptRuntime {
             throw ScriptError.undefinedSighashType
         }
 
-        let sighash = SignatureHasher(tx: tx, input: input, sigVersion: sigVersion, prevout: prevout, scriptCode: scriptCode, sighashType: sighashType).value
+        let sighash = if sigVersion == .base {
+            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode).data
+        } else {
+            SignatureHash.Segwit(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode, prevout: prevout).data
+        }
         if let pubkey = PublicKey(pubkeyData) {
             return extendedSig.sig.verify(hash: sighash, pubkey: pubkey)
         }
@@ -213,8 +217,7 @@ extension ScriptRuntime {
 
             let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
             let extendedSig = try ExtendedSig(schnorrData: sig)
-            let hasher = SignatureHasher(tx: tx, input: input, prevouts: prevouts, tapscriptExtension: ext, sighashType: extendedSig.sighashType)
-            let sighash = hasher.sigHashSchnorr(sighashCache: &sighashCache)
+            let sighash = SignatureHash.Taproot(tx: tx, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, tapscriptExtension: ext, sighashCache: &sighashCache).data
 
             // Validation failure in this case immediately terminates script execution with failure.
             guard extendedSig.sig.verify(hash: sighash, pubkey: pubkey) else {

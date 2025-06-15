@@ -15,7 +15,7 @@ _BitcoinRPC_ example:
 import BitcoinRPC
 
 let command = GetBlockchainInfoCommand(blockchain: satoshiChain)
-let output = await command.run(.init(id: "1", method: "get-blockchain-info", params: .none))
+let output = await command.run(.init(id: "1", method: "get-blockchain-info", params: nil))
 let result = try #require(output.result)
 guard case .string(let blockchainInfo) = result else { fatalError() }
 print(blockchainInfo)

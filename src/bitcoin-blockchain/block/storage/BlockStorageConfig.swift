@@ -2,7 +2,7 @@ import _NIOFileSystem
 
 struct BlockStorageConfig {
     // TODO: change default maxFileSize to 0 and let blockchain service determine it.
-    init(path: FilePath? = .none, magic: Int = 0, maxBlock: Int = 0, maxFileSize: Int = 1000) {
+    init(path: FilePath? = nil, magic: Int = 0, maxBlock: Int = 0, maxFileSize: Int = 1000) {
         self.path = path
         self.magic = magic
         self.maxBlock = maxBlock

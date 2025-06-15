@@ -10,12 +10,12 @@ final class BlockSyncTests {
     var aliceChain = BlockchainService?.none
     var alice = NodeService?.none
     var peerB = UUID?.none
-    var aliceToBob = AsyncChannel<Message>.Iterator?.none
+    var aliceToBob = AsyncChannel<NetworkMessage>.Iterator?.none
 
     var bobChain = BlockchainService?.none
     var bob = NodeService?.none
     var peerA = UUID?.none
-    var bobToAlice = AsyncChannel<Message>.Iterator?.none
+    var bobToAlice = AsyncChannel<NetworkMessage>.Iterator?.none
 
     init() async throws {
         let aliceChain = BlockchainService()

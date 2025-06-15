@@ -23,7 +23,7 @@ public struct BinaryDecoder {
     }
 
     /// Decodes data of the specified length or until there are no more bytes available.
-    @discardableResult public mutating func decode(_ count: Int? = .none, byteSwapped: Bool = false) throws -> Data {
+    @discardableResult public mutating func decode(_ count: Int? = nil, byteSwapped: Bool = false) throws -> Data {
         let remaining = data.count - offset
         let count = if let count { count }
                     else if let limit { limit }
@@ -63,7 +63,7 @@ public struct BinaryDecoder {
         try T(from: &self, encoding: encoding)
     }
 
-    public mutating func decodeArray<T: BinaryEncodingPrimitive>(count: Int? = .none) throws -> [T] {
+    public mutating func decodeArray<T: BinaryEncodingPrimitive>(count: Int? = nil) throws -> [T] {
         let elementSize = MemoryLayout<T>.size
         let userByteCount = if let count { count * elementSize } else { Int?.none }
         let remaining = data.count - offset
@@ -103,7 +103,7 @@ public struct BinaryDecoder {
 
     /// Resets the limit to none.
     public mutating func resetLimit() {
-        limit = .none
+        limit = nil
     }
 
     /// Sets a checkpoint to which we might want to revert if something fails.
@@ -116,8 +116,8 @@ public struct BinaryDecoder {
 
     /// Clears a previously set checkpoint.
     public mutating func clearCheckpoint() {
-        checkpoint = .none
-        checkpointLimit = .none
+        checkpoint = nil
+        checkpointLimit = nil
     }
 
     /// Rolls back the offset and the limit to the values when ``setCheckpoint()`` was last called.
@@ -135,7 +135,7 @@ public struct BinaryDecoder {
 
     public func peek() -> UInt8? {
         guard offset < data.count else {
-            return .none
+            return nil
         }
         return data[offset]
     }

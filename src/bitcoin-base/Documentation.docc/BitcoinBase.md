@@ -19,7 +19,7 @@ let prevout = previousTx.outs[0]
 let outpoint = previousTx.outpoint(0)
 
 // Create a new transaction spending from the previous transaction's outpoint.
-let unsignedInput = TxInput(outpoint: outpoint)
+let unsignedInput = Transaction.Input(outpoint: outpoint)
 
 // Specify the transaction's output. We'll leave 1000 sats on the table to tip miners. We'll re-use the origin address for simplicity.
 let unsignedTx = Transaction(

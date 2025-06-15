@@ -27,7 +27,7 @@ struct LMDBTests {
     }
 
     @Test func createUnnamedDatabase() throws {
-        let db = try createDB(.none)
+        let db = try createDB(nil)
         clearDB(db)
     }
 
@@ -234,7 +234,7 @@ struct LMDBTests {
     }
 }
 
-private func createDB(_ name: String?, path: FilePath? = .none, envFlags: Environment.Flags = [], dbFlags: Database.Flags = [.create]) throws -> Database {
+private func createDB(_ name: String?, path: FilePath? = nil, envFlags: Environment.Flags = [], dbFlags: Database.Flags = [.create]) throws -> Database {
     let fm = FileManager.default
     let envPath: FilePath
     if let path {

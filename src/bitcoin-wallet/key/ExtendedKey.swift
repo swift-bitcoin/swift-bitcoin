@@ -31,8 +31,8 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         try self.init(secretKey: secretKey, chaincode: chaincode, parentFingerprint: 0, depth: 0, keyIndex: 0, mainnet: mainnet)
     }
 
-    fileprivate init(secretKey: SecretKey? = .none, pubkey: PublicKey? = .none, chaincode: Data, parentFingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws(Error) {
-        guard secretKey == .none && pubkey != .none || (secretKey != .none && pubkey == .none) else {
+    fileprivate init(secretKey: SecretKey? = nil, pubkey: PublicKey? = nil, chaincode: Data, parentFingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws(Error) {
+        guard secretKey == nil && pubkey != nil || (secretKey != nil && pubkey == nil) else {
             preconditionFailure()
         }
         guard depth != 0 || parentFingerprint == 0 else {
@@ -100,11 +100,11 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         let tweak = hmacResult.prefix(32)
         let newSecretKey: SecretKey? = if let secretKey {
             secretKey.tweak(tweak)
-        } else { .none }
+        } else { nil }
 
         let newPubkey: PublicKey? = if let pubkey = self.pubkey {
             pubkey.tweak(tweak)
-        } else { .none }
+        } else { nil }
 
         guard let ret = try? Self(secretKey: newSecretKey, pubkey: newPubkey, chaincode: chaincode, parentFingerprint: pubkey.fingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
             preconditionFailure()
@@ -139,7 +139,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
     public var neutered: Self {
         guard let secretKey else { preconditionFailure() }
         let pubkey = PublicKey(secretKey)
-        guard let ret = try? Self(secretKey: .none, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
+        guard let ret = try? Self(secretKey: nil, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
             preconditionFailure()
         }
         return ret

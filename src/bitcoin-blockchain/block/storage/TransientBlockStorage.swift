@@ -22,7 +22,7 @@ actor TransientBlockStorage: BlockStorage {
     func start() async throws(BlockStorageError) {
         status = .starting
         defer { status = .running }
-        guard config.path == .none else { return }
+        guard config.path == nil else { return }
     }
 
     func stop() {

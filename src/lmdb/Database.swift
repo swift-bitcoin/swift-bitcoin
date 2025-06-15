@@ -299,7 +299,7 @@ public final class Database {
     public var first: Data? {
         get throws {
             guard count > 0 else {
-                return .none
+                return nil
             }
             let txn = try Transaction(environment: environment, flags: [.readOnly])
             let cursor = Cursor(database: self, transaction: txn)
@@ -313,7 +313,7 @@ public final class Database {
     public var last: Data? {
         get throws {
             guard count > 0 else {
-                return .none
+                return nil
             }
             let txn = try Transaction(environment: environment, flags: [.readOnly])
             let cursor = Cursor(database: self, transaction: txn)

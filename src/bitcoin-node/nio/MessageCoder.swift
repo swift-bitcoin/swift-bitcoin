@@ -6,27 +6,27 @@ import NIOFoundationCompat
 struct MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
 
     typealias InboundIn = ByteBuffer
-    typealias InboundOut = Message
-    typealias OutboundIn = Message
+    typealias InboundOut = NetworkMessage
+    typealias OutboundIn = NetworkMessage
     typealias OutboundOut = ByteBuffer
 
     func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
 
-        guard buffer.readableBytes >= Message.payloadSizeEndIndex else {
+        guard buffer.readableBytes >= NetworkMessage.payloadSizeEndIndex else {
             return .needMoreData
         }
 
-        let peek = buffer.readableBytesView.dropFirst(Message.payloadSizeStartIndex)
+        let peek = buffer.readableBytesView.dropFirst(NetworkMessage.payloadSizeStartIndex)
         let payloadLength = Int(peek.withUnsafeBytes {
             $0.loadUnaligned(as: UInt32.self)
         })
 
-        let messageLength = Message.baseSize + payloadLength
+        let messageLength = NetworkMessage.baseSize + payloadLength
         guard let messageData = buffer.readData(length: messageLength) else {
             return .needMoreData
         }
 
-        guard let message = Message(messageData) else {
+        guard let message = NetworkMessage(messageData) else {
             print("Malformed message")
             // TODO: Throw corresponding errors.
             return .continue

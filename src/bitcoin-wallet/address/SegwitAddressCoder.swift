@@ -118,7 +118,7 @@ private func convertBits(from: Int, to: Int, pad: Bool, idata: Data) -> Data? {
             odata.append(UInt8((acc << (to - bits)) & maxv))
         }
     } else if (bits >= from || ((acc << (to - bits)) & maxv) != 0) {
-        return .none
+        return nil
     }
     return odata
 }

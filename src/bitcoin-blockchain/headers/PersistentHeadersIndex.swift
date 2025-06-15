@@ -20,7 +20,7 @@ actor PersistentHeadersIndex: HeadersIndex {
 
     var first: Block? {
         guard !isEmpty else {
-            return .none
+            return nil
         }
         guard let id = try! byPositionDB.first else {
             fatalError()
@@ -30,7 +30,7 @@ actor PersistentHeadersIndex: HeadersIndex {
 
     var last: Block? {
         guard !isEmpty else {
-            return .none
+            return nil
         }
         guard let id = try! byPositionDB.last else {
             fatalError()
@@ -45,7 +45,7 @@ actor PersistentHeadersIndex: HeadersIndex {
     }
 
     func has(_ id: Block.ID) -> Bool {
-        try! db.get(id) != .none
+        try! db.get(id) != nil
     }
 
     func get(_ id: Block.ID) -> Block? { // TODO: Probably should throw
@@ -53,7 +53,7 @@ actor PersistentHeadersIndex: HeadersIndex {
         if let data {
             return try! Block(binaryData: data)
         } else {
-            return .none
+            return nil
         }
     }
 

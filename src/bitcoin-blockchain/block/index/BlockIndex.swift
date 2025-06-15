@@ -8,7 +8,7 @@ protocol BlockIndex: Sendable {
     var lastHeaderID: Block.ID { get async }
 
     @discardableResult
-    func add(_ block: Block, locator: BlockStorageLocator? /* = .none */, status: BlockRef.ValidationStatus /* = .header */) async throws(BlockIndexError) -> BlockRef
+    func add(_ block: Block, locator: BlockStorageLocator? /* = nil */, status: BlockRef.ValidationStatus /* = .header */) async throws(BlockIndexError) -> BlockRef
     func add(_ blockRef: BlockRef) async
     func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) async
     func update(_ id: Block.ID, status: BlockRef.ValidationStatus) async

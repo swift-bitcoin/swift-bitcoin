@@ -7,7 +7,7 @@ extension ScriptRuntime {
     mutating func opIf(isNotIf: Bool = false) throws {
         pendingElseOps += 1
         guard evaluateBranch else {
-            pendingIfOps.append(.none)
+            pendingIfOps.append(nil)
             return
         }
         let first = try getUnaryParam()
