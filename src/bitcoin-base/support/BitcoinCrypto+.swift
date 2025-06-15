@@ -64,7 +64,7 @@ extension PublicKey {
     }
 }
 
-extension Signature {
+extension ECDSASignature {
     /// Standard Schnorr signature extended with the sighash type byte.
     public static let schnorrSignatureExtendedLength = 65
 }

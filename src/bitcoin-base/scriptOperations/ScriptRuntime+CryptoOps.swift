@@ -172,7 +172,7 @@ extension ScriptRuntime {
         // Empty signature. Not strictly DER encoded, but allowed to provide a
         // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
         guard /* !sig.isEmpty, */
-              let extendedSig = ExtendedSig(sig, skipCheck: true) else {
+              let extendedSig = ECDSASignature.Extended(sig, skipCheck: true) else {
             return false
         }
 
@@ -185,8 +185,7 @@ extension ScriptRuntime {
             throw ScriptError.nonLowSSignature
         }
 
-        // sighashType is never nil for ECDSA
-        guard let sighashType = extendedSig.sighashType else { preconditionFailure() }
+        let sighashType = extendedSig.sighashType
 
         if config.contains(.strictEncoding) && !sighashType.isDefined {
             throw ScriptError.undefinedSighashType
@@ -216,7 +215,7 @@ extension ScriptRuntime {
         if let pubkey = PublicKey(xOnly: pubkeyData), !sig.isEmpty {
 
             let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
-            let extendedSig = try ExtendedSig(schnorrData: sig)
+            let extendedSig = try SchnorrSignature.Extended(sig)
             let sighash = SignatureHash.Taproot(tx: tx, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, tapscriptExtension: ext, sighashCache: &sighashCache).data
 
             // Validation failure in this case immediately terminates script execution with failure.

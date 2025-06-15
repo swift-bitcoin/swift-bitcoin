@@ -36,7 +36,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         public init(
             prevoutTx: Transaction? = nil,
             witnessPrevout: TransactionOutput? = nil,
-            partialSigs: [PublicKey : ExtendedSig] = [:],
+            partialSigs: [PublicKey : ECDSASignature.Extended] = [:],
             sighashType: SighashType? = nil,
             redeemScript: Script? = nil,
             witnessScript: Script? = nil,
@@ -82,7 +82,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             var prevoutTx = Transaction?.none
             var witnessPrevout = TransactionOutput?.none
 
-            var partialSigs = [PublicKey : ExtendedSig]()
+            var partialSigs = [PublicKey : ECDSASignature.Extended]()
             var sighashType = SighashType?.none
 
             var redeemScript = Script?.none
@@ -123,7 +123,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard let pubkey = PublicKey(k.data) else {
                         throw .invalidPublicKey
                     }
-                    guard let sig = ExtendedSig(v) else {
+                    guard let sig = ECDSASignature.Extended(v) else {
                         throw .invalidSignature
                     }
                     partialSigs[pubkey] = sig
@@ -231,7 +231,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
 
         public internal(set) var prevoutTx: Transaction?
         public internal(set) var witnessPrevout: TransactionOutput?
-        public internal(set) var partialSigs: [PublicKey : ExtendedSig]
+        public internal(set) var partialSigs: [PublicKey : ECDSASignature.Extended]
         public internal(set) var sighashType: SighashType?
         public internal(set) var redeemScript: Script?
         public internal(set) var witnessScript: Script?

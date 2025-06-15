@@ -5,7 +5,7 @@ import AsyncAlgorithms
 import BitcoinBlockchain
 @testable import BitcoinTransport
 
-final class NodeServiceTests {
+struct NodeServiceTests: ~Copyable {
 
     var satoshiChain = BlockchainService?.none
     var satoshi = NodeService?.none

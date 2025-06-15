@@ -10,11 +10,11 @@ extension Transaction {
     // MARK: - Instance Methods
 
     public func verifyScript(prevouts: [TransactionOutput], config: ScriptConfig = .standard) -> Bool {
-        var context = ScriptRuntime(config, tx: self, prevouts: prevouts)
+        var runtime = ScriptRuntime(config, tx: self, prevouts: prevouts)
         for i in ins.indices {
-            context.input = i
+            runtime.input = i
             do {
-                try verifyScript(&context)
+                try verifyScript(&runtime)
             } catch {
                 // print("\(error) \(error.localizedDescription)")
                 return false
@@ -24,12 +24,12 @@ extension Transaction {
     }
 
     /// Initial simplified version of transaction verification that allows for script execution.
-    func verifyScript(_ context: inout ScriptRuntime) throws {
-        let input = context.input
-        let prevouts = context.prevouts
-        let config = context.config
+    func verifyScript(_ runtime: inout ScriptRuntime) throws {
+        let input = runtime.input
+        let prevouts = runtime.prevouts
+        let config = runtime.config
 
-        precondition(context.tx == self && prevouts.count == ins.count)
+        precondition(runtime.tx == self && prevouts.count == ins.count)
 
         let scriptSig = ins[input].script
         let scriptPubKey = prevouts[input].script
@@ -59,12 +59,12 @@ extension Transaction {
             witnessProgram = scriptPubKey.witnessProgram
         } else {
             // Execute scriptSig
-            try context.run(scriptSig, sigVersion: .base)
-            let stackTmp = context.stack // BIP16
+            try runtime.run(scriptSig, sigVersion: .base)
+            let stackTmp = runtime.stack // BIP16
 
             // scriptSig and scriptPubKey must be evaluated sequentially on the same stack rather than being simply concatenated (see CVE-2010-5141)
-            try context.run(scriptPubKey, stack: stackTmp)
-            if let last = context.stack.last, !ScriptBool(last).value {
+            try runtime.run(scriptPubKey, stack: stackTmp)
+            if let last = runtime.stack.last, !ScriptBool(last).value {
                 throw ScriptError.falseReturned
             }
 
@@ -91,8 +91,8 @@ extension Transaction {
                     witnessVersion = nil
                     witnessProgram = nil
 
-                    try context.run(redeemScript, stack: stack)
-                    if let last = context.stack.last, !ScriptBool(last).value {
+                    try runtime.run(redeemScript, stack: stack)
+                    if let last = runtime.stack.last, !ScriptBool(last).value {
                         throw ScriptError.falseReturned
                     }
                 }
@@ -103,7 +103,7 @@ extension Transaction {
                 witnessProgram = nil
             }
 
-            if !isSegwit && config.contains(.cleanStack) && context.stack.count != 1 { // BIP62, BIP16
+            if !isSegwit && config.contains(.cleanStack) && runtime.stack.count != 1 { // BIP62, BIP16
                 throw ScriptError.uncleanStack
             }
         }
@@ -112,10 +112,10 @@ extension Transaction {
         if isSegwit {
             guard let witnessVersion, let witnessProgram else { preconditionFailure() }
             if witnessVersion == 0 {
-                try verifyWitness(&context, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
+                try verifyWitness(&runtime, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
             } else if witnessVersion == 1 && witnessProgram.count == PublicKey.xOnlyLength && !isPayToScriptHash {
                 // BIP341
-                try verifyTaproot(&context, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
+                try verifyTaproot(&runtime, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
             } else if config.contains(.discourageUpgradableWitnessProgram) {
                 throw ScriptError.disallowedWitnessVersion
             }
@@ -123,8 +123,8 @@ extension Transaction {
         }
     }
 
-    private func verifyWitness(_ context: inout ScriptRuntime, witnessVersion: Int, witnessProgram: Data) throws {
-        let input = context.input
+    private func verifyWitness(_ runtime: inout ScriptRuntime, witnessVersion: Int, witnessProgram: Data) throws {
+        let input = runtime.input
 
         var stack = ins[input].witness.elements
 
@@ -140,10 +140,10 @@ extension Transaction {
             // For P2WPKH witness program, the scriptCode is 0x1976a914{20-byte-pubkey-hash}88ac.
             let witnessScript = Script.segwitPKHScriptCode(witnessProgram)
 
-            try context.run(witnessScript, stack: stack, sigVersion: .witnessV0)
+            try runtime.run(witnessScript, stack: stack, sigVersion: .witnessV0)
 
             // The verification must result in a single TRUE on the stack.
-            guard context.stack.count == 1, let last = context.stack.last, ScriptBool(last).value else {
+            guard runtime.stack.count == 1, let last = runtime.stack.last, ScriptBool(last).value else {
                 throw ScriptError.falseReturned
             }
         } else if witnessProgram.count == SHA256.Digest.byteCount /* 32 */ {
@@ -164,10 +164,10 @@ extension Transaction {
             }
 
             let witnessScript = Script(witnessScriptRaw)
-            try context.run(witnessScript, stack: stack, sigVersion: .witnessV0)
+            try runtime.run(witnessScript, stack: stack, sigVersion: .witnessV0)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
-            guard context.stack.count == 1, let last = context.stack.last, ScriptBool(last).value else {
+            guard runtime.stack.count == 1, let last = runtime.stack.last, ScriptBool(last).value else {
                 throw ScriptError.falseReturned
             }
         } else {
@@ -177,10 +177,10 @@ extension Transaction {
     }
 
     /// BIP341, BIP342
-    private func verifyTaproot(_ context: inout ScriptRuntime, witnessVersion: Int, witnessProgram: Data) throws {
-        let input = context.input
-        let prevouts = context.prevouts
-        let config = context.config
+    private func verifyTaproot(_ runtime: inout ScriptRuntime, witnessVersion: Int, witnessProgram: Data) throws {
+        let input = runtime.input
+        let prevouts = runtime.prevouts
+        let config = runtime.config
 
         let witness = ins[input].witness
         guard config.contains(.taproot) else { return }
@@ -200,8 +200,8 @@ extension Transaction {
             guard let pubkey = PublicKey(xOnly: witnessProgram) else {
                 fatalError()
             }
-            let extendedSig = try ExtendedSig(schnorrData: stack[0])
-            let sighash = SignatureHash.Taproot(tx: self, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, sighashCache: &context.sighashCache).data
+            let extendedSig = try SchnorrSignature.Extended(stack[0])
+            let sighash = SignatureHash.Taproot(tx: self, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, sighashCache: &runtime.sighashCache).data
             guard extendedSig.sig.verify(hash: sighash, pubkey: pubkey) else {
                 throw ScriptError.invalidSchnorrSignature
             }
@@ -260,10 +260,10 @@ extension Transaction {
 
         // The tapscript is executed according to the rules in the following section, with the initial stack as input.
         // If execution fails for any reason, fail.
-        try context.run(tapscript, stack: stack, sigVersion: .witnessV1, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
+        try runtime.run(tapscript, stack: stack, sigVersion: .witnessV1, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
 
         // If the execution results in anything but exactly one element on the stack which evaluates to true with CastToBool(), fail.
-        guard context.stack.count == 1, let last = context.stack.last, ScriptBool(last).value else {
+        guard runtime.stack.count == 1, let last = runtime.stack.last, ScriptBool(last).value else {
             throw ScriptError.falseReturned
         }
 

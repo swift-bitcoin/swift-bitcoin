@@ -41,26 +41,26 @@ struct BaseDocumentationExamples {
         // For pay-to-public key we just need to sign the hash and add the signature to the input's unlock script.
         let sighash0 = SignatureHash(tx: spend, input: 0, sighashType: .all, scriptCode: prevout0.script.binaryData).data
         let sig0 = sk.sign(hash: sighash0)
-        let sigExt0 = ExtendedSig(sig0, .all)
+        let sigExt0 = ECDSASignature.Extended(sig0, sighashType: .all)
         spend.ins[0].script = [.pushBytes(sigExt0.data)]
 
         // For pay-to-public-key-hash we need to also add the public key to the unlock script.
         let sighash1 = SignatureHash(tx: spend, input: 1, sighashType: .all, scriptCode: prevout1.script.binaryData).data
         let sig1 = sk.sign(hash: sighash1)
-        let sigExt1 = ExtendedSig(sig1, .all)
+        let sigExt1 = ECDSASignature.Extended(sig1, sighashType: .all)
         spend.ins[1].script = [.pushBytes(sigExt1.data), .pushBytes(sk.pubkey.data)]
 
         // For pay-to-witness-public-key-hash we sign a different hash and we add the signature and public key to the input's _witness_.
         let sighash2 = SignatureHash.Segwit(tx: spend, input: 2, sighashType: .all, scriptCode: nil, prevout: prevout2).data
 
         let sig2 = sk.sign(hash: sighash2)
-        let sigExt2 = ExtendedSig(sig2, .all)
+        let sigExt2 = ECDSASignature.Extended(sig2, sighashType: .all)
         spend.ins[2].witness = .init([sigExt2.data, sk.pubkey.data])
 
         // For pay-to-taproot with key we need a different sighash and a _tweaked_ version of our secret key to sign it. We use the default sighash type which is equal to _all_.
         let sighash3 = SignatureHash.Taproot(tx: spend, input: 3, sighashType: nil, prevouts: [prevout0, prevout1, prevout2, prevout3]).data
-        let sig3 = sk.taprootSecretKey().sign(hash: sighash3, sigType: .schnorr)
-        let sigExt3 = ExtendedSig(sig3, nil)
+        let sig3 = sk.taprootSecretKey().signSchnorr(hash: sighash3)
+        let sigExt3 = SchnorrSignature.Extended(sig3, sighashType: nil)
         // The witness only requires the signature
         spend.ins[3].witness = .init([sigExt3.data])
 
@@ -89,10 +89,10 @@ struct BaseDocumentationExamples {
         let sighash0 = SignatureHash(tx: spend, input: input, sighashType: sighashType, scriptCode: prevout.script.binaryData).data
 
         let sig0 = sk1.sign(hash: sighash0)
-        let sigExt0 = ExtendedSig(sig0, sighashType)
+        let sigExt0 = ECDSASignature.Extended(sig0, sighashType: sighashType)
 
         let sig1 = sk3.sign(hash: sighash0)
-        let sigExt1 = ExtendedSig(sig1, sighashType)
+        let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
         spend.ins[input].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data)]
@@ -120,10 +120,10 @@ struct BaseDocumentationExamples {
         let sighash0 = SignatureHash(tx: spend, input: input, sighashType: sighashType, scriptCode: redeemScript.binaryData).data
 
         let sig0 = sk1.sign(hash: sighash0)
-        let sigExt0 = ExtendedSig(sig0, sighashType)
+        let sigExt0 = ECDSASignature.Extended(sig0, sighashType: sighashType)
 
         let sig1 = sk3.sign(hash: sighash0)
-        let sigExt1 = ExtendedSig(sig1, sighashType)
+        let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
         spend.ins[input].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data), .encodeMinimally(redeemScript.binaryData)]
@@ -155,10 +155,10 @@ struct BaseDocumentationExamples {
         let sighash0 = SignatureHash.Segwit(tx: spend, input: input, sighashType: sighashType, scriptCode: redeemScript.binaryData, prevout: prevout).data
 
         let sig0 = sk1.sign(hash: sighash0)
-        let sigExt0 = ExtendedSig(sig0, sighashType)
+        let sigExt0 = ECDSASignature.Extended(sig0, sighashType: sighashType)
 
         let sig1 = sk3.sign(hash: sighash0)
-        let sigExt1 = ExtendedSig(sig1, sighashType)
+        let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
         spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, redeemScript.binaryData])
@@ -194,7 +194,7 @@ struct BaseDocumentationExamples {
         let sighashType = SighashType.all
         let sighash = SignatureHash.Segwit(tx: spend, input: input, sighashType: sighashType, scriptCode: scriptCode, prevout: prevout).data
         let sig = sk.sign(hash: sighash)
-        let sigExt = ExtendedSig(sig, sighashType)
+        let sigExt = ECDSASignature.Extended(sig, sighashType: sighashType)
 
         spend.ins[input].witness = .init([sigExt.data, pubkey.data])
         spend.ins[input].script = [.encodeMinimally(redeemScript.binaryData)]
@@ -228,10 +228,10 @@ struct BaseDocumentationExamples {
         let sighash0 = SignatureHash.Segwit(tx: spend, input: input, sighashType: sighashType, scriptCode: witnessScript.binaryData, prevout: prevout).data
 
         let sig0 = sk1.sign(hash: sighash0)
-        let sigExt0 = ExtendedSig(sig0, sighashType)
+        let sigExt0 = ECDSASignature.Extended(sig0, sighashType: sighashType)
 
         let sig1 = sk3.sign(hash: sighash0)
-        let sigExt1 = ExtendedSig(sig1, sighashType)
+        let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
 
@@ -280,10 +280,10 @@ struct BaseDocumentationExamples {
 
         let sighashType = SighashType?.none
         let sighash = SignatureHash.Taproot(tx: spend, input: input, sighashType: sighashType, prevouts: prevouts, tapscriptExtension: .init(tapLeafHash: leafHashes[leafIndex])).data
-        let sig1 = sk1.sign(hash: sighash, sigType: .schnorr)
-        let sigExt1 = ExtendedSig(sig1, sighashType)
-        let sig3 = sk3.sign(hash: sighash, sigType: .schnorr)
-        let sigExt3 = ExtendedSig(sig3, sighashType)
+        let sig1 = sk1.signSchnorr(hash: sighash)
+        let sigExt1 = SchnorrSignature.Extended(sig1, sighashType: sighashType)
+        let sig3 = sk3.signSchnorr(hash: sighash)
+        let sigExt3 = SchnorrSignature.Extended(sig3, sighashType: sighashType)
 
         spend.ins[input].witness = .init([
             sigExt3.data,

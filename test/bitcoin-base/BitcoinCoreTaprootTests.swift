@@ -43,9 +43,9 @@ struct BitcoinCoreTaprootTests {
                 var successIns = unsignedTx.ins
                 successIns[inIndex] = successIn
                 let successTx = Transaction(version: unsignedTx.version, locktime: unsignedTx.locktime, ins: successIns, outs: unsignedTx.outs)
-                var context = ScriptRuntime(testCase.final ? config : [], tx: successTx, input: inIndex, prevouts: prevouts)
+                var runtime = ScriptRuntime(testCase.final ? config : [], tx: successTx, input: inIndex, prevouts: prevouts)
                 #expect(throws: Never.self) {
-                    try successTx.verifyScript(&context)
+                    try successTx.verifyScript(&runtime)
                 }
             }
             if let failure = testCase.failure, testCase.final {
@@ -59,10 +59,10 @@ struct BitcoinCoreTaprootTests {
                 var failureIns = unsignedTx.ins
                 failureIns[inIndex] = failureIn
                 let failureTx = Transaction(version: unsignedTx.version, locktime: unsignedTx.locktime, ins: failureIns, outs: unsignedTx.outs)
-                var context = ScriptRuntime(.standard, tx: failureTx, input: inIndex, prevouts: prevouts)
+                var runtime = ScriptRuntime(.standard, tx: failureTx, input: inIndex, prevouts: prevouts)
 
                 #expect(throws: (any Error).self) {
-                    try failureTx.verifyScript(&context)
+                    try failureTx.verifyScript(&runtime)
                 }
             }
         }

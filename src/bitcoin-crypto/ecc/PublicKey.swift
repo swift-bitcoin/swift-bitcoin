@@ -152,7 +152,15 @@ public struct PublicKey: Equatable, Hashable, Sendable, CustomStringConvertible 
         self == PublicKey(secretKey)
     }
 
-    public func verify(_ sig: Signature, for message: String) -> Bool {
+    public func verify(_ sig: ECDSASignature, for message: String) -> Bool {
+        sig.verify(message: message, pubkey: self)
+    }
+
+    public func verify(_ sig: SchnorrSignature, for message: String) -> Bool {
+        sig.verify(message: message, pubkey: self)
+    }
+
+    public func verify(_ sig: RecoverableSignature, for message: String) -> Bool {
         sig.verify(message: message, pubkey: self)
     }
 

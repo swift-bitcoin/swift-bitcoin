@@ -1,6 +1,6 @@
 import Foundation
 
-/// Bitcoin SCRIPT execution context.
+/// Bitcoin SCRIPT execution runtime.
 ///
 /// Use a single `ScriptRuntime` instance to run multiple scripts sequentially.
 public struct ScriptRuntime {

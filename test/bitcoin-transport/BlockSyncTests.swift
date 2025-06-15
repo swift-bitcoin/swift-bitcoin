@@ -5,7 +5,7 @@ import AsyncAlgorithms
 import BitcoinBlockchain
 @testable import BitcoinTransport
 
-final class BlockSyncTests {
+struct BlockSyncTests {
 
     var aliceChain = BlockchainService?.none
     var alice = NodeService?.none
@@ -42,28 +42,20 @@ final class BlockSyncTests {
         aliceToBob = await bob.getChannel(for: peerA).makeAsyncIterator()
     }
 
-    deinit {
+    func cleanUp() async throws {
         if let peerB, let alice {
-            Task {
-                await alice.removePeer(peerB)
-            }
+            await alice.removePeer(peerB)
         }
         if let alice, let aliceChain {
-            Task {
-                await alice.stop()
-                await aliceChain.stop()
-            }
+            await alice.stop()
+            await aliceChain.stop()
         }
         if let peerA, let bob {
-            Task {
-                await bob.removePeer(peerA)
-            }
+            await bob.removePeer(peerA)
         }
         if let bob, let bobChain {
-            Task {
-                await bob.stop()
-                await bobChain.stop()
-            }
+            await bob.stop()
+            await bobChain.stop()
         }
     }
 
@@ -345,5 +337,6 @@ final class BlockSyncTests {
     @Test("Initial Block Download")
     func initialBlockDownload() async throws {
         try await handshake()
+        try await cleanUp()
     }
 }

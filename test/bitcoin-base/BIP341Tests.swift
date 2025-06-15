@@ -473,7 +473,7 @@ struct BIP341Tests {
             } else {
                 hashTypeSuffix = Data()
             }
-            let sig = Signature(hash: sighash, secretKey: tweakedSecretKey, type: .schnorr)
+            let sig = SchnorrSignature(hash: sighash, secretKey: tweakedSecretKey)
             let extSig = sig.data + hashTypeSuffix
             #expect([extSig] == expectedWitness)
         }

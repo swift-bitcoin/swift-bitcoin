@@ -20,7 +20,7 @@ public struct TransactionSigner {
     ///   - tx: A transaction to sign.
     ///   - prevouts: All previous outputs corresponding to each of the transaction's ins.
     ///   - sighashType: An initial, optional signature hash type.
-    public init(tx: Transaction, prevouts: [TransactionOutput], sighashType: SighashType? = nil) {
+    public init(tx: Transaction, prevouts: [TransactionOutput], sighashType: SighashType?) {
         self.tx = tx
         self.prevouts = prevouts
         self.sighashType = sighashType
@@ -33,7 +33,7 @@ public struct TransactionSigner {
     /// The current signature hash type.
     public var sighashType: SighashType?
 
-    public private(set) var lastSig: ExtendedSig?
+    public private(set) var lastSig: ECDSASignature.Extended?
 
     /// Signs a multi-signature input.
     /// - Parameters:
@@ -75,7 +75,7 @@ public struct TransactionSigner {
         var sigs = [Data]()
         for secretKey in secretKeys {
             let sig = secretKey.sign(hash: sighash)
-            let sigExt = ExtendedSig(sig, sighashType)
+            let sigExt = ECDSASignature.Extended(sig, sighashType: sighashType)
             sigs.append(sigExt.data)
             lastSig = sigExt
         }
@@ -135,17 +135,22 @@ public struct TransactionSigner {
             sighash = SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: lockScript.binaryData).data
         }
 
-        let sig = if lockScript.isPayToTaproot {
-            secretKey.taprootSecretKey().sign(hash: sighash, sigType: .schnorr)
+        let sigData: Data
+
+        if lockScript.isPayToTaproot {
+            let sig = secretKey.taprootSecretKey().signSchnorr(hash: sighash)
+            sigData = SchnorrSignature.Extended(sig, sighashType: sighashType).data
         } else {
-            secretKey.sign(hash: sighash)
+            guard let sighashType else { preconditionFailure() }
+
+            let sig = secretKey.sign(hash: sighash)
+            let sigExt = ECDSASignature.Extended(sig, sighashType: sighashType)
+            lastSig = sigExt
+            sigData = sigExt.data
         }
 
-        let sigExt = ExtendedSig(sig, sighashType)
-        lastSig = sigExt
-
         // For pay-to-public key we just need to sign the hash and add the signature to the input's unlock script.
-        var witnessData = [sigExt.data]
+        var witnessData = [sigData]
         if lockScript.isPayToPubkeyHash || lockScript.isPayToWitnessKeyHash || lockScript.isPayToScriptHash {
             // For pay-to-public-key-hash we need to also add the public key to the unlock script.
             witnessData.append(secretKey.pubkey.data)

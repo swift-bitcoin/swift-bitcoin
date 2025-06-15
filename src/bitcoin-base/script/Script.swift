@@ -86,9 +86,9 @@ public struct Script: Equatable, Sendable {
 
     /// Simple script execution ``ScriptRuntime``
     public func run(_ config: ScriptConfig = .standard, tx: Transaction = .dummy, input: Int = 0, prevouts: [TransactionOutput] = [], stack: [Data] = [], sigVersion: SigVersion = .base) throws -> [Data] {
-        var context = ScriptRuntime(config, tx: tx, input: input, prevouts: prevouts)
-        try context.run(self, stack: stack, sigVersion: sigVersion)
-        return context.stack
+        var runtime = ScriptRuntime(config, tx: tx, input: input, prevouts: prevouts)
+        try runtime.run(self, stack: stack, sigVersion: sigVersion)
+        return runtime.stack
     }
 
     // MARK: - Type Properties
