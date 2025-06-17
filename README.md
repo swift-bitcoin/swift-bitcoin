@@ -1,4 +1,4 @@
-[![Build Status](https://img.shields.io/github/actions/workflow/status/swift-bitcoin/swift-bitcoin/test.yml)](/swift-bitcoin/swift-bitcoin/actions/workflows/test.yml)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/swift-bitcoin/swift-bitcoin/test.yml)](/swift-bitcoin/actions/workflows/test.yml)
 [![Swift Version](https://img.shields.io/badge/Swift-6.1-gray?&labelColor=F54A2A&logo=swift&logoColor=white)](https://www.swift.org/install/)
 [![Documentation](https://img.shields.io/badge/documentation-blue)](https://swiftbitcoin.org/docs/documentation/bitcoin/)
 [![Blog](https://img.shields.io/badge/blog-purple)](https://swiftbitcoin.org/)
