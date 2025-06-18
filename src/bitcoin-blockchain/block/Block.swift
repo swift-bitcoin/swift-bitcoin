@@ -76,8 +76,8 @@ public struct Block: Equatable, Sendable {
 
     // MARK: - Type Methods
 
-    static func makeGenesisBlock(params: ConsensusParams) -> Self {
-        let genesisTx = Transaction.makeGenesisTx(blockSubsidy: params.blockSubsidy)
+    public static func genesis(_ params: ConsensusParams) -> Self {
+        let genesisTx = Transaction.genesis(params.genesisTxParams)
         let target = params.genesisBlockTarget
         let genesisBlock = Block(
             version: 1,
