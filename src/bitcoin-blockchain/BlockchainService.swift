@@ -107,7 +107,7 @@ public actor BlockchainService: Sendable {
         }
 
         if await blockIndex.height == -1 {
-            let genesisBlock = Block.makeGenesisBlock(params: params)
+            let genesisBlock = Block.genesis(params)
             let locator = try! await blockStorage.store(genesisBlock) // TODO: Throw
             try! await blockIndex.add(genesisBlock, locator: locator, status: .header)
             chainTip = genesisBlock.id
@@ -710,7 +710,7 @@ public actor BlockchainService: Sendable {
     /// Generates a block using the mempool transactions and locks the coinbase reward output to the provided public key hash.
     ///
     /// This function essentially mines a block in current thread so it has the potential to completely block. Future versions of this method will provide asynchronous control via detached background task.
-    @discardableResult public func generateTo(_ script: Script, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now) async -> Block? {
+    @discardableResult public func generateTo(_ script: Script, initialNonce: Int = 0, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now, tag: String? = nil, txVersion: Transaction.Version? = nil) async -> Block? {
         logger.info("Generating blocks with coinbase reward going to public key hash.")
 
         guard await synchronized else {
@@ -729,7 +729,7 @@ public actor BlockchainService: Sendable {
         }
 
         let blockReward = params.blockSubsidy + totalFees
-        let coinbaseTx = Transaction.makeCoinbaseTx(blockHeight: chainTipRef.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot)
+        let coinbaseTx = Transaction.coinbase(version: txVersion, blockHeight: chainTipRef.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot, tag: tag)
 
         let previousBlockHash = chainTip!
         let txs = [coinbaseTx] + mempoolTxs
@@ -737,7 +737,7 @@ public actor BlockchainService: Sendable {
 
         let target = await getNextWorkRequired(forHeight: chainTipRef.height, newBlockTime: blockTime, params: params)
 
-        var nonce = 0
+        var nonce = initialNonce
         var tries = maxTries
         var block: Block
         repeat {

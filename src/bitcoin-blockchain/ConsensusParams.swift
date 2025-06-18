@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinCrypto
 import BitcoinBase
 
 public struct ConsensusParams: Sendable {
@@ -24,7 +25,10 @@ public struct ConsensusParams: Sendable {
         powTargetSpacing: Int,
         powAllowMinDifficultyBlocks: Bool,
         powNoRetargeting: Bool,
-        blockSubsidy: Int = 50 * 100_000_000,
+        blockSubsidy: Amount = 5_000_000_000,
+        genesisMessage: String = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks",
+        genesisScript: Script = [.pushBytes(PublicKey.satoshi.uncompressedData!), .checkSig],
+        genesisReward: Amount = 5_000_000_000,
         genesisBlockTime: Int,
         genesisBlockNonce: Int,
         genesisBlockTarget: Int,
@@ -41,6 +45,9 @@ public struct ConsensusParams: Sendable {
         self.powAllowMinDifficultyBlocks = powAllowMinDifficultyBlocks
         self.powNoRetargeting = powNoRetargeting
         self.blockSubsidy = blockSubsidy
+        self.genesisMessage = genesisMessage
+        self.genesisScript = genesisScript
+        self.genesisReward = genesisReward
         self.genesisBlockTime = genesisBlockTime
         self.genesisBlockNonce = genesisBlockNonce
         self.genesisBlockTarget = genesisBlockTarget
@@ -64,6 +71,9 @@ public struct ConsensusParams: Sendable {
     /// The initial block subsidy which defaults to 5 billion satoshis or 50 bitcoins.
     public var blockSubsidy = Amount(5_000_000_000)
 
+    public let genesisMessage: String
+    public let genesisScript: Script
+    public let genesisReward: Amount
     public let genesisBlockTime: Int
     public let genesisBlockNonce: Int
     public let genesisBlockTarget: Int
@@ -84,6 +94,14 @@ public struct ConsensusParams: Sendable {
         powTargetTimespan / powTargetSpacing
     }
 
+    public var genesisTxParams: Transaction.GenesisParams {
+        .init(
+            timestampMessage: genesisMessage,
+            reward: genesisReward,
+            outputScript: genesisScript
+        )
+    }
+
     public static let mainnet = Self(
         chain: "mainnet",
         magicBytes: 0xd9b4bef9,
@@ -102,42 +120,25 @@ public struct ConsensusParams: Sendable {
         chainData: .init(time: 1723649144, txCount: 1059312821, txRate: 6.721086701157182)
     )
 
-    /// Testnet v3
-    public static let testnet  = Self(
-        chain: "testnet",
-        magicBytes: 0xdab5bffa,
-        powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
-        powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
-        powTargetSpacing: 10 * 60,
-        powAllowMinDifficultyBlocks: true,
-        powNoRetargeting: true,
-        genesisBlockTime: 1296688602,
-        genesisBlockNonce: 2,
-        genesisBlockTarget: 0x207fffff,
-
-        minChainwork: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x20, 0x96, 0x95, 0x16, 0x6b, 0xe8, 0xb6, 0x1f, 0xa9],
-
-        /// Data from RPC: getchaintxstats 4096 000000000000000465b1a66c9f386308e8c75acef9201f3f577811da09fc90ad
-        chainData: .init(time: 1723613341, txCount: 187917082, txRate: 3.265051477698455)
-    )
-
-    /// Testnet v4
-    public static let testnet4 = Self(
+    /// Testnet (v4)
+    /// BIP94
+    public static let testnet = Self(
         chain: "testnet4",
-        magicBytes: 0xdab5bffa,
-        powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+        magicBytes: 0x283f161c,
+        powLimit: Data([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
         powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
         powTargetSpacing: 10 * 60,
         powAllowMinDifficultyBlocks: true,
-        powNoRetargeting: true,
-        genesisBlockTime: 1296688602,
-        genesisBlockNonce: 2,
-        genesisBlockTarget: 0x207fffff,
+        powNoRetargeting: false,
+        genesisMessage: "03/May/2024 000000000000000000001ebd58c244970b3aa9d783bb001011fbe8ea8e98e00e",
+        genesisScript: [Script.Operation.pushBytes(Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])), .checkSig],
+        genesisBlockTime: 1714777860,
+        genesisBlockNonce: 393743547,
+        genesisBlockTarget: 0x1d00ffff,
+        minChainwork: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xd6, 0xdc, 0xe8, 0x65, 0x1b, 0x60, 0x94, 0xe4, 0xc1],
 
-        minChainwork: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5f, 0xaa, 0x15, 0xd0, 0x2e, 0x62, 0x02, 0xf3, 0xba],
-
-        /// Data from RPC: getchaintxstats 4096 000000005be348057db991fa5d89fe7c4695b667cfb311391a8db374b6f681fd
-        chainData: .init(time: 1723651702, txCount: 757229, txRate: 0.01570402633472492)
+        /// Data from RPC: getchaintxstats 4096 0000000000003ed4f08dbdf6f7d6b271a6bcffce25675cb40aa9fa43179a89f3
+        chainData: .init(time: 1741070246, txCount: 7653966, txRate: 1.239174414591965)
     )
 
     public static let regtest = Self(

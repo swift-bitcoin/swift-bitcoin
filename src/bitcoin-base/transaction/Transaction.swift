@@ -82,9 +82,7 @@ public struct Transaction: Equatable, Sendable {
 
     // MARK: - Type Methods
 
-    public static func makeGenesisTx(blockSubsidy: Int) -> Self {
-
-        let genesisMessage = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
+    public static func genesis(_ params: GenesisParams) -> Self {
 
         let genesisTx = Transaction(
             version: .v1,
@@ -94,19 +92,15 @@ public struct Transaction: Equatable, Sendable {
                 script: .init([
                     .pushBytes(Data([0xff, 0xff, 0x00, 0x1d])),
                     .pushBytes(Data([0x04])),
-                    .pushBytes(genesisMessage.data(using: .ascii)!)
+                    .encodeMinimally(params.timestampMessage.data(using: .ascii)!)
                 ]))],
             outs: [
-                .init(value: blockSubsidy,
-                      script: .init([
-                        .pushBytes(PublicKey.satoshi.uncompressedData!),
-                        .checkSig]))
+                .init(value: params.reward, script: params.outputScript)
             ])
-
         return genesisTx
     }
 
-    public static func makeCoinbaseTx(blockHeight: Int, out: TransactionOutput, witnessMerkleRoot: Data) -> Self {
+    public static func coinbase(version: Version? = nil, blockHeight: Int, out: TransactionOutput, witnessMerkleRoot: Data, tag: String? = nil) -> Self {
         // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
         let witnessReservedValue = Data(count: 32)
 
@@ -119,8 +113,13 @@ public struct Transaction: Equatable, Sendable {
             .pushBytes(witnessCommitmentHeader + witnessCommitmentHash),
         ])
 
-        let coinbaseTx = Transaction(version: .v2, ins: [
-            .init(outpoint: .coinbase, script: .init([.encodeMinimally(blockHeight), .zero]), witness: .init([witnessReservedValue]))
+        var ops = [Script.Operation.encodeMinimally(blockHeight), .zero]
+        if let tag, let utf8Data = tag.data(using: .utf8) {
+            ops.append(.encodeMinimally(utf8Data))
+        }
+        let version = version ?? Transaction.Version.current
+        let coinbaseTx = Transaction(version: version, ins: [
+            .init(outpoint: .coinbase, script: .init(ops), witness: .init([witnessReservedValue]))
         ], outs: [
             out,
             .init(value: 0, script: witnessCommitmentScript)

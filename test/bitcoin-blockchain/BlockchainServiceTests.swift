@@ -188,8 +188,8 @@ struct BlockchainServiceTests {
 
     @Test("Difficulty Adjustment")
     func difficultyAdjustment() async throws {
-        let blockchain = BlockchainService(params: .init(
-            chain: "swift-testing",
+        let consensusParams = ConsensusParams(
+            chain: ConsensusParams.swiftTesting.chain,
             magicBytes: 0,
             powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
             powTargetTimespan: 1 * 1 * 10 * 60, // 12 minutes
@@ -199,7 +199,8 @@ struct BlockchainServiceTests {
             genesisBlockTime: 1296688602,
             genesisBlockNonce: 2,
             genesisBlockTarget: 0x207fffff
-        ))
+        )
+        let blockchain = BlockchainService(params: consensusParams)
         await blockchain.start()
         let genesisBlock = await blockchain.genesisBlock
 

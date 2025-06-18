@@ -1,8 +1,9 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/swift-bitcoin/swift-bitcoin/test.yml)](https://github.com/swift-bitcoin/swift-bitcoin/actions/workflows/test.yml)
 [![Swift Version](https://img.shields.io/badge/Swift-6.1-gray?&labelColor=F54A2A&logo=swift&logoColor=white)](https://www.swift.org/install/)
-[![Documentation](https://img.shields.io/badge/documentation-blue)](https://swiftbitcoin.org/docs/documentation/bitcoin/)
-[![Blog](https://img.shields.io/badge/blog-purple)](https://swiftbitcoin.org/)
+[![Documentation](https://img.shields.io/badge/DocC-docs-gray?&labelColor=blue&logo=swift&logoColor=white)](https://swiftbitcoin.org/docs/documentation/bitcoin/)
 [![GitHub License](https://img.shields.io/github/license/swift-bitcoin/swift-bitcoin)](LICENSE)
+
+[![Blog](https://img.shields.io/badge/website-blog-yellow)](https://swiftbitcoin.org/)
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/SwiftBitcoinOrg)](https://x.com/SwiftBitcoinOrg)
 
 ![Swift Bitcoin](https://github.com/user-attachments/assets/e7f29e72-6aa9-4f2c-9ba0-1e2a973ee09b)

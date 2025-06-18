@@ -30,6 +30,8 @@ extension Transaction {
 
         /// BIP68 - Transaction version 2.
         public static let v2 = Self(2)
+
+        public static let current = Self.v2
     }
 }
 
