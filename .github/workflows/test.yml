@@ -11,11 +11,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install Swift
-        uses: sersoft-gmbh/swifty-linux-action@v3
+        # uses: sersoft-gmbh/swifty-linux-action@v3
+        # with:
+            # release-version: 6.1.2
+        uses: swift-actions/setup-swift@v2
         with:
-            # branch-name: swift-6.0-branch
-            # version-tag: swift-6.0-DEVELOPMENT-SNAPSHOT-2024-08-22-a
-            release-version: 6.1.2
+            swift-version: "6.1.2"
       - name: Build
         run: swift build --build-tests --disable-xctest
       - name: Test
