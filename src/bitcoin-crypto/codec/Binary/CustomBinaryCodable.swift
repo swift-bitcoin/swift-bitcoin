@@ -10,7 +10,7 @@ public typealias CustomBinaryCodable = CustomBinaryEncodable & CustomBinaryDecod
 
 public protocol CustomBinaryEncodable: BinaryEncodable {
 
-    // TODO: Eventually remove extension of `BinaryEncodable` and provide defaults for `var binarySize: Int { binarySize(encoding: nil) }` and `var binaryData: Data { binaryData(encoding: nil) }`.
+    // TODO: Eventually remove extension of `BinaryEncodable` and provide defaults for `var dataSize: Int { dataSize(encoding: nil) }` and `var data: Data { data(encoding: nil) }`.
 
     associatedtype Encoding
 
@@ -28,13 +28,13 @@ public extension CustomBinaryEncodable {
         encode(to: &encoder, encoding: nil)
     }
 
-    func binarySize(encoding: Encoding?) -> Int {
+    func dataSize(encoding: Encoding?) -> Int {
         var counter = BinaryEncodingSizeCounter()
         encodingSize(&counter, encoding: encoding)
         return counter.size
     }
 
-    func binaryData(encoding: Encoding?) -> Data {
+    func data(encoding: Encoding?) -> Data {
         var counter = BinaryEncodingSizeCounter()
         encodingSize(&counter, encoding: encoding)
         var encoder = BinaryEncoder(counter)
@@ -55,12 +55,12 @@ public extension CustomBinaryDecodable {
         try self.init(from: &decoder, encoding: nil)
     }
 
-    init<D: DataProtocol>(binaryData: D) throws {
-        try self.init(binaryData: binaryData, encoding: nil)
+    init<D: DataProtocol>(_ data: D) throws {
+        try self.init(data, encoding: nil)
     }
 
-    init<D: DataProtocol>(binaryData: D, encoding: Encoding?) throws {
-        var decoder = BinaryDecoder(binaryData)
+    init<D: DataProtocol>(_ data:D, encoding: Encoding?) throws {
+        var decoder = BinaryDecoder(data)
         try self.init(from: &decoder, encoding: encoding)
     }
 }

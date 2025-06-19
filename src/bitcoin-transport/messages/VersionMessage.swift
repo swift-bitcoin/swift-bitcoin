@@ -122,7 +122,7 @@ extension VersionMessage {
     }
 
     var size: Int {
-        85 + VarInt(userAgentData.count).binarySize + userAgentData.count
+        85 + VarInt(userAgentData.count).dataSize + userAgentData.count
     }
 
     var data: Data {
@@ -137,7 +137,7 @@ extension VersionMessage {
         offset = ret.addData(transmitterAddress.rawValue, at: offset)
         offset = ret.addBytes(UInt16(transmitterPort).bigEndian, at: offset)
         offset = ret.addBytes(nonce, at: offset)
-        offset = ret.addData(VarInt(userAgentData.count).binaryData, at: offset)
+        offset = ret.addData(VarInt(userAgentData.count).data, at: offset)
         offset = ret.addData(userAgentData, at: offset)
         offset = ret.addBytes(Int32(startHeight), at: offset)
         offset = ret.addBytes(relay, at: offset)

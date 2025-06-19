@@ -39,9 +39,9 @@ extension SignatureMessage.Taproot {
 
         // Transaction data:
         // nVersion (4): the nVersion of the tx.
-        var txData = tx.version.binaryData
+        var txData = tx.version.data
         // nLockTime (4): the nLockTime of the tx.
-        txData.append(tx.locktime.binaryData)
+        txData.append(tx.locktime.data)
 
         //If the hash_type & 0x80 does not equal SIGHASH_ANYONECANPAY:
         if !sighashType.isAnyCanPay {
@@ -51,7 +51,7 @@ extension SignatureMessage.Taproot {
                 shaPrevouts = cached
                 sighashCache.shaPrevoutsHit = true
             } else {
-                let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.binaryData }
+                let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.data }
                 shaPrevouts = Data(SHA256.hash(data: prevouts))
                 sighashCache.shaPrevouts = shaPrevouts
             }
@@ -87,7 +87,7 @@ extension SignatureMessage.Taproot {
                 shaSequences = cached
                 sighashCache.shaSequencesHit = true
             } else {
-                let sequences = tx.ins.reduce(Data()) { $0 + $1.sequence.binaryData }
+                let sequences = tx.ins.reduce(Data()) { $0 + $1.sequence.data }
                 shaSequences = Data(SHA256.hash(data: sequences))
                 sighashCache.shaSequences = shaSequences
             }
@@ -102,7 +102,7 @@ extension SignatureMessage.Taproot {
                 shaOuts = cached
                 sighashCache.shaOutsHit = true
             } else {
-                let outsData = tx.outs.reduce(Data()) { $0 + $1.binaryData }
+                let outsData = tx.outs.reduce(Data()) { $0 + $1.data }
                 shaOuts = Data(SHA256.hash(data: outsData))
                 sighashCache.shaOuts = shaOuts
             }
@@ -118,7 +118,7 @@ extension SignatureMessage.Taproot {
         // If hash_type & 0x80 equals SIGHASH_ANYONECANPAY:
         if sighashType.isAnyCanPay {
             // outpoint (36): the COutPoint of this input (32-byte hash + 4-byte little-endian).
-            let outpoint = tx.ins[inputIndex].outpoint.binaryData
+            let outpoint = tx.ins[inputIndex].outpoint.data
             inputData.append(outpoint)
             // amount (8): value of the previous output spent by this input.
             let amount = prevouts[inputIndex].valueData
@@ -127,7 +127,7 @@ extension SignatureMessage.Taproot {
             let scriptPubKey = prevouts[inputIndex].script.dataPrefixed
             inputData.append(scriptPubKey)
             // nSequence (4): nSequence of this input.
-            let sequence = tx.ins[inputIndex].sequence.binaryData
+            let sequence = tx.ins[inputIndex].sequence.data
             inputData.append(sequence)
         } else { // If hash_type & 0x80 does not equal SIGHASH_ANYONECANPAY:
             // input_index (4): index of this input in the transaction input vector. Index of the first input is 0.
@@ -147,7 +147,7 @@ extension SignatureMessage.Taproot {
         var outData = Data()
         if sighashType.isSingle {
             //sha_single_output (32): the SHA256 of the corresponding output in CTxOut format.
-            let shaSingleOutput = Data(SHA256.hash(data: tx.outs[inputIndex].binaryData))
+            let shaSingleOutput = Data(SHA256.hash(data: tx.outs[inputIndex].data))
             outData.append(shaSingleOutput)
         }
 

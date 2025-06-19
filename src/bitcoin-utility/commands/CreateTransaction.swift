@@ -55,6 +55,6 @@ struct CreateTransaction: ParsableCommand {
             ins: ins,
             outs: outs
         )
-        print(tx.binaryData.hex)
+        print(tx.data.hex)
     }
 }

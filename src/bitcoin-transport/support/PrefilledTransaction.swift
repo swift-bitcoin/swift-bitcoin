@@ -33,9 +33,9 @@ extension PrefilledTransaction {
         self.index = index
         data = data.dropFirst(indexDiff.varIntSize)
 
-        guard let tx = try? Transaction(binaryData: data) else { return nil }
+        guard let tx = try? Transaction(data) else { return nil }
         self.tx = tx
-        data = data.dropFirst(tx.binarySize)
+        data = data.dropFirst(tx.dataSize)
     }
 
     func getData(previousIndex: Int?) -> Data {
@@ -47,11 +47,11 @@ extension PrefilledTransaction {
             index
         }
         var offset = ret.addData(Data(varInt: UInt64(indexDiff)))
-        offset = ret.addData(tx.binaryData, at: offset)
+        offset = ret.addData(tx.data, at: offset)
         return ret
     }
 
     var size: Int {
-        UInt64(index).varIntSize + tx.binarySize
+        UInt64(index).varIntSize + tx.dataSize
     }
 }

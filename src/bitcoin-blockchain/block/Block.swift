@@ -43,7 +43,7 @@ public struct Block: Equatable, Sendable {
     // MARK: - Computed Properties
 
     public var hash: Data {
-        Data(Hash256.hash(data: binaryData(encoding: .headerOnly)))
+        Data(Hash256.hash(data: data(encoding: .headerOnly)))
     }
 
     public var id: Block.ID {
@@ -62,7 +62,7 @@ public struct Block: Equatable, Sendable {
     }
 
     public var weight: Int {
-        binarySize(encoding: .nonWitness) * 3 + binarySize
+        dataSize(encoding: .nonWitness) * 3 + dataSize
     }
 
     var work: DifficultyTarget { .getWork(target) }
@@ -105,7 +105,7 @@ package extension Block {
     func makeShortIDParams(nonce: UInt64) -> (first: UInt64, second: UInt64) {
         // single-SHA256 hashing the block header with the nonce appended (in little-endian)
         var encoder = BinaryEncoder(size: Block.headerSize + MemoryLayout<UInt64>.size)
-        encoder.encode(binaryData(encoding: .headerOnly))
+        encoder.encode(data(encoding: .headerOnly))
         encoder.encode(nonce)
         let headerData = encoder.data
         let headerHash = Data(SHA256.hash(data: headerData))
@@ -183,7 +183,7 @@ extension Block: CustomBinaryCodable {
             }
         case .file(let magicBytes):
             encoder.encode(UInt32(magicBytes))
-            encoder.encode(UInt32(binarySize))
+            encoder.encode(UInt32(dataSize))
             encode(to: &encoder)
         }
     }

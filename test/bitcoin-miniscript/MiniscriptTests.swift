@@ -26,7 +26,7 @@ struct MiniscriptTests {
         #expect(miniscript.evaluated == exp.compiled)
 
         // Bondemusk; script len: 35; max ops: 1; max stack size: 2
-        #expect(miniscript.evaluated.binaryData.count == 36)
+        #expect(miniscript.evaluated.data.count == 36)
         #expect(miniscript.properties.type == .B)
         #expect(miniscript.properties.mods.contains(.o))
         #expect(miniscript.properties.mods.contains(.n))
@@ -47,7 +47,7 @@ struct MiniscriptTests {
         #expect(miniscript.evaluated == exp.compiled)
 
         // Bdemusk; script len: 72; max ops: 4; max stack size: 3
-        #expect(miniscript.evaluated.binaryData.count == 73)
+        #expect(miniscript.evaluated.data.count == 73)
         #expect(miniscript.properties.type == .B)
         #expect(miniscript.properties.mods.contains(.d))
         #expect(miniscript.properties.mods.contains(.u))
@@ -66,7 +66,7 @@ struct MiniscriptTests {
         #expect(miniscript.evaluated == exp.compiled)
 
         // Bdemusk; script len: 63; max ops: 8; max stack size: 4
-        #expect(miniscript.evaluated.binaryData.count == 64)
+        #expect(miniscript.evaluated.data.count == 64)
         #expect(miniscript.properties.type == .B)
         #expect(miniscript.properties.mods.contains(.d))
         #expect(miniscript.properties.mods.contains(.u))
@@ -85,7 +85,7 @@ struct MiniscriptTests {
         #expect(miniscript.evaluated == exp.compiled)
 
         // Bnfmsk; script len: 77; max ops: 6; max stack size: 3
-        #expect(miniscript.evaluated.binaryData.count == 78)
+        #expect(miniscript.evaluated.data.count == 78)
         #expect(miniscript.properties.type == .B)
         #expect(miniscript.properties.mods.contains(.n))
         #expect(miniscript.properties.k)
@@ -103,7 +103,7 @@ struct MiniscriptTests {
         #expect(miniscript.evaluated == exp.compiled)
 
         // Bdmusk; script len: 122; max ops: 15; max stack size: 5
-        #expect(miniscript.evaluated.binaryData.count == 123)
+        #expect(miniscript.evaluated.data.count == 123)
         #expect(miniscript.properties.type == .B)
         #expect(miniscript.properties.mods.contains(.d))
         #expect(miniscript.properties.mods.contains(.u))
@@ -122,7 +122,7 @@ struct MiniscriptTests {
         #expect(miniscript.evaluated == exp.compiled)
 
         // Bdemsk; script len: 77; max ops: 6; max stack size: 3
-        #expect(miniscript.evaluated.binaryData.count == 78)
+        #expect(miniscript.evaluated.data.count == 78)
         #expect(miniscript.properties.type == .B)
         #expect(miniscript.properties.mods.contains(.d))
         #expect(miniscript.properties.k)
@@ -147,7 +147,7 @@ struct MiniscriptTests {
         #expect(miniscript.evaluated == exp.compiled)
 
         // Bfmusk; script len: 137; max ops: 11; max stack size: 5
-        #expect(miniscript.evaluated.binaryData.count == 138)
+        #expect(miniscript.evaluated.data.count == 138)
         #expect(miniscript.properties.type == .B)
         #expect(miniscript.properties.mods.contains(.u))
         #expect(miniscript.properties.k)
@@ -168,7 +168,7 @@ struct MiniscriptTests {
         #expect(miniscript.evaluated == exp.compiled)
 
         // Bdmsk; script len: 132; max ops: 17; max stack size: 6
-        #expect(miniscript.evaluated.binaryData.count == 133)
+        #expect(miniscript.evaluated.data.count == 133)
         #expect(miniscript.properties.type == .B)
         #expect(miniscript.properties.mods.contains(.d))
         #expect(miniscript.properties.k)

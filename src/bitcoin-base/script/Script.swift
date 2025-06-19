@@ -37,7 +37,7 @@ public struct Script: Equatable, Sendable {
 
     // BIP16
     public var isPayToScriptHash: Bool {
-        if binarySize == RIPEMD160.Digest.byteCount + 3,
+        if dataSize == RIPEMD160.Digest.byteCount + 3,
            ops.count == 3,
            ops[0] == .hash160,
            case .pushBytes(_) = ops[1],
@@ -46,7 +46,7 @@ public struct Script: Equatable, Sendable {
 
     /// BIP141
     public var isSegwit: Bool {
-        if binarySize >= 3 && binarySize <= 41,
+        if dataSize >= 3 && dataSize <= 41,
            ops.count == 2,
            case .pushBytes(_) = ops[1]
         {
@@ -145,7 +145,7 @@ public struct Script: Equatable, Sendable {
     }
 
     public static func payToScriptHash(_ redeem: Script) -> Self {
-        payToScriptHash(Data(Hash160.hash(data: redeem.binaryData)))
+        payToScriptHash(Data(Hash160.hash(data: redeem.data)))
     }
 
     package static func payToScriptHash(_ hash: Data) -> Self {
@@ -161,7 +161,7 @@ public struct Script: Equatable, Sendable {
     }
 
     public static func payToWitnessScriptHash(_ witness: Script) -> Self {
-        let hash = Data(SHA256.hash(data: witness.binaryData))
+        let hash = Data(SHA256.hash(data: witness.data))
         return payToWitnessScriptHash(hash)
     }
 
@@ -190,11 +190,6 @@ public struct Script: Equatable, Sendable {
 }
 
 extension Script: ExpressibleByArrayLiteral {
-
-    public init<D: DataProtocol>(_ data: D) {
-        // TODO: Can script decoding really never fail? Even with unparsable data being taken into consideration…
-        try! self.init(binaryData: data)
-    }
 
     public init(arrayLiteral ops: Script.Operation...) {
         self.init(ops)
@@ -234,7 +229,7 @@ extension Script: BinaryCodable {
     }
 
     public func encodePrefixed(to encoder: inout BinaryEncoder) {
-        encoder.encode(VarInt(binarySize))
+        encoder.encode(VarInt(dataSize))
         encode(to: &encoder)
     }
 
@@ -246,7 +241,7 @@ extension Script: BinaryCodable {
     }
 
     public func encodingSizePrefixed(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(VarInt(binarySize))
+        counter.count(VarInt(dataSize))
         encodingSize(&counter)
     }
 

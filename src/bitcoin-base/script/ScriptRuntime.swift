@@ -82,7 +82,7 @@ public struct ScriptRuntime {
 
     /// BIP143
     var segwitScriptCode: Data {
-        var scriptData = script.binaryData
+        var scriptData = script.data
         // if the witnessScript contains any OP_CODESEPARATOR, the scriptCode is the witnessScript but removing everything up to and including the last executed OP_CODESEPARATOR before the signature checking opcode being executed, serialized as scripts inside CTxOut.
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)
@@ -110,11 +110,11 @@ public struct ScriptRuntime {
 
         if sigVersion == .witnessV1 {
             let witness = tx.ins[input].witness
-            sigopBudget = Script.sigopBudgetBase + (witness == [] ? 0 : witness.binarySize)
+            sigopBudget = Script.sigopBudgetBase + (witness == [] ? 0 : witness.dataSize)
         }
 
         // BIP141
-        if (sigVersion == .base || sigVersion == .witnessV0) && script.binarySize > Script.maxScriptSize {
+        if (sigVersion == .base || sigVersion == .witnessV0) && script.dataSize > Script.maxScriptSize {
             throw ScriptError.scriptSizeLimitExceeded
         }
 
@@ -154,7 +154,7 @@ public struct ScriptRuntime {
             if sigVersion != .base && stack.count + altStack.count > Script.maxStackElements {
                 throw ScriptError.stacksLimitExceeded
             }
-            programCounter += op.binarySize
+            programCounter += op.dataSize
             opIndex += 1
         }
         guard pendingIfOps.isEmpty, pendingElseOps == 0 else {
@@ -179,7 +179,7 @@ public struct ScriptRuntime {
     /// Support for `OP_CHECKSIG` and `OP_CHECKSIGVERIFY`. Legacy scripts only.
     func getScriptCode(sigs: [Data]) throws -> Data {
         precondition(sigVersion == .base)
-        var scriptData = script.binaryData
+        var scriptData = script.data
         if let codesepOffset = lastCodeSeparatorOffset {
             scriptData.removeFirst(codesepOffset + 1)
         }
@@ -187,7 +187,7 @@ public struct ScriptRuntime {
         var scriptCode = Data()
         var programCounter2 = scriptData.startIndex
         while programCounter2 < scriptData.endIndex {
-            guard let op = try? Script.Operation(binaryData: scriptData[programCounter2...]) else {
+            guard let op = try? Script.Operation(scriptData[programCounter2...]) else {
                 preconditionFailure()
                 // TODO: What happens to scriptCode if script cannot be fully decoded?
             }
@@ -206,9 +206,9 @@ public struct ScriptRuntime {
             if
                 op != .codeSeparator && !operationContainsSignature // Equivalent to FindAndDelete
             {
-                scriptCode.append(op.binaryData)
+                scriptCode.append(op.data)
             }
-            programCounter2 += op.binarySize
+            programCounter2 += op.dataSize
         }
         return scriptCode
     }

@@ -71,9 +71,7 @@ extension Transaction {
             // BIP16
             if isPayToScriptHash {
                 var stack = stackTmp
-                guard let data = stack.popLast() else { preconditionFailure() }
-
-                let redeemScript = Script(data)
+                guard let data = stack.popLast(), let redeemScript = try? Script(data) else { preconditionFailure() }
 
                 // BIP141 - P2SH witness program
                 if redeemScript.isSegwit {
@@ -163,7 +161,7 @@ extension Transaction {
                 throw ScriptError.wrongWitnessScriptHash
             }
 
-            let witnessScript = Script(witnessScriptRaw)
+            guard let witnessScript = try? Script(witnessScriptRaw) else { preconditionFailure() }
             try runtime.run(witnessScript, stack: stack, sigVersion: .witnessV0)
 
             // The script must not fail, and result in exactly a single TRUE on the stack.
@@ -232,7 +230,7 @@ extension Transaction {
         let leafVersion = control[0] & 0xfe
 
         // Let k0 = hashTapLeaf(v || compact_size(size of s) || s); also call it the tapleaf hash.
-        let tapLeafHash = Data(SHA256.hash(data: [leafVersion] + VarInt(tapscriptData.count).binaryData + tapscriptData, tag: "TapLeaf"))
+        let tapLeafHash = Data(SHA256.hash(data: [leafVersion] + VarInt(tapscriptData.count).data + tapscriptData, tag: "TapLeaf"))
 
         // Compute the Merkle root from the leaf and the provided path.
         let merkleRoot = computeMerkleRoot(controlBlock: control, tapLeafHash: tapLeafHash)
@@ -256,7 +254,7 @@ extension Transaction {
             return
         }
 
-        let tapscript = Script(tapscriptData)
+        guard let tapscript = try? Script(tapscriptData) else { preconditionFailure() }
 
         // The tapscript is executed according to the rules in the following section, with the initial stack as input.
         // If execution fails for any reason, fail.

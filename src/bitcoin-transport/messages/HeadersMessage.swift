@@ -33,9 +33,9 @@ extension HeadersMessage {
 
         var items = [Block]()
         for _ in 0 ..< itemCount {
-            guard let block = try? Block(binaryData: data), block.txs.isEmpty else { return nil }
+            guard let block = try? Block(data), block.txs.isEmpty else { return nil }
             items.append(block)
-            data = data.dropFirst(block.binarySize)
+            data = data.dropFirst(block.dataSize)
         }
         self.items = items
     }
@@ -45,7 +45,7 @@ extension HeadersMessage {
         var offset = ret.addData(Data(varInt: UInt64(items.count)))
         for header in items {
             precondition(header.txs.isEmpty)
-            offset = ret.addData(header.binaryData, at: offset)
+            offset = ret.addData(header.data, at: offset)
         }
         return ret
     }

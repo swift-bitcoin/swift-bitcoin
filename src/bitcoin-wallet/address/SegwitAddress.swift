@@ -40,7 +40,7 @@ public struct SegwitAddress: AddressProtocol {
 
     public init(_ script: Script, network: WalletNetwork = .main) {
         self.network = network
-        hash = Data(SHA256.hash(data: script.binaryData))
+        hash = Data(SHA256.hash(data: script.data))
     }
 
     public var description: String {

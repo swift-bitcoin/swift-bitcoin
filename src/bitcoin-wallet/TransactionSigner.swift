@@ -65,11 +65,11 @@ public struct TransactionSigner {
         )
 
         let sighash = if let witnessScript {
-            SignatureHash.Segwit(tx: tx, input: input, sighashType: sighashType, scriptCode: witnessScript.binaryData, prevout: prevout).data
+            SignatureHash.Segwit(tx: tx, input: input, sighashType: sighashType, scriptCode: witnessScript.data, prevout: prevout).data
         } else if let redeemScript {
-            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: redeemScript.binaryData).data
+            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: redeemScript.data).data
         } else {
-            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: lockScript.binaryData).data
+            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: lockScript.data).data
         }
 
         var sigs = [Data]()
@@ -79,15 +79,15 @@ public struct TransactionSigner {
             sigs.append(sigExt.data)
             lastSig = sigExt
         }
-        if let redeemScript { sigs.append(redeemScript.binaryData) }
-        if let witnessScript { sigs.append(witnessScript.binaryData)}
+        if let redeemScript { sigs.append(redeemScript.data) }
+        if let witnessScript { sigs.append(witnessScript.data)}
 
         if let witnessScript {
             let witness = [Data()] + sigs
             tx.ins[input].witness = .init(witness)
             if lockScript.isPayToScriptHash {
                 let redeemScriptP2WSH = Script.payToWitnessScriptHash(witnessScript)
-                tx.ins[input].script = [.encodeMinimally(redeemScriptP2WSH.binaryData)]
+                tx.ins[input].script = [.encodeMinimally(redeemScriptP2WSH.data)]
             }
         } else {
             let unlockScript = Script([.zero] + sigs.map { Script.Operation.encodeMinimally($0) })
@@ -124,7 +124,7 @@ public struct TransactionSigner {
 
             let scriptCode: Data? = if lockScript.isPayToWitnessKeyHash {
                 nil
-            } else { Script.segwitPKHScriptCode(pubkeyHash).binaryData }
+            } else { Script.segwitPKHScriptCode(pubkeyHash).data }
             sighash = SignatureHash.Segwit(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode, prevout: prevouts[input]).data
         } else if lockScript.isPayToTaproot {
             // .witnessV1
@@ -132,7 +132,7 @@ public struct TransactionSigner {
         } else {
             guard let sighashType else { preconditionFailure() }
             // .base
-            sighash = SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: lockScript.binaryData).data
+            sighash = SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: lockScript.data).data
         }
 
         let sigData: Data
@@ -164,7 +164,7 @@ public struct TransactionSigner {
             tx.ins[input].script = .init(ops)
         }
         if lockScript.isPayToScriptHash {
-            tx.ins[input].script = [.encodeMinimally(redeemScript.binaryData)]
+            tx.ins[input].script = [.encodeMinimally(redeemScript.data)]
         }
         return tx
     }

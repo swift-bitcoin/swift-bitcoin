@@ -44,14 +44,14 @@ public struct Transaction: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var id: Data { Data(Hash256.hash(data: binaryData(encoding: .nonWitness)).reversed()) }
+    public var id: Data { Data(Hash256.hash(data: data(encoding: .nonWitness)).reversed()) }
 
     /// BIP141
     /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
-    public var witnessID: Data { Data(Hash256.hash(data: binaryData).reversed()) }
+    public var witnessID: Data { Data(Hash256.hash(data: data).reversed()) }
 
     /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
-    public var weight: Int { binarySize(encoding: .nonWitness) * 3 + binarySize }
+    public var weight: Int { dataSize(encoding: .nonWitness) * 3 + dataSize }
 
     ///  BIP141: Virtual transaction size is defined as Transaction weight / 4 (rounded up to the next integer).
     public var virtualSize: Int { Int((Double(weight) / 4).rounded(.up)) }
@@ -136,7 +136,7 @@ extension Transaction {
 
     /// BIP141 / BIP144
     var witnessSize: Int {
-        hasWitness ? Transaction.segwitMarkerAndFlag.count + ins.reduce(0) { $0 + $1.witness.binarySize } : 0
+        hasWitness ? Transaction.segwitMarkerAndFlag.count + ins.reduce(0) { $0 + $1.witness.dataSize } : 0
     }
 
     public static let idLength = Hash256.Digest.byteCount

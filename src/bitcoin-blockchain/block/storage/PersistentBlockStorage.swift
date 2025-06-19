@@ -137,7 +137,7 @@ actor PersistentBlockStorage: BlockStorage {
         let maxSize = Int64(config.maxFileSize) // Accounts for magic bytes header and block length prefix
         let encoding = Block.Encoding.file(magicBytes: config.magic)
 
-        let serializedBlock = block.binaryData(encoding: encoding)
+        let serializedBlock = block.data(encoding: encoding)
 
         var offset: Int64
         if let info = try await lastFileInfo, info.size + Int64(serializedBlock.count) <= maxSize {
@@ -209,7 +209,7 @@ actor PersistentBlockStorage: BlockStorage {
             throw .corruptedBlockData // TODO: Differenciate from not being able to open the file for reading.
         }
         do {
-            return try Block(binaryData: blockData, encoding: encoding)
+            return try Block(blockData, encoding: encoding)
         } catch {
             logger.error("There was an issue attempting to decode block from file's data.")
             throw .corruptedBlockData

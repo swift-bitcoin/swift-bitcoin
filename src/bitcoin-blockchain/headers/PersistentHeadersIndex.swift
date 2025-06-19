@@ -39,7 +39,7 @@ actor PersistentHeadersIndex: HeadersIndex {
     }
 
     func add(_ header: Block) {
-        try? db.put(header.binaryData, forKey: header.id)
+        try? db.put(header.data, forKey: header.id)
         try? byPositionDB.put(header.id, key: position)
         position += 1
     }
@@ -51,7 +51,7 @@ actor PersistentHeadersIndex: HeadersIndex {
     func get(_ id: Block.ID) -> Block? { // TODO: Probably should throw
         let data = try! db.get(id)
         if let data {
-            return try! Block(binaryData: data)
+            return try! Block(data)
         } else {
             return nil
         }

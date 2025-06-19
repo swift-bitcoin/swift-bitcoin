@@ -4,13 +4,15 @@ import Foundation
 struct SignatureMessage: Equatable, Sendable {
 
     init(tx: Transaction, input inputIndex: Int, sighashType: SighashType, scriptCode: Data) {
-
+        guard let script = try? Script(scriptCode) else {
+            preconditionFailure()
+        }
         var newIns = [Transaction.Input]()
         if sighashType.hasAnyCanPay {
             // Procedure for Hashtype SIGHASH_ANYONECANPAY
             // The txCopy input vector is resized to a length of one.
             // The current transaction input (with scriptPubKey modified to subScript) is set as the first and only member of this vector.
-            newIns.append(.init(outpoint: tx.ins[inputIndex].outpoint, sequence: tx.ins[inputIndex].sequence, script: .init(scriptCode)))
+            newIns.append(.init(outpoint: tx.ins[inputIndex].outpoint, sequence: tx.ins[inputIndex].sequence, script: script))
         } else {
             tx.ins.enumerated().forEach { i, input in
                 newIns.append(.init(
@@ -19,7 +21,7 @@ struct SignatureMessage: Equatable, Sendable {
                     sequence: i == inputIndex || (!sighashType.isNone && !sighashType.isSingle) ? input.sequence : .initial,
                     // The scripts for all transaction inputs in txCopy are set to empty scripts (exactly 1 byte 0x00)
                     // The script for the current transaction input in txCopy is set to subScript (lead in by its length as a var-integer encoded!)
-                    script: i == inputIndex ? .init(scriptCode) : .empty
+                    script: i == inputIndex ? script : .empty
                 ))
             }
         }
@@ -53,7 +55,7 @@ struct SignatureMessage: Equatable, Sendable {
             ins: newIns,
             outs: newOuts
         )
-        data = txCopy.binaryData + sighashType.binaryData(encoding: .fullLength)
+        data = txCopy.data + sighashType.data(encoding: .fullLength)
     }
 
     let data: Data

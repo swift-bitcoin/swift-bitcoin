@@ -607,7 +607,7 @@ public actor NodeService: Sendable {
     func processBlock(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        guard let block = try? Block(binaryData: message.payload) else {
+        guard let block = try? Block(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -644,7 +644,7 @@ public actor NodeService: Sendable {
             let blocks = await blockchain.getBlocks(blockHashes)
 
             for block in blocks {
-                enqueue(.block, payload: block.binaryData, to: id)
+                enqueue(.block, payload: block.data, to: id)
             }
         }
 
@@ -652,7 +652,7 @@ public actor NodeService: Sendable {
         if !txHashes.isEmpty {
             let txs = await blockchain.getTransactions(txHashes)
             for tx in txs {
-                enqueue(.tx, payload: tx.binaryData, to: id)
+                enqueue(.tx, payload: tx.data, to: id)
             }
         }
     }
@@ -690,7 +690,7 @@ public actor NodeService: Sendable {
 
         let tx: Transaction
         do {
-            tx = try Transaction(binaryData: message.payload)
+            tx = try Transaction(message.payload)
         } catch {
             throw Error.invalidPayload
         }

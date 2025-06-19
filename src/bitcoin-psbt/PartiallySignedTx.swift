@@ -107,7 +107,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Non-witness UTXO")
                     }
-                    guard let tx = try? Transaction(binaryData: v) else {
+                    guard let tx = try? Transaction(v) else {
                         throw .invalidInputPreviousTransaction
                     }
                     prevoutTx = tx
@@ -115,7 +115,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Witness UTXO")
                     }
-                    guard let out = try? TransactionOutput(binaryData: v) else {
+                    guard let out = try? TransactionOutput(v) else {
                         throw .invalidInputPreviousOutput
                     }
                     witnessPrevout = out
@@ -131,7 +131,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Sighath type")
                     }
-                    guard v.count == 4, let s = try? SighashType(binaryData: v, encoding: .fullLength) else {
+                    guard v.count == 4, let s = try? SighashType(v, encoding: .fullLength) else {
                         throw .invalidInputSighashType
                     }
                     sighashType = s
@@ -139,7 +139,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Redeem script")
                     }
-                    guard let script = try? Script(binaryData: v) else {
+                    guard let script = try? Script(v) else {
                         throw .invalidInputRedeemScript
                     }
                     redeemScript = script
@@ -147,7 +147,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Witness script")
                     }
-                    guard let script = try? Script(binaryData: v) else {
+                    guard let script = try? Script(v) else {
                         throw .invalidInputWitnessScript
                     }
                     witnessScript = script
@@ -155,7 +155,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard let pubkey = PublicKey(k.data) else {
                         throw .invalidPublicKey
                     }
-                    guard let path = try? DerivationPath(binaryData: v) else {
+                    guard let path = try? DerivationPath(v) else {
                         throw .invalidPublicKeyDerivation
                     }
                     derivationPaths[pubkey] = path
@@ -163,7 +163,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Final scriptSig")
                     }
-                    guard let script = try? Script(binaryData: v) else {
+                    guard let script = try? Script(v) else {
                         throw .invalidInputFinalScriptSig
                     }
                     finalScriptSig = script
@@ -171,7 +171,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Final script witness")
                     }
-                    guard let script = try? Transaction.Witness(binaryData: v) else {
+                    guard let script = try? Transaction.Witness(v) else {
                         throw .invalidInputFinalScriptWitness
                     }
                     finalScriptWitness = script
@@ -204,7 +204,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     }
                     hash256Preimages.insert(preimage)
                 case PSBTInputKeyType.proprietary.rawValue:
-                    guard let key = try? ProprietarySuperKey(binaryData: k.data) else { throw .invalidProprietaryKey }
+                    guard let key = try? ProprietarySuperKey(k.data) else { throw .invalidProprietaryKey }
                     if proprietaryInfo[key.id] == nil { proprietaryInfo[key.id] = [:] }
                     proprietaryInfo[key.id]![.init(key.subkey)] = v
                 default:
@@ -294,31 +294,31 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         var map: PSBTMap {
             var entries: KeyedValues = [:]
             if let prevoutTx {
-                entries[.init(PSBTInputKeyType.nonWitnessUTXO)] = prevoutTx.binaryData
+                entries[.init(PSBTInputKeyType.nonWitnessUTXO)] = prevoutTx.data
             }
             if let witnessPrevout {
-                entries[.init(PSBTInputKeyType.witnessUTXO)] = witnessPrevout.binaryData
+                entries[.init(PSBTInputKeyType.witnessUTXO)] = witnessPrevout.data
             }
             for (k, s) in partialSigs {
                 entries[.init(PSBTInputKeyType.partialSig, data: k.data)] = s.data
             }
             if let sighashType {
-                entries[.init(PSBTInputKeyType.sighashType)] = sighashType.binaryData(encoding: .fullLength)
+                entries[.init(PSBTInputKeyType.sighashType)] = sighashType.data(encoding: .fullLength)
             }
             if let redeemScript {
-                entries[.init(PSBTInputKeyType.redeemScript)] = redeemScript.binaryData
+                entries[.init(PSBTInputKeyType.redeemScript)] = redeemScript.data
             }
             if let witnessScript {
-                entries[.init(PSBTInputKeyType.witnessScript)] = witnessScript.binaryData
+                entries[.init(PSBTInputKeyType.witnessScript)] = witnessScript.data
             }
             for (k, p) in derivationPaths {
-                entries[.init(PSBTInputKeyType.derivationPath, data: k.data)] = p.binaryData
+                entries[.init(PSBTInputKeyType.derivationPath, data: k.data)] = p.data
             }
             if let finalScriptSig {
-                entries[.init(PSBTInputKeyType.finalScriptSig)] = finalScriptSig.binaryData
+                entries[.init(PSBTInputKeyType.finalScriptSig)] = finalScriptSig.data
             }
             if let finalScriptWitness {
-                entries[.init(PSBTInputKeyType.finalScriptWitness)] = finalScriptWitness.binaryData
+                entries[.init(PSBTInputKeyType.finalScriptWitness)] = finalScriptWitness.data
             }
             for preimage in ripemd160Preimages {
                 entries[.init(PSBTInputKeyType.ripemd160Preimage, data: Data(RIPEMD160.hash(data: preimage)))] = preimage
@@ -335,7 +335,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             var proprietaryTypes: KeyedValues = [:]
             for (id, subkey) in proprietaryInfo {
                 for (k, v) in subkey {
-                    let keyData = ProprietarySuperKey(id: id, subkey: .init(type: k.type, data: k.data)).binaryData
+                    let keyData = ProprietarySuperKey(id: id, subkey: .init(type: k.type, data: k.data)).data
                     proprietaryTypes[.init(PSBTInputKeyType.proprietary, data: keyData)] = v
                 }
             }
@@ -386,7 +386,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyOutputKeyData("Redeem script")
                     }
-                    guard let script = try? Script(binaryData: v) else {
+                    guard let script = try? Script(v) else {
                         throw .invalidOutputRedeemScript
                     }
                     redeemScript = script
@@ -394,7 +394,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyOutputKeyData("Witness script")
                     }
-                    guard let script = try? Script(binaryData: v) else {
+                    guard let script = try? Script(v) else {
                         throw .invalidOutputWitnessScript
                     }
                     witnessScript = script
@@ -402,12 +402,12 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard let pubkey = PublicKey(k.data) else {
                         throw .invalidPublicKey
                     }
-                    guard let path = try? DerivationPath(binaryData: v) else {
+                    guard let path = try? DerivationPath(v) else {
                         throw .invalidPublicKeyDerivation
                     }
                     derivationPaths[pubkey] = path
                 case PSBTOutputKeyType.proprietary.rawValue:
-                    guard let key = try? ProprietarySuperKey(binaryData: k.data) else { throw .invalidProprietaryKey }
+                    guard let key = try? ProprietarySuperKey(k.data) else { throw .invalidProprietaryKey }
                     if proprietaryInfo[key.id] == nil { proprietaryInfo[key.id] = [:] }
                     proprietaryInfo[key.id]![.init(key.subkey)] = v
                 default:
@@ -435,18 +435,18 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         var map: PSBTMap {
             var entries: KeyedValues = [:]
             if let redeemScript {
-                entries[.init(PSBTOutputKeyType.redeemScript)] = redeemScript.binaryData
+                entries[.init(PSBTOutputKeyType.redeemScript)] = redeemScript.data
             }
             if let witnessScript {
-                entries[.init(PSBTOutputKeyType.witnessScript)] = witnessScript.binaryData
+                entries[.init(PSBTOutputKeyType.witnessScript)] = witnessScript.data
             }
             for (k, p) in derivationPaths {
-                entries[.init(PSBTOutputKeyType.derivationPath, data: k.data)] = p.binaryData
+                entries[.init(PSBTOutputKeyType.derivationPath, data: k.data)] = p.data
             }
             var proprietaryTypes = KeyedValues()
             for (id, subkey) in proprietaryInfo {
                 for (k, v) in subkey {
-                    let keyData = ProprietarySuperKey(id: id, subkey: .init(type: k.type, data: k.data)).binaryData
+                    let keyData = ProprietarySuperKey(id: id, subkey: .init(type: k.type, data: k.data)).data
                     proprietaryTypes[.init(PSBTOutputKeyType.proprietary, data: keyData)] = v
                 }
             }
@@ -538,15 +538,15 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     throw .invalidUnsignedTransactionKey
                 }
                 do {
-                    tx = try Transaction(binaryData: v, encoding: .nonWitness)
+                    tx = try Transaction(v, encoding: .nonWitness)
                 } catch {
                     throw .invalidUnsignedTransaction
                 }
             case PSBTGlobalKeyType.xpub.rawValue:
-                guard let xpub = try? ExtendedKey(binaryData: k.data), !xpub.hasSecretKey else {
+                guard let xpub = try? ExtendedKey(k.data), !xpub.hasSecretKey else {
                     throw .invalidExtendedPublicKey
                 }
-                guard v.count == (xpub.depth + 1) * MemoryLayout<UInt32>.size, let path = try? DerivationPath(binaryData: v) else {
+                guard v.count == (xpub.depth + 1) * MemoryLayout<UInt32>.size, let path = try? DerivationPath(v) else {
                     throw .invalidPublicKeyDerivation
                 }
                 xpubDerivations[xpub] = path
@@ -555,12 +555,12 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     throw .invalidUnsignedVersionKey
                 }
                 do {
-                    version = try Version(binaryData: v)
+                    version = try Version(v)
                 } catch {
                     throw .invalidVersionEncoding
                 }
             case PSBTGlobalKeyType.proprietary.rawValue:
-                guard let key = try? ProprietarySuperKey(binaryData: k.data) else { throw .invalidProprietaryKey }
+                guard let key = try? ProprietarySuperKey(k.data) else { throw .invalidProprietaryKey }
                 if proprietaryInfo[key.id] == nil { proprietaryInfo[key.id] = [:] }
                 proprietaryInfo[key.id]![.init(key.subkey)] = v
             default:
@@ -677,7 +677,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard case let .pushBytes(hash) = witnessPrevout.script.ops[1] else {
                         preconditionFailure()
                     }
-                    let hash2 = Data(Hash160.hash(data: redeemScript.binaryData))
+                    let hash2 = Data(Hash160.hash(data: redeemScript.data))
                     guard hash == hash2 else {
                         throw .wrongRedeemScript
                     }
@@ -695,7 +695,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard case let .pushBytes(hashWitness) = witnessProgram.ops[1] else {
                         preconditionFailure()
                     }
-                    let hashWitness2 = Data(SHA256.hash(data: witnessScript.binaryData))
+                    let hashWitness2 = Data(SHA256.hash(data: witnessScript.data))
                     guard hashWitness == hashWitness2 else {
                         throw .wrongWitnessScript
                     }
@@ -727,7 +727,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard case let .pushBytes(hash) = prevout.script.ops[1] else {
                         preconditionFailure()
                     }
-                    let hash2 = Data(Hash160.hash(data: redeemScript.binaryData))
+                    let hash2 = Data(Hash160.hash(data: redeemScript.data))
                     guard hash == hash2 else {
                         throw .wrongRedeemScript
                     }
@@ -801,18 +801,19 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             }
 
             if prevout.script.isPayToPubkeyHash {
+                // TODO: Check for public key in Hash160 preimages??
+                /*
                 guard case let .pushBytes(hash) = prevout.script.ops[2] else {
                     preconditionFailure()
                 }
-                let key: Data?
+                var key = Data?.none
                 for preimage in ins[i].hash160Preimages {
                     let hashB = Data(Hash160.hash(data: preimage))
                     if hash == hashB {
                         key = preimage
                         break
                     }
-                }
-                // TODO: Check for public key in Hash160 preimages
+                } */
             } else if prevout.script.isPayToMultisig {
                 guard case let .constant(threshold) = prevout.script.ops[0] else {
                     preconditionFailure()
@@ -841,7 +842,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                 ins[i].finalScriptSig = .init(
                     [.zero] +
                     sigs.map { Script.Operation.pushBytes($0) } +
-                    [.pushBytes(redeemScript.binaryData)]
+                    [.pushBytes(redeemScript.data)]
                 )
             } else if prevout.script.isPayToScriptHash, let redeemScript = psbtIn.redeemScript, redeemScript.isSegwit, redeemScript.isPayToWitnessScriptHash, let witness = psbtIn.witnessScript, witness.isPayToMultisig {
 
@@ -856,11 +857,11 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     $0.lexicographicallyPrecedes($1)
                 })
 
-                ins[i].finalScriptSig = .init([.pushBytes(redeemScript.binaryData)])
+                ins[i].finalScriptSig = .init([.pushBytes(redeemScript.data)])
                 ins[i].finalScriptWitness = .init(
-                    [ScriptBool.false.binaryData] +
+                    [ScriptBool.false.data] +
                     sigs +
-                    [witness.binaryData]
+                    [witness.data]
                 )
             }
 
@@ -893,17 +894,17 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
 
     private var globalMap: PSBTMap {
         var entries: KeyedValues = [:]
-        entries[.init(PSBTGlobalKeyType.unsignedTx)] = unsignedTx.binaryData
+        entries[.init(PSBTGlobalKeyType.unsignedTx)] = unsignedTx.data
         for (xpub, path) in xpubDerivations {
-            entries[.init(PSBTGlobalKeyType.xpub, data: xpub.binaryData)] = path.binaryData
+            entries[.init(PSBTGlobalKeyType.xpub, data: xpub.data)] = path.data
         }
         if version != .v0 {
-            entries[.init(PSBTGlobalKeyType.version)] = version.binaryData
+            entries[.init(PSBTGlobalKeyType.version)] = version.data
         }
         var proprietaryTypes = KeyedValues()
         for (id, subkey) in proprietaryInfo {
             for (k, v) in subkey {
-                let keyData = ProprietarySuperKey(id: id, subkey: .init(type: k.type, data: k.data)).binaryData
+                let keyData = ProprietarySuperKey(id: id, subkey: .init(type: k.type, data: k.data)).data
                 proprietaryTypes[.init(PSBTGlobalKeyType.proprietary, data: keyData)] = v
             }
         }

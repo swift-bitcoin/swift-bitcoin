@@ -258,8 +258,8 @@ private func clearDB(_ db: Database) {
 
 /// Inserts a value and reads it back, verifying that the two values match.
 private func putGetValue<T>(value: T, key: String, in db: Database) throws where T: BinaryCodable & Equatable {
-    try db.put(value.binaryData, forKey: key.data(using: .utf8)!)
+    try db.put(value.data, forKey: key.data(using: .utf8)!)
     let value2 = try db.get(key.data(using: .utf8)!)
-    let fetchedValue = try T(binaryData: value2!)
+    let fetchedValue = try T(value2!)
     #expect(value == fetchedValue, "The returned value does not match the one that was set.")
 }

@@ -28,15 +28,15 @@ struct BitcoinCoreTaprootTests {
             if !includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.remove(.discourageUpgradableWitnessProgram) }
             if !includeFlags.contains("TAPROOT") { config.remove(.taproot) }
 
-            let unsignedTx = try Transaction(binaryData: Data(testCase.tx))
-            let prevouts = testCase.prevouts.map { try! TransactionOutput(binaryData: Data($0)) }
+            let unsignedTx = try Transaction(Data(testCase.tx))
+            let prevouts = testCase.prevouts.map { try! TransactionOutput(Data($0)) }
             let inIndex = testCase.inIndex
             let input = unsignedTx.ins[inIndex]
             if let success = testCase.success {
                 let successIn = Transaction.Input(
                     outpoint: input.outpoint,
                     sequence: input.sequence,
-                    script: .init(Data(success.scriptSig)),
+                    script: try .init(Data(success.scriptSig)),
                     witness: .init(success.witness.map { Data($0) })
 
                 )
@@ -52,7 +52,7 @@ struct BitcoinCoreTaprootTests {
                 let failureIn = Transaction.Input(
                     outpoint: input.outpoint,
                     sequence: input.sequence,
-                    script: .init(Data(failure.scriptSig)),
+                    script: try .init(Data(failure.scriptSig)),
                     witness: .init(failure.witness.map { Data($0) })
 
                 )

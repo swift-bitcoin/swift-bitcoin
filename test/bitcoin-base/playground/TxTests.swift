@@ -17,12 +17,12 @@ struct TxTests {
         for txInfo in TxInfoItems {
             guard
                 let expectedTransactionData = Data(hex: txInfo.hex),
-                let tx = try? Transaction(binaryData: expectedTransactionData)
+                let tx = try? Transaction(expectedTransactionData)
             else {
                 Issue.record("Transaction data could not be decoded."); continue
             }
 
-            #expect(tx.binaryData == expectedTransactionData)
+            #expect(tx.data == expectedTransactionData)
 
             let expectedVersion = txInfo.version
             #expect(tx.version.versionValue == expectedVersion)
@@ -37,7 +37,7 @@ struct TxTests {
             #expect(tx.witnessID == expectedWitnessID)
 
             let expectedSize = txInfo.size
-            #expect(tx.binarySize == expectedSize)
+            #expect(tx.dataSize == expectedSize)
 
             let expectedInputCount = txInfo.vin.count
             let expectedOutputCount = txInfo.vout.count
@@ -59,7 +59,7 @@ struct TxTests {
                     let expectedOutpoint = Outpoint.coinbase
                     #expect(input.outpoint == expectedOutpoint)
 
-                    let expectedScript = Script(expectedCoinbase)
+                    let expectedScript = try Script(expectedCoinbase)
                     #expect(input.script == expectedScript)
 
                 } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig, let expectedScriptData = Data(hex: scriptSig.hex) {
@@ -69,7 +69,7 @@ struct TxTests {
 
                     #expect(input.outpoint.txID == expectedTx)
                     #expect(input.outpoint.out == expectedOutput)
-                    let expectedScript = Script(expectedScriptData)
+                    let expectedScript = try Script(expectedScriptData)
                     #expect(input.script == expectedScript)
 
                     if let witness = vinData.txinwitness {
@@ -91,7 +91,7 @@ struct TxTests {
                 guard let expectedScriptData = Data(hex: voutData.scriptPubKey.hex) else {
                     Issue.record("Transaction out \(i) script data could not be decoded."); continue
                 }
-                let expectedScript = Script(expectedScriptData)
+                let expectedScript = try Script(expectedScriptData)
                 #expect(out.script == expectedScript)
             }
         }

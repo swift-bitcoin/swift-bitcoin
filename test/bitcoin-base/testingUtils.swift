@@ -22,7 +22,7 @@ extension Script {
 extension Array where Element == Data {
     static func withConstants(_ constants: [Int]) -> Self {
         constants.compactMap {
-            (try? ScriptNumber($0))?.binaryData ?? .none
+            (try? ScriptNumber($0))?.data ?? .none
         }
     }
 

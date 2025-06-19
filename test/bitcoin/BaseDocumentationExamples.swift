@@ -39,13 +39,13 @@ struct BaseDocumentationExamples {
         let prevout3 = fund.outs[3]
 
         // For pay-to-public key we just need to sign the hash and add the signature to the input's unlock script.
-        let sighash0 = SignatureHash(tx: spend, input: 0, sighashType: .all, scriptCode: prevout0.script.binaryData).data
+        let sighash0 = SignatureHash(tx: spend, input: 0, sighashType: .all, scriptCode: prevout0.script.data).data
         let sig0 = sk.sign(hash: sighash0)
         let sigExt0 = ECDSASignature.Extended(sig0, sighashType: .all)
         spend.ins[0].script = [.pushBytes(sigExt0.data)]
 
         // For pay-to-public-key-hash we need to also add the public key to the unlock script.
-        let sighash1 = SignatureHash(tx: spend, input: 1, sighashType: .all, scriptCode: prevout1.script.binaryData).data
+        let sighash1 = SignatureHash(tx: spend, input: 1, sighashType: .all, scriptCode: prevout1.script.data).data
         let sig1 = sk.sign(hash: sighash1)
         let sigExt1 = ECDSASignature.Extended(sig1, sighashType: .all)
         spend.ins[1].script = [.pushBytes(sigExt1.data), .pushBytes(sk.pubkey.data)]
@@ -86,7 +86,7 @@ struct BaseDocumentationExamples {
         // Same sighash for all signatures
         let input = 0
         let sighashType = SighashType.all
-        let sighash0 = SignatureHash(tx: spend, input: input, sighashType: sighashType, scriptCode: prevout.script.binaryData).data
+        let sighash0 = SignatureHash(tx: spend, input: input, sighashType: sighashType, scriptCode: prevout.script.data).data
 
         let sig0 = sk1.sign(hash: sighash0)
         let sigExt0 = ECDSASignature.Extended(sig0, sighashType: sighashType)
@@ -117,7 +117,7 @@ struct BaseDocumentationExamples {
         let prevout = fund.outs[0]
         let input = 0
         let sighashType = SighashType.all // Same sighash for all signatures
-        let sighash0 = SignatureHash(tx: spend, input: input, sighashType: sighashType, scriptCode: redeemScript.binaryData).data
+        let sighash0 = SignatureHash(tx: spend, input: input, sighashType: sighashType, scriptCode: redeemScript.data).data
 
         let sig0 = sk1.sign(hash: sighash0)
         let sigExt0 = ECDSASignature.Extended(sig0, sighashType: sighashType)
@@ -126,7 +126,7 @@ struct BaseDocumentationExamples {
         let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
-        spend.ins[input].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data), .encodeMinimally(redeemScript.binaryData)]
+        spend.ins[input].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data), .encodeMinimally(redeemScript.data)]
 
         let result = spend.verifyScript(prevouts: [prevout])
         #expect(result)
@@ -152,7 +152,7 @@ struct BaseDocumentationExamples {
         let prevout = fund.outs[0]
         let input = 0
         let sighashType = SighashType.all
-        let sighash0 = SignatureHash.Segwit(tx: spend, input: input, sighashType: sighashType, scriptCode: redeemScript.binaryData, prevout: prevout).data
+        let sighash0 = SignatureHash.Segwit(tx: spend, input: input, sighashType: sighashType, scriptCode: redeemScript.data, prevout: prevout).data
 
         let sig0 = sk1.sign(hash: sighash0)
         let sigExt0 = ECDSASignature.Extended(sig0, sighashType: sighashType)
@@ -161,7 +161,7 @@ struct BaseDocumentationExamples {
         let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
-        spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, redeemScript.binaryData])
+        spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, redeemScript.data])
 
         let result = spend.verifyScript(prevouts: [prevout])
         #expect(result)
@@ -187,7 +187,7 @@ struct BaseDocumentationExamples {
 
         let pubkey = sk.pubkey
         let pubkeyHash = Data(Hash160.hash(data: pubkey.data))
-        let scriptCode = Script.segwitPKHScriptCode(pubkeyHash).binaryData
+        let scriptCode = Script.segwitPKHScriptCode(pubkeyHash).data
 
         // Same sighash for all signatures
         let input = 0
@@ -197,7 +197,7 @@ struct BaseDocumentationExamples {
         let sigExt = ECDSASignature.Extended(sig, sighashType: sighashType)
 
         spend.ins[input].witness = .init([sigExt.data, pubkey.data])
-        spend.ins[input].script = [.encodeMinimally(redeemScript.binaryData)]
+        spend.ins[input].script = [.encodeMinimally(redeemScript.data)]
 
         let result = spend.verifyScript(prevouts: [prevout])
         #expect(result)
@@ -225,7 +225,7 @@ struct BaseDocumentationExamples {
         // Same sighash for all signatures
         let input = 0
         let sighashType = SighashType.all
-        let sighash0 = SignatureHash.Segwit(tx: spend, input: input, sighashType: sighashType, scriptCode: witnessScript.binaryData, prevout: prevout).data
+        let sighash0 = SignatureHash.Segwit(tx: spend, input: input, sighashType: sighashType, scriptCode: witnessScript.data, prevout: prevout).data
 
         let sig0 = sk1.sign(hash: sighash0)
         let sigExt0 = ECDSASignature.Extended(sig0, sighashType: sighashType)
@@ -235,8 +235,8 @@ struct BaseDocumentationExamples {
 
         // Signatures need to appear in the right order, plus a dummy value
 
-        spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, witnessScript.binaryData])
-        spend.ins[input].script = [.encodeMinimally(redeemScript.binaryData)]
+        spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, witnessScript.data])
+        spend.ins[input].script = [.encodeMinimally(redeemScript.data)]
 
         let result = spend.verifyScript(prevouts: [prevout])
         #expect(result)
@@ -259,7 +259,7 @@ struct BaseDocumentationExamples {
             .checkSigAdd,
             .constant(2),
             .equal
-        ]).binaryData
+        ]).data
         let scriptTree = TapscriptTree.leaf(0xc0, tapscript)
 
         let fund = Transaction(ins: [.init(outpoint: .coinbase)], outs: [

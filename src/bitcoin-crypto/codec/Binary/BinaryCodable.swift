@@ -29,14 +29,14 @@ public protocol BinaryDecodable {
 public extension BinaryEncodable {
 
     /// The instance's external binary representation.
-    var binaryData: Data {
-        var encoder = BinaryEncoder(size: binarySize)
+    var data: Data {
+        var encoder = BinaryEncoder(size: dataSize)
         encode(to: &encoder)
         return encoder.data
     }
 
     /// The external binary representation's length in bytes.
-    var binarySize: Int {
+    var dataSize: Int {
         var counter = BinaryEncodingSizeCounter()
         encodingSize(&counter)
         return counter.size
@@ -46,11 +46,11 @@ public extension BinaryEncodable {
 public extension BinaryDecodable {
 
     /// Creates a new instance from an external binary representation.
-    /// - Parameter binaryData: The binary representation to decode.
+    /// - Parameter data: The binary representation to decode.
     ///
     /// This initializer is generic over `DataProtocol`  meaning it can be passed a `Data` instance or a `UInt8` array.
-    init<D: DataProtocol>(binaryData: D) throws {
-        var decoder = BinaryDecoder(binaryData)
+    init<D: DataProtocol>(_ data: D) throws {
+        var decoder = BinaryDecoder(data)
         try self.init(from: &decoder)
     }
 }

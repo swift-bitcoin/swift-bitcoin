@@ -14,7 +14,7 @@ public struct SignatureHash: Equatable, Sendable {
             data = Data([0x01]) + Data(repeating: 0, count: 31)
             return
         }
-        let message = SignatureMessage(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode/* ?? prevout.script.binaryData*/)
+        let message = SignatureMessage(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode/* ?? prevout.script.data*/)
         data = Data(Hash256.hash(data: message.data))
     }
 
