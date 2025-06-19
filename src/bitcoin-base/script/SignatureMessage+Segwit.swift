@@ -21,7 +21,7 @@ extension SignatureMessage.Segwit {
         if sighashType.hasAnyCanPay {
             hashPrevouts = Data(repeating: 0, count: 32)
         } else {
-            let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.binaryData }
+            let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.data }
             hashPrevouts = Data(Hash256.hash(data: prevouts))
         }
 
@@ -30,7 +30,7 @@ extension SignatureMessage.Segwit {
         let hashSequence: Data
         if !sighashType.hasAnyCanPay && !sighashType.isSingle && !sighashType.isNone {
             let sequence = tx.ins.reduce(Data()) {
-                $0 + $1.sequence.binaryData
+                $0 + $1.sequence.data
             }
             hashSequence = Data(Hash256.hash(data: sequence))
         } else {
@@ -42,20 +42,20 @@ extension SignatureMessage.Segwit {
         // Otherwise, hashOutputs is a uint256 of 0x0000......0000.[7]
         let hashOuts: Data
         if !sighashType.isSingle && !sighashType.isNone {
-            let outsData = tx.outs.reduce(Data()) { $0 + $1.binaryData }
+            let outsData = tx.outs.reduce(Data()) { $0 + $1.data }
             hashOuts = Data(Hash256.hash(data: outsData))
         } else if sighashType.isSingle && inputIndex < tx.outs.count {
-            hashOuts = Data(Hash256.hash(data: tx.outs[inputIndex].binaryData))
+            hashOuts = Data(Hash256.hash(data: tx.outs[inputIndex].data))
         } else {
             hashOuts = Data(repeating: 0, count: 32)
         }
 
-        let outpointData = tx.ins[inputIndex].outpoint.binaryData
-        let scriptCodeData = VarInt(scriptCode.count).binaryData + scriptCode
+        let outpointData = tx.ins[inputIndex].outpoint.data
+        let scriptCodeData = VarInt(scriptCode.count).data + scriptCode
         let amountData = withUnsafeBytes(of: amount) { Data($0) }
-        let sequenceData = tx.ins[inputIndex].sequence.binaryData
+        let sequenceData = tx.ins[inputIndex].sequence.data
 
-        let remainingData = sequenceData + hashOuts + tx.locktime.binaryData + sighashType.binaryData(encoding: .fullLength)
-        data = tx.version.binaryData + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remainingData
+        let remainingData = sequenceData + hashOuts + tx.locktime.data + sighashType.data(encoding: .fullLength)
+        data = tx.version.data + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remainingData
     }
 }

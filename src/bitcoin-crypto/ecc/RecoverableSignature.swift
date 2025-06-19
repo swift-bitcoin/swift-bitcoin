@@ -95,7 +95,7 @@ private let messageMagic = "\u{18}Bitcoin Signed Message:\n"
 
 /// Used for original Bitcoin message signing protocol.
 private func compactRecoverableMessage(_ messageData: Data) -> Data {
-    messageMagic.data(using: .utf8)! + VarInt(messageData.count).binaryData + messageData
+    messageMagic.data(using: .utf8)! + VarInt(messageData.count).data + messageData
 }
 
 /// Produces an ECDSA signature that is compact and from which a public key can be recovered.

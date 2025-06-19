@@ -25,8 +25,8 @@ struct PartiallySignedTxTests {
         ], outs: [
             .init(), .init(), .init()
         ])
-        let psbtData = psbt.binaryData
-        let psbt2 = try PartiallySignedTx(binaryData: psbtData)
+        let psbtData = psbt.data
+        let psbt2 = try PartiallySignedTx(psbtData)
         #expect(psbt == psbt2)
     }
 
@@ -60,8 +60,8 @@ struct PartiallySignedTxTests {
         ], outs: [
             .init(proprietaryInfo: proprietaryInfo), .init(proprietaryInfo: proprietaryInfo), .init(proprietaryInfo: proprietaryInfo)
         ])
-        let psbtData = psbt.binaryData
-        let psbt2 = try PartiallySignedTx(binaryData: psbtData)
+        let psbtData = psbt.data
+        let psbt2 = try PartiallySignedTx(psbtData)
         #expect(psbt == psbt2)
     }
 }

@@ -38,7 +38,7 @@ public struct TaprootAddress: AddressProtocol {
             outputKey = internalKey.taprootOutputKey().xOnlyNormalized!
             return
         }
-        let scriptTree = TapscriptTree(scripts.map(\.binaryData), leafVersion: 192)
+        let scriptTree = TapscriptTree(scripts.map(\.data), leafVersion: 192)
         outputKey = internalKey.taprootOutputKey(scriptTree).xOnlyNormalized!
     }
 

@@ -54,7 +54,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         guard let data = Base58Decoder().decode(serialized) else {
             throw Error.invalidEncoding
         }
-        try self.init(binaryData: data)
+        try self.init(data)
     }
 
     public var hasSecretKey: Bool {
@@ -68,7 +68,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
     }
 
     public var serialized: String {
-        Base58Encoder().encode(binaryData)
+        Base58Encoder().encode(data)
     }
 
     private func derive(_ keyIndex: Int) -> Self {
@@ -94,7 +94,7 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         } else {
             preconditionFailure()
         }
-        hmac.update(data: UInt32(keyIndex).bigEndian.binaryData)
+        hmac.update(data: UInt32(keyIndex).bigEndian.data)
         let hmacResult = Data(hmac.finalize())
         let chaincode = hmacResult.dropFirst(32)
         let tweak = hmacResult.prefix(32)

@@ -19,7 +19,7 @@ extension PSBTMap {
             do {
                 let keySize = try VarInt(from: &decoder)
                 let type = try VarInt(from: &decoder)
-                let dataSize = keySize.value - type.binarySize
+                let dataSize = keySize.value - type.dataSize
                 self.type = type.value
                 data = try decoder.decode(dataSize)
             } catch {
@@ -32,7 +32,7 @@ extension PSBTMap {
 
         func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
             let type = VarInt(type)
-            let keySize = VarInt(type.binarySize + data.count)
+            let keySize = VarInt(type.dataSize + data.count)
             counter.count(keySize)
             counter.count(type)
             counter.count(data)
@@ -40,7 +40,7 @@ extension PSBTMap {
 
         func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
             let type = VarInt(type)
-            let keySize = VarInt(type.binarySize + data.count)
+            let keySize = VarInt(type.dataSize + data.count)
             encoder.encode(keySize)
             encoder.encode(type)
             encoder.encode(data)

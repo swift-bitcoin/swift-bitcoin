@@ -35,7 +35,7 @@ struct SignTransaction: ParsableCommand {
         }
         let tx: Transaction
         do {
-            tx = try Transaction(binaryData: txData)
+            tx = try Transaction(txData)
         } catch {
             throw ValidationError("Invalid raw transaction data: tx")
         }
@@ -43,14 +43,14 @@ struct SignTransaction: ParsableCommand {
             guard let prevoutData = Data(hex: $0) else {
                 throw ValidationError("Invalid hexadecimal value: prevout")
             }
-            guard let prevout = try? TransactionOutput(binaryData: prevoutData) else {
+            guard let prevout = try? TransactionOutput(prevoutData) else {
                 throw ValidationError("Invalid raw prevout data: prevout")
             }
             return prevout
         }
         var signer = TransactionSigner(tx: tx, prevouts: prevouts)
         let signed = signer.sign(input: input, with: secretKey)
-        print(signed.binaryData.hex)
+        print(signed.data.hex)
         destroyECCSigningContext()
     }
 }

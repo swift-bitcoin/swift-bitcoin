@@ -34,7 +34,7 @@ actor PersistentBlockIndex: BlockIndex {
         return try! byHeightDB.last!
         // If we didn't have byHeightDB…
         // let data = try? db.last
-        // return try! BlockRef(binaryData: data!).blockID
+        // return try! BlockRef(data!).blockID
     }
 
     @discardableResult
@@ -56,26 +56,26 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func add(_ blockRef: BlockRef) {
-        try? db.put(blockRef.binaryData, forKey: blockRef.blockID)
+        try? db.put(blockRef.data, forKey: blockRef.blockID)
         try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
         height += 1
     }
 
     func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) {
         guard let data = try! db.get(id) else { return }
-        var blockRef = try! BlockRef(binaryData: data)
+        var blockRef = try! BlockRef(data)
         blockRef.locator = locator
         blockRef.status = status
-        try? db.put(blockRef.binaryData, forKey: blockRef.blockID)
+        try? db.put(blockRef.data, forKey: blockRef.blockID)
         try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
     }
 
     func update(_ id: Block.ID, status: BlockRef.ValidationStatus) {
         // TODO: deal with duplication of the different `update()` funcs.
         guard let data = try! db.get(id) else { return }
-        var blockRef = try! BlockRef(binaryData: data)
+        var blockRef = try! BlockRef(data)
         blockRef.status = status
-        try? db.put(blockRef.binaryData, forKey: blockRef.blockID)
+        try? db.put(blockRef.data, forKey: blockRef.blockID)
         try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
     }
 
@@ -85,14 +85,14 @@ actor PersistentBlockIndex: BlockIndex {
 
     func get(_ id: Block.ID) -> BlockRef { // TODO: Probably throws and return value nil-able
         let data = try! db.get(id)
-        return try! BlockRef(binaryData: data!)
+        return try! BlockRef(data!)
     }
 
     func get(at height: Int) -> BlockRef {
         // guard height < byHeight.endIndex else { return nil }
         let blockID = try! byHeightDB.get(height)!
         let blockRefData = try! db.get(blockID)
-        return try! BlockRef(binaryData: blockRefData!)
+        return try! BlockRef(blockRefData!)
     }
 
     func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {

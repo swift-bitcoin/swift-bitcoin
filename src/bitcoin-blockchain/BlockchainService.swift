@@ -180,7 +180,7 @@ public actor BlockchainService: Sendable {
     public var chainwork: Data {
         get async {
             precondition(status == .running)
-            return Data(await blockIndex.get(chainTip).chainwork.binaryData.reversed())
+            return Data(await blockIndex.get(chainTip).chainwork.data.reversed())
         }
     }
 
@@ -264,7 +264,7 @@ public actor BlockchainService: Sendable {
             height: ref.height,
             confirmations: validatedHeight - ref.height + 1,
             difficulty: ref.difficulty,
-            chainwork: ref.chainwork.binaryData,
+            chainwork: ref.chainwork.data,
             medianTime: medianTime
         )
     }
@@ -386,7 +386,7 @@ public actor BlockchainService: Sendable {
         }
 
         let target = await getNextWorkRequired(forHeight: await height, newBlockTime: header.time, params: params)
-        guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), try! DifficultyTarget(binaryData: header.hash) <= DifficultyTarget(compact: header.target) else {
+        guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), try! DifficultyTarget(header.hash) <= DifficultyTarget(compact: header.target) else {
             throw .insuficientProofOfWork
         }
     }
@@ -751,9 +751,9 @@ public actor BlockchainService: Sendable {
             )
             nonce += 1
             tries -= 1
-        } while tries > 0 && (try! DifficultyTarget(binaryData: block.hash) > DifficultyTarget(compact: target))
+        } while tries > 0 && (try! DifficultyTarget(block.hash) > DifficultyTarget(compact: target))
 
-        guard try! DifficultyTarget(binaryData: block.hash) <= DifficultyTarget(compact: target) else {
+        guard try! DifficultyTarget(block.hash) <= DifficultyTarget(compact: target) else {
             return nil
         }
 
@@ -833,7 +833,7 @@ public actor BlockchainService: Sendable {
     private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParams) async -> Int {
         precondition(heightLast >= 0)
         let lastHeader = await blockIndex.get(at: heightLast)
-        let powLimitTarget = try! DifficultyTarget(binaryData: Data(params.powLimit.reversed()))
+        let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
         let proofOfWorkLimit = powLimitTarget.toCompact()
 
         // Only change once per difficulty adjustment interval
@@ -880,7 +880,7 @@ public actor BlockchainService: Sendable {
         }
 
         // Retarget
-        let powLimitTarget = try! DifficultyTarget(binaryData: Data(params.powLimit.reversed()))
+        let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
 
         var new = DifficultyTarget(compact: lastHeader.target)
         precondition(!new.isZero)
@@ -949,7 +949,7 @@ public actor BlockchainService: Sendable {
 
         let blockRef = await blockIndex.get(chainTip)
 
-        if try! DifficultyTarget(binaryData: params.minChainwork.reversed()) > blockRef.chainwork { return true }
+        if try! DifficultyTarget(params.minChainwork.reversed()) > blockRef.chainwork { return true }
 
         let maxTipAge = TimeInterval(24 * 60 * 60) // 24 hours
         let maxTipTime = Date(timeIntervalSince1970: nowSeconds() - maxTipAge)

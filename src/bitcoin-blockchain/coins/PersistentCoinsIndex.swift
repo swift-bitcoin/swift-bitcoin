@@ -19,13 +19,13 @@ actor PersistentCoinsIndex: CoinsIndex {
     private let db: Database!
 
     func add(_ coin: UnspentOutput, for outpoint: Outpoint) {
-        try? db.put(coin.binaryData, forKey: outpoint.binaryData)
+        try? db.put(coin.data, forKey: outpoint.data)
     }
 
     func get(_ outpoint: Outpoint) -> UnspentOutput? { // TODO: Probably should throw
-        let data = try! db.get(outpoint.binaryData)
+        let data = try! db.get(outpoint.data)
         if let data {
-            return try! UnspentOutput(binaryData: data)
+            return try! UnspentOutput(data)
         } else {
             return nil
         }
@@ -33,7 +33,7 @@ actor PersistentCoinsIndex: CoinsIndex {
 
     func remove(_ outpoint: Outpoint) throws(Error) {
         do {
-            try db.deleteValue(forKey: outpoint.binaryData)
+            try db.deleteValue(forKey: outpoint.data)
         } catch {
             logger.error("Problem removing coin.")
             throw .deletionIssue

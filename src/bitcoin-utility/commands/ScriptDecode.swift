@@ -21,7 +21,9 @@ struct ScriptDecode: ParsableCommand {
         guard let scriptData = Data(hex: scriptHex) else {
             throw ValidationError("Invalid hex format: script")
         }
-        let script = Script(scriptData)
+        guard let script = try? Script(scriptData) else {
+            throw ValidationError("Invalid script data")
+        }
         print(script.asm(version))
     }
 }

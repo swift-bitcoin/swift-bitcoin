@@ -79,7 +79,7 @@ struct BIP173Tests {
         let decoded = try #require(decodedMainnet ?? decodedTestnet)
 
         // Segwit public key
-        let scriptPk = Script([decoded.version == 0 ? .zero : .constant(UInt8(decoded.version)), .pushBytes(decoded.program)]).binaryData
+        let scriptPk = Script([decoded.version == 0 ? .zero : .constant(UInt8(decoded.version)), .pushBytes(decoded.program)]).data
 
         #expect(scriptPk == script, "Decoded script mismatch: \(scriptPk.hex) != \(script.hex)")
 

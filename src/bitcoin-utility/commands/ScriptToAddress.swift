@@ -32,7 +32,7 @@ struct ScriptToAddress: ParsableCommand {
         guard scriptsData.count == scriptsHex.count else {
             throw ValidationError("Invalid hexadecimal value: scripts")
         }
-        let scripts = scriptsData.compactMap { Script($0) }
+        let scripts = scriptsData.compactMap { try? Script($0) }
         guard scripts.count == scriptsHex.count else {
             throw ValidationError("Invalid hexadecimal value: scripts")
         }

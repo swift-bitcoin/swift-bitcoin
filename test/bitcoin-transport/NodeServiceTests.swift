@@ -333,7 +333,7 @@ struct NodeServiceTests: ~Copyable {
         let messageSH10_block = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH10_block.command == .block)
 
-        let satoshiBlock = try Block(binaryData: messageSH10_block.payload)
+        let satoshiBlock = try Block(messageSH10_block.payload)
         #expect(satoshiBlock.txs.count == 1)
 
         let halBlocksBefore = await halChain.validatedHeight + 1

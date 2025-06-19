@@ -22,7 +22,7 @@ public struct LegacyAddress: AddressProtocol {
     public init(_ script: Script, mainnet: Bool = true) {
         isMainnet = mainnet
         isScript = true
-        hash = Data(Hash160.hash(data: script.binaryData))
+        hash = Data(Hash160.hash(data: script.data))
     }
 
     public init?(_ address: String) {

@@ -27,7 +27,7 @@ extension SignatureHash.Taproot {
 
         hasher.update(data: message.data)
         if let tapscriptExtension {
-            hasher.update(data: tapscriptExtension.binaryData)
+            hasher.update(data: tapscriptExtension.data)
         }
         data = Data(hasher.finalize())
     }

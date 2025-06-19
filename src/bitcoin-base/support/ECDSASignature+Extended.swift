@@ -31,6 +31,6 @@ extension ECDSASignature.Extended {
     }
 
     public var data: Data {
-        sig.data + sighashType.binaryData
+        sig.data + sighashType.data
     }
 }

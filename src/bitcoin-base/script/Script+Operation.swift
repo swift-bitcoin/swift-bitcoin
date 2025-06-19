@@ -23,7 +23,7 @@ extension Script.Operation {
                 if data.first! >= 1 && data.first! <= 16 {
                     return false
                 }
-                if data == ScriptNumber.negativeOne.binaryData {
+                if data == ScriptNumber.negativeOne.data {
                     return false
                 }
                 return true
@@ -312,7 +312,7 @@ extension Script.Operation {
             guard let number = try? ScriptNumber(value) else {
                 preconditionFailure()
             }
-            return encodeMinimally(number.binaryData)
+            return encodeMinimally(number.data)
         }
     }
 

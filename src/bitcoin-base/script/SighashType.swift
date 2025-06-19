@@ -131,6 +131,6 @@ extension SighashType: CustomBinaryCodable {
 extension Optional where Wrapped == SighashType {
 
     var data: Data {
-        if case let .some(wrapped) = self { wrapped.binaryData } else { Data([0x00]) }
+        if case let .some(wrapped) = self { wrapped.data } else { Data([0x00]) }
     }
 }

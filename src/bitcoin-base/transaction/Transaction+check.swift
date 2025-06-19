@@ -49,7 +49,7 @@ extension Transaction {
             throw .duplicateInput
         }
 
-        if isCoinbase && (ins[0].script.binarySize < 2 || ins[0].script.binarySize > 100) {
+        if isCoinbase && (ins[0].script.dataSize < 2 || ins[0].script.dataSize > 100) {
             throw .coinbaseLengthOutOfRange
         }
         if !isCoinbase {
