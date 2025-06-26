@@ -1,22 +1,27 @@
 import Foundation
 import CLMDB
 
-public struct LMDBVersion: Sendable {
-    public let major: Int
-    public let minor: Int
-    public let patch: Int
+package struct LMDBVersion: Sendable {
+    package let major: Int
+    package let minor: Int
+    package let patch: Int
+    package let versionString: String
 
-    private init(major: Int, minor: Int, patch: Int) {
+    private init(major: Int, minor: Int, patch: Int, versionString: String) {
         self.major = major
         self.minor = minor
         self.patch = patch
+        self.versionString = versionString
     }
 
-    public static let current: LMDBVersion = {
-        var major: Int32 = 0
-        var minor: Int32 = 0
-        var patch: Int32 = 0
-        _ = mdb_version(&major, &minor, &patch)
-        return LMDBVersion(major: Int(major), minor: Int(minor), patch: Int(patch))
+    package static let current: LMDBVersion = {
+        var major: Int32 = -1
+        var minor: Int32 = -1
+        var patch: Int32 = -1
+        guard let versionCString = mdb_version(&major, &minor, &patch) else {
+            return .init(major: Int(major), minor: Int(minor), patch: Int(patch), versionString: "")
+        }
+        let versionString = String(cString: versionCString)
+        return .init(major: Int(major), minor: Int(minor), patch: Int(patch), versionString: versionString)
     }()
 }

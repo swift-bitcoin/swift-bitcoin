@@ -14,104 +14,113 @@ struct LMDBTests {
     }
 
     @Test func createEnvironment() throws {
-        let fm = FileManager.default
-
-        let disambiguator = UInt.random(in: UInt.min ... UInt.max)
-        let envDir = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)")
-
-        try? fm.removeItem(atPath: envDir.path)
-        try fm.createDirectory(at: envDir, withIntermediateDirectories: true)
-
-        _ = try Environment(path: .init(envDir.path), flags: [], maxDBs: 32, maxReaders: 126, mapSize: 10485760)
-        try fm.removeItem(atPath: envDir.path)
+        let location = try createDir()
+        defer { clearDir(location) }
+        _ = try Environment(at: location)
     }
 
     @Test func createUnnamedDatabase() throws {
-        let db = try createDB(nil)
-        clearDB(db)
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
+        try env.createDB(nil)
     }
 
     @Test func hasKey() throws {
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
+        try env.createDB(nil)
 
-        let db = try createDB(#function)
-        defer { clearDB(db) }
+        let value = "Hello world!".data(using: .utf8)!
+        let keyWithValue = "hv1".data(using: .utf8)!
+        let keyWithoutValue = "hv2".data(using: .utf8)!
 
-        let value = "Hello world!"
-        let keyWithValue = "hv1"
-        let keyWithoutValue = "hv2"
+        try env.withTransaction(db: nil) { tx, db in
+            try db.put(value, key: keyWithValue)
 
-        try db.put(value.data(using: .utf8)!, forKey: keyWithValue.data(using: .utf8)!)
+            let hasValue1 = try db.get(keyWithValue) != nil
+            let hasValue2 = try db.get(keyWithoutValue) != nil
 
-        let hasValue1 = try db.exists(key: keyWithValue.data(using: .utf8)!)
-        let hasValue2 = try db.exists(key: keyWithoutValue.data(using: .utf8)!)
-
-        #expect(hasValue1, "A value has been set for this key. Result should be true.")
-        #expect(!hasValue2, "No value has been set for this key. Result should be false.")
+            #expect(hasValue1, "A value has been set for this key. Result should be true.")
+            #expect(!hasValue2, "No value has been set for this key. Result should be false.")
+        }
     }
 
     @Test func putGet() throws {
 
-        let db = try createDB(#function)
-        defer { clearDB(db) }
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
+        try env.createDB(nil)
 
         // Key generating sequence
         var seq = sequence(first: 0, next: { $0 + 1 })
         let nextKey = { "key-\(seq.next()!)" }
 
-        // Boolean
-        try putGetValue(value: true, key: nextKey(), in: db)
-        try putGetValue(value: false, key: nextKey(), in: db)
+        try env.withTransaction(db: nil) { _, db in
+            // Boolean
+            try putGetValue(value: true, key: nextKey(), in: db)
+            try putGetValue(value: false, key: nextKey(), in: db)
 
-        // String
-        try putGetValue(value: "ÆØÅ", key: nextKey(), in: db)
-        try putGetValue(value: "Hello world! 👋🏼", key: nextKey(), in: db)
+            // String
+            try putGetValue(value: "ÆØÅ", key: nextKey(), in: db)
+            try putGetValue(value: "Hello world! 👋🏼", key: nextKey(), in: db)
 
-        // Date
-        try putGetValue(value: Date.distantFuture, key: nextKey(), in: db)
+            // Date
+            try putGetValue(value: Date.distantFuture, key: nextKey(), in: db)
 
-        // Integers
-        try putGetValue(value: Int.max, key: nextKey(), in: db)
-        try putGetValue(value: Int8.max, key: nextKey(), in: db)
-        try putGetValue(value: Int16.max, key: nextKey(), in: db)
-        try putGetValue(value: Int32.max, key: nextKey(), in: db)
-        try putGetValue(value: Int64.max, key: nextKey(), in: db)
+            // Integers
+            try putGetValue(value: Int.max, key: nextKey(), in: db)
+            try putGetValue(value: Int8.max, key: nextKey(), in: db)
+            try putGetValue(value: Int16.max, key: nextKey(), in: db)
+            try putGetValue(value: Int32.max, key: nextKey(), in: db)
+            try putGetValue(value: Int64.max, key: nextKey(), in: db)
 
-        try putGetValue(value: UInt.max, key: nextKey(), in: db)
-        try putGetValue(value: UInt8.max, key: nextKey(), in: db)
-        try putGetValue(value: UInt16.max, key: nextKey(), in: db)
-        try putGetValue(value: UInt32.max, key: nextKey(), in: db)
-        try putGetValue(value: UInt64.max, key: nextKey(), in: db)
+            try putGetValue(value: UInt.max, key: nextKey(), in: db)
+            try putGetValue(value: UInt8.max, key: nextKey(), in: db)
+            try putGetValue(value: UInt16.max, key: nextKey(), in: db)
+            try putGetValue(value: UInt32.max, key: nextKey(), in: db)
+            try putGetValue(value: UInt64.max, key: nextKey(), in: db)
 
-        // Floats
-        try putGetValue(value: Float.leastNormalMagnitude, key: nextKey(), in: db)
-        try putGetValue(value: Double.leastNormalMagnitude, key: nextKey(), in: db)
-
+            // Floats
+            try putGetValue(value: Float.leastNormalMagnitude, key: nextKey(), in: db)
+            try putGetValue(value: Double.leastNormalMagnitude, key: nextKey(), in: db)
+        }
     }
 
-    @Test func getNonExistant() throws {
-        let db = try createDB(#function)
-        defer { clearDB(db) }
-        let value = try db.get("any-key".data(using: .utf8)!)
+    @Test func getNonExistent() throws {
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
+        try env.createDB(nil)
+        let value = try env.get("any-key".data(using: .utf8)!)
         #expect(value == nil)
     }
 
     @Test func count() throws {
-        let db = try createDB(#function)
-        defer { clearDB(db) }
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
 
         let count = 10
-        for i in 0 ..< count {
-            try db.put("value-\(i)".data(using: .utf8)!, forKey: "key-\(i)".data(using: .utf8)!)
+        try env.withTransaction(db: .create(nil)) { _, db in
+            for i in 0 ..< count {
+                try db.put("value-\(i)".data(using: .utf8)!, key: "key-\(i)".data(using: .utf8)!)
+            }
+            #expect(try db.count == count)
         }
-        #expect(count == db.count)
     }
 
     @Test func stats() throws {
-        let db = try createDB(#function)
-        defer { clearDB(db) }
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
 
-        try db.put("value".data(using: .utf8)!, forKey: "key".data(using: .utf8)!)
-        let stats = db.stats
+        let stats = try env.withTransaction(db: .create(nil)) { _, db in
+            try db.put("value".data(using: .utf8)!, key: "key".data(using: .utf8)!)
+            return try db.stats
+        }
         let multiPlatformPageSize = Int32(Int(_SC_PAGESIZE)) // The double wrapping is necessary for Linux compatibility.
         #expect(stats.pageSize == UInt32(sysconf(multiPlatformPageSize)))
         #expect(stats.depth == 1)
@@ -121,145 +130,149 @@ struct LMDBTests {
     }
 
     @Test func emptyKey() throws {
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
 
-        let db = try createDB(#function)
-        defer { clearDB(db) }
-
-        #expect(throws: (any Error).self) {
-            try db.put("test".data(using: .utf8)!, forKey: "".data(using: .utf8)!)
+        try env.withTransaction(db: .create(nil)) { _, db in
+            #expect(throws: Database.AccessError.self) {
+                try db.put("test".data(using: .utf8)!, key: "".data(using: .utf8)!)
+            }
+            return ()
         }
-
     }
 
     @Test func delete() throws {
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
 
-        let db = try createDB(#function)
-        defer { clearDB(db) }
-        let key = "deleteTest"
+        let key = "deleteTest".data(using: .utf8)!
 
-        // Put a value
-        try db.put("Hello world!".data(using: .utf8)!, forKey: key.data(using: .utf8)!)
+        try env.withTransaction(db: .create(nil)) { _, db in
 
-        // Delete the value.
-        try db.deleteValue(forKey: key.data(using: .utf8)!)
+            // Put a value
+            try db.put("Hello world!".data(using: .utf8)!, key: key)
 
-        // Get the value
-        let retrievedData = try db.get(key.data(using: .utf8)!)
-        #expect(retrievedData == nil, "Value still present after delete.")
+            // Delete the value.
+            try db.delete(key)
+
+            // Get the value
+            let retrievedData = try db.get(key)
+            #expect(retrievedData == nil, "Value still present after delete.")
+        }
     }
 
     @Test func dropDatabase() throws {
-
         // Open a new db, creating it in the process.
-        var db: Database! = try createDB(#function)
-        let environment = db.environment
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
+        try env.createDB(nil)
 
-        // Close the db and drop it.
-        // Drop the db and get rid of the reference, so that the handle is closed.
-        try db.drop()
-        db = nil
+        try env.withTransaction(db: nil) { _, db in
+            // Close the db and drop it.
+            // Drop the db and get rid of the reference, so that the handle is closed.
+            try db.drop()
+        }
 
         // Attempt to open a db with the same name. We aren't passing in the .create flag, so this action should fail, indicating that the db was dropped successfully.
         do {
-            db = try environment.openDatabase(named: #function)
-        } catch LMDBError.notFound {
+            try env.withTransaction(db: nil) { _, _ in }
+        } catch Transaction.InitError.databaseIssue {
             // The desired outcome is that the db is not found.
         }
     }
 
     @Test func emptyDatabase() throws {
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
+        try env.createDB(nil)
 
-        let db = try createDB(#function)
-        defer { clearDB(db) }
+        let key = "test".data(using: .utf8)!
+        try env.withTransaction(db: nil) { _, db in
+            // Put a value
+            try db.put("Hello world!".data(using: .utf8)!, key: key)
+            #expect(try db.count == 1)
+        }
 
-        let key = "test"
-        // Put a value
-        try db.put("Hello world!".data(using: .utf8)!, forKey: key.data(using: .utf8)!)
+        try env.withTransaction(db: nil) { _, db in
+            #expect(try db.count == 1)
 
-        // Empty the db.
-        try db.empty()
+            // Empty the db.
+            try db.empty()
+            #expect(try db.count == 0)
+        }
 
         // Get the value. We want the result to be nil, because the db was emptied.
-        let retrievedData = try db.get(key.data(using: .utf8)!)
-        #expect(retrievedData == nil, "Value still present after db being emptied.")
+        try env.withTransaction(db: nil) { _, db in
+            let retrievedData = try db.get(key)
+            #expect(retrievedData == nil, "Value still present after db being emptied.")
+            #expect(try db.count == 0)
+
+        }
     }
 
     @Test func readOnlyDatabase() throws {
+        let value = "value".data(using: .utf8)!
+        let key = "test".data(using: .utf8)!
 
-        let dbName = #function
-        let value = "value"
-        let key = "test"
-
-        var envPath = FilePath?.none
         // Open db and add a value
-        var db: Database! = try createDB(dbName)
-        envPath = db.environment.path
-        try db.put(value.data(using: .utf8)!, forKey: key.data(using: .utf8)!)
-        db = nil
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
 
+        try env.withTransaction(db: .create(nil)) { _, db in
+            try db.put(value, key: key)
+        }
         // Open the db again as a read only db.
-        let readOnlyDB = try createDB(dbName, path: envPath, envFlags: [.readOnly])
-        defer { clearDB(readOnlyDB) }
+        try env.withTransaction(db: nil, options: .readOnly) { _, db in
 
-        let fetchedData = try #require(try readOnlyDB.get(key.data(using: .utf8)!))
-        let fetchedValue = String(data: fetchedData, encoding: .utf8)!
-        #expect(fetchedValue == value)
+            let fetchedValue = try #require(try db.get(key))
+            #expect(fetchedValue == value)
 
-        // Writing a value to a read-only db should fail.
-        #expect(throws: (any Error).self) {
-            try readOnlyDB.put("newValue".data(using: .utf8)!, forKey: key.data(using: .utf8)!)
+            // Writing a value to a read-only db should fail.
+            #expect(throws: (any Error).self) {
+                try db.put("newValue".data(using: .utf8)!, key: key)
+            }
         }
     }
 
     @Test func cursor() throws {
 
-        let db = try createDB(#function)
-        defer { clearDB(db) }
+        let keys = ["A", "B", "C", "D"].map { $0.data(using: .utf8)! }
+        let values = ["1", "2", "3", "4"].map {$0.data(using: .utf8)! }
 
-        let values = [
-            "A": "1",
-            "B": "2",
-            "C": "3",
-            "D": "4"
-        ]
+        let location = try createDir()
+        defer { clearDir(location) }
+        let env = try Environment(at: location)
 
-        // Insert test data
-        try values.forEach { try db.put($0.1.data(using: .utf8)!, forKey: $0.0.data(using: .utf8)!) }
 
-        for (k, v) in db {
-            let key = String(data: k, encoding: .utf8)!
-            let value = String(data: v, encoding: .utf8)!
-            #expect(values[key] == value)
+        try env.withTransaction(db: .create(nil)) { _, db in
+
+
+            // Insert test data
+            try zip(keys, values).forEach { try db.put($0.1, key: $0.0) }
+        }
+        try env.withTransaction(db: nil) { _, db in
+            try db.withCursor { cursor in
+                for i in try 0 ..< db.count {
+                    let value = try cursor.get(i == 0 ? .first : .next)
+                    #expect(value == values[i])
+                }
+                //let key = String(data: k, encoding: .utf8)!
+            }
         }
     }
 }
 
-private func createDB(_ name: String?, path: FilePath? = nil, envFlags: Environment.Flags = [], dbFlags: Database.Flags = [.create]) throws -> Database {
-    let fm = FileManager.default
-    let envPath: FilePath
-    if let path {
-        envPath = path
-    } else {
-        let disambiguator = UInt.random(in: UInt.min ... UInt.max)
-        let envDir = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)")
-        envPath = .init(envDir.path)
-        try? fm.removeItem(atPath: envPath.string)
-        try fm.createDirectory(atPath: envPath.string, withIntermediateDirectories: true)
-    }
-    let environment = try Environment(path: envPath, flags: envFlags, maxDBs: 32)
-    return try environment.openDatabase(named: name, flags: dbFlags)
-}
-
-private func clearDB(_ db: Database) {
-    let environment = db.environment
-    try? db.drop()
-    try? FileManager.default.removeItem(atPath: environment.path.string)
-}
-
 /// Inserts a value and reads it back, verifying that the two values match.
-private func putGetValue<T>(value: T, key: String, in db: Database) throws where T: BinaryCodable & Equatable {
-    try db.put(value.data, forKey: key.data(using: .utf8)!)
-    let value2 = try db.get(key.data(using: .utf8)!)
-    let fetchedValue = try T(value2!)
+private func putGetValue<T>(value: T, key: String, in db: borrowing Database) throws where T: BinaryCodable & Equatable {
+    let keyData = key.data(using: .utf8)!
+    try db.put(value.data, key: keyData)
+    let valueData2 = try #require(try db.get(keyData))
+    #expect(value.data == valueData2)
+    let fetchedValue = try T(valueData2)
     #expect(value == fetchedValue, "The returned value does not match the one that was set.")
 }

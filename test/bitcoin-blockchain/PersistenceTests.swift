@@ -96,6 +96,6 @@ struct PersistenceTests {
         await alice.stop()
         await bob.stop()
 
-        try? fm.removeItem(atPath: dataDir.string)
+        try! fm.removeItem(atPath: dataDir.string)
     }
 }

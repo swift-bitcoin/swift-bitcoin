@@ -1,82 +1,31 @@
-import Foundation
 import CLMDB
 
-/// All read and write operations on the database happen inside a Transaction.
-public struct Transaction {
+package struct Transaction: ~Copyable {
 
-    public enum Action {
-        case abort, commit
+    init(env: OpaquePointer, options: Options = []) throws(InitError) {
+        var handle = OpaquePointer?.none
+        let status = mdb_txn_begin(env, nil, options.unsigned, &handle)
+        guard status == MDB_SUCCESS else {
+            throw .beginIssue
+        }
+        self.handle = handle!
     }
 
-    public struct Flags: OptionSet, Sendable {
-        public let rawValue: Int32
-        public init(rawValue: Int32) { self.rawValue = rawValue}
+    private let handle: OpaquePointer
 
-        public static let readOnly = Flags(rawValue: MDB_RDONLY)
+    package func commit() throws(CommitError) {
+        let status = mdb_txn_commit(handle)
+        guard status == MDB_SUCCESS else {
+            abort()
+            throw CommitError(status)
+        }
     }
 
-    internal private(set) var handle: OpaquePointer?
-
-    /// Creates a new instance of Transaction and runs the closure provided.
-    /// Depending on the result returned from the closure, the transaction will either be comitted or aborted.
-    /// If an error is thrown from the transaction closure, the transaction is aborted.
-    /// - parameter environment: The environment with which the transaction will be associated.
-    /// - parameter parent: Transactions can be nested to unlimited depth. (WARNING: Not yet tested)
-    /// - parameter flags: A set containing flags modifying the behavior of the transaction.
-    /// - parameter closure: The closure in which database interaction should occur. When the closure returns, the transaction is ended.
-    /// - throws: an error if operation fails. See `LMDBError`.
-    @discardableResult
-    internal init(environment: Environment, parent: Transaction? = nil, flags: Flags = [], closure: ((Transaction) throws -> Transaction.Action)) throws {
-
-        var flags = flags
-
-        if environment.flags.contains(.readOnly) {
-            flags.insert(.readOnly)
-        }
-
-        // http://lmdb.tech/doc/group__mdb.html#gad7ea55da06b77513609efebd44b26920
-        let txnStatus = mdb_txn_begin(environment.handle, parent?.handle, UInt32(flags.rawValue), &handle)
-
-        guard txnStatus == 0 else {
-            throw LMDBError(returnCode: txnStatus)
-        }
-
-        // Run the closure inside a do/catch block, so we can abort the transaction if an error is thrown from the closure.
-        let transactionResult: Transaction.Action
-        do {
-            transactionResult = try closure(self)
-        } catch {
-            mdb_txn_abort(handle)
-            throw error
-        }
-
-        switch transactionResult {
-        case .abort:
-            mdb_txn_abort(handle)
-
-        case .commit:
-            let commitStatus = mdb_txn_commit(handle)
-            guard commitStatus == 0 else {
-                throw LMDBError(returnCode: commitStatus)
-            }
-
-        }
-
+    package func abort() {
+        mdb_txn_abort(handle)
     }
 
-    internal init(environment: Environment, parent: Transaction? = nil, flags: Flags = []) throws {
-
-        var flags = flags
-
-        if environment.flags.contains(.readOnly) {
-            flags.insert(.readOnly)
-        }
-
-        // http://lmdb.tech/doc/group__mdb.html#gad7ea55da06b77513609efebd44b26920
-        let txnStatus = mdb_txn_begin(environment.handle, parent?.handle, UInt32(flags.rawValue), &handle)
-
-        guard txnStatus == 0 else {
-            throw LMDBError(returnCode: txnStatus)
-        }
+    func database(_ db: Database.Descriptor) -> Database? {
+        Database(db, tx: handle)
     }
 }

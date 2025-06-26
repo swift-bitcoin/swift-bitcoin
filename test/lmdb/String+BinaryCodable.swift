@@ -1,4 +1,18 @@
 import BitcoinCrypto
+import Foundation
+
+func createDir() throws -> URL {
+    let fm = FileManager.default
+    let disambiguator = UInt.random(in: UInt.min ... UInt.max)
+    let location = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)")
+    try? fm.removeItem(atPath: location.path)
+    try fm.createDirectory(atPath: location.path, withIntermediateDirectories: true)
+    return location
+}
+
+func clearDir(_ location: URL) {
+    try? FileManager.default.removeItem(atPath: location.path)
+}
 
 extension String: BinaryCodable {
 

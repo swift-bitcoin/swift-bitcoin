@@ -1,17 +1,19 @@
 import LMDB
-import SystemPackage
+import struct SystemPackage.FilePath
+import Foundation
 
 /// Database block index service implementation.
 actor PersistentBlockIndex: BlockIndex {
 
     init(path: FilePath) {
-        db = try! Database(environment: .init(path: path.appending("block-index"), flags: [.noSubDir], maxDBs: 2), name: "by-id", flags: [.create])
-        byHeightDB = try! Database(environment: db.environment, name: "by-height", flags: [.create, .integerKey])
-        height = byHeightDB.count - 1
+        env = try! Environment(at: URL(filePath: path.appending("block-index").string), maxDBs: 2, options: [.noSubDir])
+        try! env.createDB(byID)
+        height = try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey])) { _, byHeight in
+            try byHeight.count - 1
+        }
     }
 
-    private let db: Database!
-    private let byHeightDB: Database!
+    private let env: Environment
 
     /// Active chain height only, includes headers of unverified blocks.
     internal private(set) var height: Int
@@ -19,11 +21,13 @@ actor PersistentBlockIndex: BlockIndex {
     /// Locators in reverse height order
     var locators: [BlockStorageLocator] {
         var locators = [BlockStorageLocator]()
-        for i in height ... 0 {
-            let blockID = try! byHeightDB.get(i)!
-            let ref = get(blockID)
-            if let locator = ref.locator {
-                locators.append(locator)
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
+            for i in self.height ... 0 {
+                let blockID = try byHeight.get(i)!
+                let ref = try BlockRef(try byID.get(blockID)!)
+                if let locator = ref.locator {
+                    locators.append(locator)
+                }
             }
         }
         return locators
@@ -31,20 +35,25 @@ actor PersistentBlockIndex: BlockIndex {
 
     var lastHeaderID: Block.ID {
         precondition(height > -1)
-        return try! byHeightDB.last!
-        // If we didn't have byHeightDB…
-        // let data = try? db.last
-        // return try! BlockRef(data!).blockID
+        return try! env.withTransaction(db: byHeight, options: [.readOnly]) { _, db in
+            try db.last!
+        }
     }
 
     @discardableResult
     func add(_ block: Block, locator: BlockStorageLocator?, status: BlockRef.ValidationStatus) throws(BlockIndexError) -> BlockRef {
-        let previous = if block.previous != Block.nullParent && has(block.previous) {
-            get(block.previous)
-        } else {
-            BlockRef?.none
+        let previous: BlockRef?
+        let count: Int
+        (previous, count) = try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            let previous: BlockRef?
+            if block.previous != Block.nullParent, let previousBlock = try byID.get(block.previous) {
+                previous = try! BlockRef(previousBlock)
+            } else {
+                previous = nil
+            }
+            return (previous, try byID.count)
         }
-        guard db.count == 0 || previous != nil else {
+        guard count == 0 || previous != nil else {
             throw BlockIndexError.parentMissing
         }
         let height = if let previous { previous.height + 1 } else { 0 }
@@ -56,73 +65,105 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func add(_ blockRef: BlockRef) {
-        try? db.put(blockRef.data, forKey: blockRef.blockID)
-        try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
+        try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
+            try byID.put(blockRef.data, key: blockRef.blockID)
+            try byHeight.put(blockRef.blockID, key: blockRef.height)
+        }
         height += 1
     }
 
     func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) {
-        guard let data = try! db.get(id) else { return }
-        var blockRef = try! BlockRef(data)
-        blockRef.locator = locator
-        blockRef.status = status
-        try? db.put(blockRef.data, forKey: blockRef.blockID)
-        try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
+        update(id: id, locator: locator, status: status)
     }
 
     func update(_ id: Block.ID, status: BlockRef.ValidationStatus) {
-        // TODO: deal with duplication of the different `update()` funcs.
-        guard let data = try! db.get(id) else { return }
+        update(id: id, locator: nil, status: status)
+    }
+
+    private func update(id: Block.ID, locator: BlockStorageLocator?, status: BlockRef.ValidationStatus) {
+        let data = try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+            try byID.get(id)
+        }
+        guard let data else { return }
         var blockRef = try! BlockRef(data)
+        if let locator {
+            blockRef.locator = locator
+        }
         blockRef.status = status
-        try? db.put(blockRef.data, forKey: blockRef.blockID)
-        try? byHeightDB.put(blockRef.blockID, key: blockRef.height)
+        try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
+            try byID.put(blockRef.data, key: blockRef.blockID)
+            try byHeight.put(blockRef.blockID, key: blockRef.height)
+        }
     }
 
     func has(_ id: Block.ID) -> Bool {
-        try! db.get(id) != nil
+        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+            try byID.get(id) != nil
+        }
     }
 
     func get(_ id: Block.ID) -> BlockRef { // TODO: Probably throws and return value nil-able
-        let data = try! db.get(id)
+        let data = try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+            try byID.get(id)
+        }
         return try! BlockRef(data!)
     }
 
     func get(at height: Int) -> BlockRef {
         // guard height < byHeight.endIndex else { return nil }
-        let blockID = try! byHeightDB.get(height)!
-        let blockRefData = try! db.get(blockID)
-        return try! BlockRef(blockRefData!)
+        let data = try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
+            let blockID = try byHeight.get(height)!
+            return try byID.get(blockID)
+        }
+        return try! BlockRef(data!)
     }
 
     func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
-        (startHeight...endHeight).map { get(at: $0) }
+        try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
+            try (startHeight...endHeight).map { height in
+                let blockID = try byHeight.get(height)!
+                let data = try byID.get(blockID)!
+                return try! BlockRef(data)
+            }
+        }
     }
 
     func getParent(for childID: Block.ID) -> BlockRef? {
-        let child = get(childID)
-        if child.previous == Block.nullParent {
-            return nil
+        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+            let childData = try byID.get(childID)!
+            let child = try BlockRef(childData)
+            if child.previous == Block.nullParent {
+                return BlockRef?.none
+            }
+            let previousData = try byID.get(child.previous)!
+            return try BlockRef(previousData)
         }
-        return get(child.previous)
     }
 
     /// Either removes (if header-only) or marks block as stale
     func removeAll(from height: Int) -> [BlockRef] {
         var refs = [BlockRef]()
-        for h in height ... self.height {
-            refs.append(get(at: h))
-        }
-        for ref in refs {
-            if ref.status < .full {
-                try! db.deleteValue(forKey: ref.blockID)
-            } else {
-                update(ref.blockID, status: .stale)
+        let totalRemoved = try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
+            for h in height ... self.height {
+                let blockID = try byHeight.get(h)!
+                let refData = try byID.get(blockID)!
+                refs.append(try BlockRef(refData))
             }
-        }
-        let totalRemoved = byHeightDB.count - height
-        for h in height ... self.height {
-            try! byHeightDB.deleteValue(h)
+            for var ref in refs {
+                if ref.status < .full {
+                    try! byID.delete(ref.blockID)
+                } else {
+                    // guard let data = try byID.get(ref.blockID) else { return }
+                    // var blockRef = try! BlockRef(data)
+                    ref.status = .stale
+                    try byID.put(ref.data, key: ref.blockID)
+                }
+            }
+            let previousCount = try byHeight.count
+            for h in height ... self.height {
+                try! byHeight.delete(h)
+            }
+            return previousCount - height
         }
         self.height -= totalRemoved
         return refs
@@ -130,11 +171,17 @@ actor PersistentBlockIndex: BlockIndex {
 
     func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
         var missing = [Block.ID]()
-        for id in ids {
-            if has(id) {
-                missing.append(id)
+        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+            for id in ids {
+                if try byID.get(id) != nil {
+                    missing.append(id)
+                }
             }
         }
         return missing
     }
 }
+
+private let byID = Database.Descriptor("by-id")
+private let byHeightName = "by-height"
+private let byHeight = Database.Descriptor(byHeightName)
