@@ -1,81 +1,48 @@
-import Foundation
 import CLMDB
+import Foundation
 
-public final class Cursor {
+package struct Cursor: ~Copyable {
 
-    internal private(set) var handle: OpaquePointer?
-
-    private let database: Database
-    private let transaction: Transaction
-    private var first = true
-
-    /// Whether this cursor was used to delete an element. For some reason that messes up the deinit.
-    private var deleted = false
-
-    internal init(database: Database, transaction: Transaction) {
-        self.database = database
-        self.transaction = transaction
-        mdb_cursor_open(transaction.handle, database.handle, &handle)
+    init(txHandle: OpaquePointer, dbHandle: MDB_dbi) throws(InitError) {
+        self.txHandle = txHandle
+        self.dbHandle = dbHandle
+        var handle = OpaquePointer?.none
+        let status = mdb_cursor_open(txHandle, dbHandle, &handle)
+        guard status == MDB_SUCCESS else {
+            throw .initialization
+        }
+        self.handle = handle!
     }
+    
+    let txHandle: OpaquePointer
+    let dbHandle: MDB_dbi
+    let handle: OpaquePointer
 
     @discardableResult
-    public func last() -> Element? {
-        guard handle != nil, first else { return nil }
-
+    package func get(_ operation:  Operation = .first) throws(Database.AccessError) -> Data? {
         var keyVal = MDB_val()
         var dataVal = MDB_val()
-        let operation: MDB_cursor_op = MDB_LAST
-
-        defer { first = false }
-
+        let operation: MDB_cursor_op = operation.value
+        
         let status = mdb_cursor_get(handle, &keyVal, &dataVal, operation)
-
-        guard status == 0 else { return nil }
-
-        let key = Data(bytes: keyVal.mv_data, count: keyVal.mv_size)
-        let value = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
-        return (key, value)
+        if status == MDB_NOTFOUND {
+            return nil
+        }
+        guard status == MDB_SUCCESS else {
+            throw .getIssue
+        }
+        let data = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
+        return data
     }
 
-    func delete() throws(LMDBError) {
+    package func delete() throws(Database.AccessError) {
         let status = mdb_cursor_del(handle, 0)
-        defer { deleted = true }
-        guard status == 0 else {
-            throw LMDBError(returnCode: status)
+        guard status == MDB_SUCCESS else {
+            throw .deleteIssue
         }
     }
 
     deinit {
-        if let transactionHandle = mdb_cursor_txn(handle) {
-            mdb_txn_commit(transactionHandle)
-        }
-        if !deleted {
-            mdb_cursor_close(handle)
-        }
-    }
-}
-
-extension Cursor: IteratorProtocol {
-    // TODO: Remove conformance (will also make Database not Sequence conformant) and make cursor a ~Copyable struct.
-
-    public typealias Element = (key: Data, value: Data)
-
-    @discardableResult
-    public func next() -> Element? {
-        guard handle != nil else { return nil }
-
-        var keyVal = MDB_val()
-        var dataVal = MDB_val()
-        let operation: MDB_cursor_op = first ? MDB_FIRST : MDB_NEXT
-
-        defer { first = false }
-
-        let status = mdb_cursor_get(handle, &keyVal, &dataVal, operation)
-
-        guard status == 0 else { return nil }
-
-        let key = Data(bytes: keyVal.mv_data, count: keyVal.mv_size)
-        let value = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
-        return (key, value)
+        mdb_cursor_close(handle)
     }
 }

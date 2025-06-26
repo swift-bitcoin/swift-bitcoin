@@ -1,331 +1,184 @@
-import Foundation
 import CLMDB
+import Foundation
 
-/// A database contained in an environment.
-/// The database can either be named (if maxDBs > 0 on the environment) or
-/// it can be the single anonymous/unnamed database inside the environment.
-public final class Database {
+package struct Database: ~Copyable {
 
-    public struct Flags: OptionSet, Sendable {
-        public let rawValue: Int32
-        public init(rawValue: Int32) { self.rawValue = rawValue}
-
-        public static let reverseKey = Flags(rawValue: MDB_REVERSEKEY)
-        public static let duplicateSort = Flags(rawValue: MDB_DUPSORT)
-        public static let integerKey = Flags(rawValue: MDB_INTEGERKEY)
-        public static let duplicateFixed = Flags(rawValue: MDB_DUPFIXED)
-        public static let integerDuplicate = Flags(rawValue: MDB_INTEGERDUP)
-        public static let reverseDuplicate = Flags(rawValue: MDB_REVERSEDUP)
-        public static let create = Flags(rawValue: MDB_CREATE)
+    init?(_ db: Descriptor, tx: OpaquePointer) {
+        var handle: MDB_dbi = 0
+        let status = mdb_dbi_open(tx, db.name?.cString(using: .utf8), db.options.unsigned, &handle)
+        guard status == MDB_SUCCESS else {
+            return nil
+        }
+        self.txHandle = tx
+        self.handle = handle
     }
 
-    /// These flags can be passed when putting values into the database.
-    public struct PutFlags: OptionSet, Sendable {
-        public let rawValue: Int32
-        public init(rawValue: Int32) { self.rawValue = rawValue}
+    private let txHandle: OpaquePointer
+    private let handle: MDB_dbi
 
-        public static let noDuplicateData = PutFlags(rawValue: MDB_NODUPDATA)
-        public static let noOverwrite = PutFlags(rawValue: MDB_NOOVERWRITE)
-        public static let reserve = PutFlags(rawValue: MDB_RESERVE)
-        public static let append = PutFlags(rawValue: MDB_APPEND)
-        public static let appendDuplicate = PutFlags(rawValue: MDB_APPENDDUP)
-    }
-
-    internal private(set) var handle: MDB_dbi = 0
-    public let environment: Environment
-    public let flags: Flags
-
-    /// The number of entries contained in the database.
-    public var count: Int { stats.entries }
-
-    /// Database stats
-    public var stats: Stats {
-
-        var stat = MDB_stat()
-
+    package func put(_ value: Data, key: Data, options: PutOptions = []) throws(AccessError) {
+        var mutableKey = key
         do {
-            try Transaction(environment: environment, flags: [.readOnly]) { transaction -> Transaction.Action in
-                mdb_stat(transaction.handle, handle, &stat)
-                return .commit
+            try mutableKey.withUnsafeMutableBytes {
+                var keyData = MDB_val(mv_size: $0.count, mv_data: $0.baseAddress)
+                try put(value, key: &keyData, options: options)
             }
-        } catch {}
-
-        return Stats(stat: stat)
-
-    }
-
-    /// - throws: an error if operation fails. See `LMDBError`.
-    public init(environment: Environment, name: String?, flags: Flags = []) throws {
-
-        self.environment = environment
-        self.flags = flags
-
-        try Transaction(environment: environment) { transaction -> Transaction.Action in
-
-            let openStatus = mdb_dbi_open(transaction.handle, name?.cString(using: .utf8), UInt32(flags.rawValue), &handle)
-            guard openStatus == 0 else {
-                throw LMDBError(returnCode: openStatus)
-            }
-
-            // Commit the open transaction.
-            return .commit
-
-        }
-
-    }
-
-    deinit {
-
-        // Close the database.
-        // http://lmdb.tech/doc/group__mdb.html#ga52dd98d0c542378370cd6b712ff961b5
-        mdb_dbi_close(environment.handle, handle)
-
-    }
-
-    /// Returns a value from the database instantiated as type `V` for a key of type `K`.
-    /// - parameter type: A type conforming to `DataConvertible` that you want to be instantiated with the value from the database.
-    /// - parameter key: A key conforming to `DataConvertible` for which the value will be looked up.
-    /// - returns: Returns the value as an instance of type `V` or `nil` if no value exists for the key or the type could not be instatiated with the data.
-    /// - note: You can always use `Foundation.Data` as the type. In such case, `nil` will only be returned if there is no value for the key.
-    /// - throws: an error if operation fails. See `LMDBError`.
-    public func get(_ key: Data) throws -> Data? {
-        var keyData = key
-        return try keyData.withUnsafeMutableBytes { keyBufferPointer in
-
-            let keyPointer = keyBufferPointer.baseAddress
-            var keyVal = MDB_val(mv_size: keyBufferPointer.count, mv_data: keyPointer)
-
-            // The database will manage the memory for the returned value.
-            // http://104.237.133.194/doc/group__mdb.html#ga8bf10cd91d3f3a83a34d04ce6b07992d
-            var dataVal = MDB_val()
-            var data: Data?
-
-            var getStatus: Int32 = 0
-
-            try Transaction(environment: environment, flags: .readOnly) { transaction -> Transaction.Action in
-
-                getStatus = mdb_get(transaction.handle, handle, &keyVal, &dataVal)
-
-                guard getStatus != MDB_NOTFOUND else {
-                    return .commit
-                }
-
-                guard getStatus == 0 else {
-                    throw LMDBError(returnCode: getStatus)
-                }
-
-                data = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
-                return .commit
-            }
-            return data
+        } catch {
+            throw error as! AccessError
         }
     }
 
-    public func get(_ key: Int) throws -> Data? {
-            guard self.flags.contains(Flags.integerKey) else {
-            throw LMDBError.invalidParameter
-        }
+    package func put(_ value: Data, key: Int, options: PutOptions = []) throws(AccessError) {
         var mutableKey = key
         var keyData = withUnsafeMutablePointer(to: &mutableKey) {
             MDB_val(mv_size: MemoryLayout<Int>.size, mv_data: $0)
         }
+        return try put(value, key: &keyData, options: options)
+    }
 
-        // The database will manage the memory for the returned value.
-        // http://104.237.133.194/doc/group__mdb.html#ga8bf10cd91d3f3a83a34d04ce6b07992d
-        var dataVal = MDB_val()
+    private func put(_ value: Data, key: inout MDB_val, options: PutOptions = []) throws(AccessError) {
+        var mutableValue = value
+        let status = mutableValue.withUnsafeMutableBytes {
+            var valueData = MDB_val(mv_size: $0.count, mv_data: $0.baseAddress)
+            return mdb_put(txHandle, handle, &key, &valueData, options.unsigned)
+        }
+        guard status == MDB_SUCCESS else {
+            throw .putIssue
+        }
+    }
+
+    package func get(_ key: Data) throws(AccessError)  -> Data? {
+        var mutableKey = key
         var data: Data?
-
-        try Transaction(environment: environment, flags: .readOnly) { transaction -> Transaction.Action in
-
-            var getStatus: Int32 = 0
-            getStatus = mdb_get(transaction.handle, handle, &keyData, &dataVal)
-
-                guard getStatus != MDB_NOTFOUND else {
-                    return .commit
-                }
-
-                guard getStatus == 0 else {
-                    throw LMDBError(returnCode: getStatus)
-                }
-
-                data = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
-                return .commit
+        do {
+            data = try mutableKey.withUnsafeMutableBytes {
+                var keyData = MDB_val(mv_size: $0.count, mv_data: $0.baseAddress)
+                return try get(&keyData)
+            }
+        } catch {
+            throw error as! AccessError
         }
         return data
     }
 
-    /// Check if a value exists for the given key.
-    /// - parameter key: The key to check for.
-    /// - returns: `true` if the database contains a value for the key. `false` otherwise.
-    /// - throws: an error if operation fails. See `LMDBError`.
-    public func exists(key: Data) throws -> Bool {
-        try get(key) != nil
-    }
-
-    /// Inserts a value into the database.
-    /// - parameter value: The value to be put into the database. The value must conform to `DataConvertible`.
-    /// - parameter key: The key which the data will be associated with. The key must conform to `DataConvertible`. Passing an empty key will cause an error to be thrown.
-    /// - parameter flags: An optional set of flags that modify the behavior if the put operation. Default is [] (empty set).
-    /// - throws: an error if operation fails. See `LMDBError`.
-    public func put(_ value: Data, forKey key: Data, flags: PutFlags = []) throws {
-        var keyData = key
-        var valueData = value
-        try keyData.withUnsafeMutableBytes { keyBufferPointer in
-
-            let keyPointer = keyBufferPointer.baseAddress
-            var keyVal = MDB_val(mv_size: keyBufferPointer.count, mv_data: keyPointer)
-
-            try valueData.withUnsafeMutableBytes { valueBufferPointer in
-
-                let valuePointer = valueBufferPointer.baseAddress
-                var valueVal = MDB_val(mv_size: valueBufferPointer.count, mv_data: valuePointer)
-
-                var putStatus: Int32 = 0
-                try Transaction(environment: self.environment) { transaction -> Transaction.Action in
-                    putStatus = mdb_put(transaction.handle, self.handle, &keyVal, &valueVal, UInt32(flags.rawValue))
-                    return .commit
-                }
-                guard putStatus == 0 else {
-                    throw LMDBError(returnCode: putStatus)
-                }
-            }
-        }
-    }
-
-    /// Puts using integer keys.
-    public func put(_ value: Data, key: Int, flags: PutFlags = []) throws {
-        guard self.flags.contains(Flags.integerKey) else {
-            throw LMDBError.invalidParameter
-        }
+    package func get(_ key: Int) throws(AccessError)  -> Data? {
         var mutableKey = key
         var keyData = withUnsafeMutablePointer(to: &mutableKey) {
             MDB_val(mv_size: MemoryLayout<Int>.size, mv_data: $0)
         }
-
-        var valueData = value
-
-        try valueData.withUnsafeMutableBytes { valueBufferPointer in
-
-            let valuePointer = valueBufferPointer.baseAddress
-            var valueVal = MDB_val(mv_size: valueBufferPointer.count, mv_data: valuePointer)
-
-            var putStatus: Int32 = 0
-            try Transaction(environment: self.environment) { transaction -> Transaction.Action in
-                putStatus = mdb_put(transaction.handle, self.handle, &keyData, &valueVal, UInt32(flags.rawValue))
-                return .commit
-            }
-            guard putStatus == 0 else {
-                throw LMDBError(returnCode: putStatus)
-            }
-        }
+        return try get(&keyData)
     }
 
-    /// Deletes a value from the database.
-    /// - parameter key: The key identifying the database entry to be deleted. The key must conform to `DataConvertible`. Passing an empty key will cause an error to be thrown.
-    /// - throws: an error if operation fails. See `LMDBError`.
-    public func deleteValue(forKey key: Data) throws {
-        var keyData = key
-        try keyData.withUnsafeMutableBytes { keyBufferPointer in
-
-            let keyPointer = keyBufferPointer.baseAddress
-            var keyVal = MDB_val(mv_size: keyBufferPointer.count, mv_data: keyPointer)
-
-            try Transaction(environment: environment) { transaction -> Transaction.Action in
-                mdb_del(transaction.handle, handle, &keyVal, nil)
-                return .commit
-            }
+    private func get(_ key: inout MDB_val) throws(AccessError)  -> Data? {
+        // The database will manage the memory for the returned value.
+        // http://104.237.133.194/doc/group__mdb.html#ga8bf10cd91d3f3a83a34d04ce6b07992d
+        var dataVal = MDB_val()
+        let status = mdb_get(txHandle, handle, &key, &dataVal)
+        if status == MDB_NOTFOUND {
+            return nil
         }
+        guard status == MDB_SUCCESS else {
+            throw .getIssue
+        }
+        let data = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
+        return data
     }
 
-    public func deleteValue(_ key: Int) throws {
-        guard self.flags.contains(Flags.integerKey) else {
-            throw LMDBError.invalidParameter
+    @discardableResult
+    package func delete(_ key: Data) throws(AccessError)  -> Bool {
+        var mutableKey = key
+        var result: Bool
+        do {
+            result = try mutableKey.withUnsafeMutableBytes {
+                var keyData = MDB_val(mv_size: $0.count, mv_data: $0.baseAddress)
+                return try delete(&keyData)
+            }
+        } catch {
+            throw error as! AccessError
         }
+        return result
+    }
+
+    @discardableResult
+    package func delete(_ key: Int) throws(AccessError)  -> Bool {
         var mutableKey = key
         var keyData = withUnsafeMutablePointer(to: &mutableKey) {
             MDB_val(mv_size: MemoryLayout<Int>.size, mv_data: $0)
         }
-
-        try Transaction(environment: environment) { transaction -> Transaction.Action in
-            mdb_del(transaction.handle, handle, &keyData, nil)
-            return .commit
-        }
+        return try delete(&keyData)
     }
+
+    private func delete(_ key: inout MDB_val) throws(AccessError) -> Bool {
+        let status = mdb_del(txHandle, handle, &key, nil)
+        if status == MDB_NOTFOUND {
+            return false
+        }
+        guard status == MDB_SUCCESS else {
+            throw .deleteIssue
+        }
+        return true
+    }
+
+    package var first: Data? { get throws(Cursor.InitError) {
+        try withCursor { try $0.get() }
+    } }
+
+    package var last: Data? { get throws(Cursor.InitError) {
+        try withCursor { try $0.get(.last) }
+    } }
 
     /// Empties the database, removing all key/value pairs.
     /// The database remains open after being emptied and can still be used.
-    /// - throws: an error if operation fails. See `LMDBError`.
-    public func empty() throws {
-
-        var dropStatus: Int32 = 0
-
-        try Transaction(environment: environment) { transaction -> Transaction.Action in
-            dropStatus = mdb_drop(transaction.handle, handle, 0)
-            return .commit
+    /// - throws: an error if operation fails. See `AccessError`.
+    public func empty() throws(AccessError) {
+        guard mdb_drop(txHandle, handle, 0) == MDB_SUCCESS else {
+            throw .dropIssue
         }
-
-        guard dropStatus == 0 else {
-            throw LMDBError(returnCode: dropStatus)
-        }
-
     }
 
     /// Drops the database, deleting it (along with all its contents) from the environment.
     /// - warning: Dropping a database also closes it. You may no longer use the database after dropping it.
     /// - seealso: `empty()`
-    /// - throws: an error if operation fails. See `LMDBError`.
-    public func drop() throws {
-
-        var dropStatus: Int32 = 0
-
-        try Transaction(environment: environment) { transaction -> Transaction.Action in
-            dropStatus = mdb_drop(transaction.handle, handle, 1)
-            return .commit
-        }
-
-        guard dropStatus == 0 else {
-            throw LMDBError(returnCode: dropStatus)
-        }
-
-    }
-
-    public func removeFirst() throws {
-        let txn = try Transaction(environment: environment, flags: [])
-        let cursor = Cursor(database: self, transaction: txn)
-        cursor.next()
-        try cursor.delete()
-    }
-
-    public var first: Data? {
-        get throws {
-            guard count > 0 else {
-                return nil
-            }
-            let txn = try Transaction(environment: environment, flags: [.readOnly])
-            let cursor = Cursor(database: self, transaction: txn)
-            guard let value = cursor.next()?.value else {
-                throw LMDBError(returnCode: .max)
-            }
-            return value
+    /// - throws: an error if operation fails. See `AccessError`.
+    public func drop() throws(AccessError) {
+        guard mdb_drop(txHandle, handle, 0) == MDB_SUCCESS else {
+            throw .dropIssue
         }
     }
 
-    public var last: Data? {
-        get throws {
-            guard count > 0 else {
-                return nil
-            }
-            let txn = try Transaction(environment: environment, flags: [.readOnly])
-            let cursor = Cursor(database: self, transaction: txn)
-            guard let value = cursor.last()?.value else {
-                throw LMDBError(returnCode: .max)
-            }
-            return value
+    package func withCursor<T>(readOnly: Bool = false, handler: (borrowing Cursor) throws(Error) -> T) throws(Cursor.InitError) -> T {
+        let cursor = try Cursor(txHandle: txHandle, dbHandle: handle)
+        let result: T
+        do {
+            result = try handler(cursor)
+        } catch {
+            throw .handler(error)
+        }
+        return result
+    }
+
+    package func removeFirst() throws(Cursor.InitError) {
+        try withCursor {
+            try $0.get()
+            try $0.delete()
         }
     }
 
-    func cursor() throws -> Cursor {
-        let txn = try Transaction(environment: environment, flags: [.readOnly])
-        return Cursor(database: self, transaction: txn)
+    package var stats: Statistics { get throws(AccessError) {
+        var stat = MDB_stat()
+        let status = mdb_stat(txHandle, handle, &stat)
+        guard status == MDB_SUCCESS else {
+            throw .statisticsIssue
+        }
+        return .init(stat: stat)
+    } }
+
+    /// The number of entries contained in the database.
+    package var count: Int { get throws(AccessError) {
+        try stats.entries
+    } }
+
+    deinit {
+        // Database is destroyed by transaction abort or the env
     }
 }

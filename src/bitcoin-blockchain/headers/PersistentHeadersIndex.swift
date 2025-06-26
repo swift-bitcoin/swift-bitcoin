@@ -1,67 +1,99 @@
 import LMDB
-import SystemPackage
+import Foundation
+import struct SystemPackage.FilePath
 
 /// An index plus storage for headers.
 actor PersistentHeadersIndex: HeadersIndex {
 
     init(path: FilePath) {
-        db = try! Database(environment: .init(path: path.appending("headers"), flags: [.noSubDir], maxDBs: 2), name: "by-id", flags: [.create])
-        byPositionDB = try! Database(environment: db.environment, name: "by-position", flags: [.create, .integerKey])
+        env = try! Environment(at: URL(filePath: path.appending("headers").string), maxDBs: 2, options: [.noSubDir])
+        try! env.createDB(byID)
+        try! env.withTransaction(db: .init(byPositionName, options: [.create, .integerKey])) { _, _ in }
     }
 
-    private let db: Database!
-    private let byPositionDB: Database!
+    private let env: Environment
 
     private var position = 0
 
     var isEmpty: Bool {
-        db.count == 0
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            try byID.count == 0
+        }
     }
 
     var first: Block? {
-        guard !isEmpty else {
-            return nil
+        try! env.withTransaction(db: byID, byPosition, options: .readOnly) { _, byID, byPosition in
+            guard try byID.count > 0 else {
+                return nil
+            }
+            guard let id = try byPosition.first else {
+                fatalError()
+            }
+            let data = try byID.get(id)
+            if let data {
+                return try! Block(data)
+            } else {
+                return nil
+            }
         }
-        guard let id = try! byPositionDB.first else {
-            fatalError()
-        }
-        return get(id)
     }
 
     var last: Block? {
-        guard !isEmpty else {
-            return nil
+        try! env.withTransaction(db: byID, byPosition, options: .readOnly) { _, byID, byPosition in
+            guard try byID.count > 0 else {
+                return nil
+            }
+            guard let id = try byPosition.last else {
+                fatalError()
+            }
+            let data = try byID.get(id)
+            if let data {
+                return try! Block(data)
+            } else {
+                return nil
+            }
         }
-        guard let id = try! byPositionDB.last else {
-            fatalError()
-        }
-        return get(id)
     }
 
     func add(_ header: Block) {
-        try? db.put(header.data, forKey: header.id)
-        try? byPositionDB.put(header.id, key: position)
+        try! env.withTransaction(db: byID, byPosition) { [position] _, byID, byPosition in
+            try byID.put(header.data, key: header.id)
+            try byPosition.put(header.id, key: position)
+        }
         position += 1
     }
 
     func has(_ id: Block.ID) -> Bool {
-        try! db.get(id) != nil
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            try byID.get(id) != nil
+        }
     }
 
     func get(_ id: Block.ID) -> Block? { // TODO: Probably should throw
-        let data = try! db.get(id)
-        if let data {
-            return try! Block(data)
-        } else {
-            return nil
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            let data = try byID.get(id)
+            if let data {
+                return try! Block(data)
+            } else {
+                return nil
+            }
         }
     }
 
     func removeFirst() {
-        if db.count > 0 {
-            let firstID = try! byPositionDB.first
-            try! byPositionDB.removeFirst()
-            try! db.deleteValue(forKey: firstID!)
+        try! env.withTransaction(db: byID, byPosition) { _, byID, byPosition in
+            guard try byID.count > 0 else {
+                return
+            }
+            let firstID = try byPosition.first!
+            try byPosition.removeFirst()
+            guard try byID.delete(firstID) else {
+                fatalError()
+            }
         }
     }
 }
+
+private let byID = Database.Descriptor("by-id")
+private let byPositionName = "by-position"
+private let byPosition = Database.Descriptor(byPositionName)

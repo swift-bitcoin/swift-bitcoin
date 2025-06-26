@@ -1,5 +1,6 @@
 import LMDB
-import SystemPackage
+import Foundation
+import struct SystemPackage.FilePath
 import Logging
 import BitcoinBase
 
@@ -13,30 +14,39 @@ actor PersistentCoinsIndex: CoinsIndex {
     }
 
     init(path: FilePath) {
-        db = try! Database(environment: .init(path: path.appending("coins"), flags: [.noSubDir], maxDBs: 1), name: nil, flags: [.create])
+        env = try! Environment(at: URL(filePath: path.appending("coins").string), maxDBs: 1, options: [.noSubDir])
+        try! env.createDB(byID)
     }
 
-    private let db: Database!
+    private let env: Environment
 
     func add(_ coin: UnspentOutput, for outpoint: Outpoint) {
-        try? db.put(coin.data, forKey: outpoint.data)
+        try! env.withTransaction(db: byID) { _, byID in
+            try byID.put(coin.data, key: outpoint.data)
+        }
     }
 
     func get(_ outpoint: Outpoint) -> UnspentOutput? { // TODO: Probably should throw
-        let data = try! db.get(outpoint.data)
-        if let data {
-            return try! UnspentOutput(data)
-        } else {
-            return nil
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            let data = try byID.get(outpoint.data)
+            if let data {
+                return try! UnspentOutput(data)
+            } else {
+                return nil
+            }
         }
     }
 
     func remove(_ outpoint: Outpoint) throws(Error) {
         do {
-            try db.deleteValue(forKey: outpoint.data)
+            try env.withTransaction(db: byID) { _, byID in
+                try byID.delete(outpoint.data)
+            }
         } catch {
             logger.error("Problem removing coin.")
             throw .deletionIssue
         }
     }
 }
+
+private let byID = Database.Descriptor("by-id")

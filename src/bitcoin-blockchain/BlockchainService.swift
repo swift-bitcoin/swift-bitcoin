@@ -440,7 +440,9 @@ public actor BlockchainService: Sendable {
     }
 
     public var validatedHeight: Int {
-        get async { await blockIndex.get(chainTip).height }
+        get async {
+            await blockIndex.get(chainTip).height
+        }
     }
 
     public var height: Int {
