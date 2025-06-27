@@ -17,7 +17,7 @@ struct ECToWIF: ParsableCommand {
     var compressedPubkeys = true
 
     @Option(name: .shortAndLong, help: "The network for which the produced address will be valid..")
-    var network = WalletNetwork.main
+    var network = WalletNetwork.mainnet
 
     mutating func run() throws {
         guard let secretKeyData = Data(hex: secretKey) else {
@@ -26,7 +26,7 @@ struct ECToWIF: ParsableCommand {
         guard let secretKey = SecretKey(secretKeyData) else {
             throw ValidationError("Invalid secret key data: secretKey")
         }
-        let result = secretKey.toWIF(compressedPubkeys: compressedPubkeys, mainnet: network == .main)
+        let result = secretKey.toWIF(compressedPubkeys: compressedPubkeys, mainnet: network == .mainnet)
         print(result)
     }
 }

@@ -13,7 +13,7 @@ struct HDNew: ParsableCommand {
     var seed: String
 
     @Option(name: .shortAndLong, help: "The network for which the produced address will be valid..")
-    var network = WalletNetwork.main
+    var network = WalletNetwork.mainnet
 
     mutating func run() throws {
         let seedHex = seed
@@ -22,7 +22,7 @@ struct HDNew: ParsableCommand {
         }
         let extendedKey: ExtendedKey
         do {
-            extendedKey = try ExtendedKey(seed: seed, mainnet: network == .main)
+            extendedKey = try ExtendedKey(seed: seed, mainnet: network == .mainnet)
         } catch {
             throw ValidationError("Invalid value: seed")
         }

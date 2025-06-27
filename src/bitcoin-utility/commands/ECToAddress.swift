@@ -15,7 +15,7 @@ struct ECToAddress: ParsableCommand {
     var sigVersion = SigVersion.base
 
     @Option(name: .shortAndLong, help: "The network for which the produced address will be valid..")
-    var network = WalletNetwork.main
+    var network = WalletNetwork.mainnet
 
     @Argument(help: "A valid DER-encoded compressed/uncompressed public key in hex format.")
     var pubkey: String
@@ -30,7 +30,7 @@ struct ECToAddress: ParsableCommand {
         }
         let result = switch sigVersion {
         case .base:
-            LegacyAddress(pubkey, mainnet: network == .main).description
+            LegacyAddress(pubkey, mainnet: network == .mainnet).description
         case .witnessV0:
             SegwitAddress(pubkey, network: network).description
         case .witnessV1:

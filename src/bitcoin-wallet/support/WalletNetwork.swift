@@ -1,13 +1,13 @@
 import Foundation
 
 public enum WalletNetwork: String, CaseIterable, Sendable {
-    case main, test, regtest
+    case mainnet, testnet, regtest
 
     /// Bech32 human readable part (prefix).
     var bech32HRP: String {
         switch self {
-        case .main: "bc"
-        case .test: "tb"
+        case .mainnet: "bc"
+        case .testnet: "tb"
         case .regtest: "bcrt"
         }
     }

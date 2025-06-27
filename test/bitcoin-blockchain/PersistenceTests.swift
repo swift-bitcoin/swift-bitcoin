@@ -18,7 +18,7 @@ struct PersistenceTests {
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey
 
-        let alice = BlockchainService(config: .init(dataLocation: .customDirectory(dataDir.string)))
+        let alice = BlockchainService(config: .init(dataLocation: .custom(path: dataDir.string)))
         await alice.start()
 
         // print(dataDir.string)
@@ -69,7 +69,7 @@ struct PersistenceTests {
 
         let header1 = try #require(await alice.generateTo(pubkey))
 
-        let bob = BlockchainService(config: .init(dataLocation: .customDirectory(dataDir.string)))
+        let bob = BlockchainService(config: .init(dataLocation: .custom(path: dataDir.string)))
         await bob.start()
 
         let dataDirContents = try fm.contentsOfDirectory(atPath: dataDir.string)

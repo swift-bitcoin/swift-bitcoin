@@ -13,7 +13,7 @@ struct Connect: AsyncParsableCommand {
     @Option(name: [.customShort("i"), .customLong("peer-host")], help: "The address to bind the RPC server to.")
     var peerHost = "0.0.0.0"
 
-    @Option(name: [.customShort("q"), .customLong("peer-port")], help: "The port for the P2P service to listen to. Default's to network's default port (\(NodeNetwork.main.defaultP2PPort) for \(NodeNetwork.main))")
+    @Option(name: [.customShort("q"), .customLong("peer-port")], help: "The port for the P2P service to listen to. Default's to network's default port (\(NodeNetwork.mainnet.defaultP2PPort) for \(NodeNetwork.mainnet))")
     var peerPort: Int?
 
     mutating func run() async throws {

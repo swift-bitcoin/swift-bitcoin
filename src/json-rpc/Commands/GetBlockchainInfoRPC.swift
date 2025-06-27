@@ -20,7 +20,7 @@ public struct GetBlockchainInfoRPC: RPCCommand, Sendable {
             self.hashes = hashes
         }
 
-        /// Current network name (main, test, testnet4, signet, regtest).
+        /// Current network name (main, test, testnet4,, regtest, signet).
         public let chain: String
 
         /// The height of the most-work fully-validated chain. The genesis block has height 0.
