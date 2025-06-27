@@ -1,6 +1,13 @@
 import PackagePlugin
 import Foundation
 
+/// Copies the contents of `NodeConfig.swift` into a `NodeConfig.swift.txt` file in the plugin's output folder. The copied source code will be included in the resources bundle and prepended to configuration scripts.
+///
+/// If stuck with an old version of the file, the copy can be manually removed before running/building again:
+///
+/// ```sh
+/// rm .build/plugins/outputs/swift-bitcoin/BitcoinNode/destination/CopyConfigSources/NodeConfig.swift.txt
+/// ```
 @main
 struct CopyConfigSources: BuildToolPlugin {
     func createBuildCommands(context: PluginContext, target: Target) throws(PluginError) -> [Command] {

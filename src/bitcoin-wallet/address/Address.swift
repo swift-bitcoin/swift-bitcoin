@@ -42,8 +42,8 @@ public enum Address: AddressProtocol {
             network = a.network
         }
         // TODO: What about signet? Should all non-identified chains be linked to regtest network type? Should we add a network type param to ConsensusParams on top of the chain ID?
-        return network == .main && chain == "mainnet" ||
-               (network == .test && (chain == "testnet" || chain == "testnet4")) ||
+        return network == .mainnet && chain == "mainnet" ||
+               (network == .testnet && (chain == "testnet" || chain == "testnet4")) ||
                (network == .regtest && !["mainnet", "testnet", "testnet4"].contains(chain))
     }
 }

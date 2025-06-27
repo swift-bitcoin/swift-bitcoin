@@ -13,10 +13,10 @@ public actor BlockchainService: Sendable {
     public struct Config: Sendable {
 
         public enum DataLocation: Sendable {
-            case memory, defaultDirectory, customDirectory(String)
+            case inMemory, defaultPath, custom(path: String)
         }
 
-        public init(dataLocation: Config.DataLocation = .memory) {
+        public init(dataLocation: Config.DataLocation = .inMemory) {
             self.dataLocation = dataLocation
         }
 
@@ -64,9 +64,9 @@ public actor BlockchainService: Sendable {
         self.params = params
         self.config = config
         switch config.dataLocation {
-        case .defaultDirectory:
+        case .defaultPath:
             dataDir = FilePath(URL.homeDirectory.relativePath).appending(".swift-bitcoin/data") // TODO: Centralize this logic. Make async with NIOFileSystem and move to start()?
-        case .customDirectory(let customDataDir):
+        case .custom(path: let customDataDir):
             let customDataDirPath = FilePath(customDataDir)
             precondition(customDataDirPath.isAbsolute)
             dataDir = customDataDirPath

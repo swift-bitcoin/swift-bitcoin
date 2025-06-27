@@ -18,7 +18,7 @@ struct ScriptToAddress: ParsableCommand {
     var sigVersion = SigVersion.base
 
     @Option(name: .shortAndLong, help: "The network for the address.")
-    var network = WalletNetwork.main
+    var network = WalletNetwork.mainnet
 
     @Argument(help: "The script encoded as hexadecimal data. For tapscript include all script branches in breadth-first order.")
     var scripts: [String]
@@ -39,7 +39,7 @@ struct ScriptToAddress: ParsableCommand {
         let result: String
         switch sigVersion {
         case .base:
-            let address = LegacyAddress(scripts[0], mainnet: network == .main)
+            let address = LegacyAddress(scripts[0], mainnet: network == .mainnet)
             result = address.description
         case .witnessV0:
             let address = SegwitAddress(scripts[0], network: network)

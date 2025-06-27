@@ -26,11 +26,11 @@ public struct TaprootAddress: AddressProtocol {
         return nil
     }
 
-    public init(_ secretKey: SecretKey, scripts: [Script] = [], network: WalletNetwork = .main) {
+    public init(_ secretKey: SecretKey, scripts: [Script] = [], network: WalletNetwork = .mainnet) {
         self.init(secretKey.taprootInternalKey, scripts: scripts, network: network)
     }
 
-    public init(_ internalKey: PublicKey, scripts: [Script] = [], network: WalletNetwork = .main) {
+    public init(_ internalKey: PublicKey, scripts: [Script] = [], network: WalletNetwork = .mainnet) {
         precondition(scripts.count <= 8)
         precondition(internalKey.hasEvenY)
         self.network = network

@@ -29,16 +29,16 @@ public struct SegwitAddress: AddressProtocol {
     public let network: WalletNetwork
     public let hash: Data
 
-    public init(_ secretKey: SecretKey, network: WalletNetwork = .main) {
+    public init(_ secretKey: SecretKey, network: WalletNetwork = .mainnet) {
         self.init(secretKey.pubkey, network: network)
     }
 
-    public init(_ pubkey: PublicKey, network: WalletNetwork = .main) {
+    public init(_ pubkey: PublicKey, network: WalletNetwork = .mainnet) {
         self.network = network
         hash = Data(Hash160.hash(data: pubkey.data))
     }
 
-    public init(_ script: Script, network: WalletNetwork = .main) {
+    public init(_ script: Script, network: WalletNetwork = .mainnet) {
         self.network = network
         hash = Data(SHA256.hash(data: script.data))
     }
