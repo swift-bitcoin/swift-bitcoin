@@ -6,6 +6,7 @@ import BitcoinBlockchain
 public struct NetworkMessage: Equatable, Sendable {
 
     public init(_ command: MessageCommand, payload: Data = .init(), network: NodeNetwork = .regtest) {
+        // TODO: remove default regtest?
         self.network = network
         self.command = command
         self.payloadSize = payload.count

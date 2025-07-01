@@ -89,7 +89,7 @@ private func launchNode(network: NodeNetwork, dataLocation: BlockchainService.Co
     )
     await blockchain.start()
 
-    let node = NodeService(blockchain: blockchain)
+    let node = NodeService(blockchain: blockchain, config: .init(network: network))
 
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
