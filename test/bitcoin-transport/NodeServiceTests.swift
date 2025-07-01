@@ -24,7 +24,7 @@ struct NodeServiceTests: ~Copyable {
         await satoshiChain.generateTo(pubkey)
 
         self.satoshiChain = satoshiChain
-        let satoshi = NodeService(blockchain: satoshiChain, config: .init(feeFilterRate: 2))
+        let satoshi = NodeService(blockchain: satoshiChain, config: .init(network: .regtest, feeFilterRate: 2))
         self.satoshi = satoshi
         let halPeer = await satoshi.addPeer()
         self.halPeer = halPeer
@@ -33,7 +33,7 @@ struct NodeServiceTests: ~Copyable {
         let halChain = BlockchainService()
         await halChain.start()
         self.halChain = halChain
-        let hal = NodeService(blockchain: halChain, config: .init(feeFilterRate: 2))
+        let hal = NodeService(blockchain: halChain, config: .init(network: .regtest, feeFilterRate: 2))
         self.hal = hal
         let satoshiPeer = await hal.addPeer(incoming: false)
         self.satoshiPeer = satoshiPeer

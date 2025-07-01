@@ -7,28 +7,31 @@ public enum NodeNetwork: String, Sendable, CaseIterable, CustomStringConvertible
     public var magicBytes: UInt32 {
         switch self {
         case .mainnet: 0xd9b4bef9
-        case .testnet: 0x0709110b
+        //case .testnet3: 0709110b
+        case .testnet: 0x283f161c
+        case .regtest: 0xdab5bffa
         // case .signet: 0x40cf030a
         // TODO: Signet Genesis Block and Message Header All signet networks share the same genesis block, but have a different message header. The message header is the 4 first bytes of the sha256d-hash of the block challenge, as a single script push operation. I.e. if the block challenge is 37 bytes, the message start would be sha256d(0x25 || challenge)[0..3]. https://en.bitcoin.it/wiki/Signet#Genesis_Block_and_Message_Header
-        case .regtest: 0xdab5bffa
         }
     }
 
     public var defaultRPCPort: Int {
         switch self {
         case .mainnet: 8332
-        case .testnet: 18332
-        // case .signet: 38332
+        //case .testnet3: 18332
+        case .testnet: 48332
         case .regtest: 18443
+        // case .signet: 38332
         }
     }
 
     public var defaultP2PPort: Int {
         switch self {
         case .mainnet: 8333
-        case .testnet: 18333
-        // case .signet: 38333
+        //case .testnet3: 18333
+        case .testnet: 48333
         case .regtest: 18444
+        // case .signet: 38333
         }
     }
 

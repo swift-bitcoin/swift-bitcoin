@@ -19,7 +19,7 @@ public actor NodeService: Sendable {
     ///   - version: Protocol version number.
     ///   - services: Supported services.
     ///   - feeFilterRate: An arbitrary fee rate by which to filter transactions.
-    public init(blockchain: BlockchainService, config: NodeParams = .default, state: NodeState = .initial) {
+    public init(blockchain: BlockchainService, config: NodeParams, state: NodeState = .initial) {
         self.blockchain = blockchain
         self.config = config
         self.state = state

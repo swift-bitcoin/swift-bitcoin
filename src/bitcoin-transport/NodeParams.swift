@@ -29,6 +29,4 @@ public struct NodeParams : Sendable {
 
     /// How long (in seconds) will the node wait for the pong response from peer which has been sent a ping.  Default value is `15`.
     public let pongTolerance: Int
-
-    @usableFromInline static let `default` = Self()
 }

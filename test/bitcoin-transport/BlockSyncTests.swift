@@ -21,7 +21,7 @@ struct BlockSyncTests {
         let aliceChain = BlockchainService()
         await aliceChain.start()
         self.aliceChain = aliceChain
-        let alice = NodeService(blockchain: aliceChain, config: .init(maxInTransitBlocks: 2, feeFilterRate: 3))
+        let alice = NodeService(blockchain: aliceChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
         self.alice = alice
         let peerB = await alice.addPeer(incoming: false)
         self.peerB = peerB
@@ -35,7 +35,7 @@ struct BlockSyncTests {
         await bobChain.generateTo(pubkey)
 
         self.bobChain = bobChain
-        let bob = NodeService(blockchain: bobChain, config: .init(maxInTransitBlocks: 2, feeFilterRate: 3))
+        let bob = NodeService(blockchain: bobChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
         self.bob = bob
         let peerA = await bob.addPeer()
         self.peerA = peerA
