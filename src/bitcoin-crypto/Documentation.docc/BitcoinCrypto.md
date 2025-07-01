@@ -22,7 +22,9 @@ Encode and decode binary data into and from strings using Base58 or Bech32 encod
 
 - ``SecretKey``
 - ``PublicKey``
-- ``Signature``
+- ``ECDSASignature``
+- ``SchnorrSignature``
+- ``RecoverableSignature``
 
 ### Hash functions
 
