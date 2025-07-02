@@ -20,8 +20,8 @@ actor PersistentBlockIndex: BlockIndex {
 
     /// Locators in reverse height order
     var locators: [BlockStorageLocator] {
-        var locators = [BlockStorageLocator]()
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
+        var locators = [BlockStorageLocator]()
             for i in self.height ... 0 {
                 let blockID = try byHeight.get(i)!
                 let ref = try BlockRef(try byID.get(blockID)!)
@@ -29,8 +29,8 @@ actor PersistentBlockIndex: BlockIndex {
                     locators.append(locator)
                 }
             }
+            return locators
         }
-        return locators
     }
 
     var lastHeaderID: Block.ID {
@@ -142,8 +142,8 @@ actor PersistentBlockIndex: BlockIndex {
 
     /// Either removes (if header-only) or marks block as stale
     func removeAll(from height: Int) -> [BlockRef] {
+        let (totalRemoved, refs) = try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
         var refs = [BlockRef]()
-        let totalRemoved = try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
             for h in height ... self.height {
                 let blockID = try byHeight.get(h)!
                 let refData = try byID.get(blockID)!
@@ -163,7 +163,7 @@ actor PersistentBlockIndex: BlockIndex {
             for h in height ... self.height {
                 try! byHeight.delete(h)
             }
-            return previousCount - height
+            return (previousCount - height, refs)
         }
         self.height -= totalRemoved
         return refs

@@ -1,4 +1,4 @@
-public protocol RPCCommand {
+public protocol RPCCommand: Sendable {
 
     associatedtype Params: Codable
     associatedtype Result: Codable

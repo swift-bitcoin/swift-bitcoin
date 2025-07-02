@@ -2,6 +2,10 @@ import Foundation
 import NIOCore
 import _NIOFileSystem
 
+#if canImport(Foundation.NSTask)
+import class Foundation.NSTask.Process
+#endif
+
 extension NodeConfig {
 
     static let defaultLocation = FilePath(URL.homeDirectory.relativePath).appending(".swift-bitcoin").string
@@ -107,6 +111,7 @@ extension NodeConfig {
                 throw .decodingError
             }
         } else {
+        #if canImport(Foundation.NSTask)
             // For Swift we need to put together a Swift source to pass via stdin to the interpreter…
 
             // First we need the unmodified contents of the actual configuration file
@@ -171,6 +176,9 @@ extension NodeConfig {
             } catch {
                 throw .decodingError
             }
+            #else
+            fatalError("Foundation.NSTask.Process class not available")
+            #endif
         }
         return config
         // Success, display the result of the check

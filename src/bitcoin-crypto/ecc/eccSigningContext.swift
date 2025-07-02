@@ -2,7 +2,7 @@ import Foundation
 import LibSECP256k1
 import ECCHelper
 
-extension OpaquePointer: @unchecked @retroactive Sendable { }
+extension OpaquePointer: @unchecked @retroactive Sendable { } // TODO: Remove conformance in Swift 6.2
 
 let secp256k1_context_static = get_static_context()!
 

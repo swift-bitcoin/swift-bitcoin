@@ -69,7 +69,7 @@ let package = Package(
         .target(name: "BitcoinBase", dependencies: ["BitcoinCrypto"], path: "src/bitcoin-base"),
         .target(name: "BitcoinCrypto", dependencies: ["ECCHelper",
                 .product(name: "Crypto", package: "swift-crypto")],
-            path: "src/bitcoin-crypto"),
+            path: "src/bitcoin-crypto" /*, swiftSettings: [.strictMemorySafety()]*/),
 
         // Internal libraries
         .target(
