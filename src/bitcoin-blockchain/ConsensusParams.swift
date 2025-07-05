@@ -34,7 +34,8 @@ public struct ConsensusParams: Sendable {
         genesisBlockTarget: Int,
         minChainwork: [UInt8] = .init(repeating: 0, count: 32),
         chainData: ChainData = .init(),
-        coinbaseMaturity: Int = Self.defaultCoinbaseMaturity
+        coinbaseMaturity: Int = Self.defaultCoinbaseMaturity,
+        subsidyHalvingInterval: Int = 210_000
     ) {
         precondition(minChainwork.count == 32)
         self.chain = chain
@@ -51,9 +52,10 @@ public struct ConsensusParams: Sendable {
         self.genesisBlockTime = genesisBlockTime
         self.genesisBlockNonce = genesisBlockNonce
         self.genesisBlockTarget = genesisBlockTarget
-        self.coinbaseMaturity = coinbaseMaturity
         self.minChainwork = minChainwork
         self.chainData = chainData
+        self.subsidyHalvingInterval = subsidyHalvingInterval
+        self.coinbaseMaturity = coinbaseMaturity
     }
 
     /// The chain identifier: mainnet, testnet, signet, regtest
@@ -85,8 +87,7 @@ public struct ConsensusParams: Sendable {
     /// The number of blocks needed to be mined until a coinbase output may be spent. Defaults to 100.
     public let coinbaseMaturity: Int
 
-    ///
-    public let subsidyHalvingInterval = 150
+    public let subsidyHalvingInterval: Int
     // consensus.nRuleChangeActivationThreshold = 108; // 75% for testchains
     // consensus.nMinerConfirmationWindow = 144; // Faster than normal for regtest (144 instead of 2016)
 
@@ -151,7 +152,8 @@ public struct ConsensusParams: Sendable {
         powNoRetargeting: true,
         genesisBlockTime: 1296688602,
         genesisBlockNonce: 2,
-        genesisBlockTarget: 0x207fffff
+        genesisBlockTarget: 0x207fffff,
+        subsidyHalvingInterval: 150
     )
 
     package static let swiftTesting = Self( // Similar to regtest
@@ -165,7 +167,8 @@ public struct ConsensusParams: Sendable {
         genesisBlockTime: 1296688602,
         genesisBlockNonce: 2,
         genesisBlockTarget: 0x207fffff,
-        coinbaseMaturity: 1
+        coinbaseMaturity: 1,
+        subsidyHalvingInterval: 150
     )
 
     // TODO: Define testnet params with magicBytes 0x0709110b

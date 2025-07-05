@@ -10,7 +10,7 @@ extension GetBlockHashRPC {
             throw .init(.invalidParams, "Block not found at height \(params.height).")
         }
 
-        let result = blockID.hex
+        let result = blockID.reversed().hex
         return .init(hash: result)
     }
 }

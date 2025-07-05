@@ -29,7 +29,7 @@ public struct Block: Equatable, Sendable {
 
     // Header
     public let version: Int
-    public let previous: Data
+    public let previous: Block.ID
     public let merkleRoot: Data
     public let time: Date
 
@@ -42,17 +42,11 @@ public struct Block: Equatable, Sendable {
 
     // MARK: - Computed Properties
 
-    public var hash: Data {
+    public var id: Block.ID {
         Data(Hash256.hash(data: data(encoding: .headerOnly)))
     }
 
-    public var id: Block.ID {
-        Data(hash.reversed())
-    }
-
-    public var idHex: String {
-        id.hex
-    }
+    public var idHex: String { id.reversed().hex }
 
     /// Returns a copy of self without the transactions – i.e. header only.
     public var header: Self {
@@ -82,7 +76,7 @@ public struct Block: Equatable, Sendable {
         let genesisBlock = Block(
             version: 1,
             previous: Block.nullParent,
-            merkleRoot: genesisTx.id,
+            merkleRoot: calculateMerkleRoot([genesisTx]),
             time: Date(timeIntervalSince1970: TimeInterval(params.genesisBlockTime)),
             target: target,
             nonce: params.genesisBlockNonce,
@@ -148,8 +142,8 @@ extension Block: CustomBinaryCodable {
         switch encoding {
         case nil, .headerOnly, .nonWitness:
             let version = Int(try decoder.decode() as Int32)
-            let previous = try decoder.decode(Block.idLength, byteSwapped: true)
-            let merkleRoot = try decoder.decode(Block.idLength, byteSwapped: true)
+            let previous = try decoder.decode(Block.idLength)
+            let merkleRoot = try decoder.decode(Block.idLength)
             let time = Date(timeIntervalSince1970: TimeInterval(try decoder.decode() as UInt32))
             let target = Int(try decoder.decode() as UInt32)
             let nonce = Int(try decoder.decode() as UInt32)
@@ -173,8 +167,8 @@ extension Block: CustomBinaryCodable {
         switch encoding {
         case nil, .headerOnly, .nonWitness:
             encoder.encode(Int32(version))
-            encoder.encode(previous, byteSwapped: true)
-            encoder.encode(merkleRoot, byteSwapped: true)
+            encoder.encode(previous)
+            encoder.encode(merkleRoot)
             encoder.encode(UInt32(time.timeIntervalSince1970))
             encoder.encode(UInt32(target))
             encoder.encode(UInt32(nonce))

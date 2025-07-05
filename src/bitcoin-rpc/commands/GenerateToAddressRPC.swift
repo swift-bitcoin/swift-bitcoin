@@ -28,6 +28,6 @@ extension GenerateToAddressRPC {
         }
         let blockIDs = await blockchain.generateToScript(address.script, blocks: params.blocks, maxTries: params.maxTries ?? BlockchainService.Config.defaultMaxTries /*, blockTime: Date(timeIntervalSince1970: 1739295700) */)
 
-        return blockIDs.map(\.hex)
+        return blockIDs.map { $0.reversed().hex }
     }
 }
