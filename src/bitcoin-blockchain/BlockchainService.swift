@@ -30,7 +30,7 @@ public actor BlockchainService: Sendable {
     }
 
     public enum Error: Swift.Error {
-        case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRooot, invalidTransactionInBlock, dataDirIssue
+        case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRoot, invalidTransactionInBlock, dataDirIssue
     }
 
     public let params: ConsensusParams
@@ -386,7 +386,7 @@ public actor BlockchainService: Sendable {
         }
 
         let target = await getNextWorkRequired(forHeight: await height, newBlockTime: header.time, params: params)
-        guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), try! DifficultyTarget(header.hash) <= DifficultyTarget(compact: header.target) else {
+        guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), try! DifficultyTarget(header.id) <= DifficultyTarget(compact: header.target) else {
             throw .insuficientProofOfWork
         }
     }
@@ -632,7 +632,7 @@ public actor BlockchainService: Sendable {
         // Verify merkle root
         let expectedMerkleRoot = calculateMerkleRoot(block.txs)
         guard block.merkleRoot == expectedMerkleRoot else {
-            throw .wrongMerkleRooot
+            throw .wrongMerkleRoot
         }
 
         var tmpExclude = [Outpoint]()
@@ -660,7 +660,6 @@ public actor BlockchainService: Sendable {
         // Check coinbase
         let nextHeight = await validatedHeight + 1
         let blockReward = getBlockSubsidy(nextHeight) + fees
-
         // We allow for a portion of the block reward to be left unclaimed.
         guard blockReward >= coinbaseTx.valueOut else {
             throw .coinbaseTransactionOverspends
@@ -753,9 +752,9 @@ public actor BlockchainService: Sendable {
             )
             nonce += 1
             tries -= 1
-        } while tries > 0 && (try! DifficultyTarget(block.hash) > DifficultyTarget(compact: target))
+        } while tries > 0 && (try! DifficultyTarget(block.id) > DifficultyTarget(compact: target))
 
-        guard try! DifficultyTarget(block.hash) <= DifficultyTarget(compact: target) else {
+        guard try! DifficultyTarget(block.id) <= DifficultyTarget(compact: target) else {
             return nil
         }
 

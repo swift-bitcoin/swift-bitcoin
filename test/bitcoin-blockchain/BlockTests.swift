@@ -19,7 +19,7 @@ struct BlockTests {
         let genesisBlock = await blockchain.genesisBlock
         let genesisTx = genesisBlock.txs[0]
 
-        #expect(genesisTx.id.hex == expectedGenesisTxHash)
+        #expect(genesisTx.idHex == expectedGenesisTxHash)
 
         let genesisBlockData = genesisBlock.data
         #expect(genesisBlockData.hex == expectedBlockData)
@@ -30,7 +30,7 @@ struct BlockTests {
 
         // Short transaction ID
         // TODO: The following value is taken from the function's output so nothing is being verified until replaced with a known-to-be valid ID.
-        let expectedShortTxID = 0x00005b073a0c72eb
+        let expectedShortTxID = 0x774F7D6EDA21 // 0x00005b073a0c72eb
         #expect(genesisBlock.makeShortTxIDs(nonce: 0)[0] == expectedShortTxID)
 
         await blockchain.stop()
@@ -55,7 +55,7 @@ struct BlockTests {
         // blockHash = `bitcoin-cli generatetoaddress 1 $address`
         // [ 647024ae6cf6ba659ba4c5c5aeeafe5877926f1da798e4e80ed2b79058cbf7be ]
         //
-        // bitcoin-cli   $blockHash
+        // bitcoin-cli getblock $blockHash
         // {
         //   "height": 1,
         //   "versionHex": "20000000",

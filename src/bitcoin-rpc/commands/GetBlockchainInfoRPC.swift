@@ -25,7 +25,7 @@ extension GetBlockchainInfoRPC {
             chain: chain,
             blocks: blocks,
             headers: headerIDs.count - 1,
-            bestBlockHash: bestBlockHash!.hex,
+            bestBlockHash: bestBlockHash!.reversed().hex,
             difficulty: formatter.format(difficulty).lowercased(), // To output `4.656542373906925e-1` instead of 4.6565423739069247e-10
             time: Int(time.timeIntervalSince1970),
             medianTime: Int(medianTime.timeIntervalSince1970),
@@ -33,7 +33,7 @@ extension GetBlockchainInfoRPC {
             initialBlockDownload: initialBlockDownload,
             chainwork: chainwork.hex,
             sizeOnDisk: sizeOnDisk,
-            hashes: headerIDs.map(\.hex)
+            hashes: headerIDs.map { $0.reversed().hex }
         )
     }
 }
