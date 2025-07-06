@@ -17,7 +17,7 @@ public func sendRPC(host: String, port: Int, request: JSONRPCRequest) async thro
     ) { channel in
         channel.eventLoop.makeCompletedFuture {
             try channel.pipeline.syncOperations.addHandlers([
-                IdleStateHandler(readTimeout: TimeAmount.seconds(1)),
+                IdleStateHandler(readTimeout: TimeAmount.seconds(2)),
                 HalfCloseOnTimeout(),
                 MessageToByteHandler(NewlineEncoder()),
                 MessageToByteHandler(RequestEncoder()),

@@ -16,14 +16,15 @@ actor PersistentBlockIndex: BlockIndex {
     private let env: Environment
 
     /// Active chain height only, includes headers of unverified blocks.
-    internal private(set) var height: Int
+    private(set) var height: Int
 
     /// Locators in reverse height order
     var locators: [BlockStorageLocator] {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-        var locators = [BlockStorageLocator]()
-            for i in self.height ... 0 {
-                let blockID = try byHeight.get(i)!
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { [height] _, byID, byHeight in
+            var locators = [BlockStorageLocator]()
+            for i in 0 ... height {
+                let h = height - i
+                let blockID = try byHeight.get(h)!
                 let ref = try BlockRef(try byID.get(blockID)!)
                 if let locator = ref.locator {
                     locators.append(locator)
