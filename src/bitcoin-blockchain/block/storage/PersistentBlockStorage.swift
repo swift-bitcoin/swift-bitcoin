@@ -3,16 +3,16 @@ import Collections
 import Logging
 import _NIOFileSystem
 
-private let logger = Logger(label: "swift-bitcoin.block-storage")
-
 /// Block storage service.
 actor PersistentBlockStorage: BlockStorage {
 
-    init(config: BlockStorageConfig = .init()) {
+    init(config: BlockStorageConfig = .init(), logger: Logger) {
         self.config = config
+        self.logger = logger
     }
 
     let config: BlockStorageConfig
+    let logger: Logger
     internal private(set) var status = BlockStorageStatus.idle
 
     private var blocksDir = FilePath?.none
@@ -52,7 +52,7 @@ actor PersistentBlockStorage: BlockStorage {
         let totalFiles: Int
         let totalSize: Int
         do {
-            (maxNumber, totalFiles, totalSize) = try await fs.withDirectoryHandle(atPath: blocksDir) { dir in
+            (maxNumber, totalFiles, totalSize) = try await fs.withDirectoryHandle(atPath: blocksDir) { [logger] dir in
                 var maxNumber = initialFileNumber // Will be -1
                 var totalFiles = 0
                 var totalSize = 0

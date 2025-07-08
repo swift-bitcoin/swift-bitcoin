@@ -1,11 +1,13 @@
 import LMDB
 import struct SystemPackage.FilePath
 import Foundation
+import Logging
 
 /// Database block index service implementation.
 actor PersistentBlockIndex: BlockIndex {
 
-    init(path: FilePath) {
+    init(path: FilePath, logger: Logger) {
+        self.logger = logger
         env = try! Environment(at: URL(filePath: path.appending("block-index").string), maxDBs: 2, options: [.noSubDir])
         try! env.createDB(byID)
         height = try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey])) { _, byHeight in
@@ -13,6 +15,7 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
+    let logger: Logger
     private let env: Environment
 
     /// Active chain height only, includes headers of unverified blocks.

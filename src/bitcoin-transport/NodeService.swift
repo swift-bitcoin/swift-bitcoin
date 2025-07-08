@@ -2,6 +2,7 @@ import Foundation
 import AsyncAlgorithms
 import BitcoinBase
 import BitcoinBlockchain
+import Logging
 
 public typealias PeerID = UUID
 
@@ -19,9 +20,10 @@ public actor NodeService: Sendable {
     ///   - version: Protocol version number.
     ///   - services: Supported services.
     ///   - feeFilterRate: An arbitrary fee rate by which to filter transactions.
-    public init(blockchain: BlockchainService, config: NodeParams, state: NodeState = .initial) {
+    public init(blockchain: BlockchainService, config: NodeParams, logger: Logger = .init(label: "node"), state: NodeState = .initial) {
         self.blockchain = blockchain
         self.config = config
+        self.logger = logger
         self.state = state
         for id in state.peers.keys {
             peerOuts[id] = .init()
@@ -34,6 +36,8 @@ public actor NodeService: Sendable {
     public let blockchain: BlockchainService
 
     public let config: NodeParams
+    public let logger: Logger
+
     public var state: NodeState
 
     /// Subscription to the bitcoin service's blocks channel.

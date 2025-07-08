@@ -5,6 +5,7 @@ import BitcoinTransport
 import ServiceLifecycle
 import NIOCore
 import NIOPosix
+import Logging
 
 extension NodeNetwork: Decodable, ExpressibleByArgument { }
 
@@ -23,7 +24,7 @@ struct Start: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Use in-memory for ephemeral in-memory data. Use default-path for storing data in the default location (will be created if it does not yet exist).")
     var dataLocationType: DataLocationType?
 
-    @Option(name: [.customShort("l"), .long], help: "A custom absolute path to Swift Bitcoin's data directory (will be created if it does not yet exist).")
+    @Option(name: [.customShort("q"), .long], help: "A custom absolute path to Swift Bitcoin's data directory (will be created if it does not yet exist).")
     var dataLocationPath: String?
 
     @Option(name: .shortAndLong, help: "The address to bind the RPC server to.")
@@ -31,6 +32,9 @@ struct Start: AsyncParsableCommand {
 
     @Option(name: .shortAndLong, help: "The TCP port number to bind the server instance to. Default's to network's default port (\(NodeNetwork.mainnet.defaultRPCPort) for \(NodeNetwork.mainnet))")
     var port: Int?
+
+    @Option(name: .shortAndLong, help: "Log level.")
+    var logLevel: NodeConfig.LogLevel?
 
     mutating func run() async throws {
 
@@ -57,6 +61,7 @@ struct Start: AsyncParsableCommand {
             dataLocation: dataLocation ?? config.dataLocation,
             network: network ?? config.network,
             name: config.name,
+            logLevel: logLevel ?? config.logLevel,
             feeRate: config.feeRate
         )
 
@@ -67,14 +72,18 @@ struct Start: AsyncParsableCommand {
         }
         print(String(data: roundtrip, encoding: .utf8)!)
 
-        let nodeNetwork = NodeNetwork(resolvedConfig.network)
-        let nodeDataLocation = BlockchainService.Config.DataLocation(resolvedConfig.dataLocation)
-        let port = port ?? nodeNetwork.defaultRPCPort
-        try await launchNode(network: nodeNetwork, dataLocation: nodeDataLocation, host: host, port: port)
+        try await launchNode(resolvedConfig, host: host, port: port)
     }
 }
 
-private func launchNode(network: NodeNetwork, dataLocation: BlockchainService.Config.DataLocation, host: String, port: Int) async throws {
+private func launchNode(_ config: NodeConfig, host: String, port: Int?) async throws {
+    let network = NodeNetwork(config.network)
+    let dataLocation = BlockchainService.Config.DataLocation(config.dataLocation)
+    let port = port ?? network.defaultRPCPort
+
+    var logger = Logger(label: "bcnode")
+    logger.logLevel = .init(config.logLevel)
+
     let params: ConsensusParams = switch network {
     case .mainnet:
         .mainnet
@@ -85,26 +94,27 @@ private func launchNode(network: NodeNetwork, dataLocation: BlockchainService.Co
     }
     let blockchain = BlockchainService(
         params: params,
-        config: .init(dataLocation: dataLocation)
+        config: .init(dataLocation: dataLocation),
+        logger: logger
     )
     await blockchain.start()
 
-    let node = NodeService(blockchain: blockchain, config: .init(network: network))
+    let node = NodeService(blockchain: blockchain, config: .init(network: network), logger: logger)
 
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
     let p2pClients = (0 ..< 3).map { _ in
-        P2PClient(eventLoopGroup: eventLoopGroup, node: node)
+        P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger)
     }
 
-    let p2pService = P2PService(eventLoopGroup: eventLoopGroup, node: node)
+    let p2pService = P2PService(eventLoopGroup: eventLoopGroup, node: node, logger: logger)
 
-    let rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, p2pService: p2pService, p2pClients: p2pClients)
+    let rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, p2pService: p2pService, p2pClients: p2pClients, logger: logger)
     let serviceGroup = ServiceGroup(configuration: .init(
         services: [node] + p2pClients + [p2pService, rpcService],
         gracefulShutdownSignals: [.sigint, .sigterm],
         cancellationSignals: [.sigquit],
-        logger: .init(label: "mainServiceGroup")
+        logger: logger
     ))
     await rpcService.setServiceGroup(serviceGroup)
     try await serviceGroup.run()
