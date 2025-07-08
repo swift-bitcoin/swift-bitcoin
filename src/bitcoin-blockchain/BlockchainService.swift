@@ -6,8 +6,6 @@ import _NIOFileSystem
 import BitcoinCrypto
 import BitcoinBase
 
-private let logger = Logger(label: "swift-bitcoin|BlockchainService")
-
 public actor BlockchainService: Sendable {
 
     public struct Config: Sendable {
@@ -35,6 +33,7 @@ public actor BlockchainService: Sendable {
 
     public let params: ConsensusParams
     public let config: Config
+    public let logger: Logger
     public var status = Status.idle
 
     private let dataDir: FilePath?
@@ -60,7 +59,7 @@ public actor BlockchainService: Sendable {
     /// Cache of initial block download status, uses Swift Atomics to copy the behavior of `m_cached_finished_ibd` in Bitcoin Core.
     private var finishedIDB = ManagedAtomic<Bool>(false)
 
-    public init(params: ConsensusParams = .regtest, config: Config = .init()) {
+    public init(params: ConsensusParams = .regtest, config: Config = .init(), logger: Logger = .init(label: "blockchain")) {
         self.params = params
         self.config = config
         switch config.dataLocation {
@@ -77,8 +76,9 @@ public actor BlockchainService: Sendable {
         blockStorage = if dataDir == nil {
             TransientBlockStorage(config: config)
         } else {
-            PersistentBlockStorage(config: config)
+            PersistentBlockStorage(config: config, logger: logger)
         }
+        self.logger = logger
     }
 
     public func start() async { // TODO: Throw!
@@ -95,9 +95,9 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        blockIndex = if let dataDir { PersistentBlockIndex(path: dataDir) } else { TransientBlockIndex() }
-        headers = if let dataDir { PersistentHeadersIndex(path: dataDir) } else { TransientHeadersIndex() }
-        coins = if let dataDir { PersistentCoinsIndex(path: dataDir) } else { TransientCoinsIndex() }
+        blockIndex = if let dataDir { PersistentBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
+        headers = if let dataDir { PersistentHeadersIndex(path: dataDir, logger: logger) } else { TransientHeadersIndex() }
+        coins = if let dataDir { PersistentCoinsIndex(path: dataDir, logger: logger) } else { TransientCoinsIndex() }
 
         do {
             try await blockStorage.start()

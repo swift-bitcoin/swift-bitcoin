@@ -1,16 +1,19 @@
 import LMDB
 import Foundation
 import struct SystemPackage.FilePath
+import Logging
 
 /// An index plus storage for headers.
 actor PersistentHeadersIndex: HeadersIndex {
 
-    init(path: FilePath) {
+    init(path: FilePath, logger: Logger) {
+        self.logger = logger
         env = try! Environment(at: URL(filePath: path.appending("headers").string), maxDBs: 2, options: [.noSubDir])
         try! env.createDB(byID)
         try! env.withTransaction(db: .init(byPositionName, options: [.create, .integerKey])) { _, _ in }
     }
 
+    let logger: Logger
     private let env: Environment
 
     private var position = 0

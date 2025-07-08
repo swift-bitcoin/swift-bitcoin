@@ -12,11 +12,9 @@ import BitcoinBlockchain
 import BitcoinTransport
 import BitcoinRPC
 
-private let logger = Logger(label: "swift-bitcoin.rpc")
-
 actor RPCService: Service {
 
-    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService, p2pService: P2PService, p2pClients: [P2PClient]) {
+    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService, p2pService: P2PService, p2pClients: [P2PClient], logger: Logger) {
         self.host = host
         self.port = port
         self.eventLoopGroup = eventLoopGroup
@@ -24,6 +22,7 @@ actor RPCService: Service {
         self.blockchain = blockchain
         self.p2pService = p2pService
         self.p2pClients = p2pClients
+        self.logger = logger
     }
 
     let host: String
@@ -33,6 +32,7 @@ actor RPCService: Service {
     let blockchain: BlockchainService
     let p2pService: P2PService
     let p2pClients: [P2PClient]
+    let logger: Logger
 
     // Status and statistics
     private(set) var listening = false
@@ -66,8 +66,8 @@ actor RPCService: Service {
 
         // Start listening
         try await withGracefulShutdownHandler {
-            try await withThrowingDiscardingTaskGroup { @Sendable group in
-                try await serverChannel.executeThenClose { serverChannelInbound in
+            try await withThrowingDiscardingTaskGroup { @Sendable [logger] group in
+                try await serverChannel.executeThenClose { [logger] serverChannelInbound in
 
                     logger.info("RPC server accepting incoming connections @ \(host):\(port)…")
                     await serviceUp()
@@ -77,7 +77,7 @@ actor RPCService: Service {
                         logger.info("Incoming RPC connection from client @ \(String(describing: connectionChannel.channel.remoteAddress))")
                         await connectionMade()
 
-                        group.addTask {
+                        group.addTask { [logger] in
                             do {
                                 try await connectionChannel.executeThenClose {
                                     for try await request in $0.cancelOnGracefulShutdown() {
@@ -96,7 +96,7 @@ actor RPCService: Service {
                 }
                 logger.info("RPC server stopped (no longer listening for connections).")
             }
-        } onGracefulShutdown: {
+        } onGracefulShutdown: { [logger] in
             logger.info("RPC server shutting down gracefully…")
         }
     }

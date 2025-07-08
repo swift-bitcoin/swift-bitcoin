@@ -1,8 +1,5 @@
 import Foundation
 import Collections
-// import Logging
-
-// private let logger = Logger(label: "swift-bitcoin.block-storage")
 
 /// Block storage service.
 actor TransientBlockStorage: BlockStorage {

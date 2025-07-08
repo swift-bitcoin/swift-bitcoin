@@ -4,8 +4,6 @@ import struct SystemPackage.FilePath
 import Logging
 import BitcoinBase
 
-private let logger = Logger(label: "swift-bitcoin.coins-index")
-
 /// An index plus on-disk LMDB storage for coins.
 actor PersistentCoinsIndex: CoinsIndex {
 
@@ -13,11 +11,13 @@ actor PersistentCoinsIndex: CoinsIndex {
         case deletionIssue
     }
 
-    init(path: FilePath) {
+    init(path: FilePath, logger: Logger) {
+        self.logger = logger
         env = try! Environment(at: URL(filePath: path.appending("coins").string), maxDBs: 1, options: [.noSubDir])
         try! env.createDB(byID)
     }
 
+    let logger: Logger
     private let env: Environment
 
     func add(_ coin: UnspentOutput, for outpoint: Outpoint) {

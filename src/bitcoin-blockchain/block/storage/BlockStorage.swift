@@ -1,8 +1,6 @@
 /// Block storage service protocol.
 protocol BlockStorage: Sendable {
 
-    init(config: BlockStorageConfig)
-
     var config: BlockStorageConfig { get async }
     var status: BlockStorageStatus { get async }
     var sizeOnDisk: Int { get async }

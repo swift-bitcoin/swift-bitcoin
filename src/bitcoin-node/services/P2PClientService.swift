@@ -8,17 +8,17 @@ import NIOCore
 import NIOExtras
 import Logging
 
-private let logger = Logger(label: "swift-bitcoin.p2p-client")
-
 actor P2PClient: Service {
 
-    init(eventLoopGroup: EventLoopGroup, node: NodeService) {
+    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger) {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
+        self.logger = logger
     }
 
     let eventLoopGroup: EventLoopGroup
     let node: NodeService
+    let logger: Logger
 
     // Status
     private(set) var running = false
@@ -44,7 +44,7 @@ actor P2PClient: Service {
             for await _ in connectRequests.cancelOnGracefulShutdown() {
                 try await connectToPeer()
             }
-        } onGracefulShutdown: {
+        } onGracefulShutdown: { [logger] in
             logger.info("P2P client shutting down gracefully…")
         }
     }
@@ -85,10 +85,10 @@ actor P2PClient: Service {
         overallConnections += 1
         logger.info("P2P client @\(localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
 
-        try await clientChannel.executeThenClose { @Sendable inbound, outbound in
+        try await clientChannel.executeThenClose { @Sendable [logger] inbound, outbound in
             let peerID = await node.addPeer(host: remoteHost, port: remotePort, incoming: false)
 
-            try await withThrowingDiscardingTaskGroup { group in
+            try await withThrowingDiscardingTaskGroup { [logger] group in
                 group.addTask {
                     await self.node.connect(peerID)
                     while let message = await self.node.popMessage(peerID) {
@@ -102,7 +102,7 @@ actor P2PClient: Service {
                     }
                     try? await clientChannel.channel.close()
                 }
-                group.addTask {
+                group.addTask { [logger] in
                     for try await message in inbound.cancelOnGracefulShutdown() {
                         do {
                             try await self.node.processMessage(message, from: peerID)

@@ -7,17 +7,18 @@ import ServiceLifecycle
 import NIOCore
 import NIOExtras
 import Logging
-private let logger = Logger(label: "swift-bitcoin.p2p")
 
 actor P2PService: Service {
 
-    init(eventLoopGroup: EventLoopGroup, node: NodeService) {
+    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger) {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
+        self.logger = logger
     }
 
     let eventLoopGroup: EventLoopGroup
     let node: NodeService
+    let logger: Logger
 
     // Status
     private(set) var running = false
@@ -45,7 +46,7 @@ actor P2PService: Service {
             for await _ in listenRequests.cancelOnGracefulShutdown() {
                 try await startListening()
             }
-        } onGracefulShutdown: {
+        } onGracefulShutdown: { [logger] in
             logger.info("P2P server shutting down gracefully…")
         }
     }
@@ -111,7 +112,7 @@ actor P2PService: Service {
         self.serverChannel = serverChannel
 
         // Accept connections
-        try await withThrowingDiscardingTaskGroup { @Sendable group in
+        try await withThrowingDiscardingTaskGroup { @Sendable [logger] group in
 
             try await serverChannel.executeThenClose { serverChannelInbound in
                 logger.info("P2P server accepting incoming connections on \(host):\(port)…")
@@ -132,7 +133,7 @@ actor P2PService: Service {
 
                     group.addTask {
                         do {
-                            try await connectionChannel.executeThenClose { inbound, outbound in
+                            try await connectionChannel.executeThenClose { [logger] inbound, outbound in
 
                                 let peerID = await self.node.addPeer(host: remoteHost, port: remotePort)
 
@@ -143,7 +144,7 @@ actor P2PService: Service {
                                         }
                                         try? await connectionChannel.channel.close()
                                     }
-                                    group.addTask {
+                                    group.addTask { [logger] in
                                         for try await message in inbound.cancelOnGracefulShutdown() {
                                             do {
                                                 try await self.node.processMessage(message, from: peerID)

@@ -2,8 +2,6 @@ import Collections
 import Logging
 import BitcoinBase
 
-private let logger = Logger(label: "swift-bitcoin.coins-index")
-
 /// An index plus in-memory storage for coins.
 struct TransientCoinsIndex: CoinsIndex {
 
