@@ -5,6 +5,7 @@
 
 [![Blog](https://img.shields.io/badge/website-blog-yellow)](https://swiftbitcoin.org/)
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/SwiftBitcoinOrg)](https://x.com/SwiftBitcoinOrg)
+[![OpenSats: Funded](https://img.shields.io/badge/%3E__OpenSats-funded-gray?labelColor=f97316)](https://opensats.org/blog/twelfth-wave-of-bitcoin-grants#swift-bitcoin)
 
 ![Swift Bitcoin](https://github.com/user-attachments/assets/e7f29e72-6aa9-4f2c-9ba0-1e2a973ee09b)
 
