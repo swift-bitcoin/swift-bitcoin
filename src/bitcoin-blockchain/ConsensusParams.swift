@@ -20,11 +20,12 @@ public struct ConsensusParams: Sendable {
     public init(
         chain: String,
         magicBytes: Int,
-        powLimit: Data,
-        powTargetTimespan: Int,
-        powTargetSpacing: Int,
-        powAllowMinDifficultyBlocks: Bool,
-        powNoRetargeting: Bool,
+        powLimit: Data = Data([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+        powTargetTimespan: Int = 14 * 24 * 60 * 60, // two weeks
+        powTargetSpacing: Int = 10 * 60,
+        powAllowMinDifficultyBlocks: Bool = false,
+        powNoRetargeting: Bool = false,
+        preventBlockStorms: Bool = false,
         blockSubsidy: Amount = 5_000_000_000,
         genesisMessage: String = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks",
         genesisScript: Script = [.pushBytes(PublicKey.satoshi.uncompressedData!), .checkSig],
@@ -45,6 +46,7 @@ public struct ConsensusParams: Sendable {
         self.powTargetSpacing = powTargetSpacing
         self.powAllowMinDifficultyBlocks = powAllowMinDifficultyBlocks
         self.powNoRetargeting = powNoRetargeting
+        self.preventBlockStorms = preventBlockStorms
         self.blockSubsidy = blockSubsidy
         self.genesisMessage = genesisMessage
         self.genesisScript = genesisScript
@@ -69,6 +71,12 @@ public struct ConsensusParams: Sendable {
     public let powTargetSpacing: Int
     public let powAllowMinDifficultyBlocks: Bool
     public let powNoRetargeting: Bool
+
+    /// BIP94 rule 2 and 3. Testnet 4's "Block Storm" fix and "Time Warp Attack" mitigation.
+    ///
+    /// This is a new rule to address block storms caused by the testnet 20-minute exception.
+    ///
+    public let preventBlockStorms: Bool
 
     /// The initial block subsidy which defaults to 5 billion satoshis or 50 bitcoins.
     public var blockSubsidy = Amount(5_000_000_000)
@@ -106,11 +114,6 @@ public struct ConsensusParams: Sendable {
     public static let mainnet = Self(
         chain: "mainnet",
         magicBytes: 0xd9b4bef9,
-        powLimit: Data([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
-        powTargetTimespan: 14 * 24 * 60 * 60, // Wrong
-        powTargetSpacing: 10 * 60, // Wrong
-        powAllowMinDifficultyBlocks: true, // Wrong
-        powNoRetargeting: true, // Wrong
         genesisBlockTime: 1231006505,
         genesisBlockNonce: 2083236893,
         genesisBlockTarget: 0x1d00ffff,
@@ -126,11 +129,8 @@ public struct ConsensusParams: Sendable {
     public static let testnet = Self(
         chain: "testnet4",
         magicBytes: 0x283f161c,
-        powLimit: Data([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
-        powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
-        powTargetSpacing: 10 * 60,
         powAllowMinDifficultyBlocks: true,
-        powNoRetargeting: false,
+        preventBlockStorms: true,
         genesisMessage: "03/May/2024 000000000000000000001ebd58c244970b3aa9d783bb001011fbe8ea8e98e00e",
         genesisScript: [Script.Operation.pushBytes(Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])), .checkSig],
         genesisBlockTime: 1714777860,
@@ -146,10 +146,10 @@ public struct ConsensusParams: Sendable {
         chain: "regtest",
         magicBytes: 0xdab5bffa,
         powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
-        powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
-        powTargetSpacing: 10 * 60,
+        powTargetTimespan: 24 * 60 * 60, // one day
         powAllowMinDifficultyBlocks: true,
         powNoRetargeting: true,
+        preventBlockStorms: false, // In Bitcoin Core there is a configuration option / command line parameter to set this to true on regtest (will mitigate timewarp attack).
         genesisBlockTime: 1296688602,
         genesisBlockNonce: 2,
         genesisBlockTarget: 0x207fffff,
@@ -160,7 +160,7 @@ public struct ConsensusParams: Sendable {
         chain: "swift-testing",
         magicBytes: 0xdab5bffa,
         powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
-        powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
+        powTargetTimespan: 24 * 60 * 60, // one day
         powTargetSpacing: 10 * 60,
         powAllowMinDifficultyBlocks: true,
         powNoRetargeting: true,
@@ -203,5 +203,5 @@ public struct ConsensusParams: Sendable {
     private static let locktimeVerifySequence = 1 << 0
 
     /// Maximum number of seconds that the timestamp of the first block of a difficulty adjustment period is allowed to be earlier than the last block of the previous period (BIP94).
-    private static let maxTimewarp = 600
+    package static let maxTimewarp = TimeInterval(600)
 }
