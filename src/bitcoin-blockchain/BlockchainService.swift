@@ -29,6 +29,9 @@ public actor BlockchainService: Sendable {
 
     public enum Error: Swift.Error {
         case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRoot, invalidTransactionInBlock, dataDirIssue
+
+        /// Block's timestamp is too early on diff adjustment block.
+        case timewarpAttack
     }
 
     public let params: ConsensusParams
@@ -385,9 +388,21 @@ public actor BlockchainService: Sendable {
             throw .headerTooNew
         }
 
-        let target = await getNextWorkRequired(forHeight: await height, newBlockTime: header.time, params: params)
+        let height = await height
+        let previousHeader = await blockIndex.get(at: height)
+        let target = await getNextWorkRequired(lastHeader: previousHeader, newBlockTime: header.time, params: params)
         guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), try! DifficultyTarget(header.id) <= DifficultyTarget(compact: header.target) else {
             throw .insuficientProofOfWork
+        }
+
+        // Testnet4 and regtest only: Check timestamp against prev for difficulty-adjustment blocks to prevent timewarp attacks (see https://github.com/bitcoin/bitcoin/pull/15482).
+        if params.preventBlockStorms {
+            // Check timestamp for the first block of each difficulty adjustment interval, except the genesis block.
+            if (height + 1) % params.difficultyAdjustmentInterval == 0 {
+                guard header.time.timeIntervalSince1970 >= previousHeader.time.timeIntervalSince1970  - ConsensusParams.maxTimewarp else {
+                    throw .timewarpAttack
+                }
+            }
         }
     }
 
@@ -736,7 +751,7 @@ public actor BlockchainService: Sendable {
         let txs = [coinbaseTx] + mempoolTxs
         let merkleRoot = calculateMerkleRoot(txs)
 
-        let target = await getNextWorkRequired(forHeight: chainTipRef.height, newBlockTime: blockTime, params: params)
+        let target = await getNextWorkRequired(lastHeader: chainTipRef, newBlockTime: blockTime, params: params)
 
         var nonce = initialNonce
         var tries = maxTries
@@ -831,9 +846,9 @@ public actor BlockchainService: Sendable {
         }
     }
 
-    private func getNextWorkRequired(forHeight heightLast: Int, newBlockTime: Date, params: ConsensusParams) async -> Int {
+    private func getNextWorkRequired(lastHeader: BlockRef, newBlockTime: Date, params: ConsensusParams) async -> Int {
+        let heightLast = lastHeader.height
         precondition(heightLast >= 0)
-        let lastHeader = await blockIndex.get(at: heightLast)
         let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
         let proofOfWorkLimit = powLimitTarget.toCompact()
 
@@ -841,8 +856,7 @@ public actor BlockchainService: Sendable {
         if (heightLast + 1) % params.difficultyAdjustmentInterval != 0 {
             if params.powAllowMinDifficultyBlocks {
                 // Special difficulty rule for testnet:
-                // If the new block's timestamp is more than 2* 10 minutes
-                // then allow mining of a min-difficulty block.
+                // If the new block's timestamp is more than 2 * 10 minutes then allow mining of a min-difficulty block.
                 if Int(newBlockTime.timeIntervalSince1970) > Int(lastHeader.time.timeIntervalSince1970) + params.powTargetSpacing * 2 {
                     return proofOfWorkLimit
                 } else {
@@ -863,10 +877,10 @@ public actor BlockchainService: Sendable {
         let heightFirst = heightLast - (params.difficultyAdjustmentInterval - 1)
         precondition(heightFirst >= 0)
         let firstHeader = await blockIndex.get(at: heightFirst) // pindexLast->GetAncestor(nHeightFirst)
-        return calculateNextWorkRequired(lastHeader: lastHeader, firstBlockTime: firstHeader.time, params: params)
+        return await calculateNextWorkRequired(lastHeader: lastHeader, firstBlockTime: firstHeader.time, params: params)
     }
 
-    private func calculateNextWorkRequired(lastHeader: BlockRef, firstBlockTime: Date, params: ConsensusParams) -> Int {
+    private func calculateNextWorkRequired(lastHeader: BlockRef, firstBlockTime: Date, params: ConsensusParams) async -> Int {
         if params.powNoRetargeting {
             return lastHeader.target
         }
@@ -883,7 +897,15 @@ public actor BlockchainService: Sendable {
         // Retarget
         let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
 
-        var new = DifficultyTarget(compact: lastHeader.target)
+        var new: DifficultyTarget
+        if params.preventBlockStorms {
+            // Here we use the first block of the difficulty period. This way the real difficulty is always preserved in the first block as it is not allowed to use the min-difficulty exception.
+            let heightFirst = lastHeader.height - (params.difficultyAdjustmentInterval - 1)
+            let first = await blockIndex.get(at: heightFirst)
+            new = DifficultyTarget(compact: first.target)
+        } else {
+            new = DifficultyTarget(compact: lastHeader.target)
+        }
         precondition(!new.isZero)
         new *= (UInt32(actualTimespan))
         new /= DifficultyTarget(UInt64(params.powTargetTimespan))
