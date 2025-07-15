@@ -346,7 +346,8 @@ public actor BlockchainService: Sendable {
             }
         }
         guard let hitHeight else { return [] }
-        var heightTo = await blockIndex.height // TODO: previously `await validatedHeight`. Double check don't need to consider all headers (including ones missing transactions or not yet validated)
+        let maxHeight = await blockIndex.height
+        var heightTo = maxHeight // TODO: previously `await validatedHeight`. Double check don't need to consider all headers (including ones missing transactions or not yet validated)
         let heightFrom = hitHeight + 1
         guard heightFrom <= heightTo else { return [] }
         if heightTo - heightFrom + 1 > 200 {
@@ -369,9 +370,10 @@ public actor BlockchainService: Sendable {
     }
 
     private func checkHeader(_ header: Block) async throws(Error) {
-        guard header.version == 0x20000000 else {
+        // TODO: Disabling until BIP9 (version bits) is integrated (BIP34, BIP65 and BIP66 need to also be considered
+        /*guard header.version == 0x20000000 else {
             throw .unsupportedBlockVersion
-        }
+        }*/
 
         guard await lastBlockID == header.previous else {
             // TODO: Check for all ancestors

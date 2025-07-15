@@ -273,6 +273,10 @@ struct BlockSyncTests {
         let bobHeadersAfter = await bobChain.height + 1
         #expect(bobHeadersAfter == bobHeadersBefore)
 
+        // Bob --(sendheaders)->> …
+        let mBA10_sendheaders = try #require(await bob.popMessage(peerA))
+        #expect(mBA10_sendheaders.command == .sendheaders)
+
         // No Response
         #expect(await bob.popMessage(peerA) == nil)
 
@@ -280,17 +284,17 @@ struct BlockSyncTests {
         try await bob.processMessage(mAB10_getdata, from: peerA)
 
         // Bob --(block)->> …
-        let mBA10_block = try #require(await bob.popMessage(peerA))
-        #expect(mBA10_block.command == .block)
-
-        let bobBlock1 = try Block(mBA10_block.payload)
-        #expect(bobBlock1.txs.count == 1)
-
-        // Bob --(block)->> …
         let mBA11_block = try #require(await bob.popMessage(peerA))
         #expect(mBA11_block.command == .block)
 
-        let bobBlock2 = try Block(mBA11_block.payload)
+        let bobBlock1 = try Block(mBA11_block.payload)
+        #expect(bobBlock1.txs.count == 1)
+
+        // Bob --(block)->> …
+        let mBA12_block = try #require(await bob.popMessage(peerA))
+        #expect(mBA12_block.command == .block)
+
+        let bobBlock2 = try Block(mBA12_block.payload)
         #expect(bobBlock2.txs.count == 1)
 
         // No Response
@@ -298,34 +302,44 @@ struct BlockSyncTests {
 
         await #expect(aliceChain.validatedHeight == 0)
 
+        // … --(sendheaders)->> Alice
         // … --(block)->> Alice
         // … --(block)->> Alice
-        try await alice.processMessage(mBA10_block, from: peerB)
-        #expect(await aliceChain.validatedHeight == 1)
+        try await alice.processMessage(mBA10_sendheaders, from: peerB)
 
         try await alice.processMessage(mBA11_block, from: peerB)
+        #expect(await aliceChain.validatedHeight == 1)
+
+        try await alice.processMessage(mBA12_block, from: peerB)
 
         #expect(await aliceChain.validatedHeight == 2)
 
-        // Alice --(getdata)->> …
-        let mAB11_getdata = try #require(await alice.popMessage(peerB))
-        #expect(mAB11_getdata.command == .getdata)
+        // Alice --(sendheaders)->> …
+        let mAB11_sendheaders = try #require(await alice.popMessage(peerB))
+        #expect(mAB11_sendheaders.command == .sendheaders)
 
-        let aliceGetData1 = try #require(GetDataMessage(mAB11_getdata.payload))
+        // Alice --(getdata)->> …
+        let mAB12_getdata = try #require(await alice.popMessage(peerB))
+        #expect(mAB12_getdata.command == .getdata)
+
+        let aliceGetData1 = try #require(GetDataMessage(mAB12_getdata.payload))
         #expect(aliceGetData1.items.count == 1)
 
+        // … --(sendheaders)->> Bob
+        try await bob.processMessage(mAB11_sendheaders, from: peerA)
+
         // … --(getdata)->> Bob
-        try await bob.processMessage(mAB11_getdata, from: peerA)
+        try await bob.processMessage(mAB12_getdata, from: peerA)
 
         // Bob --(block)->> …
-        let mBA12_block = try #require(await bob.popMessage(peerA))
-        #expect(mBA12_block.command == .block)
+        let mBA13_block = try #require(await bob.popMessage(peerA))
+        #expect(mBA13_block.command == .block)
 
-        let bobBlock3 = try Block(mBA12_block.payload)
+        let bobBlock3 = try Block(mBA13_block.payload)
         #expect(bobBlock3.txs.count == 1)
 
         // … --(block)->> Alice
-        try await alice.processMessage(mBA12_block, from: peerB)
+        try await alice.processMessage(mBA13_block, from: peerB)
 
         #expect(await aliceChain.validatedHeight == 3)
 

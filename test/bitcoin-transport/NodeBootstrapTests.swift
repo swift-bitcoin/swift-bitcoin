@@ -561,5 +561,7 @@ private func makePeerState(_ incoming: Bool = false, highBandwidth: Bool = true)
     ps.compactBlocksPreferenceSent = true
     ps.compactBlocksVersionLocked = true
     ps.highBandwidthCompactBlocks = highBandwidth
+    ps.prefersHeaders = true
+    ps.sentSendHeaders = true
     return ps
 }
