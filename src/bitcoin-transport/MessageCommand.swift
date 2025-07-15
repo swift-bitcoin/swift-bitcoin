@@ -67,6 +67,10 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
     /// The payload is a serialized ``HeadersMessage``.
     case headers
 
+    /// Indicates that a node prefers to receive new block announcements via a "headers" message rather than an "inv".
+    /// BIP130
+    case sendheaders
+
     /// The payload is a serialized ``FeeFilterMessage``.
     /// BIP133
     case feefilter

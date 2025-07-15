@@ -107,7 +107,13 @@ public actor NodeService: Sendable {
                         header.txs = []
                         let items = [header]
                         let headersMessage = HeadersMessage(items: items)
-                        await self.send(.headers, payload: headersMessage.data, to: id)
+                        if peer.prefersHeaders {
+                            await self.send(.headers, payload: headersMessage.data, to: id)
+                        } else {
+                            let inventoryMessage = InventoryMessage(items: [.init(type: .witnessBlock, hash:  block.id)]
+                            )
+                            await self.send(.inv, payload: inventoryMessage.data, to: id)
+                        }
                     }
                 }
             }
@@ -346,6 +352,8 @@ public actor NodeService: Sendable {
             try await processGetHeaders(message, from: id)
         case .headers:
             try await processHeaders(message, from: id)
+        case .sendheaders:
+            try await processSendHeaders(message, from: id)
         case .block:
             try await processBlock(message, from: id)
         case .getdata:
@@ -606,6 +614,16 @@ public actor NodeService: Sendable {
         }
 
         await requestNextMissingBlocks(id)
+
+        // BIP130 delaying `sendheaders` until we don't need more headers
+        if !headersMessage.moreItems, state.peers[id]?.sentSendHeaders == false {
+            enqueue(.sendheaders, to: id)
+        }
+    }
+
+    private func processSendHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
+        guard let _ = state.peers[id] else { return }
+        state.peers[id]!.prefersHeaders = true
     }
 
     func processBlock(_ message: NetworkMessage, from id: PeerID) async throws {

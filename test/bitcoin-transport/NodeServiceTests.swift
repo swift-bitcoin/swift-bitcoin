@@ -306,6 +306,10 @@ struct NodeServiceTests: ~Copyable {
         let halGetData = try #require(GetDataMessage(messageHS9_getdata.payload))
         #expect(halGetData.items.count == 1)
 
+        // Hal --(sendheaders)->> …
+        let messageHS10_sendheaders = try #require(await hal.popMessage(satoshiPeer))
+        #expect(messageHS10_sendheaders.command == .sendheaders)
+
         // … --(pong)->> Satoshi
         try await satoshi.processMessage(messageHS7_pong, from: halPeer)
 
@@ -323,6 +327,16 @@ struct NodeServiceTests: ~Copyable {
         let satoshiHeightAfter = await satoshiChain.height
         #expect(satoshiHeightAfter == satoshiHeightBefore)
 
+        // Satoshi --(sendheaders)->> …
+        let messageSH10_sendheaders = try #require(await satoshi.popMessage(halPeer))
+        #expect(messageSH10_sendheaders.command == .sendheaders)
+
+        // No Response
+        #expect(await satoshi.popMessage(halPeer) == nil)
+
+        // … --(sendheaders)->> Satoshi
+        try await satoshi.processMessage(messageHS10_sendheaders, from: halPeer)
+
         // No Response
         #expect(await satoshi.popMessage(halPeer) == nil)
 
@@ -330,17 +344,23 @@ struct NodeServiceTests: ~Copyable {
         try await satoshi.processMessage(messageHS9_getdata, from: halPeer)
 
         // Satoshi --(block)->> …
-        let messageSH10_block = try #require(await satoshi.popMessage(halPeer))
-        #expect(messageSH10_block.command == .block)
+        let messageSH11_block = try #require(await satoshi.popMessage(halPeer))
+        #expect(messageSH11_block.command == .block)
 
-        let satoshiBlock = try Block(messageSH10_block.payload)
+        let satoshiBlock = try Block(messageSH11_block.payload)
         #expect(satoshiBlock.txs.count == 1)
 
         let halBlocksBefore = await halChain.validatedHeight + 1
         #expect(halBlocksBefore == 1)
 
+        // … --(sendheaders)->> Hal
+        try await hal.processMessage(messageSH10_sendheaders, from: satoshiPeer)
+
+        // No Response
+        #expect(await hal.popMessage(satoshiPeer) == nil)
+
         // … --(block)->> Hal
-        try await hal.processMessage(messageSH10_block, from: satoshiPeer)
+        try await hal.processMessage(messageSH11_block, from: satoshiPeer)
 
         let halBlocksAfter = await halChain.validatedHeight + 1
         #expect(halBlocksAfter == 2)

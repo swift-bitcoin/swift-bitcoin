@@ -22,6 +22,15 @@ public struct PeerState: Sendable {
     // Information from the version message sent by the peer
     var version = VersionMessage?.none
 
+    /// Whether this peer has sent us a `sendheaders` message.
+    ///
+    /// BIP130
+    var prefersHeaders = false
+
+    /// Whether we have sent this peer a `sendheaders` message.
+    /// BIP130
+    var sentSendHeaders = false
+
     /// BIP339
     var witnessRelayPreferenceSent = false
 

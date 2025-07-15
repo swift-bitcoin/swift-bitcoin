@@ -5,7 +5,7 @@ public struct GetBlockchainInfoRPC: RPCCommand, Sendable {
 
     public struct Result: Codable, Sendable {
 
-        public init(chain: String, blocks: Int, headers: Int, bestBlockHash: String, difficulty: String, time: Int, medianTime: Int, verificationProgress: Double, initialBlockDownload: Bool, chainwork: String, sizeOnDisk: Int, hashes: [String]) {
+        public init(chain: String, blocks: Int, headers: Int, bestBlockHash: String, difficulty: String, time: Int, medianTime: Int, verificationProgress: Double, initialBlockDownload: Bool, chainwork: String, sizeOnDisk: Int/*, hashes: [String]*/) {
             self.chain = chain
             self.blocks = blocks
             self.headers = headers
@@ -17,7 +17,7 @@ public struct GetBlockchainInfoRPC: RPCCommand, Sendable {
             self.initialBlockDownload = initialBlockDownload
             self.chainwork = chainwork
             self.sizeOnDisk = sizeOnDisk
-            self.hashes = hashes
+            //self.hashes = hashes
         }
 
         /// Current network name (main, test, testnet4,, regtest, signet).
@@ -53,7 +53,7 @@ public struct GetBlockchainInfoRPC: RPCCommand, Sendable {
         /// the estimated size of the block and undo files on disk
         public let sizeOnDisk: Int
 
-        public let hashes: [String]
+        //public let hashes: [String]
     }
 
     public init() {}
