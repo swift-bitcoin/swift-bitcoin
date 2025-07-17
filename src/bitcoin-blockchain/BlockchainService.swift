@@ -369,11 +369,10 @@ public actor BlockchainService: Sendable {
         return headers
     }
 
+    /// Validates the block header.
+    ///
+    /// This function contains similar logic to `ContextualCheckBlockHeader()` in Bitcoin Core's `validation.cpp`.
     private func checkHeader(_ header: Block) async throws(Error) {
-        // TODO: Disabling until BIP9 (version bits) is integrated (BIP34, BIP65 and BIP66 need to also be considered
-        /*guard header.version == 0x20000000 else {
-            throw .unsupportedBlockVersion
-        }*/
 
         guard await lastBlockID == header.previous else {
             // TODO: Check for all ancestors
@@ -405,6 +404,13 @@ public actor BlockchainService: Sendable {
                     throw .timewarpAttack
                 }
             }
+        }
+
+        // Reject blocks with outdated version
+        if header.version < 2 && height >= params.heightInCoinbaseHeight ||
+            (header.version < 3 && height >= params.strictDERSignatureHeight) ||
+            (header.version < 4 && height >= params.cltvHeight) {
+            throw .unsupportedBlockVersion
         }
     }
 
@@ -760,7 +766,6 @@ public actor BlockchainService: Sendable {
         var block: Block
         repeat {
             block = .init(
-                version: 0x20000000,
                 previous: previousBlockHash,
                 merkleRoot: merkleRoot,
                 time: blockTime,

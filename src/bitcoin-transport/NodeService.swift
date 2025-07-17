@@ -110,7 +110,7 @@ public actor NodeService: Sendable {
                         if peer.prefersHeaders {
                             await self.send(.headers, payload: headersMessage.data, to: id)
                         } else {
-                            let inventoryMessage = InventoryMessage(items: [.init(type: .witnessBlock, hash:  block.id)]
+                            let inventoryMessage = InventoryMessage(items: [.init(type: .block, hash:  block.id)]
                             )
                             await self.send(.inv, payload: inventoryMessage.data, to: id)
                         }
