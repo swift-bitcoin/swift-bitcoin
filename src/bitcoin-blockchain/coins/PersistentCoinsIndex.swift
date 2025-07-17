@@ -13,7 +13,7 @@ actor PersistentCoinsIndex: CoinsIndex {
 
     init(path: FilePath, logger: Logger) {
         self.logger = logger
-        env = try! Environment(at: URL(filePath: path.appending("coins").string), maxDBs: 1, options: [.noSubDir])
+        env = try! Environment(at: URL(filePath: path.appending("coins").string), maxDBs: 1, pages: 2_000, options: [.noSubDir])
         try! env.createDB(byID)
     }
 

@@ -18,8 +18,8 @@ public struct ConsensusParams: Sendable {
     }
 
     public init(
-        chain: String,
-        magicBytes: Int,
+        chain: String = "mainnet",
+        magicBytes: Int = 0xd9b4bef9,
         powLimit: Data = Data([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
         powTargetTimespan: Int = 14 * 24 * 60 * 60, // two weeks
         powTargetSpacing: Int = 10 * 60,
@@ -30,13 +30,19 @@ public struct ConsensusParams: Sendable {
         genesisMessage: String = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks",
         genesisScript: Script = [.pushBytes(PublicKey.satoshi.uncompressedData!), .checkSig],
         genesisReward: Amount = 5_000_000_000,
-        genesisBlockTime: Int,
-        genesisBlockNonce: Int,
-        genesisBlockTarget: Int,
-        minChainwork: [UInt8] = .init(repeating: 0, count: 32),
-        chainData: ChainData = .init(),
+        genesisBlockTime: Int = 1231006505,
+        genesisBlockNonce: Int = 2083236893,
+        genesisBlockTarget: Int = 0x1d00ffff,
+        minChainwork: [UInt8] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0xe1, 0x86, 0xb7, 0x0e, 0x08, 0x62, 0xc1, 0x93, 0xec, 0x44, 0xd6],
+        /// Data from RPC: getchaintxstats 4096 000000000000000000011c5890365bdbe5d25b97ce0057589acaef4f1a57263f
+        chainData: ChainData = .init(time: 1723649144, txCount: 1059312821, txRate: 6.721086701157182),
         coinbaseMaturity: Int = Self.defaultCoinbaseMaturity,
-        subsidyHalvingInterval: Int = 210_000
+        subsidyHalvingInterval: Int = 210_000,
+        heightInCoinbaseHeight: Int = 227931,
+        cltvHeight: Int = 388381,
+        strictDERSignatureHeight: Int = 363725,
+        csvHeight: Int = 419328,
+        segwitHeight: Int = 481824
     ) {
         precondition(minChainwork.count == 32)
         self.chain = chain
@@ -58,6 +64,11 @@ public struct ConsensusParams: Sendable {
         self.chainData = chainData
         self.subsidyHalvingInterval = subsidyHalvingInterval
         self.coinbaseMaturity = coinbaseMaturity
+        self.heightInCoinbaseHeight = heightInCoinbaseHeight
+        self.cltvHeight = cltvHeight
+        self.strictDERSignatureHeight = strictDERSignatureHeight
+        self.csvHeight = csvHeight
+        self.segwitHeight = segwitHeight
     }
 
     /// The chain identifier: mainnet, testnet, signet, regtest
@@ -99,6 +110,21 @@ public struct ConsensusParams: Sendable {
     // consensus.nRuleChangeActivationThreshold = 108; // 75% for testchains
     // consensus.nMinerConfirmationWindow = 144; // Faster than normal for regtest (144 instead of 2016)
 
+    /// BIP34 Height in Coinbase
+    public let heightInCoinbaseHeight: Int
+
+    /// BIP65 `OP_CHECKLOCKTIMEVERIFY`
+    public let cltvHeight: Int
+
+    /// BIP66 Strict DER signatures
+    public let strictDERSignatureHeight: Int
+
+    /// BIP68 Relative lock-time, BIP112 `CHECKSEQUENCEVERIFY`, BIP113 Median time-past
+    public let csvHeight: Int
+
+    /// BIP141 Segregated Witness, BIP143, BIP147 `NULLDUMMY`
+    public let segwitHeight: Int
+
     public var difficultyAdjustmentInterval: Int {
         powTargetTimespan / powTargetSpacing
     }
@@ -111,18 +137,7 @@ public struct ConsensusParams: Sendable {
         )
     }
 
-    public static let mainnet = Self(
-        chain: "mainnet",
-        magicBytes: 0xd9b4bef9,
-        genesisBlockTime: 1231006505,
-        genesisBlockNonce: 2083236893,
-        genesisBlockTarget: 0x1d00ffff,
-
-        minChainwork: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0xe1, 0x86, 0xb7, 0x0e, 0x08, 0x62, 0xc1, 0x93, 0xec, 0x44, 0xd6],
-
-        /// Data from RPC: getchaintxstats 4096 000000000000000000011c5890365bdbe5d25b97ce0057589acaef4f1a57263f
-        chainData: .init(time: 1723649144, txCount: 1059312821, txRate: 6.721086701157182)
-    )
+    public static let mainnet = Self()
 
     /// Testnet (v4)
     /// BIP94
@@ -139,7 +154,12 @@ public struct ConsensusParams: Sendable {
         minChainwork: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xd6, 0xdc, 0xe8, 0x65, 0x1b, 0x60, 0x94, 0xe4, 0xc1],
 
         /// Data from RPC: getchaintxstats 4096 0000000000003ed4f08dbdf6f7d6b271a6bcffce25675cb40aa9fa43179a89f3
-        chainData: .init(time: 1741070246, txCount: 7653966, txRate: 1.239174414591965)
+        chainData: .init(time: 1741070246, txCount: 7653966, txRate: 1.239174414591965),
+        heightInCoinbaseHeight: 1,
+        cltvHeight: 1,
+        strictDERSignatureHeight: 1,
+        csvHeight: 1,
+        segwitHeight: 1
     )
 
     public static let regtest = Self(
@@ -153,7 +173,14 @@ public struct ConsensusParams: Sendable {
         genesisBlockTime: 1296688602,
         genesisBlockNonce: 2,
         genesisBlockTarget: 0x207fffff,
-        subsidyHalvingInterval: 150
+        minChainwork: .init(repeating: 0, count: 32),
+        chainData: .init(),
+        subsidyHalvingInterval: 150,
+        heightInCoinbaseHeight: 1,
+        cltvHeight: 1,
+        strictDERSignatureHeight: 1,
+        csvHeight: 1,
+        segwitHeight: 0
     )
 
     package static let swiftTesting = Self( // Similar to regtest
@@ -167,8 +194,15 @@ public struct ConsensusParams: Sendable {
         genesisBlockTime: 1296688602,
         genesisBlockNonce: 2,
         genesisBlockTarget: 0x207fffff,
+        minChainwork: .init(repeating: 0, count: 32),
+        chainData: .init(),
         coinbaseMaturity: 1,
-        subsidyHalvingInterval: 150
+        subsidyHalvingInterval: 150,
+        heightInCoinbaseHeight: 1,
+        cltvHeight: 1,
+        strictDERSignatureHeight: 1,
+        csvHeight: 1,
+        segwitHeight: 0
     )
 
     // TODO: Define testnet params with magicBytes 0x0709110b

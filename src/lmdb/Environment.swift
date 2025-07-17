@@ -3,7 +3,10 @@ import Foundation
 
 package struct Environment: ~Copyable {
 
-    package init(at location: URL, maxDBs: Int = 32, maxReaders: Int = 126, mapSize: Int = 10485760, options: Options = []) throws(InitError) {
+    package init(at location: URL, maxDBs: Int = 32, maxReaders: Int = 126, pages: Int = 1_000, options: Options = []) throws(InitError) {
+
+        let pageSize = Int(getpagesize()) // On Apple Sillicon macOS 16_384 bytes
+        let mapSize = pages * pageSize
 
         var handle: OpaquePointer?
         var status = mdb_env_create(&handle)
@@ -22,7 +25,7 @@ package struct Environment: ~Copyable {
             throw .maxReadersIssue
         }
 
-        // Set the size of the memory map.
+        // Set the size of the memory map. Default mapSize: 10_485_760 bytes
         status = mdb_env_set_mapsize(handle, mapSize)
         guard status == MDB_SUCCESS else {
             throw .mapSizeIssue

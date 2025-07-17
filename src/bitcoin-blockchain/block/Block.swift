@@ -9,7 +9,7 @@ public struct Block: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    public init(version: Int = 2, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0, txs: [Transaction] = []) {
+    public init(version: Int = Self.versionBitsTopBits, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0, txs: [Transaction] = []) {
         self.version = version
         self.previous = previous
         self.merkleRoot = merkleRoot
@@ -67,6 +67,9 @@ public struct Block: Equatable, Sendable {
 
     public static let idLength = Hash256.Digest.byteCount
     public static let nullParent = Block.ID(count: 32)
+
+    /// BIP9 version bits prefix `0b001…`
+    public static let versionBitsTopBits = 0x20000000
 
     // MARK: - Type Methods
 
