@@ -283,8 +283,7 @@ public actor NodeService: Sendable {
         guard let peer = state.peers[id], peer.lastPingNonce == nil else { return }
 
         // Prepare pong check
-        let pongTolerance = config.pongTolerance
-        state.peers[id]?.checkPongTask = Task.detached { [weak self] in
+        state.peers[id]?.checkPongTask = Task.detached { [weak self, pongTolerance = config.pongTolerance] in
             do {
                 try await Task.sleep(nanoseconds: UInt64(pongTolerance) * 1_000_000_000)
             } catch { return }
@@ -496,7 +495,7 @@ public actor NodeService: Sendable {
         state.peers[id]?.versionAckReceived = true
 
         if state.peers[id]!.handshakeComplete {
-            print("Handshake successful.")
+            logger.info("Handshake successful.")
         }
 
         // BIP152 send a burst of supported compact block versions followed by a ping to lock it down.
@@ -616,7 +615,7 @@ public actor NodeService: Sendable {
         await requestNextMissingBlocks(id)
 
         // BIP130 delaying `sendheaders` until we don't need more headers
-        if !headersMessage.moreItems, state.peers[id]?.sentSendHeaders == false {
+        if !headersMessage.moreItems, state.peers[id]?.sendHeadersSent == false {
             enqueue(.sendheaders, to: id)
         }
     }
@@ -633,6 +632,9 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
+        logger.debug("Received block \(block.idHex)")
+
+        state.peers[id]!.registerKnownBlocks([block.id])
         try await blockchain.processBlock(block)
 
         state.peers[id]?.inTransitBlocks -= 1

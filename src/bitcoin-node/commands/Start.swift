@@ -65,13 +65,6 @@ struct Start: AsyncParsableCommand {
             feeRate: config.feeRate
         )
 
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        guard let roundtrip = try? encoder.encode(resolvedConfig) else {
-            throw ValidationError("Issue verifying decoding-encoding round trip.")
-        }
-        print(String(data: roundtrip, encoding: .utf8)!)
-
         try await launchNode(resolvedConfig, host: host, port: port)
     }
 }
@@ -83,6 +76,13 @@ private func launchNode(_ config: NodeConfig, host: String, port: Int?) async th
 
     var logger = Logger(label: "bcnode")
     logger.logLevel = .init(config.logLevel)
+
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = .prettyPrinted
+    guard let configStringData = try? encoder.encode(config), let configString = String(data: configStringData, encoding: .utf8) else {
+        fatalError("Could not encode configuration")
+    }
+    logger.info("\(configString)")
 
     let params: ConsensusParams = switch network {
     case .mainnet:
