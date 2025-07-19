@@ -8,7 +8,7 @@ actor PersistentHeadersIndex: HeadersIndex {
 
     init(path: FilePath, logger: Logger) {
         self.logger = logger
-        env = try! Environment(at: URL(filePath: path.appending("headers").string), maxDBs: 2, pages: 3_000, options: [.noSubDir])
+        env = try! Environment(at: URL(filePath: path.appending("headers").string), maxDBs: 2, pages: 2_000, options: [.noSubDir])
         try! env.createDB(byID)
         try! env.withTransaction(db: .init(byPositionName, options: [.create, .integerKey])) { _, _ in }
     }

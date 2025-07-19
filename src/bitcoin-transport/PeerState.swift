@@ -29,7 +29,7 @@ public struct PeerState: Sendable {
 
     /// Whether we have sent this peer a `sendheaders` message.
     /// BIP130
-    var sentSendHeaders = false
+    var sendHeadersSent = false
 
     /// BIP339
     var witnessRelayPreferenceSent = false

@@ -601,6 +601,7 @@ public actor BlockchainService: Sendable {
             blockRef = try! await blockIndex.add(block, locator: locator, status: .full)
         }
         chainTip = block.id
+        logger.info("New tip \(block.idHex)")
 
         // Remove available coins
         for tx in block.txs {

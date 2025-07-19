@@ -8,7 +8,7 @@ actor PersistentBlockIndex: BlockIndex {
 
     init(path: FilePath, logger: Logger) {
         self.logger = logger
-        env = try! Environment(at: URL(filePath: path.appending("block-index").string), maxDBs: 2, pages: 7_000, options: [.noSubDir])
+        env = try! Environment(at: URL(filePath: path.appending("block-index").string), maxDBs: 2, pages: 3_000, options: [.noSubDir])
         try! env.createDB(byID)
         height = try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey])) { _, byHeight in
             try byHeight.count - 1
