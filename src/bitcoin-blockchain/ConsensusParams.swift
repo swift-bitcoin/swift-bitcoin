@@ -33,6 +33,7 @@ public struct ConsensusParams: Sendable {
         genesisBlockTime: Int = 1231006505,
         genesisBlockNonce: Int = 2083236893,
         genesisBlockTarget: Int = 0x1d00ffff,
+        assumeValid: [UInt8]? = [0x77, 0x6d, 0xed, 0xa3, 0xad, 0x42, 0x97, 0xde, 0x9e, 0xf8, 0x11, 0x08, 0x79, 0xd2, 0x66, 0x2e, 0xe8, 0x20, 0x11, 0xdd, 0x58, 0xb6, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // 00000000000000000001b658dd1120e82e66d2790811f89ede9742ada3ed6d77; Height 886157
         minChainwork: [UInt8] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0xe1, 0x86, 0xb7, 0x0e, 0x08, 0x62, 0xc1, 0x93, 0xec, 0x44, 0xd6],
         /// Data from RPC: getchaintxstats 4096 000000000000000000011c5890365bdbe5d25b97ce0057589acaef4f1a57263f
         chainData: ChainData = .init(time: 1723649144, txCount: 1059312821, txRate: 6.721086701157182),
@@ -60,6 +61,7 @@ public struct ConsensusParams: Sendable {
         self.genesisBlockTime = genesisBlockTime
         self.genesisBlockNonce = genesisBlockNonce
         self.genesisBlockTarget = genesisBlockTarget
+        self.assumeValid = if let assumeValid { .init(assumeValid) } else { nil }
         self.minChainwork = minChainwork
         self.chainData = chainData
         self.subsidyHalvingInterval = subsidyHalvingInterval
@@ -99,8 +101,10 @@ public struct ConsensusParams: Sendable {
     public let genesisBlockNonce: Int
     public let genesisBlockTarget: Int
 
+    public let assumeValid: Block.ID? // TODO: Change to UInt256 or InlineArray<UInt8, 256>
+
     /// Big endian, 32 bytes (256 bit) number.
-    let minChainwork: [UInt8]
+    public let minChainwork: [UInt8] // TODO: Change to UInt256 or InlineArray<UInt8, 256>
     let chainData: ChainData
 
     /// The number of blocks needed to be mined until a coinbase output may be spent. Defaults to 100.
@@ -151,8 +155,16 @@ public struct ConsensusParams: Sendable {
         genesisBlockTime: 1714777860,
         genesisBlockNonce: 393743547,
         genesisBlockTarget: 0x1d00ffff,
-        minChainwork: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xd6, 0xdc, 0xe8, 0x65, 0x1b, 0x60, 0x94, 0xe4, 0xc1],
 
+        // Always revert to nil so 1st block testnet test does not crash
+        assumeValid: nil,
+        // [0x22, 0xc4, 0xee, 0x50, 0xe7, 0x40, 0x11, 0x50, 0x4e, 0x0b, 0x8a, 0x81, 0x56, 0x70, 0x5f, 0x07, 0x02, 0x41, 0x4c, 0x62, 0xe8, 0x42, 0x5a, 0x55, 0x06, 0x14, 0x9d, 0x01, 0x00, 0x00, 0x00, 0x00],
+        // 00000000019d1406555a42e8624c4102075f7056818a0b4e501140e750eec422; height 46664
+        //
+        // [0xf3, 0x89, 0x9a, 0x17, 0x43, 0xfa, 0xa9, 0x0a, 0xb4, 0x5c, 0x67, 0x25, 0xce, 0xff, 0xbc, 0xa6, 0x71, 0xb2, 0xd6, 0xf7, 0xf6, 0xbd, 0x8d, 0xf0, 0xd4, 0x3e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+        // 0000000000003ed4f08dbdf6f7d6b271a6bcffce25675cb40aa9fa43179a89f3; height 72600
+
+        minChainwork: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xd6, 0xdc, 0xe8, 0x65, 0x1b, 0x60, 0x94, 0xe4, 0xc1], // 0000000000000000000000000000000000000000000001d6dce8651b6094e4c1
         /// Data from RPC: getchaintxstats 4096 0000000000003ed4f08dbdf6f7d6b271a6bcffce25675cb40aa9fa43179a89f3
         chainData: .init(time: 1741070246, txCount: 7653966, txRate: 1.239174414591965),
         heightInCoinbaseHeight: 1,
@@ -173,6 +185,7 @@ public struct ConsensusParams: Sendable {
         genesisBlockTime: 1296688602,
         genesisBlockNonce: 2,
         genesisBlockTarget: 0x207fffff,
+        assumeValid: nil,
         minChainwork: .init(repeating: 0, count: 32),
         chainData: .init(),
         subsidyHalvingInterval: 150,
@@ -194,6 +207,7 @@ public struct ConsensusParams: Sendable {
         genesisBlockTime: 1296688602,
         genesisBlockNonce: 2,
         genesisBlockTarget: 0x207fffff,
+        assumeValid: nil,
         minChainwork: .init(repeating: 0, count: 32),
         chainData: .init(),
         coinbaseMaturity: 1,

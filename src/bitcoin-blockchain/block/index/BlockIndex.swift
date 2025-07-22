@@ -6,6 +6,7 @@ protocol BlockIndex: Sendable {
     /// Locators in reverse height order
     var locators: [BlockStorageLocator] { get async }
     var lastHeaderID: Block.ID { get async }
+    var chainTip: Block.ID { get async }
 
     @discardableResult
     func add(_ block: Block, locator: BlockStorageLocator? /* = nil */, status: BlockRef.ValidationStatus /* = .header */) async throws(BlockIndexError) -> BlockRef

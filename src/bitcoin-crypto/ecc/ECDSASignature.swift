@@ -44,7 +44,7 @@ public struct ECDSASignature: Equatable, Sendable, CustomStringConvertible {
     public init?(_ data: Data, format: Format = .full) {
         switch format {
         case .full:
-            guard data.count >= Self.compactSignatureLength && data.count <= Self.ecdsaSignatureMaxLength else {
+            guard data.count >= Self.ecdsaSignatureMinLength && data.count <= Self.ecdsaSignatureMaxLength else {
                 return nil
             }
         case .compact:

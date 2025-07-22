@@ -27,6 +27,15 @@ actor TransientBlockIndex: BlockIndex {
         return byHeight.last!
     }
 
+    var chainTip: Block.ID {
+        for id in byHeight.reversed() {
+            if byID[id]!.status == .full {
+                return id
+            }
+        }
+        preconditionFailure("No fully validated blocks exist")
+    }
+
     @discardableResult
     func add(_ block: Block, locator: BlockStorageLocator?, status: BlockRef.ValidationStatus) throws(BlockIndexError) -> BlockRef {
         let previous = if block.previous != Block.nullParent && has(block.previous) {

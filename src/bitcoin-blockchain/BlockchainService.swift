@@ -28,7 +28,8 @@ public actor BlockchainService: Sendable {
     }
 
     public enum Error: Swift.Error {
-        case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRoot, invalidTransactionInBlock, dataDirIssue
+        case invalidTransactionInBlock(TransactionValidationError)
+        case unsupportedBlockVersion, orphanHeader, insuficientProofOfWork, headerTooOld, headerTooNew, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRoot, dataDirIssue
 
         /// Block's timestamp is too early on diff adjustment block.
         case timewarpAttack
@@ -115,7 +116,7 @@ public actor BlockchainService: Sendable {
             try! await blockIndex.add(genesisBlock, locator: locator, status: .header)
             chainTip = genesisBlock.id
         } else {
-            chainTip = await blockIndex.lastHeaderID // TODO: Replace with findTip()!!
+            chainTip = await blockIndex.chainTip
         }
     }
 
@@ -273,9 +274,19 @@ public actor BlockchainService: Sendable {
     }
 
     /// Adds a transaction to the mempool.
-    public func addTransaction(_ tx: Transaction) async throws {
-        guard !mempool.contains(tx) else { return }
-        guard await checkTx(tx) else { return }
+    ///
+    /// Returns silently if transaction is already in the mempool.
+    public func addTransaction(_ tx: Transaction) async throws(TransactionValidationError) {
+        guard !mempool.contains(tx) else {
+            logger.warning("Transaction already in mempool")
+            return
+        }
+        do {
+            try await checkTx(tx, checkStandardness: true)
+        } catch {
+            logger.error("Failed transaction check\n\n\(error)")
+            throw error
+        }
         mempool.append(tx)
 
         // Notify other nodes of new tx
@@ -293,8 +304,8 @@ public actor BlockchainService: Sendable {
         mempoolExclude += tx.ins.map(\.outpoint)
         // Add coins
         let txid = tx.id
-        for out in tx.outs.enumerated() {
-            mempoolCoins[.init(tx: txid, out: out.offset)] = .init(out.element)
+        for (i, out) in tx.outs.enumerated() {
+            mempoolCoins[.init(tx: txid, out: i)] = .init(out)
         }
     }
 
@@ -346,7 +357,7 @@ public actor BlockchainService: Sendable {
             }
         }
         guard let hitHeight else { return [] }
-        let maxHeight = await blockIndex.height
+        let maxHeight = await validatedHeight // await blockIndex.height
         var heightTo = maxHeight // TODO: previously `await validatedHeight`. Double check don't need to consider all headers (including ones missing transactions or not yet validated)
         let heightFrom = hitHeight + 1
         guard heightFrom <= heightTo else { return [] }
@@ -498,8 +509,8 @@ public actor BlockchainService: Sendable {
         let nextHeight = await validatedHeight + 1
 
         var valueInAcc = Amount(0)
-        for input in tx.ins.enumerated() {
-            let outpoint = input.element.outpoint
+        for input in tx.ins {
+            let outpoint = input.outpoint
 
             // are the actual inputs available?
             guard let coin = await coins.get(outpoint) ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
@@ -545,7 +556,7 @@ public actor BlockchainService: Sendable {
         return valueIn - tx.valueOut
     }
 
-    private func checkTx(_ tx: Transaction, exclude: [Outpoint]? = nil, auxCoins: [Outpoint : UnspentOutput]? = nil) async -> Bool {
+    private func checkTx(_ tx: Transaction, checkStandardness: Bool = false, assumeValidHeight: Int? = nil, exclude: [Outpoint]? = nil, auxCoins: [Outpoint : UnspentOutput]? = nil) async throws(TransactionValidationError) {
         let exclude = exclude ?? mempoolExclude
         let auxCoins = auxCoins ?? mempoolCoins
 
@@ -558,19 +569,21 @@ public actor BlockchainService: Sendable {
 
             // TODO: `checkSequenceLocks(tx, verifyLockTimeSequence: Bool, coins: [Outpoint : UnspentOutput], previousBlockMedianTimePast: Int)`
         } catch {
-            return false
+            logger.error("Failed transaction check:\n\n\(error)")
+            throw .transactionCheckError(error)
         }
 
-        let validatedHeight = await validatedHeight
+        let blockHeight = await validatedHeight + 1
 
         // TODO: Enforce BIP113 (Median Time Past) for block validation only (not mempool acceptance)
         // let enforceLocktimeMedianTimePast = deploymentActiveAfter(blocks[tip], chainman, Consensus.deploymentCSV)
+        // let enforceLocktimeMedianTimePast = blockHeight >= params.csvHeight ???
         // let lockTimeCutoff = enforceLocktimeMedianTimePast ? Int(getMedianTimePast(for: tip).timeIntervalSince1970)) : blockCandidate.time
 
         // Check that all transactions are finalized
-        guard await tx.isFinal(blockHeight: validatedHeight + 1, blockTime: Int(getMedianTimePast().timeIntervalSince1970)) else {
-            // TODO: `throw BlockValidationError.nonFinalTransaction` or the like.
-            return false
+        guard await tx.isFinal(blockHeight: blockHeight, blockTime: Int(getMedianTimePast().timeIntervalSince1970)) else {
+            logger.error("Transaction not final")
+            throw .nonFinalTransaction
         }
 
         if !tx.isCoinbase {
@@ -581,11 +594,16 @@ public actor BlockchainService: Sendable {
                 }
                 prevouts.append(coin.out)
             }
-            if !tx.verifyScript(prevouts: prevouts) {
-                return false // error, failed to verify tx
+            if let assumeValidHeight, blockHeight <= assumeValidHeight {
+                // TODO: Check minimum chainwork #396
+                logger.info("Skipping script validation due to assume valid configuration")
+                return
+            }
+            if !tx.verifyScript(prevouts: prevouts, config: checkStandardness ? .standard : .mandatory) {
+                logger.error("Failed script validation")
+                throw .scriptError
             }
         }
-        return true
     }
 
     private func connectBlock(_ block: Block) async {
@@ -610,8 +628,8 @@ public actor BlockchainService: Sendable {
                 try! await coins.remove(input.outpoint)
             }
             // Add coins
-            for out in tx.outs.enumerated() {
-                await coins.add(.init(out.element, height: blockRef.height, isCoinbase: tx.isCoinbase), for: .init(tx: tx.id, out: out.offset))
+            for (i, out) in tx.outs.enumerated() {
+                await coins.add(.init(out, height: blockRef.height, isCoinbase: tx.isCoinbase), for: .init(tx: tx.id, out: i))
             }
         }
 
@@ -659,15 +677,27 @@ public actor BlockchainService: Sendable {
             throw .wrongMerkleRoot
         }
 
+        // #396
+        // TODO: Min chain work
+
+        let assumeValidHeight: Int? = if let assumeValid = params.assumeValid, await blockIndex.has(assumeValid) {
+            // TODO: Headers first, #413 – after that remove `await blockIndex.has(assumeValid)`
+            await blockIndex.get(assumeValid).height
+        } else { nil }
+
         var tmpExclude = [Outpoint]()
         var tmpCoins = [Outpoint: UnspentOutput]()
         guard let coinbaseTx = block.txs.first, coinbaseTx.isCoinbase else {
             throw .missingCoinbaseTransaction
         }
         var fees = Amount(0)
-        for tx in block.txs {
-            guard await checkTx(tx, exclude: tmpExclude, auxCoins: tmpCoins) else {
-                throw .invalidTransactionInBlock
+        for txIndex in block.txs.indices {
+            let tx = block.txs[txIndex]
+            do {
+                try await checkTx(tx, assumeValidHeight: assumeValidHeight, exclude: tmpExclude, auxCoins: tmpCoins)
+            } catch {
+                logger.error("Invalid transaction #\(txIndex) in block\n\n\(error)")
+                throw .invalidTransactionInBlock(error)
             }
             if !tx.isCoinbase {
                 fees += await calculateFees(tx, exclude: tmpExclude, auxCoins: tmpCoins)
@@ -676,8 +706,8 @@ public actor BlockchainService: Sendable {
             tmpExclude += tx.ins.map(\.outpoint)
             // Add coins
             let txid = tx.id
-            for out in tx.outs.enumerated() {
-                tmpCoins[.init(tx: txid, out: out.offset)] = .init(out.element, height: nextTipHeight, isCoinbase: tx.isCoinbase)
+            for (i, out) in tx.outs.enumerated() {
+                tmpCoins[.init(tx: txid, out: i)] = .init(out, height: nextTipHeight, isCoinbase: tx.isCoinbase)
             }
         }
 
@@ -699,17 +729,21 @@ public actor BlockchainService: Sendable {
         var mpExclude = [Outpoint]()
         var mpCoins = [Outpoint: UnspentOutput]()
         for tx in mempool {
-            guard await checkTx(tx, exclude: mpExclude, auxCoins: mpCoins) else {
+            do {
+                try await checkTx(tx, assumeValidHeight: assumeValidHeight, exclude: mpExclude, auxCoins: mpCoins)
+            } catch {
+                logger.warning("Mempool transaction became invalid")
                 continue // Exclude this transaction from the new mempool
             }
+
             newMempool.append(tx)
 
             // Remove coins
             mpExclude += tx.ins.map(\.outpoint)
             // Add coins
             let txid = tx.id
-            for out in tx.outs.enumerated() {
-                mpCoins[.init(tx: txid, out: out.offset)] = .init(out.element)
+            for (i, out) in tx.outs.enumerated() {
+                mpCoins[.init(tx: txid, out: i)] = .init(out)
             }
         }
         mempool = newMempool

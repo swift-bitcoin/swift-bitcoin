@@ -15,7 +15,7 @@ while let line = readLine() {
     if line.isEmpty {
         break;
     }
-    buffer += line
+    buffer += line.lowercased()
 }
 
 var bytesString = ""

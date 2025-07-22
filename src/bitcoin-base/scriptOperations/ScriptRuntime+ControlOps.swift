@@ -5,7 +5,7 @@ extension ScriptRuntime {
     /// If the top stack value is not False, the statements are executed. The top stack value is removed.
     /// For the `isNotIf` variant, if the top stack value is False, the statements are executed. The top stack value is removed.
     mutating func opIf(isNotIf: Bool = false) throws {
-        pendingElseOps += 1
+        pendingElseOps.append(true)
         guard evaluateBranch else {
             pendingIfOps.append(nil)
             return
@@ -22,10 +22,10 @@ extension ScriptRuntime {
 
     /// If the preceding `OP_IF` or `OP_NOTIF` or `OP_ELSE` was not executed then these statements are and if the preceding `OP_IF` or `OP_NOTIF` or `OP_ELSE` was executed then these statements are not.
     mutating func opElse() throws {
-        guard pendingElseOps > 0, pendingElseOps == pendingIfOps.count else {
+        guard pendingElseOps.count == pendingIfOps.count, let waitingForElse = pendingElseOps.last, waitingForElse else {
             throw ScriptError.malformedIfElseEndIf // Else with no corresponding previous if
         }
-        pendingElseOps -= 1
+        pendingElseOps[pendingIfOps.endIndex - 1] = false
         guard let lastEvaluatedIfResult = pendingIfOps.last, let lastEvaluatedIfResult else {
             return
         }
@@ -37,12 +37,8 @@ extension ScriptRuntime {
         guard !pendingIfOps.isEmpty else {
             throw ScriptError.malformedIfElseEndIf // End if with no corresponding previous if
         }
-        if pendingElseOps == pendingIfOps.count {
-            pendingElseOps -= 1 // try opElse(runtime: &runtime)
-        } else if pendingElseOps != pendingIfOps.count - 1 {
-            throw ScriptError.malformedIfElseEndIf // Unbalanced else
-        }
         pendingIfOps.removeLast()
+        pendingElseOps.removeLast()
     }
 
     /// All of the signature checking words will only match signatures to the data after the most recently-executed `OP_CODESEPARATOR`
