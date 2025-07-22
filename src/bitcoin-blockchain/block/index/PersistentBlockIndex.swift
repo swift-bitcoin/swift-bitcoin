@@ -44,6 +44,20 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
+    var chainTip: Block.ID {
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { [height] _, byID, byHeight in
+            for i in 0 ... height {
+                let h = height - i
+                let blockID = try byHeight.get(h)!
+                let ref = try BlockRef(try byID.get(blockID)!)
+                if ref.status == .full {
+                    return blockID
+                }
+            }
+            preconditionFailure("No fully validated blocks exist")
+        }
+    }
+
     @discardableResult
     func add(_ block: Block, locator: BlockStorageLocator?, status: BlockRef.ValidationStatus) throws(BlockIndexError) -> BlockRef {
         let previous: BlockRef?

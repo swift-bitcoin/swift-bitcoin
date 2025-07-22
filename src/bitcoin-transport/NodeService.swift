@@ -738,8 +738,8 @@ public actor NodeService: Sendable {
             txs[prefilled.index] = prefilled.tx
         }
 
-        let missingTxIndices = txs.enumerated().compactMap {
-            if $0.element == nil { $0.offset } else { nil }
+        let missingTxIndices = txs.enumerated().compactMap { i, tx in
+            if tx == nil { i } else { nil }
         }
 
         if missingTxIndices.isEmpty {

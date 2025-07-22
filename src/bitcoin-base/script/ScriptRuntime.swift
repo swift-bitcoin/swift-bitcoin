@@ -59,7 +59,9 @@ public struct ScriptRuntime {
 
     /// Support for `OP_IF`, `OP_NOTIF`, `OP_ELSE` and `OP_ENDIF`.
     var pendingIfOps = [Bool?]()
-    var pendingElseOps = 0
+
+    // Whether else is pending to appear for the last IF
+    var pendingElseOps = [Bool]()
 
     /// We keep the sighash cache instance inbetween resets / runs / input index updates.
     var sighashCache = SignatureMessage.Taproot.Cache()
@@ -157,7 +159,7 @@ public struct ScriptRuntime {
             programCounter += op.dataSize
             opIndex += 1
         }
-        guard pendingIfOps.isEmpty, pendingElseOps == 0 else {
+        guard pendingIfOps.isEmpty, pendingElseOps.isEmpty else {
             throw ScriptError.malformedIfElseEndIf
         }
     }

@@ -114,6 +114,8 @@ extension Transaction {
             } else if witnessVersion == 1 && witnessProgram.count == PublicKey.xOnlyLength && !isPayToScriptHash {
                 // BIP341
                 try verifyTaproot(&runtime, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
+            } else if witnessVersion == 1 && witnessProgram == .init([0x4e, 0x73]) {
+                // Pay-to-Anchor - Skip
             } else if config.contains(.discourageUpgradableWitnessProgram) {
                 throw ScriptError.disallowedWitnessVersion
             }

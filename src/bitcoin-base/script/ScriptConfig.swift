@@ -90,7 +90,7 @@ public struct ScriptConfig: OptionSet, Sendable {
     /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
     public static let standard: Self = [.strictDER, .pushOnly, .minimalData, .lowS, .cleanStack, .nullDummy, .strictEncoding, .payToScriptHash, .checkLockTimeVerify, .checkSequenceVerify, .discourageUpgradableNoOps, .constantScriptCode, .witness, .witnessCompressedPubkey, .minimalIf, .nullFail, .discourageUpgradableWitnessProgram, .taproot, .discourageUpgradableTaprootVersion, .discourageOpSuccess, .discourageUpgradablePubkeyType]
 
-    /// Mandatory script verification flags that all new transactions must comply with for them to be valid. Failing one of these tests may trigger a DoS ban. See `CheckInputScripts()` on Bitcoin Core  for details.
+    /// Mandatory script verification flags that all new transactions must comply with for them to be valid under latest consensus rules. Failing one of these tests may trigger a DoS ban. See `CheckInputScripts()` on Bitcoin Core  for details.
     /// Note that this does not affect consensus validity. See `GetBlockScriptFlags()` for that.
     public static let mandatory: Self = [
         .strictDER, // After DEPLOYMENT_DERSIG (BIP66) buried deployment block (1st)

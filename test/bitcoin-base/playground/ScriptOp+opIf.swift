@@ -129,6 +129,26 @@ struct OpIfTests {
         #expect(stack == [Data([3])])
     }
 
+    @Test("Analog to block 43728, tx 1 script") func nestedElse_block43728_tx1() throws {
+        var script: Script = [
+            .zero,
+            .if,
+                .constant(2),
+            .else,
+                .zero,
+                .if,
+                    .constant(3),
+                .else,
+                    .constant(4),
+                .endIf,
+            .endIf
+        ]
+        var stack = [Data]()
+        try script.run(&stack)
+        #expect(stack == [Data([4])])
+
+    }
+
     @Test("Empty Branched")
     func emptyBranches() throws {
         // Empty if branch
@@ -245,7 +265,18 @@ struct OpIfTests {
 
         // interlaced
         script = [
-            .constant(1), .if, .constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf]
+            .constant(1),
+            .if,
+                .constant(1),
+                .if,
+                    .constant(2),
+                .else,
+                    .constant(3),
+                    .else,
+                        .constant(4),
+                    .endIf,
+            .endIf
+        ]
         stack = []
         #expect(throws: (any Error).self) { try script.run(&stack) }
 
