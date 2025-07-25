@@ -84,8 +84,8 @@ actor PersistentBlockIndex: BlockIndex {
 
     func add(_ blockRef: BlockRef) {
         try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
-            try byID.put(blockRef.data, key: blockRef.blockID)
-            try byHeight.put(blockRef.blockID, key: blockRef.height)
+            try byID.put(blockRef.data, key: blockRef.header.id)
+            try byHeight.put(blockRef.header.id, key: blockRef.height)
         }
         height += 1
     }
@@ -109,8 +109,8 @@ actor PersistentBlockIndex: BlockIndex {
         }
         blockRef.status = status
         try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
-            try byID.put(blockRef.data, key: blockRef.blockID)
-            try byHeight.put(blockRef.blockID, key: blockRef.height)
+            try byID.put(blockRef.data, key: blockRef.header.id)
+            try byHeight.put(blockRef.header.id, key: blockRef.height)
         }
     }
 
@@ -169,12 +169,12 @@ actor PersistentBlockIndex: BlockIndex {
             }
             for var ref in refs {
                 if ref.status < .full {
-                    try! byID.delete(ref.blockID)
+                    try! byID.delete(ref.header.id)
                 } else {
                     // guard let data = try byID.get(ref.blockID) else { return }
                     // var blockRef = try! BlockRef(data)
                     ref.status = .stale
-                    try byID.put(ref.data, key: ref.blockID)
+                    try byID.put(ref.data, key: ref.header.id)
                 }
             }
             let previousCount = try byHeight.count

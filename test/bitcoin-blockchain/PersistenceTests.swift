@@ -25,7 +25,6 @@ struct PersistenceTests {
         let dataDirContents = try fm.contentsOfDirectory(atPath: dataDir.string)
         #expect(dataDirContents.contains("blocks"))
         #expect(dataDirContents.contains("block-index"))
-        #expect(dataDirContents.contains("headers"))
         #expect(dataDirContents.contains("coins"))
 
         let header1 = try #require(await alice.generateTo(pubkey))
@@ -75,7 +74,6 @@ struct PersistenceTests {
         let dataDirContents = try fm.contentsOfDirectory(atPath: dataDir.string)
         #expect(dataDirContents.contains("blocks"))
         #expect(dataDirContents.contains("block-index"))
-        #expect(dataDirContents.contains("headers"))
         #expect(dataDirContents.contains("coins"))
 
         try await bob.processHeaders([header1])

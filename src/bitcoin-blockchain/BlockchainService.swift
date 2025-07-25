@@ -48,8 +48,6 @@ public actor BlockchainService: Sendable {
 
     public private(set) var mempool = [Transaction]()
 
-    private var headers: HeadersIndex!
-
     private var coins: CoinsIndex!
     private var mempoolExclude = [Outpoint]()
     private var mempoolCoins = [Outpoint: UnspentOutput]()
@@ -100,7 +98,6 @@ public actor BlockchainService: Sendable {
         }
 
         blockIndex = if let dataDir { PersistentBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
-        headers = if let dataDir { PersistentHeadersIndex(path: dataDir, logger: logger) } else { TransientHeadersIndex() }
         coins = if let dataDir { PersistentCoinsIndex(path: dataDir, logger: logger) } else { TransientCoinsIndex() }
 
         do {
@@ -149,7 +146,7 @@ public actor BlockchainService: Sendable {
     public var tipTime: Date {
         get async {
             precondition(status == .running)
-            return await blockIndex.get(chainTip).time
+            return await blockIndex.get(chainTip).header.time
         }
     }
 
@@ -200,7 +197,7 @@ public actor BlockchainService: Sendable {
         guard height >= 0, await validatedHeight >= height else {
             return nil
         }
-        return await blockIndex.get(at: height).blockID
+        return await blockIndex.get(at: height).header.id
     }
 
     /// Returns a block header, meaning a block without it's transactions.
@@ -209,13 +206,7 @@ public actor BlockchainService: Sendable {
             return nil
         }
         let blockRef = await blockIndex.get(id)
-        return if let locator = blockRef.locator {
-            try? await blockStorage.retrieve(locator)?.header
-        } else if let header = await headers.get(blockRef.blockID) {
-            header
-        } else {
-            preconditionFailure("Could not find header or block.")
-        }
+        return blockRef.header
     }
 
     /// Gets a fully validated block by height complete with transactions.
@@ -264,7 +255,7 @@ public actor BlockchainService: Sendable {
         }
         let medianTime = await getMedianTimePast(at: ref.height)
         return .init(
-            next: refNext?.blockID,
+            next: refNext?.header.id,
             height: ref.height,
             confirmations: validatedHeight - ref.height + 1,
             difficulty: ref.difficulty,
@@ -338,7 +329,7 @@ public actor BlockchainService: Sendable {
         var step = 1
         while height >= 0 {
             let blockRef = await blockIndex.get(at: height)
-            have.append(blockRef.blockID)
+            have.append(blockRef.header.id)
             if height == 0 { break }
 
             // Exponentially larger steps back, plus the genesis block.
@@ -357,8 +348,8 @@ public actor BlockchainService: Sendable {
             }
         }
         guard let hitHeight else { return [] }
-        let maxHeight = await validatedHeight // await blockIndex.height
-        var heightTo = maxHeight // TODO: previously `await validatedHeight`. Double check don't need to consider all headers (including ones missing transactions or not yet validated)
+        let maxHeight = await validatedHeight
+        var heightTo = maxHeight
         let heightFrom = hitHeight + 1
         guard heightFrom <= heightTo else { return [] }
         if heightTo - heightFrom + 1 > 200 {
@@ -370,7 +361,7 @@ public actor BlockchainService: Sendable {
             let block = if let locator = blockRef.locator {
                 try! await blockStorage.retrieve(locator)!
                 // TODO: handle error properly
-            } else if let header = headers.first(where: { $0.id == blockRef.blockID }) {
+            } else if let header = headers.first(where: { $0.id == blockRef.header.id }) {
                 header
             } else {
                 preconditionFailure("Could not find header or block.")
@@ -411,7 +402,7 @@ public actor BlockchainService: Sendable {
         if params.preventBlockStorms {
             // Check timestamp for the first block of each difficulty adjustment interval, except the genesis block.
             if (height + 1) % params.difficultyAdjustmentInterval == 0 {
-                guard header.time.timeIntervalSince1970 >= previousHeader.time.timeIntervalSince1970  - ConsensusParams.maxTimewarp else {
+                guard header.time.timeIntervalSince1970 >= previousHeader.header.time.timeIntervalSince1970  - ConsensusParams.maxTimewarp else {
                     throw .timewarpAttack
                 }
             }
@@ -435,7 +426,6 @@ public actor BlockchainService: Sendable {
 
             // We can use `try!` because we already checked that the parent exists when we called `checkHeader()`.
             try! await blockIndex.add(header, locator: nil, status: .header)
-            await self.headers.add(header)
         }
     }
 
@@ -449,7 +439,7 @@ public actor BlockchainService: Sendable {
         let endHeight = startHeight + resolvedNumberOfBlocks - 1
         var hashes = [Block.ID]()
         for height in startHeight ... endHeight {
-            hashes.append(await blockIndex.get(at: height).blockID)
+            hashes.append(await blockIndex.get(at: height).header.id)
         }
         return hashes
     }
@@ -479,15 +469,14 @@ public actor BlockchainService: Sendable {
         }
     }
 
+    /// The height of the most recent header.
     public var height: Int {
         get async { await blockIndex.height }
     }
 
     ///Last known block ID which includes headers.
     public var lastBlockID: Block.ID {
-        get async {
-            if await headers.isEmpty { chainTip } else { await headers.last!.id }
-        }
+        get async { await blockIndex.lastHeaderID }
     }
 
     public var headerIDs: [Block.ID] {
@@ -495,7 +484,7 @@ public actor BlockchainService: Sendable {
             var ids = [Block.ID]()
             let height = await height
             for height in 0 ... height {
-                ids.append(await blockIndex.get(at: height).blockID)
+                ids.append(await blockIndex.get(at: height).header.id)
             }
             return ids
         }
@@ -607,13 +596,14 @@ public actor BlockchainService: Sendable {
     }
 
     private func connectBlock(_ block: Block) async {
+        // TODO: This function does not yet support paralell block download
+
         // Add block
         let locator = try! await blockStorage.store(block) // TODO: throw
         let blockRef: BlockRef
-        if let firstHeader = await headers.first, block.id == firstHeader.id {
+        if await blockIndex.has(block.id) {
             blockRef = await blockIndex.get(block.id)
             await blockIndex.update(block.id, locator: locator, status: .full)
-            await headers.removeFirst()
         } else {
             /// We can use `try!` because the header has already been verified to have an existing parent in our chain.
             blockRef = try! await blockIndex.add(block, locator: locator, status: .full)
@@ -654,7 +644,7 @@ public actor BlockchainService: Sendable {
         let synchronized = await synchronized
         if !synchronized {
             let fistNonBlockHeader = await blockIndex.get(at: nextTipHeight)
-            if block.id != fistNonBlockHeader.blockID {
+            if block.id != fistNonBlockHeader.header.id {
                 // New block does not match pre-existing header for block:
                 // Replace block entirely and mark all subsequent blocks as stale
                 let removed = await blockIndex.removeAll(from: nextTipHeight)
@@ -899,36 +889,36 @@ public actor BlockchainService: Sendable {
             if params.powAllowMinDifficultyBlocks {
                 // Special difficulty rule for testnet:
                 // If the new block's timestamp is more than 2 * 10 minutes then allow mining of a min-difficulty block.
-                if Int(newBlockTime.timeIntervalSince1970) > Int(lastHeader.time.timeIntervalSince1970) + params.powTargetSpacing * 2 {
+                if Int(newBlockTime.timeIntervalSince1970) > Int(lastHeader.header.time.timeIntervalSince1970) + params.powTargetSpacing * 2 {
                     return proofOfWorkLimit
                 } else {
                     // Return the last non-special-min-difficulty-rules-block
                     var height = heightLast
                     var header = lastHeader
-                    while height > 0 && height % params.difficultyAdjustmentInterval != 0 && header.target == proofOfWorkLimit {
+                    while height > 0 && height % params.difficultyAdjustmentInterval != 0 && header.header.target == proofOfWorkLimit {
                         height -= 1
                         header = await blockIndex.get(at: height)
                     }
-                    return header.target
+                    return header.header.target
                 }
             }
-            return lastHeader.target
+            return lastHeader.header.target
         }
 
         // Go back by what we want to be 14 days worth of blocks
         let heightFirst = heightLast - (params.difficultyAdjustmentInterval - 1)
         precondition(heightFirst >= 0)
         let firstHeader = await blockIndex.get(at: heightFirst) // pindexLast->GetAncestor(nHeightFirst)
-        return await calculateNextWorkRequired(lastHeader: lastHeader, firstBlockTime: firstHeader.time, params: params)
+        return await calculateNextWorkRequired(lastHeader: lastHeader, firstBlockTime: firstHeader.header.time, params: params)
     }
 
     private func calculateNextWorkRequired(lastHeader: BlockRef, firstBlockTime: Date, params: ConsensusParams) async -> Int {
         if params.powNoRetargeting {
-            return lastHeader.target
+            return lastHeader.header.target
         }
 
         // Limit adjustment step
-        var actualTimespan = Int(lastHeader.time.timeIntervalSince1970) - Int(firstBlockTime.timeIntervalSince1970)
+        var actualTimespan = Int(lastHeader.header.time.timeIntervalSince1970) - Int(firstBlockTime.timeIntervalSince1970)
         if actualTimespan < params.powTargetTimespan / 4 {
             actualTimespan = params.powTargetTimespan / 4
         }
@@ -944,9 +934,9 @@ public actor BlockchainService: Sendable {
             // Here we use the first block of the difficulty period. This way the real difficulty is always preserved in the first block as it is not allowed to use the min-difficulty exception.
             let heightFirst = lastHeader.height - (params.difficultyAdjustmentInterval - 1)
             let first = await blockIndex.get(at: heightFirst)
-            new = DifficultyTarget(compact: first.target)
+            new = DifficultyTarget(compact: first.header.target)
         } else {
-            new = DifficultyTarget(compact: lastHeader.target)
+            new = DifficultyTarget(compact: lastHeader.header.target)
         }
         precondition(!new.isZero)
         new *= (UInt32(actualTimespan))
@@ -976,7 +966,7 @@ public actor BlockchainService: Sendable {
         precondition(height >= 0 && height <= maxHeight)
         let startHeight = max(height - 11, 0)
         let blockRefs = await blockIndex.get(from: startHeight, to: height)
-        let median = blockRefs.map(\.time).sorted()
+        let median = blockRefs.map(\.header.time).sorted()
         precondition(median.startIndex == 0)
         return median[median.count / 2]
     }
@@ -989,10 +979,10 @@ public actor BlockchainService: Sendable {
         let blockRef = await blockIndex.get(at: height)
 
         let now = nowSeconds()
-        let blockTime = floor(blockRef.time.timeIntervalSince1970) // TODO: floor may be redundant as block always resets seconds (or at least it should)
+        let blockTime = floor(blockRef.header.time.timeIntervalSince1970) // TODO: floor may be redundant as block always resets seconds (or at least it should)
 
         let chainData = params.chainData
-        let chainDataTime = floor(blockRef.time.timeIntervalSince1970)
+        let chainDataTime = floor(blockRef.header.time.timeIntervalSince1970)
 
         let txTotal: Double
         if blockRef.chainTxCount <= chainData.txCount {
@@ -1018,7 +1008,7 @@ public actor BlockchainService: Sendable {
 
         let maxTipAge = TimeInterval(24 * 60 * 60) // 24 hours
         let maxTipTime = Date(timeIntervalSince1970: nowSeconds() - maxTipAge)
-        if (blockRef.time < maxTipTime ) { return true }
+        if (blockRef.header.time < maxTipTime ) { return true }
 
         logger.info("Leaving InitialBlockDownload (latching to false)")
         finishedIDB.store(true, ordering: .relaxed)

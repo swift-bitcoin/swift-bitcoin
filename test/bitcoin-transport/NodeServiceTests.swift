@@ -299,16 +299,16 @@ struct NodeServiceTests: ~Copyable {
 
         #expect(await halChain.height == 1)
 
-        // Hal --(getdata)->> …
-        let messageHS9_getdata = try #require(await hal.popMessage(satoshiPeer))
-        #expect(messageHS9_getdata.command == .getdata)
-
-        let halGetData = try #require(GetDataMessage(messageHS9_getdata.payload))
-        #expect(halGetData.items.count == 1)
-
         // Hal --(sendheaders)->> …
-        let messageHS10_sendheaders = try #require(await hal.popMessage(satoshiPeer))
-        #expect(messageHS10_sendheaders.command == .sendheaders)
+        let messageHS09_sendheaders = try #require(await hal.popMessage(satoshiPeer))
+        #expect(messageHS09_sendheaders.command == .sendheaders)
+
+        // Hal --(getdata)->> …
+        let messageHS10_getdata = try #require(await hal.popMessage(satoshiPeer))
+        #expect(messageHS10_getdata.command == .getdata)
+
+        let halGetData = try #require(GetDataMessage(messageHS10_getdata.payload))
+        #expect(halGetData.items.count == 1)
 
         // … --(pong)->> Satoshi
         try await satoshi.processMessage(messageHS7_pong, from: halPeer)
@@ -335,13 +335,13 @@ struct NodeServiceTests: ~Copyable {
         #expect(await satoshi.popMessage(halPeer) == nil)
 
         // … --(sendheaders)->> Satoshi
-        try await satoshi.processMessage(messageHS10_sendheaders, from: halPeer)
+        try await satoshi.processMessage(messageHS09_sendheaders, from: halPeer)
 
         // No Response
         #expect(await satoshi.popMessage(halPeer) == nil)
 
         // … --(getdata)->> Satoshi
-        try await satoshi.processMessage(messageHS9_getdata, from: halPeer)
+        try await satoshi.processMessage(messageHS10_getdata, from: halPeer)
 
         // Satoshi --(block)->> …
         let messageSH11_block = try #require(await satoshi.popMessage(halPeer))

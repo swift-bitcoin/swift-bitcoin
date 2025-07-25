@@ -190,12 +190,13 @@ actor PersistentBlockStorage: BlockStorage {
         guard let info = try await fileInfo(for: locator.file) else {
             throw .invalidFileRef
         }
-        logger.debug("Located file \(locator.file) as offset \(locator.offset), file size: \(info.size)")
+        logger.trace("Located file \(locator.file) as offset \(locator.offset), file size: \(info.size)")
 
         let blockData: [UInt8]
         do {
             blockData = try await fs.withFileHandle(forReadingAt: filePath(for: locator.file)) { handle in
-                var buffer = try await handle.readToEnd(fromAbsoluteOffset: Int64(locator.offset), maximumSizeAllowed: .bytes(maxBlockSize))
+                var reader = handle.bufferedReader(startingAtAbsoluteOffset: Int64(locator.offset), capacity: .bytes(maxBlockSize))
+                var buffer = try await reader.read(.bytes(maxBlockSize))
 
                 let lengthBytes = buffer.viewBytes(at: MemoryLayout<UInt32>.size, length: MemoryLayout<UInt32>.size)!
                 let length = lengthBytes.withUnsafeBytes {

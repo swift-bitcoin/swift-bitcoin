@@ -1,6 +1,7 @@
 /// Block index service protocol.
 protocol BlockIndex: Sendable {
 
+    /// The height of the most recent header.
     var height: Int { get async }
 
     /// Locators in reverse height order

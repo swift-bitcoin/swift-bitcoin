@@ -252,11 +252,15 @@ struct BlockSyncTests {
 
         try await #require(aliceChain.height == 3)
 
-        // Alice --(getdata)->> …
-        let mAB10_getdata = try #require(await alice.popMessage(peerB))
-        #expect(mAB10_getdata.command == .getdata)
+        // Alice --(sendheaders)->> …
+        let mAB10_sendheaders = try #require(await alice.popMessage(peerB))
+        #expect(mAB10_sendheaders.command == .sendheaders)
 
-        let aliceGetData = try #require(GetDataMessage(mAB10_getdata.payload))
+        // Alice --(getdata)->> …
+        let mAB11_getdata = try #require(await alice.popMessage(peerB))
+        #expect(mAB11_getdata.command == .getdata)
+
+        let aliceGetData = try #require(GetDataMessage(mAB11_getdata.payload))
         #expect(aliceGetData.items.count == 2)
 
         // … --(pong)->> Bob
@@ -280,8 +284,11 @@ struct BlockSyncTests {
         // No Response
         #expect(await bob.popMessage(peerA) == nil)
 
+        // … --(sendheaders)->> Bob
+        try await bob.processMessage(mAB10_sendheaders, from: peerA)
+
         // … --(getdata)->> Bob
-        try await bob.processMessage(mAB10_getdata, from: peerA)
+        try await bob.processMessage(mAB11_getdata, from: peerA)
 
         // Bob --(block)->> …
         let mBA11_block = try #require(await bob.popMessage(peerA))
@@ -314,19 +321,12 @@ struct BlockSyncTests {
 
         #expect(await aliceChain.validatedHeight == 2)
 
-        // Alice --(sendheaders)->> …
-        let mAB11_sendheaders = try #require(await alice.popMessage(peerB))
-        #expect(mAB11_sendheaders.command == .sendheaders)
-
         // Alice --(getdata)->> …
         let mAB12_getdata = try #require(await alice.popMessage(peerB))
         #expect(mAB12_getdata.command == .getdata)
 
         let aliceGetData1 = try #require(GetDataMessage(mAB12_getdata.payload))
         #expect(aliceGetData1.items.count == 1)
-
-        // … --(sendheaders)->> Bob
-        try await bob.processMessage(mAB11_sendheaders, from: peerA)
 
         // … --(getdata)->> Bob
         try await bob.processMessage(mAB12_getdata, from: peerA)
