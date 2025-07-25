@@ -16,10 +16,8 @@ struct BlockRef: Equatable, Sendable {
     // MARK: - Initializers
 
     init(_ block: Block, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = nil) {
-        self.blockID = block.id
+        self.header = block.header
         self.previous = block.previous
-        self.time = block.time
-        self.target = block.target
         self.height = height
         self.chainwork = chainwork
         self.chainTxCount = chainTxCount
@@ -29,10 +27,8 @@ struct BlockRef: Equatable, Sendable {
 
     // MARK: - Instance Properties
 
-    public let blockID: Block.ID
+    public let header: Block
     public let previous: Block.ID
-    public let time: Date
-    public let target: Int
     public let height: Int
     public let chainwork: DifficultyTarget
     public let chainTxCount: Int
@@ -43,7 +39,7 @@ struct BlockRef: Equatable, Sendable {
 
     /// Calculate the difficulty for a given block index.
     var difficulty: Double {
-        DifficultyTarget.getDifficulty(target)
+        DifficultyTarget.getDifficulty(header.target)
     }
 
     // MARK: - Instance Methods
@@ -73,10 +69,8 @@ extension BlockRef.ValidationStatus: BinaryCodable {
 
 extension BlockRef: BinaryCodable {
     init(from decoder: inout BinaryDecoder) throws {
-        blockID = try decoder.decode(Block.idLength)
+        header = try decoder.decode()
         previous = try decoder.decode(Block.idLength)
-        time = try decoder.decode()
-        target = try decoder.decode()
         height = try decoder.decode()
         chainwork = try decoder.decode()
         chainTxCount = try decoder.decode()
@@ -88,10 +82,8 @@ extension BlockRef: BinaryCodable {
     }
 
     func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(blockID)
+        encoder.encode(header)
         encoder.encode(previous)
-        encoder.encode(time)
-        encoder.encode(target)
         encoder.encode(height)
         encoder.encode(chainwork)
         encoder.encode(chainTxCount)
@@ -105,10 +97,8 @@ extension BlockRef: BinaryCodable {
     }
     
     func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(blockID)
+        counter.count(header)
         counter.count(previous)
-        counter.count(time)
-        counter.count(target)
         counter.count(height)
         counter.count(chainwork)
         counter.count(chainTxCount)

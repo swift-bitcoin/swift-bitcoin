@@ -55,8 +55,8 @@ actor TransientBlockIndex: BlockIndex {
     }
 
     func add(_ blockRef: BlockRef) {
-        byID[blockRef.blockID] = blockRef
-        byHeight.append(blockRef.blockID)
+        byID[blockRef.header.id] = blockRef
+        byHeight.append(blockRef.header.id)
         height += 1
     }
 
@@ -103,10 +103,10 @@ actor TransientBlockIndex: BlockIndex {
         }
         for ref in refs {
             if ref.status < .full {
-                byID[ref.blockID] = nil
+                byID[ref.header.id] = nil
 
             } else {
-                update(ref.blockID, status: .stale)
+                update(ref.header.id, status: .stale)
             }
         }
         let totalRemoved = byHeight.count - height

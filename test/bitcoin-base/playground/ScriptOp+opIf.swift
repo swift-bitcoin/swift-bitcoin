@@ -130,7 +130,7 @@ struct OpIfTests {
     }
 
     @Test("Analog to block 43728, tx 1 script") func nestedElse_block43728_tx1() throws {
-        var script: Script = [
+        let script: Script = [
             .zero,
             .if,
                 .constant(2),

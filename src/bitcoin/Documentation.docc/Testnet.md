@@ -115,3 +115,5 @@ docker volume rm bitcoin-test
 ### Other options
 
 The configuration option `assumevalid=0` can also be used to force the node to verify all nodes. This is safe to do when only downloading an initial portion of the chain.
+
+Options `-whitebind=0.0.0.0:48333` and `-whitelist=0.0.0.0` can help disable DDoS defenses.

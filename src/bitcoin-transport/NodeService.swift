@@ -310,7 +310,7 @@ public actor NodeService: Sendable {
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
     public func processMessage(_ message: NetworkMessage, from id: PeerID) async throws {
-
+        logger.info("Received \(message.command) (\(message.size)) from \(id)")
         // Postpone the next ping
         state.peers[id]?.nextPingTask?.cancel()
         if let keepAliveFrequency = config.keepAliveFrequency {
@@ -374,11 +374,13 @@ public actor NodeService: Sendable {
 
     /// Sends a message.
     private func send(_ command: MessageCommand, payload: Data = .init(), to id: PeerID) async {
+        logger.info("Sending \(command) (\(payload.count)) to \(id)")
         await peerOuts[id]?.send(.init(command, payload: payload, network: config.network))
     }
 
     /// Queues a message.
     private func enqueue(_ command: MessageCommand, payload: Data = .init(), to id: PeerID) {
+        logger.info("Queueing \(command) (\(payload.count)) to \(id)")
         state.peers[id]?.outbox.append(.init(command, payload: payload, network: config.network))
     }
 
@@ -583,6 +585,7 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
+        logger.info("getheaders: \(getHeaders.locatorHashes.first?.hex ?? "-")")
         let headers = await blockchain.findHeaders(using: getHeaders.locatorHashes)
         let headersMessage = HeadersMessage(items: headers)
         enqueue(.headers, payload: headersMessage.data, to: id)
@@ -598,6 +601,7 @@ public actor NodeService: Sendable {
         // TODO: Improve IBD logic. If multiple blocks need to be sync'ed, then we go into block download mode.
         if !state.ibdComplete, headersMessage.items.isEmpty, await blockchain.synchronized {
             state.ibdComplete = true
+            logger.info("Initial block download complete.")
         }
 
         state.peers[id]!.registerKnownBlocks(headersMessage.items.map(\.id))
@@ -610,13 +614,15 @@ public actor NodeService: Sendable {
 
         if headersMessage.moreItems {
             await requestHeaders(id)
-        }
+        } else {
+            let headers = await blockchain.height
+            logger.info("Headers downloaded \(headers).")
 
-        await requestNextMissingBlocks(id)
-
-        // BIP130 delaying `sendheaders` until we don't need more headers
-        if !headersMessage.moreItems, state.peers[id]?.sendHeadersSent == false {
-            enqueue(.sendheaders, to: id)
+            // BIP130 delaying `sendheaders` until we don't need more headers
+            if state.peers[id]?.sendHeadersSent == false {
+                enqueue(.sendheaders, to: id)
+            }
+            await requestNextMissingBlocks(id)
         }
     }
 
