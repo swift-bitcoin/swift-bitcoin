@@ -261,6 +261,7 @@ struct LMDBTests {
                     let value = try cursor.get(i == 0 ? .first : .next)
                     #expect(value == values[i])
                 }
+                #expect(try cursor.get(.next) == nil)
                 //let key = String(data: k, encoding: .utf8)!
             }
         }

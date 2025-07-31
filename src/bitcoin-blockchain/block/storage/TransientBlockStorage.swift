@@ -11,8 +11,9 @@ actor TransientBlockStorage: BlockStorage {
     let config: BlockStorageConfig
     internal private(set) var status = BlockStorageStatus.idle
 
-    private var cache = OrderedDictionary<BlockStorageLocator, Block>()
+    private var cache = OrderedDictionary<BlockStorageLocator, (Block, BlockUndo)>()
     private var blocks = [Block]()
+    private var blockUndos = [BlockUndo]()
 
     internal private(set) var sizeOnDisk = 0
 
@@ -27,26 +28,22 @@ actor TransientBlockStorage: BlockStorage {
         status = .stopped
     }
 
-    func store(_ block: Block) async throws(BlockStorageError) -> BlockStorageLocator {
-        let locator: BlockStorageLocator = .init(file: -1, offset: blocks.endIndex)
+    func store(_ block: Block, undo: BlockUndo) async throws(BlockStorageError) -> BlockStorageLocator {
+        let locator: BlockStorageLocator = .init(file: blocks.endIndex, offset: -1, undoOffset: -1)
         blocks.append(block)
+        blockUndos.append(undo)
         if cache.count == Self.cacheSize - 1 {
             cache.removeFirst()
         }
-        cache[locator] = block
+        cache[locator] = (block, undo)
         return locator
     }
 
-    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> Block? {
+    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> (Block, BlockUndo)? {
         if let block = cache[locator] {
             return block
         }
-        return blocks[locator.offset]
-    }
-
-    func remove(_ locator: BlockStorageLocator) {
-        // We don't remove blocks from actual storage. The index will get marked as stale outside of this actor. We will just remove from the cache.
-        cache.removeValue(forKey: locator)
+        return (blocks[locator.file], blockUndos[locator.file])
     }
 
     static let cacheSize = 3

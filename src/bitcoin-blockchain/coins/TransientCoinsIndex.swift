@@ -7,12 +7,36 @@ struct TransientCoinsIndex: CoinsIndex {
 
     private var coins = OrderedDictionary<Outpoint, UnspentOutput>()
 
-    mutating func add(_ coin: UnspentOutput, for outpoint: Outpoint) async {
-        coins[outpoint] = coin
+    var all: [Outpoint : UnspentOutput] { get async {
+        var unordered = [Outpoint : UnspentOutput]()
+        for (k, v) in coins {
+            unordered[k] = v
+        }
+        return unordered
+    } }
+
+    func get(_ outpoint: Outpoint) -> UnspentOutput? {
+        coins[outpoint]
     }
 
-    func get(_ outpoint: Outpoint) async -> UnspentOutput? { // TODO: Probably should throw
-        coins[outpoint]
+    mutating func update(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) async throws(CoinsError) -> [UnspentOutput?] {
+        var removedCoins = [UnspentOutput?]()
+        for outpoint in outpointsToRemove {
+            guard let coin = coins[outpoint] else {
+                removedCoins.append(nil)
+                continue // Some coins may be spends from within the block
+            }
+            removedCoins.append(coin)
+            coins[outpoint] = nil
+        }
+        for (outpoint, coin) in coinsToAdd {
+            coins[outpoint] = coin
+        }
+        return removedCoins
+    }
+
+    mutating func add(_ coin: UnspentOutput, for outpoint: Outpoint) async {
+        coins[outpoint] = coin
     }
 
     mutating func remove(_ outpoint: Outpoint) async {

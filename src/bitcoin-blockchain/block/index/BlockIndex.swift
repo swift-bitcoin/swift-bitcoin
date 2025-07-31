@@ -7,13 +7,19 @@ protocol BlockIndex: Sendable {
     /// Locators in reverse height order
     var locators: [BlockStorageLocator] { get async }
     var lastHeaderID: Block.ID { get async }
-    var chainTip: Block.ID { get async }
+    var bestBlock: BlockRef { get async }
 
     @discardableResult
     func add(_ block: Block, locator: BlockStorageLocator? /* = nil */, status: BlockRef.ValidationStatus /* = .header */) async throws(BlockIndexError) -> BlockRef
+
     func add(_ blockRef: BlockRef) async
-    func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) async
-    func update(_ id: Block.ID, status: BlockRef.ValidationStatus) async
+
+    @discardableResult
+    func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) async -> BlockRef
+
+    @discardableResult
+    func update(_ id: Block.ID, status: BlockRef.ValidationStatus)  async -> BlockRef
+
     func has(_ id: Block.ID) async -> Bool
     func get(_ id: Block.ID) async -> BlockRef // TODO: Probably throws and return value nil-able
 
@@ -23,6 +29,8 @@ protocol BlockIndex: Sendable {
     func getParent(for childID: Block.ID) async -> BlockRef?
 
     /// Either removes (if header-only) or marks block as stale
-    func removeAll(from height: Int) async -> [BlockRef]
+    func removeAll(from height: Int) async
     func calculateMissingBlocks(_ ids: [Block.ID]) async -> [Block.ID]
+
+    func undoLastBlock() async -> BlockRef
 }
