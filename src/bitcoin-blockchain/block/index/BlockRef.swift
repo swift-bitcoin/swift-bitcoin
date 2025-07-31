@@ -75,10 +75,8 @@ extension BlockRef: BinaryCodable {
         chainwork = try decoder.decode()
         chainTxCount = try decoder.decode()
         status = try decoder.decode()
-        let hasLocator: Bool = try decoder.decode()
-        if hasLocator {
-            locator = try decoder.decode()
-        }
+        let locator: BlockStorageLocator = try decoder.decode()
+        self.locator = locator == .placeholder ? nil : locator
     }
 
     func encode(to encoder: inout BinaryEncoder) {
@@ -89,10 +87,9 @@ extension BlockRef: BinaryCodable {
         encoder.encode(chainTxCount)
         encoder.encode(status)
         if let locator {
-            encoder.encode(true)
             encoder.encode(locator)
         } else {
-            encoder.encode(false)
+            encoder.encode(BlockStorageLocator.placeholder)
         }
     }
     
@@ -103,9 +100,6 @@ extension BlockRef: BinaryCodable {
         counter.count(chainwork)
         counter.count(chainTxCount)
         counter.count(status)
-        counter.count(Bool.self)
-        if let locator {
-            counter.count(locator)
-        }
+        counter.count(BlockStorageLocator.placeholder)
     }
 }

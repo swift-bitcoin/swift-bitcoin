@@ -27,10 +27,13 @@ actor TransientBlockIndex: BlockIndex {
         return byHeight.last!
     }
 
-    var chainTip: Block.ID {
+    var bestBlock: BlockRef {
         for id in byHeight.reversed() {
-            if byID[id]!.status == .full {
-                return id
+            guard let ref = byID[id] else {
+                fatalError("Missing block ref")
+            }
+            if ref.status == .full {
+                return ref
             }
         }
         preconditionFailure("No fully validated blocks exist")
@@ -60,14 +63,17 @@ actor TransientBlockIndex: BlockIndex {
         height += 1
     }
 
-    func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) {
+    func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) -> BlockRef {
         byID[id]!.locator = locator
         byID[id]!.status = status
+        return byID[id]!
     }
 
-    func update(_ id: Block.ID, status: BlockRef.ValidationStatus) {
+    @discardableResult
+    func update(_ id: Block.ID, status: BlockRef.ValidationStatus) -> BlockRef {
         // TODO: deal with duplication of the different `update()` funcs.
         byID[id]!.status = status
+        return byID[id]!
     }
 
     func has(_ id: Block.ID) -> Bool {
@@ -96,7 +102,7 @@ actor TransientBlockIndex: BlockIndex {
     }
 
     /// Either removes (if header-only) or marks block as stale
-    func removeAll(from height: Int) -> [BlockRef] {
+    func removeAll(from height: Int) {
         var refs = [BlockRef]()
         for h in height ... self.height {
             refs.append(get(at: h))
@@ -104,7 +110,6 @@ actor TransientBlockIndex: BlockIndex {
         for ref in refs {
             if ref.status < .full {
                 byID[ref.header.id] = nil
-
             } else {
                 update(ref.header.id, status: .stale)
             }
@@ -112,7 +117,6 @@ actor TransientBlockIndex: BlockIndex {
         let totalRemoved = byHeight.count - height
         byHeight.removeLast(totalRemoved)
         self.height -= totalRemoved
-        return refs
     }
 
     func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
@@ -123,5 +127,15 @@ actor TransientBlockIndex: BlockIndex {
             }
         }
         return missing
+    }
+
+    func undoLastBlock() -> BlockRef {
+        let id = byHeight[height]
+        // TODO: Once we support parallel block download: `guard id == chainTip else {`
+        guard let ref = byID[id], ref.status == .full else {
+            preconditionFailure("Chain must be fully sync'ed to undo the last block")
+        }
+        byID[id]!.status = .stale
+        return byID[byID[id]!.previous]!
     }
 }

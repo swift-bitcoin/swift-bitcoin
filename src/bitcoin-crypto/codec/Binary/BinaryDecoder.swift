@@ -9,9 +9,28 @@ public struct BinaryDecoder {
 
     private var data: Data
     private var offset = 0
-    private var limit = Int?.none
+    private var limits = [Int]()
     private var checkpoint = Int?.none
     private var checkpointLimit = Int?.none
+
+    private var limit: Int? {
+        get {
+            limits.last
+        }
+        set {
+            if let newValue {
+                if limits.isEmpty {
+                    limits.append(newValue)
+                } else {
+                    limits[limits.endIndex - 1] = newValue
+                }
+            } else {
+                if !limits.isEmpty {
+                    limits.removeLast()
+                }
+            }
+        }
+    }
 
     /// Decodes data which may appear prefixed by its length as a variable integer.
     public mutating func decode(variable: Bool, byteSwapped: Bool = false) throws -> Data {
@@ -30,8 +49,11 @@ public struct BinaryDecoder {
                     else { remaining }
 
         if let limit {
-            if count <= limit { self.limit = limit - count }
-            else { throw BinaryDecodingError.limitExceeded }
+            if count <= limit {
+                self.limit = limit - count
+            } else {
+                throw BinaryDecodingError.limitExceeded
+            }
         }
 
         let nextOffset = offset + count
@@ -98,12 +120,12 @@ public struct BinaryDecoder {
 
     /// Sets a limit on the number of bytes to decode before issuing a ``BinaryDecodingError/limitExceeded``.
     public mutating func setLimit(_ limit: Int) {
-        self.limit = limit
+        limits.append(limit)
     }
 
     /// Resets the limit to none.
     public mutating func resetLimit() {
-        limit = nil
+        limits.removeLast()
     }
 
     /// Sets a checkpoint to which we might want to revert if something fails.
@@ -130,7 +152,8 @@ public struct BinaryDecoder {
 
     /// Peeks into the next _n_ bytes to be decoded without advancing the internal offset.
     public func peek(_ count: Int) -> Data {
-        Data(data[offset ..< offset + 2])
+        let min = min(data.endIndex, offset + count)
+        return Data(data[offset ..< min])
     }
 
     public func peek() -> UInt8? {

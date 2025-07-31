@@ -13,7 +13,7 @@ package struct Cursor: ~Copyable {
         }
         self.handle = handle!
     }
-    
+
     let txHandle: OpaquePointer
     let dbHandle: MDB_dbi
     let handle: OpaquePointer
@@ -23,7 +23,7 @@ package struct Cursor: ~Copyable {
         var keyVal = MDB_val()
         var dataVal = MDB_val()
         let operation: MDB_cursor_op = operation.value
-        
+
         let status = mdb_cursor_get(handle, &keyVal, &dataVal, operation)
         if status == MDB_NOTFOUND {
             return nil
@@ -33,6 +33,24 @@ package struct Cursor: ~Copyable {
         }
         let data = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
         return data
+    }
+
+    @discardableResult
+    package func getKeyValue(_ operation:  Operation = .first) throws(Database.AccessError) -> (Data, Data)? {
+        var keyVal = MDB_val()
+        var dataVal = MDB_val()
+        let operation: MDB_cursor_op = operation.value
+
+        let status = mdb_cursor_get(handle, &keyVal, &dataVal, operation)
+        if status == MDB_NOTFOUND {
+            return nil
+        }
+        guard status == MDB_SUCCESS else {
+            throw .getIssue
+        }
+        let keyData = Data(bytes: keyVal.mv_data, count: keyVal.mv_size)
+        let valueData = Data(bytes: dataVal.mv_data, count: dataVal.mv_size)
+        return (keyData, valueData)
     }
 
     package func delete() throws(Database.AccessError) {

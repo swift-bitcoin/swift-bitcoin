@@ -122,4 +122,95 @@ struct BlockchainIntegrationTests {
         await alice.stop()
         await bob.stop()
     }
+
+    @Test func blockUndo() async throws {
+        let blockchain = BlockchainService(params: .swiftTesting)
+        await blockchain.start()
+
+        let aliceKey = SecretKey()
+        let alicePK = aliceKey.pubkey
+
+        let block = try #require(await blockchain.generateTo(alicePK))
+        let coinbaseTx1 = block.txs[0]
+
+        let utxoSet1 = await blockchain.currentUTXOSet()
+
+        let expectedUTXOSet1 = [
+            coinbaseTx1.outpoint(0): UnspentOutput(coinbaseTx1.outs[0], height: 1, isCoinbase: true),
+            coinbaseTx1.outpoint(1): UnspentOutput(coinbaseTx1.outs[1], height: 1, isCoinbase: true)
+        ]
+
+        #expect(utxoSet1 == expectedUTXOSet1)
+
+        let outs1 = [
+            TransactionOutput(value: 100_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 200_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 300_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 400_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 500_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 3_499_999_999, script: .payToPubkeyHash(alicePK))
+        ]
+        var tx1 = Transaction(
+            ins: [.init(outpoint: coinbaseTx1.outpoint(0))],
+            outs: outs1)
+
+        var signer = TransactionSigner(tx: tx1, prevouts: [coinbaseTx1.outs[0]])
+        signer.sign(input: 0, with: aliceKey)
+        tx1 = signer.tx
+
+        try await blockchain.addTransaction(tx1)
+
+        var tx2 = Transaction(
+            ins: [.init(outpoint: tx1.outpoint(5))],
+            outs: [
+            TransactionOutput(value: 600_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 700_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 800_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 900_000_000, script: .payToPubkeyHash(alicePK)),
+            .init(value: 499_999_999, script: .payToPubkeyHash(alicePK))
+        ])
+
+        var signer2 = TransactionSigner(tx: tx2, prevouts: [tx1.outs[5]])
+        signer2.sign(input: 0, with: aliceKey)
+        tx2 = signer2.tx
+
+        try await blockchain.addTransaction(tx2)
+
+
+        let block2 = try #require(await blockchain.generateTo(alicePK))
+        let coinbaseTx2 = block2.txs[0]
+
+        let utxoSet2 = await blockchain.currentUTXOSet()
+
+        let expectedUTXOSet2 = [
+            coinbaseTx1.outpoint(1): UnspentOutput(coinbaseTx1.outs[1], height: 1, isCoinbase: true),
+            coinbaseTx2.outpoint(0): UnspentOutput(coinbaseTx2.outs[0], height: 2, isCoinbase: true),
+            coinbaseTx2.outpoint(1): UnspentOutput(coinbaseTx2.outs[1], height: 2, isCoinbase: true),
+            tx1.outpoint(0): UnspentOutput(tx1.outs[0], height: 2),
+            tx1.outpoint(1): UnspentOutput(tx1.outs[1], height: 2),
+            tx1.outpoint(2): UnspentOutput(tx1.outs[2], height: 2),
+            tx1.outpoint(3): UnspentOutput(tx1.outs[3], height: 2),
+            tx1.outpoint(4): UnspentOutput(tx1.outs[4], height: 2),
+            tx2.outpoint(0): UnspentOutput(tx2.outs[0], height: 2),
+            tx2.outpoint(1): UnspentOutput(tx2.outs[1], height: 2),
+            tx2.outpoint(2): UnspentOutput(tx2.outs[2], height: 2),
+            tx2.outpoint(3): UnspentOutput(tx2.outs[3], height: 2),
+            tx2.outpoint(4): UnspentOutput(tx2.outs[4], height: 2)
+        ]
+
+        #expect(utxoSet2.count == expectedUTXOSet2.count)
+        #expect(utxoSet2 == expectedUTXOSet2)
+
+        #expect(await blockchain.validatedHeight == 2)
+
+        try await blockchain.undoLastBlock()
+
+        let utxoSet1_ = await blockchain.currentUTXOSet()
+        #expect(utxoSet1_.count == expectedUTXOSet1.count)
+        #expect(utxoSet1_ == expectedUTXOSet1)
+
+        #expect(await blockchain.validatedHeight == 1)
+
+        await blockchain.stop()
+    }
 }

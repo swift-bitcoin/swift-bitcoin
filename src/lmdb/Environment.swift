@@ -43,44 +43,49 @@ package struct Environment: ~Copyable {
 
     private let handle: OpaquePointer
 
-    package func createDB(_ db: Database.Descriptor) throws(Transaction.InitError) {
+    package func createDB(_ db: Database.Descriptor) throws(Transaction.InitError<Never>) {
         var db = db
         db.options.insert(.create)
-        try withTransaction(db: db) { _, _ in }
+        try withTransaction(db: db) { _, _ throws(Never) in }
     }
 
-    package func stats(for db: Database.Descriptor) throws(Transaction.InitError) -> Database.Statistics {
-        try withTransaction(db: db) { _, db in
+    package func stats(for db: Database.Descriptor) throws(Transaction.InitError<Database.AccessError>) -> Database.Statistics {
+        try withTransaction(db: db) { _, db throws(Database.AccessError) in
             try db.stats
         }
     }
 
-    package func put(_ value: Data, key: Data, db: Database.Descriptor = nil, options: Database.PutOptions = [])  throws(Transaction.InitError) {
-        try withTransaction(db: db) { tx, db in
+    package func put(_ value: Data, key: Data, db: Database.Descriptor = nil, options: Database.PutOptions = [])  throws(Transaction.InitError<Database.AccessError>) {
+        try withTransaction(db: db) { tx, db throws(Database.AccessError) in
             try db.put(value, key: key, options: options)
         }
     }
 
-    package func get(_ key: Data, db: Database.Descriptor = nil) throws(Transaction.InitError) -> Data? {
+    package func get(_ key: Data, db: Database.Descriptor = nil) throws(Transaction.InitError<Database.AccessError>) -> Data? {
         var value = Data?.none
-        try withTransaction(db: db, options: [.readOnly]) { tx, db in
+        try withTransaction(db: db, options: [.readOnly]) { tx, db throws(Database.AccessError) in
             value = try db.get(key)
         }
         return value
     }
 
     @discardableResult
-    package func withTransaction<T>(db: Database.Descriptor, options: Transaction.Options = [], handler: @escaping (borrowing Transaction, borrowing Database) throws(any Error) -> T) throws(Transaction.InitError) -> T {
+    package func withTransaction<T, E: Error>(db: Database.Descriptor, options: Transaction.Options = [], handler: @escaping (borrowing Transaction, borrowing Database) throws(E) -> T) throws(Transaction.InitError<E>) -> T {
         try withTransaction(db: db, nil, options: options, handler: handler, handler2: nil)
     }
 
     @discardableResult
-    package func withTransaction<T>(db: Database.Descriptor, _ anotherDB: Database.Descriptor, options: Transaction.Options = [], handler: @escaping (borrowing Transaction, borrowing Database, borrowing Database) throws(any Error) -> T) throws(Transaction.InitError) -> T {
+    package func withTransaction<T, E: Error>(db: Database.Descriptor, _ anotherDB: Database.Descriptor, options: Transaction.Options = [], handler: @escaping (borrowing Transaction, borrowing Database, borrowing Database) throws(E) -> T) throws(Transaction.InitError<E>) -> T {
         try withTransaction(db: db, anotherDB, options: options, handler: nil, handler2: handler)
     }
 
-    private func withTransaction<T>(db: Database.Descriptor, _ anotherDB: Database.Descriptor?, options: Transaction.Options = [], handler: TransactionHandler<T>?, handler2: TransactionHandler2<T>?) throws(Transaction.InitError) -> T {
-        let tx = try Transaction(env: handle, options: options)
+    private func withTransaction<T, E: Error>(db: Database.Descriptor, _ anotherDB: Database.Descriptor?, options: Transaction.Options = [], handler: TransactionHandler<T, E>?, handler2: TransactionHandler2<T, E>?) throws(Transaction.InitError<E>) -> T {
+        let tx: Transaction
+        do {
+            tx = try Transaction(env: handle, options: options)
+        } catch {
+            throw .beginIssue
+        }
         guard let db = tx.database(db) else {
             throw .databaseIssue
         }
@@ -94,7 +99,7 @@ package struct Environment: ~Copyable {
             db2 = nil
         }
         let result: T
-        do {
+        do throws(E) {
             result = if let db2, let handler2 {
                 try handler2(tx, db, db2)
             } else if let handler {
@@ -123,6 +128,6 @@ package struct Environment: ~Copyable {
     }
 }
 
-private typealias TransactionHandler<T> = (borrowing Transaction, borrowing Database) throws(any Error) -> T
+private typealias TransactionHandler<T, E: Error> = (borrowing Transaction, borrowing Database) throws(E) -> T
 
-private typealias TransactionHandler2<T> = (borrowing Transaction, borrowing Database, borrowing Database) throws(any Error) -> T
+private typealias TransactionHandler2<T, E: Error> = (borrowing Transaction, borrowing Database, borrowing Database) throws(E) -> T

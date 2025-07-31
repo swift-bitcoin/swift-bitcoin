@@ -2,7 +2,7 @@ import CLMDB
 
 package struct Transaction: ~Copyable {
 
-    init(env: OpaquePointer, options: Options = []) throws(InitError) {
+    init(env: OpaquePointer, options: Options = []) throws(InitError<Never>) {
         var handle = OpaquePointer?.none
         let status = mdb_txn_begin(env, nil, options.unsigned, &handle)
         guard status == MDB_SUCCESS else {

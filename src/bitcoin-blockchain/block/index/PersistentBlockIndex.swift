@@ -44,14 +44,14 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    var chainTip: Block.ID {
+    var bestBlock: BlockRef {
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { [height] _, byID, byHeight in
             for i in 0 ... height {
                 let h = height - i
                 let blockID = try byHeight.get(h)!
                 let ref = try BlockRef(try byID.get(blockID)!)
                 if ref.status == .full {
-                    return blockID
+                    return ref
                 }
             }
             preconditionFailure("No fully validated blocks exist")
@@ -90,19 +90,18 @@ actor PersistentBlockIndex: BlockIndex {
         height += 1
     }
 
-    func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) {
+    func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) -> BlockRef {
         update(id: id, locator: locator, status: status)
     }
 
-    func update(_ id: Block.ID, status: BlockRef.ValidationStatus) {
+    func update(_ id: Block.ID, status: BlockRef.ValidationStatus) -> BlockRef  {
         update(id: id, locator: nil, status: status)
     }
 
-    private func update(id: Block.ID, locator: BlockStorageLocator?, status: BlockRef.ValidationStatus) {
+    private func update(id: Block.ID, locator: BlockStorageLocator?, status: BlockRef.ValidationStatus) -> BlockRef {
         let data = try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
-            try byID.get(id)
+            try byID.get(id)!
         }
-        guard let data else { return }
         var blockRef = try! BlockRef(data)
         if let locator {
             blockRef.locator = locator
@@ -112,6 +111,7 @@ actor PersistentBlockIndex: BlockIndex {
             try byID.put(blockRef.data, key: blockRef.header.id)
             try byHeight.put(blockRef.header.id, key: blockRef.height)
         }
+        return blockRef
     }
 
     func has(_ id: Block.ID) -> Bool {
@@ -159,8 +159,8 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     /// Either removes (if header-only) or marks block as stale
-    func removeAll(from height: Int) -> [BlockRef] {
-        let (totalRemoved, refs) = try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
+    func removeAll(from height: Int) {
+        let totalRemoved = try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
         var refs = [BlockRef]()
             for h in height ... self.height {
                 let blockID = try byHeight.get(h)!
@@ -181,10 +181,9 @@ actor PersistentBlockIndex: BlockIndex {
             for h in height ... self.height {
                 try! byHeight.delete(h)
             }
-            return (previousCount - height, refs)
+            return previousCount - height
         }
         self.height -= totalRemoved
-        return refs
     }
 
     func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
@@ -197,6 +196,25 @@ actor PersistentBlockIndex: BlockIndex {
             }
         }
         return missing
+    }
+
+    func undoLastBlock() -> BlockRef {
+        let blockID = try! env.withTransaction(db: byHeight, options: .readOnly) { [height] _, byHeight in
+            guard let blockID = try byHeight.get(height) else {
+                fatalError("Could not find last block ID, throwing")
+            }
+            return blockID
+        }
+        return try! env.withTransaction(db: byID) { _, byID in
+            guard let data = try byID.get(blockID) else {
+                fatalError("Could not find last block reference")
+            }
+            var ref = try BlockRef(data)
+            ref.status = .stale
+            try byID.put(blockID, key: ref.data)
+            let previousData = try byID.get(ref.previous)!
+            return try BlockRef(previousData)
+        }
     }
 }
 

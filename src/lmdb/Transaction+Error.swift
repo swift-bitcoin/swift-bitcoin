@@ -2,8 +2,8 @@ import Foundation
 
 extension Transaction {
 
-    package enum InitError: Error {
-        case beginIssue, databaseIssue, commitIssue, handlerIssue(Error)
+    package enum InitError<E: Error>: Error {
+        case beginIssue, databaseIssue, commitIssue, handlerIssue(E)
     }
 
     package enum CommitError: Error {
