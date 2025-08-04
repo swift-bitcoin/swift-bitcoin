@@ -68,6 +68,7 @@ let package = Package(
         .target(name: "BitcoinMiniscript", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-miniscript"),
         .target(name: "BitcoinBase", dependencies: ["BitcoinCrypto"], path: "src/bitcoin-base"),
         .target(name: "BitcoinCrypto", dependencies: ["ECCHelper",
+                .product(name: "LibSECP256k1", package: "secp256k1"),
                 .product(name: "Crypto", package: "swift-crypto")],
             path: "src/bitcoin-crypto" /*, swiftSettings: [.strictMemorySafety()]*/),
 

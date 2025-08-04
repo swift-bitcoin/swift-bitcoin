@@ -4,8 +4,6 @@ import ECCHelper
 
 extension OpaquePointer: @unchecked @retroactive Sendable { } // TODO: Remove conformance in Swift 6.2
 
-let secp256k1_context_static = get_static_context()!
-
 let eccSigningContext: OpaquePointer = {
     guard let ctx = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_NONE)) else {
         preconditionFailure()
