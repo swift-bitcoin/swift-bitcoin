@@ -41,7 +41,7 @@ public actor NodeService: Sendable {
     public var state: NodeState
 
     /// Subscription to the bitcoin service's blocks channel.
-    public var blocks = AsyncChannel<Block>?.none
+    public var blocks = AsyncChannel<BlockUpdate>?.none
 
     /// Subscription to the bitcoin service's transactions channel.
     public var txs = AsyncChannel<Transaction>?.none
@@ -58,6 +58,9 @@ public actor NodeService: Sendable {
     /// The node's randomly generated identifier (nonce). This is sent with `version` messages.
     let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
 
+    /// Subscription to new blocks
+    private var blockChannels = [AsyncChannel<Block>]()
+
     /// Called when the peer-to-peer service stops listening for incoming connections.
     public func resetAddress() {
         address = nil
@@ -70,6 +73,33 @@ public actor NodeService: Sendable {
         self.port = port
     }
 
+    private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
+        if status == .full {
+            if !state.ibdComplete, await blockchain.synchronized {
+                state.ibdComplete = true
+            }
+            if state.ibdComplete {
+                await handleBlockRelay(block, height: height)
+            }
+            // Notify subscribers of new tip
+            Task {
+                await withDiscardingTaskGroup {
+                    for channel in blockChannels {
+                        $0.addTask {
+                            await channel.send(block)
+                        }
+                    }
+                }
+            }
+        } else if status == .header {
+            for (id, peer) in state.peers {
+                if peer.knownBlocks.contains(block.id) {
+                    state.peers[id]!.height = max(peer.height, height)
+                }
+            }
+        }
+    }
+
     public func start() async {
         status = .starting
         let blocks = await blockchain.subscribeToBlocks()
@@ -78,8 +108,8 @@ public actor NodeService: Sendable {
         self.txs = txs
         await withDiscardingTaskGroup { group in
             group.addTask {
-                for await block in blocks/*.cancelOnGracefulShutdown()*/ {
-                    await self.handleBlock(block)
+                for await (block, status, height) in blocks/*.cancelOnGracefulShutdown()*/ {
+                    await self.handleBlockUpdate(block, status: status, height: height)
                 }
             }
             group.addTask {
@@ -92,10 +122,9 @@ public actor NodeService: Sendable {
     }
 
     /// Called when the blockchain notifies us that a new block has been found. Relays blocks to peers.
-    private func handleBlock(_ block: Block) async {
+    private func handleBlockRelay(_ block: Block, height: Int) async {
         await withDiscardingTaskGroup {
-            for id in state.peers.keys {
-                let peer = state.peers[id]!
+            for (id, peer) in state.peers {
                 guard !peer.knownBlocks.contains(block.id) else {
                     continue
                 }
@@ -138,6 +167,9 @@ public actor NodeService: Sendable {
     /// We unsubscribe from Bitcoin service's blocks.
     public func stop() async {
         status = .stopping
+        for blockChannel in blockChannels {
+            unsubscribe(blockChannel)
+        }
         await withDiscardingTaskGroup { group in
             if let blocks {
                 group.addTask {
@@ -232,6 +264,16 @@ public actor NodeService: Sendable {
     public func getChannel(for id: PeerID) -> AsyncChannel<NetworkMessage> {
         precondition(state.peers[id] != nil)
         return peerOuts[id]!
+    }
+
+    public func subscribeToBlocks() -> AsyncChannel<Block> {
+        blockChannels.append(.init())
+        return blockChannels.last!
+    }
+
+    public func unsubscribe(_ channel: AsyncChannel<Block>) {
+        channel.finish()
+        blockChannels.removeAll(where: { $0 === channel })
     }
 
     func makeVersion(for id: PeerID) async -> VersionMessage {
@@ -641,17 +683,29 @@ public actor NodeService: Sendable {
         logger.debug("Received block \(block.idHex)")
 
         state.peers[id]!.registerKnownBlocks([block.id])
-        try await blockchain.processBlock(block)
-
         state.peers[id]?.inTransitBlocks -= 1
 
-        if !state.ibdComplete, await blockchain.synchronized {
-            state.ibdComplete = true
-        }
-
+        try await blockchain.processBlock(block, immediate: false)
         if state.peers[id]!.inTransitBlocks == 0 {
             await requestNextMissingBlocks(id)
         }
+        /*
+        // Code for requesting blocks from multiple blocks
+        var minInTransitBlocks = config.maxInTransitBlocks
+        var selectedPeerID = UUID?.none
+        for (id, peer) in state.peers {
+            let inTransitBlocks = peer.inTransitBlocks
+            if peer.height > height, inTransitBlocks < minInTransitBlocks {
+                minInTransitBlocks = inTransitBlocks
+                selectedPeerID = id
+            }
+        }
+        if let selectedPeerID {
+            await requestNextMissingBlocks(selectedPeerID)
+        } else {
+            logger.debug("All peers have reached their maximum in transit blocks")
+        }
+        */
     }
 
     func processGetData(_ message: NetworkMessage, from id: PeerID) async throws {
@@ -751,7 +805,7 @@ public actor NodeService: Sendable {
         if missingTxIndices.isEmpty {
             var block = compactBlockMessage.header
             block.txs = txs.compactMap { $0 }
-            try await blockchain.processBlock(block)
+            try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
         } else {
             state.peers[id]?.pendingBlockTxs = txs
             let getBlockTxs = GetBlockTransactionsMessage(blockHash: compactBlockMessage.header.id, txIndices: missingTxIndices)
@@ -798,7 +852,7 @@ public actor NodeService: Sendable {
         }
         block.txs = pendingBlockTxs.compactMap { $0 }
         do {
-            try await blockchain.processBlock(block)
+            try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
         } catch {
             throw .invalidBlock
         }

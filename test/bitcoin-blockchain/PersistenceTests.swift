@@ -32,7 +32,7 @@ struct PersistenceTests {
         let bob = BlockchainService()
         await bob.start()
 
-        try await bob.processHeaders([header1])
+        try await bob.processHeaders([header1.header])
         await #expect(bob.height == 1)
 
         let bobMissingBlockIDs = await bob.getNextMissingBlocks(.max)
@@ -76,7 +76,7 @@ struct PersistenceTests {
         #expect(dataDirContents.contains("block-index"))
         #expect(dataDirContents.contains("coins"))
 
-        try await bob.processHeaders([header1])
+        try await bob.processHeaders([header1.header])
 
         await #expect(bob.height == 1)
 

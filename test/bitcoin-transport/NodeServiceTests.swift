@@ -34,6 +34,9 @@ struct NodeServiceTests: ~Copyable {
         await halChain.start()
         self.halChain = halChain
         let hal = NodeService(blockchain: halChain, config: .init(network: .regtest, feeFilterRate: 2))
+        Task {
+            await hal.start()
+        }
         self.hal = hal
         let satoshiPeer = await hal.addPeer(incoming: false)
         self.satoshiPeer = satoshiPeer
@@ -360,7 +363,13 @@ struct NodeServiceTests: ~Copyable {
         #expect(await hal.popMessage(satoshiPeer) == nil)
 
         // … --(block)->> Hal
+        let blockUpdates = await hal.subscribeToBlocks()
+        let task = Task {
+            var i = blockUpdates.makeAsyncIterator()
+            return await i.next()
+        }
         try await hal.processMessage(messageSH11_block, from: satoshiPeer)
+        _ = try #require(await task.value)
 
         let halBlocksAfter = await halChain.validatedHeight + 1
         #expect(halBlocksAfter == 2)

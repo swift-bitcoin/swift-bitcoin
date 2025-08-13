@@ -59,6 +59,8 @@ await blockchain.stop()
 - ``Block``
 - ``BlockchainService``
 - ``ConsensusParams``
+- <doc:Design>
+
 
 ## See Also
 
