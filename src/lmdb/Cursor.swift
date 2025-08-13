@@ -18,6 +18,38 @@ package struct Cursor: ~Copyable {
     let dbHandle: MDB_dbi
     let handle: OpaquePointer
 
+    package func set(key: Data, _ operation:  Operation = .set) throws(Database.AccessError) {
+        var mutableKey = key
+        var dataVal = MDB_val()
+        let operation: MDB_cursor_op = operation.value
+
+        do {
+            try mutableKey.withUnsafeMutableBytes { [handle] buffer in
+                var keyVal = MDB_val(mv_size: buffer.count, mv_data: buffer.baseAddress)
+                let status = mdb_cursor_get(handle, &keyVal, &dataVal, operation)
+                guard status == MDB_SUCCESS else {
+                    throw Database.AccessError.getIssue
+                }
+            }
+        } catch let error as Database.AccessError {
+            throw error
+        } catch { fatalError() }
+    }
+
+    package func set(key: Int, _ operation:  Operation = .set) throws(Database.AccessError) {
+        var mutableKey = key
+        var keyVal = withUnsafeMutablePointer(to: &mutableKey) {
+            MDB_val(mv_size: MemoryLayout<Int>.size, mv_data: $0)
+        }
+        var dataVal = MDB_val()
+        let operation: MDB_cursor_op = operation.value
+
+        let status = mdb_cursor_get(handle, &keyVal, &dataVal, operation)
+        guard status == MDB_SUCCESS else {
+            throw .getIssue
+        }
+    }
+
     @discardableResult
     package func get(_ operation:  Operation = .first) throws(Database.AccessError) -> Data? {
         var keyVal = MDB_val()
@@ -35,8 +67,7 @@ package struct Cursor: ~Copyable {
         return data
     }
 
-    @discardableResult
-    package func getKeyValue(_ operation:  Operation = .first) throws(Database.AccessError) -> (Data, Data)? {
+    package func getPair(_ operation:  Operation = .first) throws(Database.AccessError) -> (Data, Data)? {
         var keyVal = MDB_val()
         var dataVal = MDB_val()
         let operation: MDB_cursor_op = operation.value

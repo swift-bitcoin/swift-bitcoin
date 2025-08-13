@@ -1,15 +1,29 @@
 /// In-memory block index service implementation.
 actor TransientBlockIndex: BlockIndex {
 
-    init() {
-        height = -1
-    }
-
     private var byID = [Block.ID : BlockRef]()
     private var byHeight = [Block.ID]()
 
-    /// Active chain height only, includes headers of unverified blocks.
-    internal private(set) var height: Int
+    var bestHeader: BlockRef? {
+        for id in byHeight.reversed() {
+            guard let ref = byID[id] else {
+                fatalError("Missing block ref")
+            }
+            if ref.status != .invalid || ref.status != .stale {
+                return ref
+            }
+        }
+        return nil
+    }
+
+    func bestAncestor(of header: BlockRef) async -> BlockRef {
+        var candidate = header
+        while candidate.status != .full {
+            candidate = byID[candidate.previous]!
+        }
+        precondition(![.invalid, .stale].contains(candidate.status))
+        return candidate
+    }
 
     /// Locators in reverse height order
     var locators: [BlockStorageLocator] {
@@ -22,25 +36,8 @@ actor TransientBlockIndex: BlockIndex {
         return locators
     }
 
-    var lastHeaderID: Block.ID {
-        precondition(height > -1)
-        return byHeight.last!
-    }
-
-    var bestBlock: BlockRef {
-        for id in byHeight.reversed() {
-            guard let ref = byID[id] else {
-                fatalError("Missing block ref")
-            }
-            if ref.status == .full {
-                return ref
-            }
-        }
-        preconditionFailure("No fully validated blocks exist")
-    }
-
     @discardableResult
-    func add(_ block: Block, locator: BlockStorageLocator?, status: BlockRef.ValidationStatus) throws(BlockIndexError) -> BlockRef {
+    func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus) throws(BlockIndexError) -> BlockRef {
         let previous = if block.previous != Block.nullParent && has(block.previous) {
             get(block.previous)
         } else {
@@ -53,24 +50,19 @@ actor TransientBlockIndex: BlockIndex {
         let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
         let chainTxCount = if let previous { previous.chainTxCount + block.txs.count } else { block.txs.count }
         let blockRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
-        add(blockRef)
+        byID[blockRef.header.id] = blockRef
+        byHeight.append(blockRef.header.id)
         return blockRef
     }
 
-    func add(_ blockRef: BlockRef) {
-        byID[blockRef.header.id] = blockRef
-        byHeight.append(blockRef.header.id)
-        height += 1
-    }
-
-    func update(_ id: Block.ID, locator: BlockStorageLocator, status: BlockRef.ValidationStatus) -> BlockRef {
+    func update(_ id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus) -> BlockRef {
         byID[id]!.locator = locator
         byID[id]!.status = status
         return byID[id]!
     }
 
     @discardableResult
-    func update(_ id: Block.ID, status: BlockRef.ValidationStatus) -> BlockRef {
+    func update(_ id: Block.ID, status: ValidationStatus) -> BlockRef {
         // TODO: deal with duplication of the different `update()` funcs.
         byID[id]!.status = status
         return byID[id]!
@@ -89,10 +81,22 @@ actor TransientBlockIndex: BlockIndex {
         get(byHeight[height])
     }
 
-    func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
-        (startHeight...endHeight).map { get(at: $0) }
+    func get(from ref: BlockRef, count: Int) -> [BlockRef] {
+        var refs = [BlockRef]()
+        var i = 0
+        var ref = ref
+        repeat {
+            refs.append(ref)
+            guard ref.previous != Block.nullParent else {
+                break
+            }
+            i += 1
+            ref = byID[ref.previous]!
+        } while i < count
+        return refs
     }
 
+    /*
     func getParent(for childID: Block.ID) -> BlockRef? {
         let child = get(childID)
         if child.previous == Block.nullParent {
@@ -100,42 +104,42 @@ actor TransientBlockIndex: BlockIndex {
         }
         return get(child.previous)
     }
+    */
 
-    /// Either removes (if header-only) or marks block as stale
-    func removeAll(from height: Int) {
+    /*
+    /// Either removes (if header-only) or marks block as invalid
+    func removeAll(from height: Int) -> BlockRef {
+        precondition(height > 0)
         var refs = [BlockRef]()
-        for h in height ... self.height {
+        for h in height ... byHeight.count - 1 {
             refs.append(get(at: h))
         }
         for ref in refs {
-            if ref.status < .full {
+            if ref.status == .header {
                 byID[ref.header.id] = nil
             } else {
-                update(ref.header.id, status: .stale)
+                update(ref.header.id, status: .invalid)
             }
         }
         let totalRemoved = byHeight.count - height
         byHeight.removeLast(totalRemoved)
-        self.height -= totalRemoved
+        return byID[byHeight[height - 1]]!
     }
+    */
 
     func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
         var missing = [Block.ID]()
         for id in ids {
-            if has(id) {
-                missing.append(id)
-            }
+            if has(id) { missing.append(id) }
         }
         return missing
     }
 
     func undoLastBlock() -> BlockRef {
-        let id = byHeight[height]
-        // TODO: Once we support parallel block download: `guard id == chainTip else {`
-        guard let ref = byID[id], ref.status == .full else {
-            preconditionFailure("Chain must be fully sync'ed to undo the last block")
-        }
+        let id = byHeight.last!
+        let ref = byID[id]!
+        precondition(ref.status == .full) // The chain is fully sync'ed
         byID[id]!.status = .stale
-        return byID[byID[id]!.previous]!
+        return byID[ref.previous]!
     }
 }

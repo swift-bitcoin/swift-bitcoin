@@ -1,50 +1,70 @@
 import Foundation
+import Logging
 import Collections
 
 /// Block storage service.
 actor TransientBlockStorage: BlockStorage {
 
-    init(config: BlockStorageConfig = .init()) {
+    init(config: BlockStorageConfig = .init(), logger: Logger) async throws(BlockStorageError) {
+        precondition(config.path == nil)
         self.config = config
+        self.logger = logger
     }
 
     let config: BlockStorageConfig
-    internal private(set) var status = BlockStorageStatus.idle
+    let logger: Logger
 
-    private var cache = OrderedDictionary<BlockStorageLocator, (Block, BlockUndo)>()
     private var blocks = [Block]()
-    private var blockUndos = [BlockUndo]()
+    private var blockUndos = [BlockUndo?]()
 
     internal private(set) var sizeOnDisk = 0
 
-    func start() async throws(BlockStorageError) {
-        status = .starting
-        defer { status = .running }
-        guard config.path == nil else { return }
-    }
-
-    func stop() {
-        // status = .stopping
-        status = .stopped
-    }
-
     func store(_ block: Block, undo: BlockUndo) async throws(BlockStorageError) -> BlockStorageLocator {
-        let locator: BlockStorageLocator = .init(file: blocks.endIndex, offset: -1, undoOffset: -1)
-        blocks.append(block)
-        blockUndos.append(undo)
-        if cache.count == Self.cacheSize - 1 {
-            cache.removeFirst()
-        }
-        cache[locator] = (block, undo)
-        return locator
+        try await store(block: block, undo: undo)
     }
 
-    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> (Block, BlockUndo)? {
-        if let block = cache[locator] {
-            return block
-        }
-        return (blocks[locator.file], blockUndos[locator.file])
+    func store(_ block: Block) async throws(BlockStorageError) -> BlockStorageLocator {
+        try await store(block: block, undo: nil)
     }
 
-    static let cacheSize = 3
+    func store(_ undo: BlockUndo, forBlockAt locator: BlockStorageLocator) async throws(BlockStorageError) -> BlockStorageLocator {
+        try await store(block: nil, undo: undo, locator: locator)
+    }
+
+    private func store(block: Block?, undo: BlockUndo?, locator previousLocator: BlockStorageLocator? = nil) async throws(BlockStorageError) -> BlockStorageLocator {
+        let blockOffset: Int
+        let undoOffset: Int
+        if let block {
+            blockOffset = blocks.endIndex
+            undoOffset = undo == nil ? -1 : blockUndos.endIndex
+            blocks.append(block)
+            blockUndos.append(undo)
+        } else if let undo, let previousLocator {
+            blockOffset = previousLocator.offset
+            undoOffset = blockOffset // We'll use the same offset for undo data
+            blockUndos[undoOffset] = undo
+        } else {
+            preconditionFailure()
+        }
+        return .init(file: -1, offset: blockOffset, undoOffset: undoOffset)
+    }
+
+    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> (Block, BlockUndo?) {
+        precondition(locator.file == -1)
+        guard blocks.indices.contains(locator.offset) else {
+            logger.error("Invalid block offset")
+            throw .invalidFileRef
+        }
+        let undo: BlockUndo?
+        if locator.undoOffset != -1 {
+            guard blockUndos.indices.contains(locator.undoOffset) else {
+                logger.error("Invalid undo offset")
+                throw .invalidFileRef
+            }
+            undo = blockUndos[locator.undoOffset]
+        } else {
+            undo = nil
+        }
+        return (blocks[locator.offset], undo)
+    }
 }

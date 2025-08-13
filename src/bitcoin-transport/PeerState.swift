@@ -110,5 +110,5 @@ public struct PeerState: Sendable {
     }
 }
 
-private let maxKnownBlocks = 3
-private let maxKnownTxs = 10
+private let maxKnownBlocks = Int.max  / 2
+private let maxKnownTxs = 100

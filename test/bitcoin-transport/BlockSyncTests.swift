@@ -22,6 +22,9 @@ struct BlockSyncTests {
         await aliceChain.start()
         self.aliceChain = aliceChain
         let alice = NodeService(blockchain: aliceChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
+        Task {
+            await alice.start()
+        }
         self.alice = alice
         let peerB = await alice.addPeer(incoming: false)
         self.peerB = peerB
@@ -314,10 +317,22 @@ struct BlockSyncTests {
         // … --(block)->> Alice
         try await alice.processMessage(mBA10_sendheaders, from: peerB)
 
+        let blockUpdates = await alice.subscribeToBlocks()
+
+        var task = Task {
+            var i = blockUpdates.makeAsyncIterator()
+            return await i.next()
+        }
         try await alice.processMessage(mBA11_block, from: peerB)
+        _ = try #require(await task.value)
         #expect(await aliceChain.validatedHeight == 1)
 
+        task = Task {
+            var i = blockUpdates.makeAsyncIterator()
+            return await i.next()
+        }
         try await alice.processMessage(mBA12_block, from: peerB)
+        _ = try #require(await task.value)
 
         #expect(await aliceChain.validatedHeight == 2)
 
@@ -339,8 +354,12 @@ struct BlockSyncTests {
         #expect(bobBlock3.txs.count == 1)
 
         // … --(block)->> Alice
+        task = Task {
+            var i = blockUpdates.makeAsyncIterator()
+            return await i.next()
+        }
         try await alice.processMessage(mBA13_block, from: peerB)
-
+        _ = try #require(await task.value)
         #expect(await aliceChain.validatedHeight == 3)
 
         // No Response

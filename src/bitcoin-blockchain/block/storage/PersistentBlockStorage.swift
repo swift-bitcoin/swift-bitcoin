@@ -6,25 +6,10 @@ import _NIOFileSystem
 /// Block storage service.
 actor PersistentBlockStorage: BlockStorage {
 
-    init(config: BlockStorageConfig = .init(), logger: Logger) {
+    init(config: BlockStorageConfig = .init(), logger: Logger) async throws(BlockStorageError) {
         self.config = config
         self.logger = logger
-    }
 
-    let config: BlockStorageConfig
-    let logger: Logger
-    internal private(set) var status = BlockStorageStatus.idle
-
-    private var blocksDir = FilePath?.none
-    private var fileNumber = -1
-
-    private var cache = OrderedDictionary<BlockStorageLocator, (Block, BlockUndo)>()
-
-    internal private(set) var sizeOnDisk = 0
-
-    func start() async throws(BlockStorageError) {
-        status = .starting
-        defer { status = .running }
         guard let path = config.path else { return }
         logger.info("Using data dir path \"\(path.string)\".")
 
@@ -102,6 +87,18 @@ actor PersistentBlockStorage: BlockStorage {
         // TODO: Prepopulate cache with the last `Self.cacheSize` blocks.
     }
 
+    deinit {
+        // TODO: Remove our pid lock file once locking is implemented
+    }
+
+    let config: BlockStorageConfig
+    let logger: Logger
+
+    private var blocksDir = FilePath?.none
+    private var fileNumber = -1
+
+    internal private(set) var sizeOnDisk = 0
+
     private var lastFileInfo: FileInfo? { get async throws(BlockStorageError) {
         try await fileInfo(for: fileNumber)
     } }
@@ -117,22 +114,12 @@ actor PersistentBlockStorage: BlockStorage {
         return fileInfo
     }
 
-    func stop() {
-        status = .stopping
-        // TODO: Remove our pid lock file once locking is implemented
-        status = .stopped
-    }
-
     func store(_ block: Block, undo: BlockUndo) async throws(BlockStorageError) -> BlockStorageLocator {
-        let locator = try await storeToDisk(block, undo)
-        if cache.count == Self.cacheSize - 1 {
-            cache.removeFirst()
-        }
-        cache[locator] = (block, undo)
-        return locator
+        let locator = try await store(block)
+        return try await store(undo, forBlockAt: locator)
     }
 
-    private func storeToDisk(_ block: Block, _ undo: BlockUndo) async throws(BlockStorageError) -> BlockStorageLocator {
+    func store(_ block: Block) async throws(BlockStorageError) -> BlockStorageLocator {
         let fs = FileSystem.shared
         let maxSize = Int64(config.maxFileSize) // Accounts for magic bytes header and block length prefix
 
@@ -160,23 +147,36 @@ actor PersistentBlockStorage: BlockStorage {
             throw offset == 0 ? .blockFileCreateIssue : .blockFileWriteIssue
         }
 
+        sizeOnDisk += serializedBlock.count
+
+        // Sanity check
+        if let info = try await lastFileInfo {
+            logger.debug("Written file \(filePath(for: fileNumber).string) at offset \(offset), file size: \(info.size)")
+        }
+        return .init(file: fileNumber, offset: Int(offset), undoOffset: -1)
+    }
+
+    func store(_ undo: BlockUndo, forBlockAt locator: BlockStorageLocator) async throws(BlockStorageError) -> BlockStorageLocator {
+        precondition(locator.undoOffset == -1)
+        let fs = FileSystem.shared
+        let maxSize = Int64(config.maxFileSize) // Accounts for magic bytes header and block length prefix
+
         // Block's undo data (revert file)
         let serializedUndoBlock = undo.data
-        let undoOffset: Int64
-        if offset == 0 {
-            undoOffset = 0
+
+        var undoOffset: Int64
+
+        let filePath = filePath(for: locator.file, undo: true)
+        if let info = try! await fs.info(forFileAt: filePath) {
+            precondition(info.size + Int64(serializedUndoBlock.count) <= maxSize, "Undo file cannot be larger than the max block file")
+            undoOffset = info.size
         } else {
-            guard let undoInfo = try await fileInfo(for: fileNumber, undo: true) else {
-                preconditionFailure("file must exist as offset is not 0")
-            }
-            precondition(undoInfo.size + Int64(serializedUndoBlock.count) <= maxSize, "Undo file cannot be smaller than block file")
-            undoOffset = undoInfo.size
+            undoOffset = 0
         }
 
-        let undoPath = filePath(for: fileNumber, undo: true)
         do {
             _ = try await fs.withFileHandle(
-                forWritingAt: undoPath,
+                forWritingAt: filePath,
                 options: undoOffset == 0 ? .newFile(replaceExisting: false) : .modifyFile(createIfNecessary: false)
             ) { handle in
                 try await handle.write(contentsOf: serializedUndoBlock, toAbsoluteOffset: undoOffset)
@@ -186,37 +186,36 @@ actor PersistentBlockStorage: BlockStorage {
             throw undoOffset == 0 ? .blockFileCreateIssue : .blockFileWriteIssue
         }
 
-        sizeOnDisk += serializedBlock.count + serializedUndoBlock.count
+        sizeOnDisk += serializedUndoBlock.count
 
         // Sanity check
-        if let info = try await lastFileInfo {
-            logger.debug("Written file \(filePath(for: fileNumber).string) as offset \(offset), file size: \(info.size)")
+        if let info = try await fileInfo(for: locator.file, undo: true) {
+            logger.debug("Written undo file \(filePath) as offset \(undoOffset), file size: \(info.size)")
         }
-        return .init(file: fileNumber, offset: Int(offset), undoOffset: Int(undoOffset))
+        return .init(file: locator.file, offset: locator.offset, undoOffset: Int(undoOffset))
     }
 
-    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> (Block, BlockUndo)? {
-        if let block = cache[locator] {
-            return block
-        }
-        return try await retrieveFromDisk(locator)
-    }
-
-    private func retrieveFromDisk(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> (Block, BlockUndo)? {
-        let fs = FileSystem.shared
-        let maxBlockSize = Int64(config.maxBlock + MemoryLayout<UInt32>.size * 2) // Accounts for magic bytes header and block length prefix
-        let encoding = Block.Encoding.file(magicBytes: config.magic)
-
+    func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> (Block, BlockUndo?) {
         let maxSuffix = Int(pow(Double(10), Double(digits))) - 1 // 99999
         guard locator.file >= 0, locator.file <= maxSuffix else {
             logger.error("Invalid file reference.")
             throw .invalidFileRef
         }
 
-        guard let info = try await fileInfo(for: locator.file), let undoInfo = try await fileInfo(for: locator.file, undo: true) else {
+        let block = try await retrieveBlock(locator)
+        let undo = locator.undoOffset == -1 ? nil : try await retrieveUndo(locator)
+        return (block, undo)
+    }
+
+    private func retrieveBlock(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> Block {
+        let fs = FileSystem.shared
+        let maxBlockSize = Int64(config.maxBlock + MemoryLayout<UInt32>.size * 2) // Accounts for magic bytes header and block length prefix
+        let encoding = Block.Encoding.file(magicBytes: config.magic)
+
+        guard let info = try await fileInfo(for: locator.file) else {
             throw .invalidFileRef
         }
-        logger.trace("Located block and revert files \(locator.file) as offsets \(locator.offset) (block) and \(locator.undoOffset) revert, file sizes: \(info.size), \(undoInfo.size)")
+        logger.trace("Located block file \(locator.file) at offset \(locator.offset), file size: \(info.size)")
 
         let blockData: [UInt8]
         do {
@@ -235,6 +234,29 @@ actor PersistentBlockStorage: BlockStorage {
             logger.error("There was an issue reading the file or attempting to decode block from file's data.")
             throw .corruptedBlockData // TODO: Differenciate from not being able to open the file for reading.
         }
+        let block: Block
+        do {
+            block = try Block(blockData, encoding: encoding)
+        } catch {
+            logger.error("There was an issue attempting to decode block from file's contents.")
+            throw .corruptedBlockData
+        }
+        return block
+    }
+
+    private func retrieveUndo(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> BlockUndo {
+        precondition(locator.undoOffset != -1)
+
+        let fs = FileSystem.shared
+
+        // TODO: What's the max undo data size?
+        let maxBlockSize = Int64(config.maxBlock + MemoryLayout<UInt32>.size) // Accounts for length prefix
+
+        guard let undoInfo = try await fileInfo(for: locator.file, undo: true) else {
+            throw .invalidFileRef
+        }
+        logger.trace("Located revert file \(locator.file) at \(locator.undoOffset), file size: \(undoInfo.size)")
+
 
         let blockUndoData: [UInt8]
         do {
@@ -252,13 +274,6 @@ actor PersistentBlockStorage: BlockStorage {
             throw .corruptedBlockData // TODO: Differenciate from not being able to open the file for reading.
         }
 
-        let block: Block
-        do {
-            block = try Block(blockData, encoding: encoding)
-        } catch {
-            logger.error("There was an issue attempting to decode block from file's contents.")
-            throw .corruptedBlockData
-        }
         let blockUndo: BlockUndo
         do {
             blockUndo = try BlockUndo(blockUndoData)
@@ -266,7 +281,7 @@ actor PersistentBlockStorage: BlockStorage {
             logger.error("There was an issue attempting to decode block revert information from file's contents.")
             throw .corruptedBlockData
         }
-        return (block, blockUndo)
+        return blockUndo
     }
 
     private func filePath(for number: Int, undo: Bool = false) -> FilePath {
@@ -274,8 +289,6 @@ actor PersistentBlockStorage: BlockStorage {
         let formatted = String(format: "%0\(digits)d", number)
         return blocksDir.appending("\(undo ? undoFilePrefix : blockFilePrefix)\(formatted).dat")
     }
-
-    static let cacheSize = 3
 }
 
 private let blockFilePrefix = "blk"

@@ -73,6 +73,7 @@ await halChain.stop()
 - ``PeerState``
 - ``NetworkMessage``
 - ``MessageCommand``
+- <doc:Design>
 
 ## See Also
 

@@ -25,13 +25,13 @@ actor PersistentCoinsIndex: CoinsIndex {
         do {
             try env.withTransaction(db: byID, options: .readOnly) { _, byID in
                 try byID.withCursor(readOnly: true) { cursor in
-                    var maybeKv = try cursor.getKeyValue()
+                    var maybeKv = try cursor.getPair()
                     while let kv = maybeKv {
                         let (outpointData, coinData) = kv
                         let outpoint = try Outpoint(outpointData)
                         let coin = try UnspentOutput(coinData)
                         unordered[outpoint] = coin
-                        maybeKv = try cursor.getKeyValue(.next)
+                        maybeKv = try cursor.getPair(.next)
                     }
                 }
             }
@@ -117,19 +117,19 @@ actor PersistentCoinsIndex: CoinsIndex {
 
 private let byID = Database.Descriptor("by-id")
 
-    private func _get(_ outpoint: Outpoint, byID: borrowing LMDB.Database) throws(CoinsError) -> UnspentOutput? {
-        let data: Data?
-        do {
-            data = try byID.get(outpoint.data)
-        } catch {
-            throw .databaseError(error)
-        }
-        guard let data else {
-            return nil
-        }
-        do {
-            return try UnspentOutput(data)
-        } catch {
-            throw .corruptedCoinData
-        }
+private func _get(_ outpoint: Outpoint, byID: borrowing LMDB.Database) throws(CoinsError) -> UnspentOutput? {
+    let data: Data?
+    do {
+        data = try byID.get(outpoint.data)
+    } catch {
+        throw .databaseError(error)
     }
+    guard let data else {
+        return nil
+    }
+    do {
+        return try UnspentOutput(data)
+    } catch {
+        throw .corruptedCoinData
+    }
+}

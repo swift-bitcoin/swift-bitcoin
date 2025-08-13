@@ -14,7 +14,8 @@ struct BlockchainServiceTests {
 
         let alice = BlockchainService()
         await alice.start()
-        let header1 = try #require(await alice.generateTo(pubkey))
+        let block1_ = try #require(await alice.generateTo(pubkey))
+        let header1 = block1_.header
 
         let bob = BlockchainService()
         await bob.start()
@@ -28,7 +29,7 @@ struct BlockchainServiceTests {
         let bobMissingBlocks = await alice.getBlocks(bobMissingBlockIDs)
         let bobMissingBlock = bobMissingBlocks[0]
         let block1 = try #require(await alice.getBlock(at: 1))
-        #expect(bobMissingBlocks.count == 1 && bobMissingBlock == header1 && bobMissingBlock.txs == block1.txs)
+        #expect(bobMissingBlocks.count == 1 && bobMissingBlock == block1_ && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
         await #expect(bob.validatedHeight == 1)
@@ -92,8 +93,7 @@ struct BlockchainServiceTests {
 
 
     /// Tests mining empty blocks, spending a coinbase transaction and mine again.
-    @Test("Mine and spend")
-    func mineAndSpend() async throws {
+    @Test("Mine and spend") func mineAndSpend() async throws {
 
         // Generate a secret key, corresponding public key, hash and address.
         let secretKey = SecretKey()
@@ -198,7 +198,8 @@ struct BlockchainServiceTests {
             powNoRetargeting: false,
             genesisBlockTime: 1296688602,
             genesisBlockNonce: 2,
-            genesisBlockTarget: 0x207fffff
+            genesisBlockTarget: 0x207fffff,
+            assumeValid: nil
         )
         let blockchain = BlockchainService(params: consensusParams)
         await blockchain.start()
