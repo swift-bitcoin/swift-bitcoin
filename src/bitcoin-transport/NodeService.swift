@@ -640,18 +640,22 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
-        // TODO: Improve IBD logic. If multiple blocks need to be sync'ed, then we go into block download mode.
-        if !state.ibdComplete, headersMessage.items.isEmpty, await blockchain.synchronized {
-            state.ibdComplete = true
-            logger.info("Initial block download complete.")
-        }
-
         state.peers[id]!.registerKnownBlocks(headersMessage.items.map(\.id))
 
         do {
             try await blockchain.processHeaders(headersMessage.items)
         } catch {
             state.peers[id]?.height = await blockchain.height
+        }
+
+        // TODO: Review IBD logic. If multiple blocks need to be sync'ed, then we go into block download mode.
+        let bestHeaderHeight = await blockchain.height
+        let bestBlockHeight = await blockchain.validatedHeight
+        let percentage = bestHeaderHeight > 100 ? 0.01 : bestHeaderHeight > 10 ? 0.1 : 1
+        let threshold = Int(floor(Double(bestHeaderHeight) * percentage))
+        state.ibdComplete = bestHeaderHeight - bestBlockHeight < threshold
+        if state.ibdComplete {
+            logger.info("Initial block download complete.")
         }
 
         if headersMessage.moreItems {

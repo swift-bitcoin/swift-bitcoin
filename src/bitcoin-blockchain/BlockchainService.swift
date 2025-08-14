@@ -394,24 +394,28 @@ public actor BlockchainService: Sendable {
     public func processHeader(_ header: Block) async throws(Error) {
         precondition(header.txs.isEmpty)
 
-        guard lastBlockID == header.previous else {
-            // TODO: Check for all ancestors
+        guard bestHeader.header.id == header.previous else {
+            // TODO: Check for all ancestors in case its a reorg
+            logger.error("Header \(header.idHex) - previous header not found \(header.previous.reversed().hex)")
             throw .orphanHeader
         }
 
         guard await header.time >= getMedianTimePast(for: bestBlock) else {
+            logger.error("Header \(header.idHex) - timestamp too old \(header.time)")
             throw .headerTooOld
         }
 
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = .gmt
         guard header.time <= calendar.date(byAdding: .hour, value: 2, to: .now)! else {
+            logger.error("Header \(header.idHex) - timestamp too new \(header.time)")
             throw .headerTooNew
         }
 
         let previousHeader = await blockIndex.get(at: height)
         let target = await getNextWorkRequired(lastHeader: previousHeader, newBlockTime: header.time, params: params)
         guard DifficultyTarget(compact: header.target) <= DifficultyTarget(compact: target), try! DifficultyTarget(header.id) <= DifficultyTarget(compact: header.target) else {
+            logger.error("Header \(header.idHex) - insufficient proof of work \(header.target)")
             throw .insuficientProofOfWork
         }
 
@@ -420,6 +424,7 @@ public actor BlockchainService: Sendable {
             // Check timestamp for the first block of each difficulty adjustment interval, except the genesis block.
             if (height + 1) % params.difficultyAdjustmentInterval == 0 {
                 guard header.time.timeIntervalSince1970 >= previousHeader.header.time.timeIntervalSince1970  - ConsensusParams.maxTimewarp else {
+                    logger.error("Header \(header.idHex) - potential timewarp attack")
                     throw .timewarpAttack
                 }
             }
@@ -429,6 +434,7 @@ public actor BlockchainService: Sendable {
         if header.version < 2 && height >= params.heightInCoinbaseHeight ||
             (header.version < 3 && height >= params.strictDERSignatureHeight) ||
             (header.version < 4 && height >= params.cltvHeight) {
+            logger.error("Header \(header.idHex) - unsupported block version \(header.version)")
             throw .unsupportedBlockVersion
         }
 
@@ -438,7 +444,7 @@ public actor BlockchainService: Sendable {
 
     public func processHeaders(_ headers: [Block]) async throws(Error) {
         for header in headers {
-            guard lastBlockID != header.id else {
+            guard await !blockIndex.has(header.id) else {
                 // Compact block might send us a known header again
                 continue
             }
