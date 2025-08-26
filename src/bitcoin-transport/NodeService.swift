@@ -30,75 +30,36 @@ public actor NodeService: Sendable {
         }
     }
 
-    public var status = Status.idle
+    public private(set) var status = Status.idle
 
     /// The bitcoin service actor instance backing this node.
     public let blockchain: BlockchainService
 
     public let config: NodeParams
-    public let logger: Logger
+    package let logger: Logger
 
-    public var state: NodeState
+    public private(set) var state: NodeState
 
     /// Subscription to the bitcoin service's blocks channel.
-    public var blocks = AsyncChannel<BlockUpdate>?.none
+    private var blocks = AsyncChannel<BlockUpdate>?.none
 
     /// Subscription to the bitcoin service's transactions channel.
-    public var txs = AsyncChannel<Transaction>?.none
+    private var txs = AsyncChannel<Transaction>?.none
 
     /// IP address as string.
-    var address = IPv6Address?.none
+    private var address = IPv6Address?.none
 
     /// Our port might not exist if peer-to-peer server is down. We can still be conecting with state.peers as a client.
-    var port = Int?.none
+    private var port = Int?.none
 
     /// Channel for delivering message to state.peers.
-    var peerOuts = [UUID : AsyncChannel<NetworkMessage>]()
+    private var peerOuts = [UUID : AsyncChannel<NetworkMessage>]()
 
     /// The node's randomly generated identifier (nonce). This is sent with `version` messages.
-    let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
+    private let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
 
     /// Subscription to new blocks
     private var blockChannels = [AsyncChannel<Block>]()
-
-    /// Called when the peer-to-peer service stops listening for incoming connections.
-    public func resetAddress() {
-        address = nil
-        port = nil
-    }
-
-    /// Receive address information from the peer-to-peer service whenever it's actively listening.
-    public func setAddress(_ host: String, _ port: Int) {
-        self.address = IPv6Address.fromHost(host)
-        self.port = port
-    }
-
-    private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
-        if status == .full {
-            if !state.ibdComplete, await blockchain.synchronized {
-                state.ibdComplete = true
-            }
-            if state.ibdComplete {
-                await handleBlockRelay(block, height: height)
-            }
-            // Notify subscribers of new tip
-            Task {
-                await withDiscardingTaskGroup {
-                    for channel in blockChannels {
-                        $0.addTask {
-                            await channel.send(block)
-                        }
-                    }
-                }
-            }
-        } else if status == .header {
-            for (id, peer) in state.peers {
-                if peer.knownBlocks.contains(block.id) {
-                    state.peers[id]!.height = max(peer.height, height)
-                }
-            }
-        }
-    }
 
     public func start() async {
         status = .starting
@@ -119,49 +80,6 @@ public actor NodeService: Sendable {
             }
         }
         status = .running
-    }
-
-    /// Called when the blockchain notifies us that a new block has been found. Relays blocks to peers.
-    private func handleBlockRelay(_ block: Block, height: Int) async {
-        await withDiscardingTaskGroup {
-            for (id, peer) in state.peers {
-                guard !peer.knownBlocks.contains(block.id) else {
-                    continue
-                }
-                $0.addTask {
-                    if peer.highBandwidthCompactBlocks {
-                        await self.sendBlock(block, to: id)
-                    } else {
-                        var header = block
-                        header.txs = []
-                        let items = [header]
-                        let headersMessage = HeadersMessage(items: items)
-                        if peer.prefersHeaders {
-                            await self.send(.headers, payload: headersMessage.data, to: id)
-                        } else {
-                            let inventoryMessage = InventoryMessage(items: [.init(type: .block, hash:  block.id)]
-                            )
-                            await self.send(.inv, payload: inventoryMessage.data, to: id)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Called when the blockchain notifies us that a new transaction has been accepted into the mempool. Relays transactions to peers.
-    private func handleTx(_ tx: Transaction) async {
-        await withDiscardingTaskGroup {
-            for id in state.peers.keys {
-                let peer = state.peers[id]!
-                guard !peer.knownTxs.contains(tx.id) else {
-                    continue
-                }
-                $0.addTask {
-                    await self.sendTx(tx, to: id)
-                }
-            }
-        }
     }
 
     /// We unsubscribe from Bitcoin service's blocks.
@@ -185,6 +103,18 @@ public actor NodeService: Sendable {
         status = .stopped
     }
 
+    /// Called when the peer-to-peer service stops listening for incoming connections.
+    public func resetAddress() {
+        address = nil
+        port = nil
+    }
+
+    /// Receive address information from the peer-to-peer service whenever it's actively listening.
+    public func setAddress(_ host: String, _ port: Int) {
+        self.address = IPv6Address.fromHost(host)
+        self.port = port
+    }
+
     /// Send a ping to each of our state.peers. Calling this function will create child tasks.
     public func pingAll() async {
         await withDiscardingTaskGroup {
@@ -205,32 +135,6 @@ public actor NodeService: Sendable {
             return
         }
         await requestHeaders(id)
-    }
-
-    /// Request headers from a specific peer.
-    func requestHeaders(_ id: PeerID) async {
-        guard let _ = state.peers[id] else { preconditionFailure() }
-        let locatorHashes = await blockchain.makeBlockLocator()
-        let getHeaders = GetHeadersMessage(protocolVersion: .latest, locatorHashes: locatorHashes)
-        enqueue(.getheaders, payload: getHeaders.data, to: id)
-    }
-
-    func requestNextMissingBlocks(_ id: PeerID) async {
-        guard let peer = state.peers[id] else { preconditionFailure() }
-
-        let numberOfBlocksToRequest = config.maxInTransitBlocks - peer.inTransitBlocks
-        guard numberOfBlocksToRequest > 0 else { return }
-
-        let blockIDs = await blockchain.getNextMissingBlocks(numberOfBlocksToRequest)
-
-        guard !blockIDs.isEmpty else { return }
-
-        state.peers[id]?.inTransitBlocks += blockIDs.count
-
-        let getData = GetDataMessage(
-            items: blockIDs.map { .init(type: state.ibdComplete ? .compactBlock : .witnessBlock, hash: $0) }
-        )
-        enqueue(.getdata, payload: getData.data, to: id)
     }
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
@@ -276,22 +180,6 @@ public actor NodeService: Sendable {
         blockChannels.removeAll(where: { $0 === channel })
     }
 
-    func makeVersion(for id: PeerID) async -> VersionMessage {
-        guard let peer = state.peers[id] else { preconditionFailure() }
-
-        let lastBlock = await blockchain.height
-        return .init(
-            protocolVersion: config.version,
-            services: config.services,
-            receiverServices: peer.version?.services,
-            receiverAddress: peer.version?.transmitterAddress,
-            receiverPort: peer.version?.transmitterPort,
-            transmitterAddress: address,
-            transmitterPort: port,
-            nonce: nonce,
-            startHeight: lastBlock)
-    }
-
     /// Starts the handshake process but only if its an outgoing peer – i.e. we initiated the connection. Generates a child task for delivering the initial version message.
     public func connect(_ id: PeerID) async {
         guard let peer = state.peers[id], peer.outgoing else { return }
@@ -303,25 +191,13 @@ public actor NodeService: Sendable {
         enqueue(.sendaddrv2, to: id)
     }
 
-    func sendTx(_ tx: Transaction, to id: PeerID) async {
-        guard let _ = state.peers[id] else { return }
-        let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTx, hash: tx.witnessID)])
-        await send(.inv, payload: inventoryMessage.data, to: id)
-    }
-
-    func sendBlock(_ block: Block, to id: PeerID, useQueue: Bool = false) async {
-        guard let _ = state.peers[id] else { return }
-        let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
-        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, txIDs: block.makeShortTxIDs(nonce: nonce), txs: [.init(index: 0, tx: block.txs[0])])
-        if useQueue {
-            enqueue(.cmpctblock, payload: compactBlockMesssage.data, to: id)
-        } else {
-            await send(.cmpctblock, payload: compactBlockMesssage.data, to: id)
-        }
+    public func popMessage(_ id: PeerID) -> NetworkMessage? {
+        guard let peer = state.peers[id], !peer.outbox.isEmpty else { return nil }
+        return state.peers[id]!.outbox.removeFirst()
     }
 
     // Sends a ping message to a peer. Creates a new child task.
-    func sendPingTo(_ id: PeerID, useQueue: Bool = false) async {
+    public func sendPingTo(_ id: PeerID, useQueue: Bool = false) async {
         guard let peer = state.peers[id], peer.lastPingNonce == nil else { return }
 
         // Prepare pong check
@@ -343,11 +219,6 @@ public actor NodeService: Sendable {
         } else {
             await send(.ping, payload: ping.data, to: id)
         }
-    }
-
-    public func popMessage(_ id: PeerID) -> NetworkMessage? {
-        guard let peer = state.peers[id], !peer.outbox.isEmpty else { return nil }
-        return state.peers[id]!.outbox.removeFirst()
     }
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
@@ -411,6 +282,135 @@ public actor NodeService: Sendable {
             try await processBlockTxs(message, from: id)
         case .getaddr, .addrv2, .notfound, .addr, .getblocks, .unknown:
             break
+        }
+    }
+
+    private func sendTx(_ tx: Transaction, to id: PeerID) async {
+        guard let _ = state.peers[id] else { return }
+        let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTx, hash: tx.witnessID)])
+        await send(.inv, payload: inventoryMessage.data, to: id)
+    }
+
+    private func sendBlock(_ block: Block, to id: PeerID, useQueue: Bool = false) async {
+        guard let _ = state.peers[id] else { return }
+        let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
+        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, txIDs: block.makeShortTxIDs(nonce: nonce), txs: [.init(index: 0, tx: block.txs[0])])
+        if useQueue {
+            enqueue(.cmpctblock, payload: compactBlockMesssage.data, to: id)
+        } else {
+            await send(.cmpctblock, payload: compactBlockMesssage.data, to: id)
+        }
+    }
+
+    /// Request headers from a specific peer.
+    private func requestHeaders(_ id: PeerID) async {
+        guard let _ = state.peers[id] else { preconditionFailure() }
+        let locatorHashes = await blockchain.makeBlockLocator()
+        let getHeaders = GetHeadersMessage(protocolVersion: .latest, locatorHashes: locatorHashes)
+        enqueue(.getheaders, payload: getHeaders.data, to: id)
+    }
+
+    private func makeVersion(for id: PeerID) async -> VersionMessage {
+        guard let peer = state.peers[id] else { preconditionFailure() }
+
+        let lastBlock = await blockchain.bestHeight
+        return .init(
+            protocolVersion: config.version,
+            services: config.services,
+            receiverServices: peer.version?.services,
+            receiverAddress: peer.version?.transmitterAddress,
+            receiverPort: peer.version?.transmitterPort,
+            transmitterAddress: address,
+            transmitterPort: port,
+            nonce: nonce,
+            startHeight: lastBlock)
+    }
+
+    private func requestNextMissingBlocks(_ id: PeerID) async {
+        guard let peer = state.peers[id] else { preconditionFailure() }
+
+        let numberOfBlocksToRequest = config.maxInTransitBlocks - peer.inTransitBlocks
+        guard numberOfBlocksToRequest > 0 else { return }
+
+        let blockIDs = await blockchain.getNextMissingBlocks(numberOfBlocksToRequest)
+
+        guard !blockIDs.isEmpty else { return }
+
+        state.peers[id]?.inTransitBlocks += blockIDs.count
+
+        let getData = GetDataMessage(
+            items: blockIDs.map { .init(type: state.ibdComplete ? .compactBlock : .witnessBlock, hash: $0) }
+        )
+        enqueue(.getdata, payload: getData.data, to: id)
+    }
+
+    private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
+        if status == .full {
+            if !state.ibdComplete, await blockchain.synchronized {
+                state.ibdComplete = true
+            }
+            if state.ibdComplete {
+                await handleBlockRelay(block, height: height)
+            }
+            // Notify subscribers of new tip
+            Task {
+                await withDiscardingTaskGroup {
+                    for channel in blockChannels {
+                        $0.addTask {
+                            await channel.send(block)
+                        }
+                    }
+                }
+            }
+        } else if status == .header {
+            for (id, peer) in state.peers {
+                if peer.knownBlocks.contains(block.id) {
+                    state.peers[id]!.height = max(peer.height, height)
+                }
+            }
+        }
+    }
+
+    /// Called when the blockchain notifies us that a new block has been found. Relays blocks to peers.
+    private func handleBlockRelay(_ block: Block, height: Int) async {
+        await withDiscardingTaskGroup {
+            for (id, peer) in state.peers {
+                guard !peer.knownBlocks.contains(block.id) else {
+                    continue
+                }
+                $0.addTask {
+                    if peer.highBandwidthCompactBlocks {
+                        await self.sendBlock(block, to: id)
+                    } else {
+                        var header = block
+                        header.txs = []
+                        let items = [header]
+                        let headersMessage = HeadersMessage(items: items)
+                        if peer.prefersHeaders {
+                            await self.send(.headers, payload: headersMessage.data, to: id)
+                        } else {
+                            let inventoryMessage = InventoryMessage(items: [.init(type: .block, hash:  block.id)]
+                            )
+                            await self.send(.inv, payload: inventoryMessage.data, to: id)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Called when the blockchain notifies us that a new transaction has been accepted into the mempool. Relays transactions to peers.
+    private func handleTx(_ tx: Transaction) async {
+        await withDiscardingTaskGroup {
+            for id in state.peers.keys {
+                let peer = state.peers[id]!
+                guard !peer.knownTxs.contains(tx.id) else {
+                    continue
+                }
+                $0.addTask {
+                    await self.sendTx(tx, to: id)
+                }
+            }
         }
     }
 
@@ -645,12 +645,12 @@ public actor NodeService: Sendable {
         do {
             try await blockchain.processHeaders(headersMessage.items)
         } catch {
-            state.peers[id]?.height = await blockchain.height
+            state.peers[id]?.height = await blockchain.bestHeight
         }
 
         // TODO: Review IBD logic. If multiple blocks need to be sync'ed, then we go into block download mode.
         let bestHeaderHeight = await blockchain.height
-        let bestBlockHeight = await blockchain.validatedHeight
+        let bestBlockHeight = await blockchain.bestHeight
         let percentage = bestHeaderHeight > 100 ? 0.01 : bestHeaderHeight > 10 ? 0.1 : 1
         let threshold = Int(floor(Double(bestHeaderHeight) * percentage))
         state.ibdComplete = bestHeaderHeight - bestBlockHeight < threshold
@@ -677,7 +677,7 @@ public actor NodeService: Sendable {
         state.peers[id]!.prefersHeaders = true
     }
 
-    func processBlock(_ message: NetworkMessage, from id: PeerID) async throws {
+    private func processBlock(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let block = try? Block(message.payload) else {
@@ -712,7 +712,7 @@ public actor NodeService: Sendable {
         */
     }
 
-    func processGetData(_ message: NetworkMessage, from id: PeerID) async throws {
+    private func processGetData(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let getDataMessage = GetDataMessage(message.payload) else {
@@ -745,7 +745,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    func processInventory(_ message: NetworkMessage, from id: PeerID) async throws {
+    private func processInventory(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let inventoryMessage = InventoryMessage(message.payload) else {
@@ -773,7 +773,7 @@ public actor NodeService: Sendable {
         enqueue(.getdata, payload: getData.data, to: id)
     }
 
-    func processTx(_ message: NetworkMessage, from id: PeerID) async throws {
+    private func processTx(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         let tx: Transaction
@@ -786,7 +786,7 @@ public actor NodeService: Sendable {
         try await blockchain.addTransaction(tx)
     }
 
-    func processCompactBlock(_ message: NetworkMessage, from id: PeerID) async throws {
+    private func processCompactBlock(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let compactBlockMessage = CompactBlockMessage(message.payload) else {
@@ -817,7 +817,7 @@ public actor NodeService: Sendable {
         }
     }
 
-    func processGetBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
+    private func processGetBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
         guard let _ = state.peers[id] else { preconditionFailure() }
         guard let getBlockTxsMessage = GetBlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
@@ -833,7 +833,7 @@ public actor NodeService: Sendable {
         enqueue(.blocktxn, payload: blockTxs.data, to: id)
     }
 
-    func processBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
+    private func processBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
         guard let peer = state.peers[id] else { preconditionFailure() }
 
         guard let blockTxsMessage = BlockTransactionsMessage(message.payload) else {

@@ -201,7 +201,7 @@ struct BlockchainIntegrationTests {
         #expect(utxoSet2.count == expectedUTXOSet2.count)
         #expect(utxoSet2 == expectedUTXOSet2)
 
-        #expect(await blockchain.validatedHeight == 2)
+        #expect(await blockchain.bestHeight == 2)
 
         try await blockchain.undoLastBlock()
 
@@ -209,8 +209,60 @@ struct BlockchainIntegrationTests {
         #expect(utxoSet1_.count == expectedUTXOSet1.count)
         #expect(utxoSet1_ == expectedUTXOSet1)
 
-        #expect(await blockchain.validatedHeight == 1)
+        #expect(await blockchain.bestHeight == 1)
 
         await blockchain.stop()
     }
+
+    @Test func simpleReorg() async throws {
+        let alice = BlockchainService(params: .swiftTesting)
+        await alice.start()
+
+        let bob = BlockchainService(params: .swiftTesting)
+        await bob.start()
+
+        let carol = BlockchainService(params: .swiftTesting)
+        await carol.start()
+
+        let aliceKey = SecretKey()
+        let alicePK = aliceKey.pubkey
+
+        let blockA = try #require(await alice.generateTo(alicePK))
+
+        try await bob.processBlock(blockA, immediate: true)
+        try await carol.processBlock(blockA, immediate: true)
+
+        let coinbaseTx = blockA.txs[0]
+        var tx = Transaction(
+            ins: [.init(outpoint: coinbaseTx.outpoint(0))],
+            outs: [
+            .init(value: 4_999_999_999, script: .payToPubkeyHash(alicePK))
+        ])
+
+        var signer = TransactionSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
+        signer.sign(input: 0, with: aliceKey)
+        tx = signer.tx
+
+        try await alice.addTransaction(tx)
+
+        let blockB = try #require(await alice.generateTo(alicePK))
+        try await carol.processBlock(blockB, immediate: true)
+
+        #expect(await carol.chainTip == blockB.id)
+
+        let blockBB = try #require(await bob.generateTo(alicePK))
+        try await carol.processBlock(blockBB, immediate: true)
+
+        #expect(await carol.chainTip == blockB.id)
+
+        let blockCC = try #require(await bob.generateTo(alicePK))
+        try await carol.processBlock(blockCC, immediate: true)
+
+        #expect(await carol.chainTip == blockCC.id)
+
+        await alice.stop()
+        await bob.stop()
+        await carol.stop()
+    }
+
 }

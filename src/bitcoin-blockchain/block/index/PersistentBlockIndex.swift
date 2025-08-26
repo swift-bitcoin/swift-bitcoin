@@ -18,20 +18,85 @@ actor PersistentBlockIndex: BlockIndex {
 
     var bestHeader: BlockRef? {
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            guard try! byHeight.count > 0 else {
-                return nil
+            try! byHeight.withCursor(readOnly: true) { cursor in
+                var header: BlockRef? = nil
+                var maybeID = try! cursor.get(.last)
+                var maxSteps = 144 // Blocks in a period
+                while let id = maybeID, maxSteps > 0 {
+                    let ref = try! _get(id, byID: byID)!
+                    // Move backwards
+                    if let nextID = try! cursor.get(.prevDup) {
+                        // If no more duplicates for this height, move to previous height
+                        maybeID = nextID
+                    } else {
+                        maybeID = try! cursor.get(.prevNodup)
+                        maxSteps -= 1
+                    }
+                    guard ref.status != .invalid else {
+                        continue
+                    }
+                    if header == nil || header!.chainwork < ref.chainwork {
+                        header = ref
+                    }
+                }
+                return header
             }
-            return findBestHeader(byID: byID, byHeight: byHeight)
+        }
+    }
+
+    var bestBlock: BlockRef {
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
+            try! byHeight.withCursor(readOnly: true) { cursor in
+                var id = try! cursor.get(.last)!
+                var found = BlockRef?.none
+                repeat {
+                    let ref = try! _get(id, byID: byID)!
+                    if ref.status == .full {
+                        found = ref
+                    } else if let maybeID = try! cursor.get(.prevDup) { // Move backwards
+                        // If no more duplicates for this height, move to previous height
+                        id = maybeID
+                    } else {
+                        id = try! cursor.get(.prevNodup)!
+                    }
+                } while found == nil
+                return found!
+            }
+        }
+    }
+
+    func ancestor(of tip: BlockRef, childOf parent: BlockRef) -> BlockRef? {
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            var candidate = tip
+            while candidate.height > parent.height, candidate.header.previous != parent.header.id {
+                candidate = try! _get(candidate.header.previous, byID: byID)!
+            }
+            return if candidate.header.previous == parent.header.id {
+                candidate
+            } else {
+                nil
+            }
         }
     }
 
     func bestAncestor(of header: BlockRef) -> BlockRef {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             var candidate = header
             while candidate.status != .full {
-                candidate = try! _get(candidate.previous, byID: byID)!
+                candidate = try! _get(candidate.header.previous, byID: byID)!
             }
-            precondition(![.invalid, .stale].contains(candidate.status))
+            precondition(![.stale, .invalid].contains(candidate.status))
+            return candidate
+        }
+    }
+
+    /// Stale of full ancestor
+    func bestStaleAncestor(of header: BlockRef) -> BlockRef {
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            var candidate = header
+            while ![.stale, .full].contains(candidate.status) {
+                candidate = try! _get(candidate.header.previous, byID: byID)!
+            }
             return candidate
         }
     }
@@ -89,26 +154,35 @@ actor PersistentBlockIndex: BlockIndex {
         return blockRef
     }
 
-    func has(_ id: Block.ID) -> Bool {
-        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
-            try byID.get(id) != nil
-        }
-    }
-
-    func get(_ id: Block.ID) -> BlockRef { // TODO: Probably throws and return value nil-able
+    func get(_ id: Block.ID) -> BlockRef? { // TODO: Probably should throw
         let data = try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
             try byID.get(id)
         }
-        return try! BlockRef(data!)
+        return if let data {
+            try! BlockRef(data)
+        } else {
+            nil
+        }
     }
 
     func get(at height: Int) -> BlockRef {
         // guard height < byHeight.endIndex else { return nil }
-        let data = try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
-            let blockID = try byHeight.get(height)!
-            return try byID.get(blockID)
+        try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
+            try byHeight.withCursor(readOnly: true) { cursor in
+                try cursor.set(key: height)
+                var maybeBlockID = try cursor.get(.firstDup)
+                var found: BlockRef? = nil
+                while found == nil, let blockID = maybeBlockID {
+                    let refData = try byID.get(blockID)!
+                    let ref = try BlockRef(refData)
+                    if ![.stale, .invalid].contains(ref.status) {
+                        found = ref
+                    }
+                    maybeBlockID = try cursor.get(.nextDup)
+                }
+                return found!
+            }
         }
-        return try! BlockRef(data!)
     }
 
     func get(from ref: BlockRef, count: Int) -> [BlockRef] {
@@ -119,16 +193,101 @@ actor PersistentBlockIndex: BlockIndex {
             var ref = ref
             repeat {
                 refs.append(ref)
-                guard ref.previous != Block.nullParent else {
+                guard ref.header.previous != Block.nullParent else {
                     break
                 }
                 i += 1
-                ref = try _get(ref.previous, byID: byID)!
+                ref = try _get(ref.header.previous, byID: byID)!
             } while i < count
             return refs
         }
     }
 
+    /// All block storage locators in reverse height order including those for stale/invalid blocks.
+    var blockStorageLocators: [BlockStorageLocator] {
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
+            try! byHeight.withCursor(readOnly: true) { cursor in
+                var id = try! cursor.get(.last)
+                var locators = [BlockStorageLocator]()
+                repeat {
+                    let ref = try! _get(id!, byID: byID)!
+                    if let locator = ref.locator {
+                        locators.append(locator)
+                    }
+                    // Move backwards
+                    let maybeID = try! cursor.get(.prevDup)
+                    // If no more duplicates for this height, move to previous height
+                    if let maybeID {
+                        id = maybeID
+                    } else {
+                        id = try! cursor.get(.prevNodup)
+                    }
+                } while id != nil
+                return locators
+            }
+        }
+    }
+
+    func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
+        var missing = [Block.ID]()
+        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+            for id in ids {
+                if try byID.get(id) == nil {
+                    missing.append(id)
+                }
+            }
+        }
+        return missing
+    }
+
+    func undo(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
+        try! env.withTransaction(db: byID) { _, byID in
+            var id = tip.header.id
+            var refs = [BlockRef]()
+            repeat {
+                var ref = try _get(id, byID: byID)!
+                precondition(ref.status == .full)
+                ref.status = .stale
+                try byID.put(ref.data, key: id)
+                refs.insert(ref, at: 0)
+                id = ref.header.previous
+            } while id != ancestor.header.id
+            return refs
+        }
+    }
+
+    func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
+        try! env.withTransaction(db: byID) { _, byID in
+            var id = tip.header.id
+            var refs = [BlockRef]()
+            repeat {
+                var ref = try _get(id, byID: byID)!
+                id = ref.header.previous
+                if ref.status != .stale {
+                    continue
+                }
+                ref.status = .full
+                try byID.put(ref.data, key: ref.header.id)
+                refs.insert(ref, at: 0)
+            } while id != ancestor.header.id
+            return refs
+        }
+    }
+
+    func undoLastBlock() -> BlockRef {
+        var ref = try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
+            findBestBlock(byID: byID, byHeight: byHeight)
+        }
+        precondition(ref.status == .full)
+        return try! env.withTransaction(db: byID) { _, byID in
+            ref.status = .stale
+            try byID.put(ref.header.id, key: ref.data)
+            let previousData = try byID.get(ref.header.previous)!
+            return try BlockRef(previousData)
+        }
+    }
+
+    /*
     func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
         try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
             try (startHeight...endHeight).map { height in
@@ -148,23 +307,6 @@ actor PersistentBlockIndex: BlockIndex {
             }
             let previousData = try byID.get(child.previous)!
             return try BlockRef(previousData)
-        }
-    }
-
-    /// Storage locators in reverse height order
-    var locators: [BlockStorageLocator] {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            var locators = [BlockStorageLocator]()
-            let maxHeight = try byHeight.count - 1
-            for i in 0 ... maxHeight {
-                let h = maxHeight - i
-                let blockID = try byHeight.get(h)!
-                let ref = try BlockRef(try byID.get(blockID)!)
-                if let locator = ref.locator {
-                    locators.append(locator)
-                }
-            }
-            return locators
         }
     }
 
@@ -199,33 +341,7 @@ actor PersistentBlockIndex: BlockIndex {
         }
         return try! BlockRef(bestHeaderData)
     }
-
-    func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
-        var missing = [Block.ID]()
-        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
-            for id in ids {
-                if try byID.get(id) != nil {
-                    missing.append(id)
-                }
-            }
-        }
-        return missing
-    }
-
-    func undoLastBlock() -> BlockRef {
-        let id = try! env.withTransaction(db: byHeight, options: .readOnly) { _, byHeight in
-            try byHeight.last!
-        }
-        return try! env.withTransaction(db: byID) { _, byID in
-            let data = try byID.get(id)!
-            var ref = try BlockRef(data)
-            precondition(ref.status == .full)
-            ref.status = .stale
-            try byID.put(id, key: ref.data)
-            let previousData = try byID.get(ref.previous)!
-            return try BlockRef(previousData)
-        }
-    }
+    */
 }
 
 private let byIDName = "by-id"
@@ -251,14 +367,13 @@ private func _get(_ id: Block.ID, byID: borrowing LMDB.Database) throws(CoinsErr
     }
 }
 
-
-private func findBestHeader(byID: borrowing LMDB.Database, byHeight: borrowing LMDB.Database) -> BlockRef {
-    return try! byHeight.withCursor(readOnly: true) { cursor in
+private func findBestBlock(byID: borrowing LMDB.Database, byHeight: borrowing LMDB.Database) -> BlockRef {
+    try! byHeight.withCursor(readOnly: true) { cursor in
         var id = try! cursor.get(.last)!
         var found = BlockRef?.none
         repeat {
             let ref = try! _get(id, byID: byID)!
-            if ![.stale, .invalid].contains(ref.status) {
+            if ref.status == .full {
                 found = ref
             } else {
                 // Move backwards

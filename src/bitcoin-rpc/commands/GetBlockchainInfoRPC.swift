@@ -6,7 +6,7 @@ extension GetBlockchainInfoRPC {
 
     public func run(blockchain: BlockchainService) async -> Result {
         let chain = await blockchain.params.chain
-        let blocks = await blockchain.validatedHeight
+        let blocks = await blockchain.bestHeight
         let headerHeight = await blockchain.height
         let bestBlockHash = await blockchain.chainTip
 
@@ -24,7 +24,7 @@ extension GetBlockchainInfoRPC {
         return .init(
             chain: chain,
             blocks: blocks,
-            headers: headerHeight, // headerIDs.count - 1,
+            headers: headerHeight,
             bestBlockHash: bestBlockHash!.reversed().hex,
             difficulty: formatter.format(difficulty).lowercased(), // To output `4.656542373906925e-1` instead of 4.6565423739069247e-10
             time: Int(time.timeIntervalSince1970),
@@ -33,7 +33,6 @@ extension GetBlockchainInfoRPC {
             initialBlockDownload: initialBlockDownload,
             chainwork: chainwork.hex,
             sizeOnDisk: sizeOnDisk
-            //hashes: headerIDs.map { $0.reversed().hex }
         )
     }
 }

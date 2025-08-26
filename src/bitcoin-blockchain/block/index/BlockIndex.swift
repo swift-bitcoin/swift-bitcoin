@@ -1,14 +1,21 @@
 /// Block index service protocol.
 protocol BlockIndex: Sendable {
 
-    /// Locators in reverse height order
-    var locators: [BlockStorageLocator] { get async }
+    /// Locators in reverse height order.
+    var blockStorageLocators: [BlockStorageLocator] { get async }
 
-    /// Most recent header.
+    /// Valid header/block with the most chainwork.
     var bestHeader: BlockRef? { get async }
+
+    /// Highest fully-validated block in the currently active chain.
+    var bestBlock: BlockRef { get async }
+
+    func ancestor(of tip: BlockRef, childOf parent: BlockRef) async -> BlockRef?
 
     /// Most recent fully validated block which is an ancestor to the specified header.
     func bestAncestor(of header: BlockRef) async -> BlockRef
+
+    func bestStaleAncestor(of header: BlockRef) async -> BlockRef
 
     func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus) async throws(BlockIndexError) -> BlockRef
 
@@ -18,9 +25,9 @@ protocol BlockIndex: Sendable {
     @discardableResult
     func update(_ id: Block.ID, status: ValidationStatus)  async -> BlockRef
 
-    func has(_ id: Block.ID) async -> Bool
-    func get(_ id: Block.ID) async -> BlockRef // TODO: Probably throws and return value nil-able
+    func get(_ id: Block.ID) async -> BlockRef?
 
+    /// Gets the block reference at the specified height which is part of the active chain.
     func get(at height: Int) async -> BlockRef
 
     /// For _Median Time Past_ calculation.
@@ -40,6 +47,20 @@ protocol BlockIndex: Sendable {
 
     /// To check which inventory block items we don't have.
     func calculateMissingBlocks(_ ids: [Block.ID]) async -> [Block.ID]
+
+    /// Changes a string of fully validated (acvite) blocks to stale (deactivated).
+    /// - Parameters:
+    ///   - tip: The best fully validated block to work our way backwards from.
+    ///   - ancestor: The ancestor at which to stop (non-inclusive).
+    /// - Returns: The deactivated (stale) blocks in descending height order. Use this to revert changes chainstate (coins) one by one.
+    func undo(from tip: BlockRef, backTo ancestor: BlockRef) async -> [BlockRef]
+
+    /// Changes a string of stale blocks back to active (full).
+    /// - Parameters:
+    ///   - tip: The last header to work our way backwards from.
+    ///   - ancestor: The ancestor at which to stop (non-inclusive).
+    /// - Returns: The reactivated blocks in ascending height order. Use this to reapply changes to chainstate (coins) one by one.
+    func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) async -> [BlockRef]
 
     func undoLastBlock() async -> BlockRef
 }

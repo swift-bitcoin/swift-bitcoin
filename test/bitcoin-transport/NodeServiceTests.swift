@@ -353,7 +353,7 @@ struct NodeServiceTests: ~Copyable {
         let satoshiBlock = try Block(messageSH11_block.payload)
         #expect(satoshiBlock.txs.count == 1)
 
-        let halBlocksBefore = await halChain.validatedHeight + 1
+        let halBlocksBefore = await halChain.bestHeight + 1
         #expect(halBlocksBefore == 1)
 
         // … --(sendheaders)->> Hal
@@ -371,7 +371,7 @@ struct NodeServiceTests: ~Copyable {
         try await hal.processMessage(messageSH11_block, from: satoshiPeer)
         _ = try #require(await task.value)
 
-        let halBlocksAfter = await halChain.validatedHeight + 1
+        let halBlocksAfter = await halChain.bestHeight + 1
         #expect(halBlocksAfter == 2)
 
         // No Response

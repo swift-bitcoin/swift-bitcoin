@@ -163,15 +163,15 @@ struct NodeBootstrapTests {
 
         // Setup blockchains
         let aliceBlock1 = try #require(await alice.blockchain.generateTo(pubkey))
-        let aliceTip  = await alice.blockchain.validatedHeight
+        let aliceTip  = await alice.blockchain.bestHeight
         #expect(aliceTip == 1)
 
         // let pubkey = try #require(PubKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         try await bob.blockchain.processBlock(aliceBlock1)
         try await carol.blockchain.processBlock(aliceBlock1)
 
-        #expect(await bob.blockchain.validatedHeight == aliceTip)
-        #expect(await carol.blockchain.validatedHeight == aliceTip)
+        #expect(await bob.blockchain.bestHeight == aliceTip)
+        #expect(await carol.blockchain.bestHeight == aliceTip)
 
         // Grab block 1's coinbase transaction and output.
         let coinbaseTx = aliceBlock1.txs[0]
@@ -405,11 +405,11 @@ struct NodeBootstrapTests {
         try await carol.blockchain.processBlock(aliceBlock1)
 
         #expect(await alice.blockchain.height == 1)
-        #expect(await alice.blockchain.validatedHeight == 1)
+        #expect(await alice.blockchain.bestHeight == 1)
         #expect(await bob.blockchain.height == 1)
-        #expect(await bob.blockchain.validatedHeight == 1)
+        #expect(await bob.blockchain.bestHeight == 1)
         #expect(await carol.blockchain.height == 1)
-        #expect(await carol.blockchain.validatedHeight == 1)
+        #expect(await carol.blockchain.bestHeight == 1)
 
         // Grab block 1's coinbase transaction and output.
         let coinbaseTx = aliceBlock1.txs[0]
@@ -444,7 +444,7 @@ struct NodeBootstrapTests {
         let aliceBlock2 = try #require(await alice.blockchain.generateTo(pubkey))
 
         #expect(await alice.blockchain.height == 2)
-        #expect(await alice.blockchain.validatedHeight == 2)
+        #expect(await alice.blockchain.bestHeight == 2)
 
         // Alice --(headers)->> …
         let messageAB0_headers = try #require(await aliceToBob.next())
@@ -456,7 +456,7 @@ struct NodeBootstrapTests {
         // … --(header)->> Bob
         try await bob.processMessage(messageAB0_headers, from: peerA)
         #expect(await bob.blockchain.height == 2)
-        #expect(await bob.blockchain.validatedHeight == 1)
+        #expect(await bob.blockchain.bestHeight == 1)
 
         // Bob --(getdata)->> …
         let messageBA0_getdata = try #require(await bob.popMessage(peerA))
@@ -478,7 +478,7 @@ struct NodeBootstrapTests {
         // … --(cmpctblock)->> Bob
         try await bob.processMessage(messageAB1_cmpctblock, from: peerA)
         #expect(await bob.blockchain.height == 2)
-        #expect(await bob.blockchain.validatedHeight == 2)
+        #expect(await bob.blockchain.bestHeight == 2)
 
         // Bob --(headers)->> …
         let messageBC0_headers = try #require(await bobToCarol.next())

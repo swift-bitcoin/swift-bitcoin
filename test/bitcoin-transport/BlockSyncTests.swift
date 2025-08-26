@@ -310,7 +310,7 @@ struct BlockSyncTests {
         // No Response
         #expect(await bob.popMessage(peerA) == nil)
 
-        await #expect(aliceChain.validatedHeight == 0)
+        await #expect(aliceChain.bestHeight == 0)
 
         // … --(sendheaders)->> Alice
         // … --(block)->> Alice
@@ -325,7 +325,7 @@ struct BlockSyncTests {
         }
         try await alice.processMessage(mBA11_block, from: peerB)
         _ = try #require(await task.value)
-        #expect(await aliceChain.validatedHeight == 1)
+        #expect(await aliceChain.bestHeight == 1)
 
         task = Task {
             var i = blockUpdates.makeAsyncIterator()
@@ -334,7 +334,7 @@ struct BlockSyncTests {
         try await alice.processMessage(mBA12_block, from: peerB)
         _ = try #require(await task.value)
 
-        #expect(await aliceChain.validatedHeight == 2)
+        #expect(await aliceChain.bestHeight == 2)
 
         // Alice --(getdata)->> …
         let mAB12_getdata = try #require(await alice.popMessage(peerB))
@@ -360,7 +360,7 @@ struct BlockSyncTests {
         }
         try await alice.processMessage(mBA13_block, from: peerB)
         _ = try #require(await task.value)
-        #expect(await aliceChain.validatedHeight == 3)
+        #expect(await aliceChain.bestHeight == 3)
 
         // No Response
         #expect(await alice.popMessage(peerB) == nil)
