@@ -32,7 +32,7 @@ struct BlockchainServiceTests {
         #expect(bobMissingBlocks.count == 1 && bobMissingBlock == block1_ && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
-        await #expect(bob.validatedHeight == 1)
+        await #expect(bob.bestHeight == 1)
 
         await alice.stop()
         await bob.stop()
@@ -50,7 +50,7 @@ struct BlockchainServiceTests {
         let bob = BlockchainService()
         await bob.start()
         await bob.generateTo(pubkey)
-        await bob.generateTo(pubkey)
+        await bob.generateTo(pubkey) // TODO: This block would/should fail if it shares the same timestamp as the previous, as they need to be strictly newer than the median time
         await bob.generateTo(pubkey)
 
         let aliceLocator = await alice.makeBlockLocator()
@@ -61,7 +61,7 @@ struct BlockchainServiceTests {
 
         try await alice.processHeaders(bobHeaders)
         await #expect(alice.height == 3)
-        await #expect(alice.validatedHeight == 0)
+        await #expect(alice.bestHeight == 0)
 
         let aliceMissing = await alice.getNextMissingBlocks(2)
         #expect(aliceMissing.count == 2)
@@ -71,11 +71,11 @@ struct BlockchainServiceTests {
 
         try await alice.processBlock(bobBlocks1to2[0])
         await #expect(alice.height == 3)
-        await #expect(alice.validatedHeight == 1)
+        await #expect(alice.bestHeight == 1)
 
         try await alice.processBlock(bobBlocks1to2[1])
         await #expect(alice.height == 3)
-        await #expect(alice.validatedHeight == 2)
+        await #expect(alice.bestHeight == 2)
 
         let aliceMissing2 = await alice.getNextMissingBlocks(2)
         #expect(aliceMissing2.count == 1)
@@ -85,7 +85,7 @@ struct BlockchainServiceTests {
 
         try await alice.processBlock(bobBlocks3to3[0])
         await #expect(alice.height == 3)
-        await #expect(alice.validatedHeight == 3)
+        await #expect(alice.bestHeight == 3)
 
         await alice.stop()
         await bob.stop()

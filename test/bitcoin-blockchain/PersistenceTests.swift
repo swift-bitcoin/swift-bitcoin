@@ -44,7 +44,7 @@ struct PersistenceTests {
         #expect(bobMissingBlocks.count == 1 && bobMissingBlock == header1 && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
-        await #expect(bob.validatedHeight == 1)
+        await #expect(bob.bestHeight == 1)
 
         await alice.stop()
         await bob.stop()
@@ -89,7 +89,7 @@ struct PersistenceTests {
         #expect(bobMissingBlocks.count == 1 && bobMissingBlock == header1 && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
-        await #expect(bob.validatedHeight == 1)
+        await #expect(bob.bestHeight == 1)
 
         await alice.stop()
         await bob.stop()

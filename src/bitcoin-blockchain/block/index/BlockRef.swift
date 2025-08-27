@@ -8,7 +8,6 @@ struct BlockRef: Equatable, Sendable {
 
     init(_ block: Block, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = nil) {
         self.header = block.header
-        self.previous = block.previous
         self.height = height
         self.chainwork = chainwork
         self.chainTxCount = chainTxCount
@@ -19,7 +18,6 @@ struct BlockRef: Equatable, Sendable {
     // MARK: - Instance Properties
 
     public let header: Block
-    public let previous: Block.ID
     public let height: Int
     public let chainwork: DifficultyTarget
     public let chainTxCount: Int
@@ -61,7 +59,6 @@ extension ValidationStatus: BinaryCodable {
 extension BlockRef: BinaryCodable {
     init(from decoder: inout BinaryDecoder) throws {
         header = try decoder.decode()
-        previous = try decoder.decode(Block.idLength)
         height = try decoder.decode()
         chainwork = try decoder.decode()
         chainTxCount = try decoder.decode()
@@ -72,7 +69,6 @@ extension BlockRef: BinaryCodable {
 
     func encode(to encoder: inout BinaryEncoder) {
         encoder.encode(header)
-        encoder.encode(previous)
         encoder.encode(height)
         encoder.encode(chainwork)
         encoder.encode(chainTxCount)
@@ -86,7 +82,6 @@ extension BlockRef: BinaryCodable {
     
     func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(header)
-        counter.count(previous)
         counter.count(height)
         counter.count(chainwork)
         counter.count(chainTxCount)

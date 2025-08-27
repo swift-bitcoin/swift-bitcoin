@@ -47,7 +47,7 @@ package struct Database: ~Copyable {
         }
     }
 
-    package func get(_ key: Data) throws(AccessError)  -> Data? {
+    package func get(_ key: Data) throws(AccessError) -> Data? {
         var mutableKey = key
         var data: Data?
         do {

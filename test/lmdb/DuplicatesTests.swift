@@ -76,6 +76,13 @@ struct DuplicatesTests {
 
                 let secondLast1 = try cursor.get(.prevDup)
                 #expect(secondLast1 == Data([0, 1, 2]))
+
+                // Reset the cursor to key 3
+                try cursor.set(key: 3)
+
+                // Get all multiple values at once
+                let bb = try cursor.get(.firstDup)
+                #expect(bb == Data([2, 1, 0]))
             }
         }
     }
