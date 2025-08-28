@@ -217,6 +217,24 @@ actor TransientBlockIndex: BlockIndex {
         return refs
     }
 
+    func makeBlockLocator(from tip: BlockRef) -> [Block.ID] {
+        var have = [Block.ID]()
+        var step = 1
+        var count = step
+        var current = tip
+        while current.header.previous != Block.nullParent {
+            count -= 1
+            if count == 0 {
+                have.append(current.header.id)
+                if have.count >= 10 { step *= 2 }
+                count = step
+            }
+            current = byID[current.header.previous]!
+        }
+        have.append(current.header.id)
+        return have
+    }
+
     func undoLastBlock() -> BlockRef {
         let ref = bestHeader!
         precondition(ref.status == .full) // The chain is fully sync'ed

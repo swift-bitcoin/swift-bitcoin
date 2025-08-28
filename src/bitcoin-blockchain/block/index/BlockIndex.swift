@@ -62,5 +62,7 @@ protocol BlockIndex: Sendable {
     /// - Returns: The reactivated blocks in ascending height order. Use this to reapply changes to chainstate (coins) one by one.
     func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) async -> [BlockRef]
 
+    func makeBlockLocator(from tip: BlockRef) async -> [Block.ID]
+
     func undoLastBlock() async -> BlockRef
 }
