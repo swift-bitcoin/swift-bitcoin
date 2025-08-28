@@ -385,7 +385,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// To create the block locator hashes, keep pushing hashes until you go back to the genesis block. After pushing 10 hashes back, the step backwards doubles every loop.
-    public func makeBlockLocator() async -> [Data] {
+    private func makeBlockLocatorHeightBased() async -> [Data] {
         precondition(status == .running)
 
         var have = [Data]()
@@ -401,6 +401,11 @@ public actor BlockchainService: Sendable {
             height = max(height - step, 0) // TODO: Use "skiplist"
         }
         return have
+    }
+
+    public func makeBlockLocator() async -> [Data] {
+        precondition(status == .running)
+        return await blockIndex.makeBlockLocator(from: bestHeader)
     }
 
     public func findHeaders(using locator: [Data]) async -> [Block] {

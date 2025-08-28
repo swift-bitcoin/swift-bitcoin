@@ -274,6 +274,26 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
+    func makeBlockLocator(from tip: BlockRef) -> [Block.ID] {
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            var have = [Block.ID]()
+            var step = 1
+            var count = step
+            var current = tip
+            while current.header.previous != Block.nullParent {
+                count -= 1
+                if count == 0 {
+                    have.append(current.header.id)
+                    if have.count >= 10 { step *= 2 }
+                    count = step
+                }
+                current = try! _get(current.header.previous, byID: byID)!
+            }
+            have.append(current.header.id)
+            return have
+        }
+    }
+
     func undoLastBlock() -> BlockRef {
         var ref = try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             findBestBlock(byID: byID, byHeight: byHeight)
