@@ -37,11 +37,11 @@ struct InvalidTxTests {
             if includeFlags.contains("WITNESS") { config.insert(.witness) }
             if includeFlags.contains("NULLFAIL") { config.insert(.nullFail) }
             if includeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.insert(.discourageUpgradableWitnessProgram) }
-            let result = tx.verifyScript(prevouts: prevouts, config: config)
+            let result = tx.verifyScripts(prevouts: prevouts, config: config)
             #expect(!result)
 
             if !includeFlags.isEmpty {
-                let resultSuccess = tx.verifyScript(prevouts: prevouts, config: [])
+                let resultSuccess = tx.verifyScripts(prevouts: prevouts, config: [])
                 #expect(resultSuccess)
             }
         }

@@ -13,8 +13,7 @@ struct DocumentationExamples {
         // # Prepare the Blockchain service.
 
         // Create a fresh blockchain service instance (on regtest).
-        let blockchain = BlockchainService()
-        await blockchain.start()
+        let blockchain = try await BlockchainService()
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         var blocks = [Block]()
@@ -42,7 +41,7 @@ struct DocumentationExamples {
         // # We can verify that the transaction was signed correctly.
 
         // Make sure the transaction was signed correctly by verifying the scripts.
-        let isVerified = signedTx.verifyScript(prevouts: [prevout])
+        let isVerified = signedTx.verifyScripts(prevouts: [prevout])
 
         #expect(isVerified)
         // Yay! Our transaction is valid.
@@ -67,12 +66,11 @@ struct DocumentationExamples {
 
         // # Finally let's make sure the transaction was confirmed in a block.
 
-        #expect(await blockchain.height == 101)
+        #expect(await blockchain.headers == 101)
 
         // Verify our transaction was confirmed in a block.
         #expect(lastBlock.txs[1] == signedTx)
 
         // Our transaction is now confirmed in the blockchain!
-        await blockchain.stop()
     }
 }

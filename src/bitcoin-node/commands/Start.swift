@@ -92,12 +92,11 @@ private func launchNode(_ config: NodeConfig, host: String, port: Int?) async th
     case .regtest:
         .regtest
     }
-    let blockchain = BlockchainService(
+    let blockchain = try await BlockchainService(
         params: params,
         config: .init(dataLocation: dataLocation),
         logger: logger
     )
-    await blockchain.start()
 
     let node = NodeService(blockchain: blockchain, config: .init(network: network), logger: logger)
 
@@ -119,7 +118,7 @@ private func launchNode(_ config: NodeConfig, host: String, port: Int?) async th
     await rpcService.setServiceGroup(serviceGroup)
     try await serviceGroup.run()
 
-    await blockchain.stop()
+    await blockchain.unsubscribeAll()
 }
 
 enum DataLocationType: String, ExpressibleByArgument {

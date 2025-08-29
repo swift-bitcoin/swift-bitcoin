@@ -1,0 +1,4 @@
+version: 1
+builder:
+  configs:
+    - documentation_targets: [Bitcoin, BitcoinCrypto, BitcoinBase, BitcoinMiniscript, BitcoinWallet, BitcoinPSBT, BitcoinBlockchain, BitcoinTransport, BitcoinRPC, BitcoinNode, BitcoinUtility]

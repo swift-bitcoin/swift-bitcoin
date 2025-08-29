@@ -51,7 +51,7 @@ actor PersistentBlockIndex: BlockIndex {
                 var found = BlockRef?.none
                 repeat {
                     let ref = try! _get(id, byID: byID)!
-                    if ref.status == .full {
+                    if ref.status == .active {
                         found = ref
                     } else if let maybeID = try! cursor.get(.prevDup) { // Move backwards
                         // If no more duplicates for this height, move to previous height
@@ -82,7 +82,7 @@ actor PersistentBlockIndex: BlockIndex {
     func bestAncestor(of header: BlockRef) -> BlockRef {
         try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             var candidate = header
-            while candidate.status != .full {
+            while candidate.status != .active {
                 candidate = try! _get(candidate.header.previous, byID: byID)!
             }
             precondition(![.stale, .invalid].contains(candidate.status))
@@ -94,7 +94,7 @@ actor PersistentBlockIndex: BlockIndex {
     func bestStaleAncestor(of header: BlockRef) -> BlockRef {
         try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             var candidate = header
-            while ![.stale, .full].contains(candidate.status) {
+            while ![.stale, .active].contains(candidate.status) {
                 candidate = try! _get(candidate.header.previous, byID: byID)!
             }
             return candidate
@@ -246,7 +246,7 @@ actor PersistentBlockIndex: BlockIndex {
             var refs = [BlockRef]()
             repeat {
                 var ref = try _get(id, byID: byID)!
-                precondition(ref.status == .full)
+                precondition(ref.status == .active)
                 ref.status = .stale
                 try byID.put(ref.data, key: id)
                 refs.insert(ref, at: 0)
@@ -266,7 +266,7 @@ actor PersistentBlockIndex: BlockIndex {
                 if ref.status != .stale {
                     continue
                 }
-                ref.status = .full
+                ref.status = .active
                 try byID.put(ref.data, key: ref.header.id)
                 refs.insert(ref, at: 0)
             } while id != ancestor.header.id
@@ -298,7 +298,7 @@ actor PersistentBlockIndex: BlockIndex {
         var ref = try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             findBestBlock(byID: byID, byHeight: byHeight)
         }
-        precondition(ref.status == .full)
+        precondition(ref.status == .active)
         return try! env.withTransaction(db: byID) { _, byID in
             ref.status = .stale
             try byID.put(ref.header.id, key: ref.data)
@@ -393,7 +393,7 @@ private func findBestBlock(byID: borrowing LMDB.Database, byHeight: borrowing LM
         var found = BlockRef?.none
         repeat {
             let ref = try! _get(id, byID: byID)!
-            if ref.status == .full {
+            if ref.status == .active {
                 found = ref
             } else {
                 // Move backwards

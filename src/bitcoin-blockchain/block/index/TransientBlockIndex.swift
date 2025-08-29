@@ -29,7 +29,7 @@ actor TransientBlockIndex: BlockIndex {
         for ids in byHeight.values.reversed() {
             for id in ids {
                 let ref = byID[id]!
-                if ref.status == .full {
+                if ref.status == .active {
                     return ref
                 }
             }
@@ -60,7 +60,7 @@ actor TransientBlockIndex: BlockIndex {
 
     func bestAncestor(of header: BlockRef) async -> BlockRef {
         var candidate = header
-        while candidate.status != .full {
+        while candidate.status != .active {
             candidate = byID[candidate.header.previous]!
         }
         return candidate
@@ -69,7 +69,7 @@ actor TransientBlockIndex: BlockIndex {
     /// Stale of full ancestor
     func bestStaleAncestor(of header: BlockRef) async -> BlockRef {
         var candidate = header
-        while ![.stale, .full].contains(candidate.status) {
+        while ![.stale, .active].contains(candidate.status) {
             candidate = byID[candidate.header.previous]!
         }
         return candidate
@@ -194,7 +194,7 @@ actor TransientBlockIndex: BlockIndex {
         var refs = [BlockRef]()
         repeat {
             let ref = byID[id]!
-            precondition(ref.status == .full)
+            precondition(ref.status == .active)
             byID[id]!.status = .stale
             refs.append(byID[id]!)
             id = ref.header.previous
@@ -211,7 +211,7 @@ actor TransientBlockIndex: BlockIndex {
             if ref.status != .stale {
                 continue
             }
-            byID[ref.header.id]!.status = .full
+            byID[ref.header.id]!.status = .active
             refs.insert(byID[ref.header.id]!, at: 0)
         } while id != ancestor.header.id
         return refs
@@ -237,7 +237,7 @@ actor TransientBlockIndex: BlockIndex {
 
     func undoLastBlock() -> BlockRef {
         let ref = bestHeader!
-        precondition(ref.status == .full) // The chain is fully sync'ed
+        precondition(ref.status == .active) // The chain is fully sync'ed
         byID[ref.header.id]!.status = .stale
         return byID[ref.header.previous]!
     }

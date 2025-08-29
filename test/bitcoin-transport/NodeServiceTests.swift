@@ -18,8 +18,7 @@ struct NodeServiceTests: ~Copyable {
     var halOut = AsyncChannel<NetworkMessage>.Iterator?.none
 
     init() async throws {
-        let satoshiChain = BlockchainService()
-        await satoshiChain.start()
+        let satoshiChain = try await BlockchainService()
         let pubkey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         await satoshiChain.generateTo(pubkey)
 
@@ -30,8 +29,7 @@ struct NodeServiceTests: ~Copyable {
         self.halPeer = halPeer
         satoshiOut = await satoshi.getChannel(for: halPeer).makeAsyncIterator()
 
-        let halChain = BlockchainService()
-        await halChain.start()
+        let halChain = try await BlockchainService()
         self.halChain = halChain
         let hal = NodeService(blockchain: halChain, config: .init(network: .regtest, feeFilterRate: 2))
         Task {
@@ -52,7 +50,7 @@ struct NodeServiceTests: ~Copyable {
         if let satoshi, let satoshiChain {
             Task {
                 await satoshi.stop()
-                await satoshiChain.stop()
+                await satoshiChain.unsubscribeAll()
             }
         }
         if let satoshiPeer, let hal {
@@ -63,7 +61,7 @@ struct NodeServiceTests: ~Copyable {
         if let hal, let halChain {
             Task {
                 await hal.stop()
-                await halChain.stop()
+                await halChain.unsubscribeAll()
             }
         }
     }
@@ -295,12 +293,12 @@ struct NodeServiceTests: ~Copyable {
 
         halState = await hal.state
         #expect(halState.peers[satoshiPeer]!.compactBlocksVersionLocked)
-        await #expect(halChain.height == 0)
+        await #expect(halChain.headers == 0)
 
         // … --(headers)->> Hal
         try await hal.processMessage(messageSH9_headers, from: satoshiPeer)
 
-        #expect(await halChain.height == 1)
+        #expect(await halChain.headers == 1)
 
         // Hal --(sendheaders)->> …
         let messageHS09_sendheaders = try #require(await hal.popMessage(satoshiPeer))
@@ -322,12 +320,12 @@ struct NodeServiceTests: ~Copyable {
         satoshiState = await satoshi.state
         #expect(satoshiState.peers[halPeer]!.compactBlocksVersionLocked)
 
-        let satoshiHeightBefore = await satoshiChain.height
+        let satoshiHeightBefore = await satoshiChain.headers
 
         // … --(headers)->> Satoshi
         try await satoshi.processMessage(messageHS8_headers, from: halPeer)
 
-        let satoshiHeightAfter = await satoshiChain.height
+        let satoshiHeightAfter = await satoshiChain.headers
         #expect(satoshiHeightAfter == satoshiHeightBefore)
 
         // Satoshi --(sendheaders)->> …
@@ -353,7 +351,7 @@ struct NodeServiceTests: ~Copyable {
         let satoshiBlock = try Block(messageSH11_block.payload)
         #expect(satoshiBlock.txs.count == 1)
 
-        let halBlocksBefore = await halChain.bestHeight + 1
+        let halBlocksBefore = await halChain.height + 1
         #expect(halBlocksBefore == 1)
 
         // … --(sendheaders)->> Hal
@@ -371,7 +369,7 @@ struct NodeServiceTests: ~Copyable {
         try await hal.processMessage(messageSH11_block, from: satoshiPeer)
         _ = try #require(await task.value)
 
-        let halBlocksAfter = await halChain.bestHeight + 1
+        let halBlocksAfter = await halChain.height + 1
         #expect(halBlocksAfter == 2)
 
         // No Response

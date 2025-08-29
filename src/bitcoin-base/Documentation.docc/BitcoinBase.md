@@ -35,7 +35,7 @@ let unsignedTx = Transaction(
     ])
 
 // Sign the transaction by first calculating the signature hash.
-let sighash = unsignedTx.signHash(sighashType: .all, input: 0, prevout: prevout, scriptCode: prevout.script.data)
+let sighash = SignatureHash(tx: unsignedTx, input: 0, sighashType: .all, scriptCode: prevout.script.data)
 …
 ```
 
