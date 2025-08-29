@@ -9,7 +9,7 @@ extension Transaction {
 
     // MARK: - Instance Methods
 
-    public func verifyScript(prevouts: [TransactionOutput], config: ScriptConfig = .standard) -> Bool {
+    public func verifyScripts(prevouts: [TransactionOutput], config: ScriptConfig = .standard) -> Bool {
         var runtime = ScriptRuntime(config, tx: self, prevouts: prevouts)
         for i in ins.indices {
             runtime.input = i

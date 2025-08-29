@@ -18,8 +18,7 @@ struct PersistenceTests {
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey
 
-        let alice = BlockchainService(config: .init(dataLocation: .custom(path: dataDir.string)))
-        await alice.start()
+        let alice = try await BlockchainService(config: .init(dataLocation: .custom(path: dataDir.string)))
 
         // print(dataDir.string)
         let dataDirContents = try fm.contentsOfDirectory(atPath: dataDir.string)
@@ -29,11 +28,10 @@ struct PersistenceTests {
 
         let header1 = try #require(await alice.generateTo(pubkey))
 
-        let bob = BlockchainService()
-        await bob.start()
+        let bob = try await BlockchainService()
 
         try await bob.processHeaders([header1.header])
-        await #expect(bob.height == 1)
+        await #expect(bob.headers == 1)
 
         let bobMissingBlockIDs = await bob.getNextMissingBlocks(.max)
         #expect(bobMissingBlockIDs == [header1.id])
@@ -44,10 +42,7 @@ struct PersistenceTests {
         #expect(bobMissingBlocks.count == 1 && bobMissingBlock == header1 && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
-        await #expect(bob.bestHeight == 1)
-
-        await alice.stop()
-        await bob.stop()
+        await #expect(bob.height == 1)
 
         try? fm.removeItem(atPath: dataDir.string)
     }
@@ -63,13 +58,11 @@ struct PersistenceTests {
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey
 
-        let alice = BlockchainService()
-        await alice.start()
+        let alice = try await BlockchainService()
 
         let header1 = try #require(await alice.generateTo(pubkey))
 
-        let bob = BlockchainService(config: .init(dataLocation: .custom(path: dataDir.string)))
-        await bob.start()
+        let bob = try await BlockchainService(config: .init(dataLocation: .custom(path: dataDir.string)))
 
         let dataDirContents = try fm.contentsOfDirectory(atPath: dataDir.string)
         #expect(dataDirContents.contains("blocks"))
@@ -78,7 +71,7 @@ struct PersistenceTests {
 
         try await bob.processHeaders([header1.header])
 
-        await #expect(bob.height == 1)
+        await #expect(bob.headers == 1)
 
         let bobMissingBlockIDs = await bob.getNextMissingBlocks(.max)
         #expect(bobMissingBlockIDs == [header1.id])
@@ -89,10 +82,7 @@ struct PersistenceTests {
         #expect(bobMissingBlocks.count == 1 && bobMissingBlock == header1 && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
-        await #expect(bob.bestHeight == 1)
-
-        await alice.stop()
-        await bob.stop()
+        await #expect(bob.height == 1)
 
         try! fm.removeItem(atPath: dataDir.string)
     }

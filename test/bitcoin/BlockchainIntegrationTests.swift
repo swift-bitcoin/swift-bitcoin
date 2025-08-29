@@ -25,10 +25,8 @@ struct BlockchainIntegrationTests {
         let gabrielKey = SecretKey()
         let gabrielPK = gabrielKey.pubkey
 
-        let alice = BlockchainService()
-        await alice.start()
-        let bob = BlockchainService()
-        await bob.start()
+        let alice = try await BlockchainService()
+        let bob = try await BlockchainService()
 
         let genesisBlock = await alice.genesisBlock
         #expect(await bob.genesisBlock == genesisBlock)
@@ -39,12 +37,12 @@ struct BlockchainIntegrationTests {
             let newBlock = try #require(await alice.generateTo(alicePK))
             newBlocks.append(newBlock)
         }
-        #expect(await alice.height == 100)
+        #expect(await alice.headers == 100)
 
         for i in 0 ..< 100 {
             try await bob.processBlock(newBlocks[i])
         }
-        #expect(await bob.height == 100)
+        #expect(await bob.headers == 100)
 
         // Grab block 1's coinbase transaction and output.
         let coinbaseTx = newBlocks[0].txs[0]
@@ -72,9 +70,9 @@ struct BlockchainIntegrationTests {
         let aliceLastBlock = try #require(await alice.generateTo(alicePK))
         #expect(await alice.mempool.count == 0)
 
-        #expect(await bob.height == 100)
+        #expect(await bob.headers == 100)
         try await bob.processBlock(aliceLastBlock)
-        #expect(await bob.height == 101)
+        #expect(await bob.headers == 101)
         #expect(await bob.mempool.count == 0)
 
         var tA1_b2 = Transaction(
@@ -114,18 +112,14 @@ struct BlockchainIntegrationTests {
         let bobLastBlock = try #require(await bob.generateTo(bobPK))
         #expect(await bob.mempool.isEmpty)
         #expect(bobLastBlock.txs[2] == tA0_A2_c2)
-        #expect(await bob.height == 102)
+        #expect(await bob.headers == 102)
 
         try await alice.processBlock(bobLastBlock)
         #expect(await alice.mempool.isEmpty)
-
-        await alice.stop()
-        await bob.stop()
     }
 
     @Test func blockUndo() async throws {
-        let blockchain = BlockchainService(params: .swiftTesting)
-        await blockchain.start()
+        let blockchain = try await BlockchainService(params: .swiftTesting)
 
         let aliceKey = SecretKey()
         let alicePK = aliceKey.pubkey
@@ -201,7 +195,7 @@ struct BlockchainIntegrationTests {
         #expect(utxoSet2.count == expectedUTXOSet2.count)
         #expect(utxoSet2 == expectedUTXOSet2)
 
-        #expect(await blockchain.bestHeight == 2)
+        #expect(await blockchain.height == 2)
 
         try await blockchain.undoLastBlock()
 
@@ -209,20 +203,15 @@ struct BlockchainIntegrationTests {
         #expect(utxoSet1_.count == expectedUTXOSet1.count)
         #expect(utxoSet1_ == expectedUTXOSet1)
 
-        #expect(await blockchain.bestHeight == 1)
-
-        await blockchain.stop()
+        #expect(await blockchain.height == 1)
     }
 
     @Test func simpleReorg() async throws {
-        let alice = BlockchainService(params: .swiftTesting)
-        await alice.start()
+        let alice = try await BlockchainService(params: .swiftTesting)
 
-        let bob = BlockchainService(params: .swiftTesting)
-        await bob.start()
+        let bob = try await BlockchainService(params: .swiftTesting)
 
-        let carol = BlockchainService(params: .swiftTesting)
-        await carol.start()
+        let carol = try await BlockchainService(params: .swiftTesting)
 
         let aliceKey = SecretKey()
         let alicePK = aliceKey.pubkey
@@ -259,10 +248,6 @@ struct BlockchainIntegrationTests {
         try await carol.processBlock(blockCC, immediate: true)
 
         #expect(await carol.chainTip == blockCC.id)
-
-        await alice.stop()
-        await bob.stop()
-        await carol.stop()
     }
 
 }

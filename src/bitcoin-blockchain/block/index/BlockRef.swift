@@ -91,5 +91,5 @@ extension BlockRef: BinaryCodable {
 }
 
 public enum ValidationStatus: UInt8, Sendable {
-    case header, merkle, full, invalid, stale
+    case header, merkle, active, invalid, stale
 }

@@ -12,16 +12,14 @@ struct BlockchainServiceTests {
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey
 
-        let alice = BlockchainService()
-        await alice.start()
+        let alice = try await BlockchainService()
         let block1_ = try #require(await alice.generateTo(pubkey))
         let header1 = block1_.header
 
-        let bob = BlockchainService()
-        await bob.start()
+        let bob = try await BlockchainService()
 
         try await bob.processHeaders([header1])
-        await #expect(bob.height == 1)
+        await #expect(bob.headers == 1)
 
         let bobMissingBlockIDs = await bob.getNextMissingBlocks(.max)
         #expect(bobMissingBlockIDs == [header1.id])
@@ -32,10 +30,7 @@ struct BlockchainServiceTests {
         #expect(bobMissingBlocks.count == 1 && bobMissingBlock == block1_ && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
-        await #expect(bob.bestHeight == 1)
-
-        await alice.stop()
-        await bob.stop()
+        await #expect(bob.height == 1)
     }
 
     /// Tests synchronizing blocks between two blockchains.
@@ -44,11 +39,9 @@ struct BlockchainServiceTests {
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey
 
-        let alice = BlockchainService()
-        await alice.start()
+        let alice = try await BlockchainService()
 
-        let bob = BlockchainService()
-        await bob.start()
+        let bob = try await BlockchainService()
         await bob.generateTo(pubkey)
         await bob.generateTo(pubkey) // TODO: This block would/should fail if it shares the same timestamp as the previous, as they need to be strictly newer than the median time
         await bob.generateTo(pubkey)
@@ -60,8 +53,8 @@ struct BlockchainServiceTests {
         #expect(bobHeaders.count == 3)
 
         try await alice.processHeaders(bobHeaders)
-        await #expect(alice.height == 3)
-        await #expect(alice.bestHeight == 0)
+        await #expect(alice.headers == 3)
+        await #expect(alice.height == 0)
 
         let aliceMissing = await alice.getNextMissingBlocks(2)
         #expect(aliceMissing.count == 2)
@@ -70,12 +63,12 @@ struct BlockchainServiceTests {
         #expect(bobBlocks1to2.count == 2)
 
         try await alice.processBlock(bobBlocks1to2[0])
-        await #expect(alice.height == 3)
-        await #expect(alice.bestHeight == 1)
+        await #expect(alice.headers == 3)
+        await #expect(alice.height == 1)
 
         try await alice.processBlock(bobBlocks1to2[1])
-        await #expect(alice.height == 3)
-        await #expect(alice.bestHeight == 2)
+        await #expect(alice.headers == 3)
+        await #expect(alice.height == 2)
 
         let aliceMissing2 = await alice.getNextMissingBlocks(2)
         #expect(aliceMissing2.count == 1)
@@ -84,11 +77,8 @@ struct BlockchainServiceTests {
         #expect(bobBlocks3to3.count == 1)
 
         try await alice.processBlock(bobBlocks3to3[0])
+        await #expect(alice.headers == 3)
         await #expect(alice.height == 3)
-        await #expect(alice.bestHeight == 3)
-
-        await alice.stop()
-        await bob.stop()
     }
 
 
@@ -100,8 +90,7 @@ struct BlockchainServiceTests {
         let pubkey = secretKey.pubkey
 
         // Instantiate a fresh Bitcoin service (regtest).
-        let blockchain = BlockchainService()
-        await blockchain.start()
+        let blockchain = try await BlockchainService()
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         for _ in 0 ..< 100 {
@@ -147,7 +136,7 @@ struct BlockchainServiceTests {
             outs: unsignedTx.outs)
 
         // Make sure the transaction was signed correctly by verifying the scripts.
-        #expect(signedTx.verifyScript(prevouts: [prevout]))
+        #expect(signedTx.verifyScripts(prevouts: [prevout]))
 
         // Submit the signed transaction to the mempool.
         try await blockchain.addTransaction(signedTx)
@@ -160,12 +149,10 @@ struct BlockchainServiceTests {
 
         // Verify the mempool is empty once again.
         #expect(mempoolAfter == 0)
-        let blocks = await blockchain.height + 1
+        let blocks = await blockchain.headers + 1
         #expect(blocks == 102)
         // Verify our transaction was confirmed in a block.
         #expect(lastBlock.txs[1] == signedTx)
-
-        await blockchain.stop()
     }
 
     @Test("Difficulty Target")
@@ -201,8 +188,7 @@ struct BlockchainServiceTests {
             genesisBlockTarget: 0x207fffff,
             assumeValid: nil
         )
-        let blockchain = BlockchainService(params: consensusParams)
-        await blockchain.start()
+        let blockchain = try await BlockchainService(params: consensusParams)
         let genesisBlock = await blockchain.genesisBlock
 
         #expect(genesisBlock.target == 0x207fffff)
@@ -227,7 +213,6 @@ struct BlockchainServiceTests {
             }
             #expect(header.target == expectedTarget)
         }
-        await blockchain.stop()
     }
 
     @Test("Difficulty", arguments: [

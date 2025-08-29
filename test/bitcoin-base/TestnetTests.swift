@@ -11,7 +11,7 @@ struct TestnetTests {
         let prevouts = [
             TransactionOutput(value: 20000, script: try Script(Data(hex: "51024e73")!))
         ]
-        let result = tx.verifyScript(prevouts: prevouts)
+        let result = tx.verifyScripts(prevouts: prevouts)
         #expect(result)
     }
 
@@ -22,7 +22,7 @@ struct TestnetTests {
         let prevouts = [
             TransactionOutput(value: 1200, script: try Script(Data(hex: "0020fa8375812f91904da19c723c231901efbf4e5482f03329e0883a09688ac1267d")!))
         ]
-        let result = tx.verifyScript(prevouts: prevouts)
+        let result = tx.verifyScripts(prevouts: prevouts)
         #expect(result)
     }
 
@@ -33,7 +33,7 @@ struct TestnetTests {
             TransactionOutput(value: 1300, script: try Script(Data(hex: "0020f67b5efe01c719eba31b617d99e223d9405ead4c0e12638aaec53c77214c5607")!)),
             TransactionOutput(value: 5000001869, script: try Script(Data(hex: "0014731938f567b6085cda63eb5101a13cfb5d9cca6a")!))
         ]
-        let result = tx.verifyScript(prevouts: prevouts, config: .mandatory)
+        let result = tx.verifyScripts(prevouts: prevouts, config: .mandatory)
         #expect(result)
     }
 }

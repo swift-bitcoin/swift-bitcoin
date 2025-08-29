@@ -39,12 +39,12 @@ Prepare the Blockchain service.
 
 ```swift
 // Create a fresh blockchain service instance (on regtest).
-let blockchain = BlockchainService()
-await blockchain.start()
+let blockchain = try await BlockchainService()
 
 // Mine 100 blocks so block 1's coinbase output reaches maturity.
-for _ in 0 ..< 100 {
-    await blockchain.generateTo(address.script)!
+var blocks = [Block]()
+for _ in 1 ... 100 {
+    blocks.append(await blockchain.generateTo(address.script)!)
 }
 ```
 
@@ -52,7 +52,7 @@ Prepare our transaction.
 
 ```swift
 // Grab block 1's coinbase transaction and output.
-let fundingTx = await blockchain.blocks[1].txs[0]
+let fundingTx = blocks[0].txs[0]
 let prevout = fundingTx.outs[0]
 
 // Create a new transaction spending from the previous transaction's outpoint.
@@ -65,7 +65,7 @@ let spendingTx = Transaction(ins: [unsignedInput], outs: [address.out(100)])
 We now need to sign the transaction using our secret key.
 
 ```swift
-let signer = TransactionSigner(tx: spendingTx, prevouts: [prevout])
+var signer = TransactionSigner(tx: spendingTx, prevouts: [prevout])
 let signedTx = signer.sign(input: 0, with: secretKey)
 ```
 
@@ -73,7 +73,7 @@ We can verify that the transaction was signed correctly.
 
 ```swift
 // Make sure the transaction was signed correctly by verifying the scripts.
-let isVerified = signedTx.verifyScript(prevouts: [prevout])
+let isVerified = signedTx.verifyScripts(prevouts: [prevout])
 
 #expect(isVerified)
 // Yay! Our transaction is valid.
@@ -94,9 +94,6 @@ After confirming the transaction was accepted we can mine a block and get it con
 ```swift
 // Let's mine another block to confirm our transaction.
 
-// In this case we can re-use the address we created before.
-let pubkeyHash = Data(Hash160.hash(data: pubkey.data))
-
 // Mine one block to our address.
 let lastBlock = await blockchain.generateTo(address.script)!
 
@@ -107,16 +104,12 @@ let lastBlock = await blockchain.generateTo(address.script)!
 Finally let's make sure the transaction was confirmed in a block.
 
 ```swift
-let blocks = await blockchain.blocks.count
-#expect(blocks == 102)
+#expect(await blockchain.headers == 101)
 
-let lastBlock = await blockchain.blocks.last!
 // Verify our transaction was confirmed in a block.
-
 #expect(lastBlock.txs[1] == signedTx)
-// Our transaction is now confirmed in the blockchain!
 
-await blockchain.stop()
+// Our transaction is now confirmed in the blockchain!
 ```
 
 We have effectively recreated the entire transaction lifecycle.

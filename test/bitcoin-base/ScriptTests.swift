@@ -48,7 +48,7 @@ struct ScriptTests {
                 .init(value: txCredit.outs[0].value)
             ]
         )
-        let result = txSpend.verifyScript(prevouts: [txCredit.outs[0]], config: test.flags)
+        let result = txSpend.verifyScripts(prevouts: [txCredit.outs[0]], config: test.flags)
         if test.evalTrue {
             #expect(result)
         } else if test.expectedErrors.isEmpty {

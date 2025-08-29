@@ -39,7 +39,7 @@ struct WalletDocumentationExamples {
         let signedTx = signer.sign(input: 0, with: bobsSecretKey)
 
         // Verify transaction signatures.
-        let result = signedTx.verifyScript(prevouts: prevouts)
+        let result = signedTx.verifyScripts(prevouts: prevouts)
         #expect(result)
     }
 
@@ -82,7 +82,7 @@ struct WalletDocumentationExamples {
         let signed = signer.sign(input: 4, with: sk)
 
         // Verify transaction signatures.
-        let result = signed.verifyScript(prevouts: prevouts)
+        let result = signed.verifyScripts(prevouts: prevouts)
         #expect(result)
     }
 
@@ -121,7 +121,7 @@ struct WalletDocumentationExamples {
         let signed = signer.sign(input: 3, witnessScript: multisigScript, with: [sk1, sk2])
 
         // Verify transaction signatures.
-        let result = signed.verifyScript(prevouts: prevouts)
+        let result = signed.verifyScripts(prevouts: prevouts)
         #expect(result)
     }
 }

@@ -64,7 +64,7 @@ struct BaseDocumentationExamples {
         // The witness only requires the signature
         spend.ins[3].witness = .init([sigExt3.data])
 
-        let result = spend.verifyScript(prevouts: [prevout0, prevout1, prevout2, prevout3])
+        let result = spend.verifyScripts(prevouts: [prevout0, prevout1, prevout2, prevout3])
         #expect(result)
     }
 
@@ -97,7 +97,7 @@ struct BaseDocumentationExamples {
         // Signatures need to appear in the right order, plus a dummy value
         spend.ins[input].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data)]
 
-        let result = spend.verifyScript(prevouts: [prevout])
+        let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
     }
 
@@ -128,7 +128,7 @@ struct BaseDocumentationExamples {
         // Signatures need to appear in the right order, plus a dummy value
         spend.ins[input].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data), .encodeMinimally(redeemScript.data)]
 
-        let result = spend.verifyScript(prevouts: [prevout])
+        let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
     }
 
@@ -163,7 +163,7 @@ struct BaseDocumentationExamples {
         // Signatures need to appear in the right order, plus a dummy value
         spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, redeemScript.data])
 
-        let result = spend.verifyScript(prevouts: [prevout])
+        let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
     }
 
@@ -199,7 +199,7 @@ struct BaseDocumentationExamples {
         spend.ins[input].witness = .init([sigExt.data, pubkey.data])
         spend.ins[input].script = [.encodeMinimally(redeemScript.data)]
 
-        let result = spend.verifyScript(prevouts: [prevout])
+        let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
     }
 
@@ -238,7 +238,7 @@ struct BaseDocumentationExamples {
         spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, witnessScript.data])
         spend.ins[input].script = [.encodeMinimally(redeemScript.data)]
 
-        let result = spend.verifyScript(prevouts: [prevout])
+        let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
     }
 
@@ -293,7 +293,7 @@ struct BaseDocumentationExamples {
             controlBlocks[0]
         ])
 
-        let result = spend.verifyScript(prevouts: prevouts)
+        let result = spend.verifyScripts(prevouts: prevouts)
         #expect(result)
     }
 

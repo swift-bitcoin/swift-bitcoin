@@ -13,8 +13,7 @@ struct BlockTests {
         let expectedBlockData = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4adae5494dffff7f20020000000101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000"
         let expectedBlockHash = "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
 
-        let blockchain = BlockchainService()
-        await blockchain.start()
+        let blockchain = try await BlockchainService()
 
         let genesisBlock = await blockchain.genesisBlock
         let genesisTx = genesisBlock.txs[0]
@@ -32,8 +31,6 @@ struct BlockTests {
         // TODO: The following value is taken from the function's output so nothing is being verified until replaced with a known-to-be valid ID.
         let expectedShortTxID = 0x774F7D6EDA21 // 0x00005b073a0c72eb
         #expect(genesisBlock.makeShortTxIDs(nonce: 0)[0] == expectedShortTxID)
-
-        await blockchain.stop()
     }
 
     /// Tests one empty block right after the genesis block at height 1. Includes checks for the coinbase transaction.
@@ -133,8 +130,7 @@ struct BlockTests {
 
         let pubkey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
 
-        let blockchain = BlockchainService()
-        await blockchain.start()
+        let blockchain = try await BlockchainService()
         let block = try #require(await blockchain.generateTo(pubkey, blockTime: .init(timeIntervalSince1970: 1704890713)))
 
         let coinbaseTx = block.txs[0]
@@ -152,8 +148,6 @@ struct BlockTests {
         //let expectedShortTxID = Data([0x20, 0xb2, 0x36, 0x73, 0x7a, 0xcb])
         // let expectedShortTxID = 0x0000cb7a7336b220
         //XCTAssertEqual(block.makeShortTxID(for: 0, nonce: 0), expectedShortTxID)
-
-        await blockchain.stop()
     }
 
     @Test("Block date/time nanoseconds")

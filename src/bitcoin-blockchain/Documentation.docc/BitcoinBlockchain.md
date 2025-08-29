@@ -15,8 +15,7 @@ _BitcoinBlockchain_ usage example:
 import BitcoinBlockchain
 
 // Instantiate a fresh Bitcoin service (regtest).
-let blockchain = BlockchainService()
-await blockchain.start()
+let blockchain = try await BlockchainService()
 
 // Mine 100 blocks so block 1's coinbase output reaches maturity.
 for _ in 0 ..< 100 {
@@ -41,15 +40,13 @@ let lastBlock = await blockchain.generateTo(address.script)!
 #expect(await blockchain.mempool.count == 0)
 …
 
-#expect(await blockchain.blocks.count == 102)
+#expect(await blockchain.headers == 101)
 
 let lastBlock = await blockchain.txs.last!
 // Verify our transaction was confirmed in a block.
 
 #expect(lastBlock[1] == signedTx)
 // Our transaction is now confirmed in the blockchain!
-
-await blockchain.stop()
 ```
 
 ## Topics

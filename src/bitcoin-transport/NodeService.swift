@@ -4,6 +4,7 @@ import BitcoinBase
 import BitcoinBlockchain
 import Logging
 
+/// A peer's unique identifier.
 public typealias PeerID = UUID
 
 /// Manages connection with state.peers, process incoming messages and sends responses.
@@ -30,12 +31,15 @@ public actor NodeService: Sendable {
         }
     }
 
+    /// The service instance's status.
     public private(set) var status = Status.idle
 
     /// The bitcoin service actor instance backing this node.
     public let blockchain: BlockchainService
 
+    /// Node configurations parameters.
     public let config: NodeParams
+
     package let logger: Logger
 
     public private(set) var state: NodeState
@@ -82,7 +86,7 @@ public actor NodeService: Sendable {
         status = .running
     }
 
-    /// We unsubscribe from Bitcoin service's blocks.
+    /// Stop this service instance and unsubscribe from blockchain block/transaction updates.
     public func stop() async {
         status = .stopping
         for blockChannel in blockChannels {
@@ -129,7 +133,7 @@ public actor NodeService: Sendable {
     /// Request headers from peers.
     public func requestHeaders() async {
         let maxHeight = state.peers.values.reduce(-1) { max($0, $1.height) }
-        let ourHeight = await blockchain.height
+        let ourHeight = await blockchain.headers
         guard maxHeight > ourHeight,
               let (id, _) = state.peers.filter({ $0.value.height == maxHeight }).randomElement() else {
             return
@@ -170,11 +174,13 @@ public actor NodeService: Sendable {
         return peerOuts[id]!
     }
 
+    /// Subscribe to new blocks from the perspective of this node instance.
     public func subscribeToBlocks() -> AsyncChannel<Block> {
         blockChannels.append(.init())
         return blockChannels.last!
     }
 
+    /// Unsubscribe from new block updates.
     public func unsubscribe(_ channel: AsyncChannel<Block>) {
         channel.finish()
         blockChannels.removeAll(where: { $0 === channel })
@@ -191,6 +197,7 @@ public actor NodeService: Sendable {
         enqueue(.sendaddrv2, to: id)
     }
 
+    /// Consume the next message from the outgoing queue.
     public func popMessage(_ id: PeerID) -> NetworkMessage? {
         guard let peer = state.peers[id], !peer.outbox.isEmpty else { return nil }
         return state.peers[id]!.outbox.removeFirst()
@@ -313,7 +320,7 @@ public actor NodeService: Sendable {
     private func makeVersion(for id: PeerID) async -> VersionMessage {
         guard let peer = state.peers[id] else { preconditionFailure() }
 
-        let lastBlock = await blockchain.bestHeight
+        let lastBlock = await blockchain.height
         return .init(
             protocolVersion: config.version,
             services: config.services,
@@ -345,7 +352,7 @@ public actor NodeService: Sendable {
     }
 
     private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
-        if status == .full {
+        if status == .active {
             if !state.ibdComplete, await blockchain.synchronized {
                 state.ibdComplete = true
             }
@@ -645,12 +652,12 @@ public actor NodeService: Sendable {
         do {
             try await blockchain.processHeaders(headersMessage.items)
         } catch {
-            state.peers[id]?.height = await blockchain.bestHeight
+            state.peers[id]?.height = await blockchain.height
         }
 
         // TODO: Review IBD logic. If multiple blocks need to be sync'ed, then we go into block download mode.
-        let bestHeaderHeight = await blockchain.height
-        let bestBlockHeight = await blockchain.bestHeight
+        let bestHeaderHeight = await blockchain.headers
+        let bestBlockHeight = await blockchain.height
         let percentage = bestHeaderHeight > 100 ? 0.01 : bestHeaderHeight > 10 ? 0.1 : 1
         let threshold = Int(floor(Double(bestHeaderHeight) * percentage))
         state.ibdComplete = bestHeaderHeight - bestBlockHeight < threshold
@@ -661,7 +668,7 @@ public actor NodeService: Sendable {
         if headersMessage.moreItems {
             await requestHeaders(id)
         } else {
-            let headers = await blockchain.height
+            let headers = await blockchain.headers
             logger.info("Headers downloaded \(headers).")
 
             // BIP130 delaying `sendheaders` until we don't need more headers

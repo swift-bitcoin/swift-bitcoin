@@ -32,10 +32,10 @@ struct ValidTxTests {
             if excludeFlags.contains("NULLFAIL") { config.remove(.nullFail) }
             if excludeFlags.contains("DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM") { config.remove(.discourageUpgradableWitnessProgram) }
 
-            let result = tx.verifyScript(prevouts: prevouts, config: config)
+            let result = tx.verifyScripts(prevouts: prevouts, config: config)
             #expect(result)
             if !excludeFlags.isEmpty {
-                 let failure = tx.verifyScript(prevouts: prevouts, config: .standard)
+                 let failure = tx.verifyScripts(prevouts: prevouts, config: .standard)
                  #expect(!failure)
             }
         }
