@@ -1,4 +1,33 @@
 version: 1
 builder:
   configs:
-    - documentation_targets: [Bitcoin, BitcoinCrypto, BitcoinBase, BitcoinMiniscript, BitcoinWallet, BitcoinPSBT, BitcoinBlockchain, BitcoinTransport, BitcoinRPC, BitcoinNode, BitcoinUtility]
+    - documentation_targets:
+      - Bitcoin
+      custom_documentation_parameters:
+      - --target
+      - BitcoinCrypto
+      - --target
+      - BitcoinBase
+      - --target
+      - BitcoinBlockchain
+      - --target
+      - BitcoinMiniscript
+      - --target
+      - BitcoinWallet
+      - --target
+      - BitcoinPSBT
+      - --target
+      - BitcoinTransport
+      - --target
+      - BitcoinRPC
+      - --target
+      - BitcoinNode
+      - --target
+      - BitcoinUtility
+      - --source-service
+      - github
+      - --source-service-base-url
+      - https://github.com/swift-bitcoin/swift-bitcoin/blob/develop
+      - --checkout-path
+      - .
+      - --enable-experimental-combined-documentation
