@@ -1,13 +1,15 @@
 # ``BitcoinWallet``
 
 @Metadata {
-    @DisplayName("BitcoinWallet")
-    @TitleHeading("Swift Bitcoin Library")
+    @DisplayName("Bitcoin Wallet")
+    @TitleHeading("Swift Bitcoin framework")
 }
 
 Generate and decode Bitcoin addresses. Manage mnemonic seeds and derive Hierarchically Deterministic (HD) keys.
 
 ## Overview
+
+> Swift Bitcoin modules: [Bitcoin (umbrella)][bitcoin] | [Crypto][crypto] | [Base][base] | [Miniscript][miniscript] | Wallet | [PSBT][psbt] | [Blockchain][blockchain] | [Transport][transport] | [RPC][rpc] | [Utility (bcutil)][bcutil] | [Node (bcnode)][bcnode]
 
 Use BitcoinWallet to generate addresses from public keys or scripts and to decode either legacy, segregated witness or taproot addresses.
 
@@ -70,24 +72,16 @@ let result = signedTx.verifyScript(prevouts: prevouts)
 
 - ``MnemonicPhrase`` 
 
-## See Also
-
-- [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
-- [Crypto Library][crypto]
-- [Base Library][base]
-- [Blockchain Library][blockchain]
-- [Transport Library][transport]
-- [RPC Library][rpc]
-- [Bitcoin Utility (bcutil) Command][bcutil]
-- [Bitcoin Node (bcnode) Command][bcnode]
-
 <!-- links -->
 
-[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
-[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
-[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
-[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
-[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
-[rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
-[bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/
-[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/
+[bitcoin]: /documentation/bitcoin
+[crypto]: /documentation/bitcoincrypto
+[base]: /documentation/bitcoinbase
+[miniscript]: /documentation/bitcoinminiscript
+[wallet]: /documentation/bitcoinwallet
+[psbt]: /documentation/bitcoinpsbt
+[blockchain]: /documentation/bitcoinblockchain
+[transport]: /documentation/bitcointransport
+[rpc]: /documentation/bitcoinrpc
+[bcnode]: /documentation/bitcoinnode
+[bcutil]: /documentation/bitcoinutility

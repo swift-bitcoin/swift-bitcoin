@@ -65,7 +65,7 @@ extension ScriptRuntime {
         stack.append(ScriptBool(first == second).data)
     }
 
-    /// Same as ``opEqual`` (`OP_EQUAL`), but runs  ``opVerify`` (`OP_VERIFY`) afterward.
+    /// Same as ``opEqual()`` (`OP_EQUAL`), but runs  ``opVerify()`` (`OP_VERIFY`) afterward.
     mutating func opEqualVerify() throws {
         try opEqual()
         try opVerify()

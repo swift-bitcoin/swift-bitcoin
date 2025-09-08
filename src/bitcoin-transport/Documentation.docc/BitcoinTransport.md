@@ -2,12 +2,14 @@
 
 @Metadata {
     @DisplayName("Bitcoin Transport")
-    @TitleHeading("Swift Bitcoin Library")
+    @TitleHeading("Swift Bitcoin framework")
 }
 
 Bitcoin transport layer, also known as the peer-to-peer or _wire_ protocol. Everything from the node service to messages to peer representation.
 
 ## Overview
+
+> Swift Bitcoin modules: [Bitcoin (umbrella)][bitcoin] | [Crypto][crypto] | [Base][base] | [Miniscript][miniscript] | [Wallet][wallet] | [PSBT][psbt] | [Blockchain][blockchain] | Transport | [RPC][rpc] | [Utility (bcutil)][bcutil] | [Node (bcnode)][bcnode]
 
 _BitcoinTransport_ handshake example:
 
@@ -75,28 +77,16 @@ await halChain.stop()
 - ``MessageCommand``
 - <doc:Design>
 
-## See Also
-
-- [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
-- [Crypto Library][crypto]
-- [Base Library][base]
-- [Miniscript Library][miniscript]
-- [Wallet Library][wallet]
-- [PSBT Library][psbt]
-- [Blockchain Library][blockchain]
-- [Bitcoin Utility (bcutil) Command][bcutil]
-- [RPC Library][rpc]
-- [Bitcoin Node (bcnode) Command][bcnode]
-
 <!-- links -->
 
-[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
-[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
-[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
-[miniscript]: https://swiftbitcoin.org/docs/miniscript/documentation/bitcoinminiscript/
-[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
-[psbt]: https://swiftbitcoin.org/docs/psbt/documentation/bitcoinpsbt/
-[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
-[rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
-[bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/
-[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/
+[bitcoin]: /documentation/bitcoin
+[crypto]: /documentation/bitcoincrypto
+[base]: /documentation/bitcoinbase
+[miniscript]: /documentation/bitcoinminiscript
+[wallet]: /documentation/bitcoinwallet
+[psbt]: /documentation/bitcoinpsbt
+[blockchain]: /documentation/bitcoinblockchain
+[transport]: /documentation/bitcointransport
+[rpc]: /documentation/bitcoinrpc
+[bcnode]: /documentation/bitcoinnode
+[bcutil]: /documentation/bitcoinutility

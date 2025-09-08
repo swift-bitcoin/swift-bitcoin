@@ -2,14 +2,14 @@
 
 @Metadata {
     @DisplayName("Bitcoin Node (bcnode)")
-    @TitleHeading("Swift Bitcoin Tool")
+    @TitleHeading("Swift Bitcoin tool")
 }
 
 Use the `bcnode` command to start a new Bitcoin node instance.
 
 ## Overview
 
-> Swift Bitcoin: This tool is part of the [Swift Bitcoin](https://swiftbitcoin.org/docs/documentation/bitcoin/) suite.
+> Swift Bitcoin modules: [Bitcoin (umbrella)][bitcoin] | [Crypto][crypto] | [Base][base] | [Miniscript][miniscript] | [Wallet][wallet] | [PSBT][psbt] | [Blockchain][blockchain] | [Transport][transport] | [RPC][rpc] | [Utility (bcutil)][bcutil] | Node (bcnode)
 
 To launch a Bitcoin RPC server instance use the `start` subcommand.
 
@@ -25,28 +25,16 @@ Use `--help` to find out about other subcommands and general usage.
 
 - ``Start``
 
-## See Also
-
-- [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
-- [Crypto Library][crypto]
-- [Base Library][base]
-- [Miniscript Library][miniscript]
-- [Wallet Library][wallet]
-- [PSBT Library][psbt]
-- [Blockchain Library][blockchain]
-- [Transport Library][transport]
-- [RPC Library][rpc]
-- [Bitcoin Utility (bcutil) Command][bcutil]
-
 <!-- links -->
 
-[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
-[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
-[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
-[miniscript]: https://swiftbitcoin.org/docs/miniscript/documentation/bitcoinminiscript/
-[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
-[psbt]: https://swiftbitcoin.org/docs/psbt/documentation/bitcoinpsbt/
-[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
-[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
-[rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
-[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/
+[bitcoin]: /documentation/bitcoin
+[crypto]: /documentation/bitcoincrypto
+[base]: /documentation/bitcoinbase
+[miniscript]: /documentation/bitcoinminiscript
+[wallet]: /documentation/bitcoinwallet
+[psbt]: /documentation/bitcoinpsbt
+[blockchain]: /documentation/bitcoinblockchain
+[transport]: /documentation/bitcointransport
+[rpc]: /documentation/bitcoinrpc
+[bcnode]: /documentation/bitcoinnode
+[bcutil]: /documentation/bitcoinutility
