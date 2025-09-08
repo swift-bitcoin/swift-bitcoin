@@ -2,12 +2,14 @@
 
 @Metadata {
     @DisplayName("Bitcoin Miniscript")
-    @TitleHeading("Swift Bitcoin Library")
+    @TitleHeading("Swift Bitcoin framework")
 }
 
 _Miniscript_ is a language for writing (a subset of) Bitcoin Scripts in a structured way, enabling analysis, composition, generic signing and more. Bitcoin Miniscript provides a DSL with all the checks and guarantees of Miniscript performed at compile-time.
 
 ## Overview
+
+> Swift Bitcoin modules: [Bitcoin (umbrella)][bitcoin] | [Crypto][crypto] | [Base][base] | Miniscript | [Wallet][wallet] | [PSBT][psbt] | [Blockchain][blockchain] | [Transport][transport] | [RPC][rpc] | [Utility (bcutil)][bcutil] | [Node (bcnode)][bcnode]
 
 _BitcoinMiniscript_ example:
 
@@ -29,28 +31,16 @@ let asm = BitcoinScript(exp.compiled).asm()
 
 ```
 
-## See Also
-
-- [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
-- [Crypto Library][crypto]
-- [Base Library][base]
-- [Miniscript Library][miniscript]
-- [Wallet Library][wallet]
-- [PSBT Library][psbt]
-- [Blockchain Library][blockchain]
-- [Transport Library][transport]
-- [Bitcoin Utility (bcutil) Command][bcutil]
-- [Bitcoin Node (bcnode) Command][bcnode]
-
 <!-- links -->
 
-[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
-[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
-[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
-[miniscript]: https://swiftbitcoin.org/docs/miniscript/documentation/bitcoinminiscript/
-[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
-[psbt]: https://swiftbitcoin.org/docs/psbt/documentation/bitcoinpsbt/
-[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
-[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
-[bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/
-[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/
+[bitcoin]: /documentation/bitcoin
+[crypto]: /documentation/bitcoincrypto
+[base]: /documentation/bitcoinbase
+[miniscript]: /documentation/bitcoinminiscript
+[wallet]: /documentation/bitcoinwallet
+[psbt]: /documentation/bitcoinpsbt
+[blockchain]: /documentation/bitcoinblockchain
+[transport]: /documentation/bitcointransport
+[rpc]: /documentation/bitcoinrpc
+[bcnode]: /documentation/bitcoinnode
+[bcutil]: /documentation/bitcoinutility

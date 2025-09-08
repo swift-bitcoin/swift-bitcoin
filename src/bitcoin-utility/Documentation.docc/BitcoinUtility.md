@@ -2,14 +2,14 @@
 
 @Metadata {
     @DisplayName("Bitcoin Utility (bcutil)")
-    @TitleHeading("Swift Bitcoin Tool")
+    @TitleHeading("Swift Bitcoin tool")
 }
 
 Use the `bcutil` command control a running Bitcoin node instance or perform off-chain operations.
 
 ## Overview
 
-> Swift Bitcoin: This tool is part of the [Swift Bitcoin](https://swiftbitcoin.org/docs/documentation/bitcoin/) suite.
+> Swift Bitcoin modules: [Bitcoin (umbrella)][bitcoin] | [Crypto][crypto] | [Base][base] | [Miniscript][miniscript] | [Wallet][wallet] | [PSBT][psbt] | [Blockchain][blockchain] | [Transport][transport] | [RPC][rpc] | Utility (bcutil) | [Node (bcnode)][bcnode]
 
 We can use `bcutil` to perform both offline operations as well as issuing RPC commands to a runing `bcnode`.
 
@@ -153,28 +153,16 @@ Use `--help` to find out about other subcommands and general usage.
 
 - ``Node``
 
-## See Also
-
-- [Swift Bitcoin "Umbrella" Library][swiftbitcoin]
-- [Crypto Library][crypto]
-- [Base Library][base]
-- [Miniscript Library][miniscript]
-- [Wallet Library][wallet]
-- [PSBT Library][psbt]
-- [Blockchain Library][blockchain]
-- [Transport Library][transport]
-- [RPC Library][rpc]
-- [Bitcoin Node (bcnode) Command][bcnode]
-
 <!-- links -->
 
-[swiftbitcoin]: https://swiftbitcoin.org/docs/documentation/bitcoin/
-[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
-[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
-[miniscript]: https://swiftbitcoin.org/docs/miniscript/documentation/bitcoinminiscript/
-[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
-[psbt]: https://swiftbitcoin.org/docs/psbt/documentation/bitcoinpsbt/
-[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
-[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
-[rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
-[bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/
+[bitcoin]: /documentation/bitcoin
+[crypto]: /documentation/bitcoincrypto
+[base]: /documentation/bitcoinbase
+[miniscript]: /documentation/bitcoinminiscript
+[wallet]: /documentation/bitcoinwallet
+[psbt]: /documentation/bitcoinpsbt
+[blockchain]: /documentation/bitcoinblockchain
+[transport]: /documentation/bitcointransport
+[rpc]: /documentation/bitcoinrpc
+[bcnode]: /documentation/bitcoinnode
+[bcutil]: /documentation/bitcoinutility

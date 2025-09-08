@@ -1,14 +1,16 @@
 # ``Bitcoin``
 
 @Metadata {
-    @DisplayName("Swift Bitcoin")
-    @TitleHeading("Pure-Swift Bitcoin Toolkit")
+    @DisplayName("Bitcoin")
+    @TitleHeading("Swift Bitcoin framework")
     @CallToAction(url: "https://github.com/swift-bitcoin/swift-bitcoin/archive/refs/heads/develop.zip", purpose: download)
 }
 
 Pure-Swift Bitcoin client implementation with full node capabilities.
 
 ## Overview
+
+> Swift Bitcoin modules: Bitcoin (umbrella) | [Crypto][crypto] | [Base][base] | [Miniscript][miniscript] | [Wallet][wallet] | [PSBT][psbt] | [Blockchain][blockchain] | [Transport][transport] | [RPC][rpc] | [Utility (bcutil)][bcutil] | [Node (bcnode)][bcnode]
 
 The Swift Bitcoin package contains:
 - The _Bitcoin_ Swift umbrella library.
@@ -25,28 +27,16 @@ The Swift Bitcoin package contains:
 - <doc:Running>
 - <doc:Testnet>
 
-## See Also
-
-- [Crypto Library][crypto]
-- [Base Library][base]
-- [Miniscript Library][miniscript]
-- [Wallet Library][wallet]
-- [PSBT Library][psbt]
-- [Blockchain Library][blockchain]
-- [Transport Library][transport]
-- [RPC Library][rpc]
-- [Bitcoin Utility (bcutil) Command][bcutil]
-- [Bitcoin Node (bcnode) Command][bcnode]
-
 <!-- links -->
 
-[crypto]: https://swiftbitcoin.org/docs/crypto/documentation/bitcoincrypto/
-[base]: https://swiftbitcoin.org/docs/base/documentation/bitcoinbase/
-[miniscript]: https://swiftbitcoin.org/docs/miniscript/documentation/bitcoinminiscript/
-[wallet]: https://swiftbitcoin.org/docs/wallet/documentation/bitcoinwallet/
-[psbt]: https://swiftbitcoin.org/docs/psbt/documentation/bitcoinpsbt/
-[blockchain]: https://swiftbitcoin.org/docs/blockchain/documentation/bitcoinblockchain/
-[transport]: https://swiftbitcoin.org/docs/transport/documentation/bitcointransport/
-[rpc]: https://swiftbitcoin.org/docs/rpc/documentation/bitcoinrpc/
-[bcnode]: https://swiftbitcoin.org/docs/bcnode/documentation/bitcoinnode/
-[bcutil]: https://swiftbitcoin.org/docs/bcutil/documentation/bitcoinutility/
+[bitcoin]: /documentation/bitcoin
+[crypto]: /documentation/bitcoincrypto
+[base]: /documentation/bitcoinbase
+[miniscript]: /documentation/bitcoinminiscript
+[wallet]: /documentation/bitcoinwallet
+[psbt]: /documentation/bitcoinpsbt
+[blockchain]: /documentation/bitcoinblockchain
+[transport]: /documentation/bitcointransport
+[rpc]: /documentation/bitcoinrpc
+[bcnode]: /documentation/bitcoinnode
+[bcutil]: /documentation/bitcoinutility

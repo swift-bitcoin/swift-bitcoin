@@ -93,7 +93,7 @@ extension Transaction {
     /// which the transaction will be considered final in the context of BIP 68.
     /// Also removes from the vector of input heights any entries which did not
     /// correspond to sequence locked inputs as they do not affect the calculation.
-    /// Called from ``sequenceLocks()``.
+    /// Called from ``sequenceLocks(verifyLockTimeSequence:previousHeights:blockHeight:previousBlockMedianTimePast:)``.
     package func calculateSequenceLocks(verifyLockTimeSequence: Bool, previousHeights: inout [Int], blockHeight: Int) -> (Int, Int) {
 
         precondition(previousHeights.count == ins.count);
@@ -152,7 +152,7 @@ extension Transaction {
         return (minHeight, minTime)
     }
 
-    /// BIP68 - Untested. Called by ``BlockchainService/checkSequenceLocks(verifyLockTimeSequence:coins:previousBlockMedianTimePast:)`` and ``Transaction/sequenceLocks(verifyLockTimeSequence:previousHeights:blockHeight:previousBlockMedianTimePast:)``.
+    /// BIP68 - Untested. Called by  ``/BitcoinBlockchain/BlockchainService/checkSequenceLocks(verifyLockTimeSequence:coins:previousBlockMedianTimePast:)`` and ``Transaction/sequenceLocks(verifyLockTimeSequence:previousHeights:blockHeight:previousBlockMedianTimePast:)``.
     package func evaluateSequenceLocks(blockHeight: Int, previousBlockMedianTimePast: Int, lockPair: (Int, Int)) throws {
         if lockPair.0 >= blockHeight || lockPair.1 >= previousBlockMedianTimePast {
             throw ValidationError.futureLockTime
