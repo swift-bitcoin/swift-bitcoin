@@ -46,6 +46,15 @@ actor TransientBlockIndex: BlockIndex {
         return nil
     }
 
+    func ancestor(of tip: BlockRef, at height: Int) async -> BlockRef {
+        precondition(height <= tip.height)
+        var candidate = tip
+        while candidate.height > height {
+            candidate = byID[candidate.header.previous]!
+        }
+        return candidate
+    }
+
     func ancestor(of tip: BlockRef, childOf parent: BlockRef) async -> BlockRef? {
         var candidate = tip
         while candidate.height > parent.height, candidate.header.previous != parent.header.id {

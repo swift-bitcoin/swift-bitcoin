@@ -65,6 +65,17 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
+    func ancestor(of tip: BlockRef, at height: Int) async -> BlockRef {
+        precondition(height <= tip.height)
+        return try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            var candidate = tip
+            while candidate.height > height {
+                candidate = try! _get(candidate.header.previous, byID: byID)!
+            }
+            return candidate
+        }
+    }
+
     func ancestor(of tip: BlockRef, childOf parent: BlockRef) -> BlockRef? {
         try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             var candidate = tip

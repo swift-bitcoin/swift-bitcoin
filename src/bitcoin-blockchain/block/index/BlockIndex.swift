@@ -10,6 +10,8 @@ protocol BlockIndex: Sendable {
     /// Highest fully-validated block in the currently active chain.
     var bestBlock: BlockRef { get async }
 
+    func ancestor(of tip: BlockRef, at height: Int) async -> BlockRef
+
     func ancestor(of tip: BlockRef, childOf parent: BlockRef) async -> BlockRef?
 
     /// Most recent fully validated block which is an ancestor to the specified header.

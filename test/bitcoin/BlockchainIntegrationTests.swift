@@ -153,6 +153,7 @@ struct BlockchainIntegrationTests {
         tx1 = signer.tx
 
         try await blockchain.addTransaction(tx1)
+        #expect(await blockchain.mempool.count == 1)
 
         var tx2 = Transaction(
             ins: [.init(outpoint: tx1.outpoint(5))],
@@ -169,7 +170,7 @@ struct BlockchainIntegrationTests {
         tx2 = signer2.tx
 
         try await blockchain.addTransaction(tx2)
-
+        #expect(await blockchain.mempool.count == 2)
 
         let block2 = try #require(await blockchain.generateTo(alicePK))
         let coinbaseTx2 = block2.txs[0]
