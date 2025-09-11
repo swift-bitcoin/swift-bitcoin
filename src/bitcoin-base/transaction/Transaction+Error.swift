@@ -17,8 +17,7 @@ extension Transaction {
              prematureCoinbaseSpend,
              inputValueOutOfRange,
              inputsValueBelowOutput,
-             feeOutOfRange,
-             futureLockTime
+             feeOutOfRange
     }
 
     public enum DecodingError: Error {
