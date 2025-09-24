@@ -18,7 +18,7 @@ public struct PrefilledTransaction: Equatable {
     /// The transaction which is in the block at index index.
     ///
     /// As encoded in "tx" messages sent in response to getdata `MSG_TX`.
-    /// 
+    ///
     public let tx: Transaction
 }
 

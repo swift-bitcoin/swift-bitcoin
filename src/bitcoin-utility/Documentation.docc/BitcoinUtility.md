@@ -23,7 +23,7 @@ bcutil ec-new
 24516525843cb692a1ccb18ecd1b3b6c71352614d3aef455a007592910acdabd
 
 
-# Derive a public key from the secret key 
+# Derive a public key from the secret key
 
 bcutil ec-to-public 24516525843cb692a1ccb18ecd1b3b6c71352614d3aef455a007592910acdabd
 029a3865b2488e2fee75336d1048c1d0795a088368a0caa4adc076425c90227bc3
@@ -85,7 +85,7 @@ bcutil create-transaction -i 71847446d61f87f01ea98e4c32f3ecd7a509cdb912c04a13a4b
 0100000001490d5aaf3607b2a4134ac012b9cd09a5d7ecf3324c8ea91ef0871fd6467484710000000000ffffffff0164000000000000001976a914df4bdfc1f4a0eb9d08a22598c69a15c9989adc8688ac00000000
 
 
-# Now sign the transaction's only input using the secret key. We are providing the raw output that we are spending. 
+# Now sign the transaction's only input using the secret key. We are providing the raw output that we are spending.
 
 bcutil sign-transaction -i 0 -p 00f2052a010000001976a914df4bdfc1f4a0eb9d08a22598c69a15c9989adc8688ac -s 24516525843cb692a1ccb18ecd1b3b6c71352614d3aef455a007592910acdabd 0100000001490d5aaf3607b2a4134ac012b9cd09a5d7ecf3324c8ea91ef0871fd6467484710000000000ffffffff0164000000000000001976a914df4bdfc1f4a0eb9d08a22598c69a15c9989adc8688ac00000000
 
@@ -119,7 +119,7 @@ bcutil get-mempool
 
 # Generate another block
 
-bcutil generate-to 03156c29378949152f270170589e4bb3e006bf57d908f7a173edf9fa2956cae388 
+bcutil generate-to 03156c29378949152f270170589e4bb3e006bf57d908f7a173edf9fa2956cae388
 328b649efac1dacf329aeb86d59ef99e2e2b2578b1137b3da1ef94c3c0535708
 
 

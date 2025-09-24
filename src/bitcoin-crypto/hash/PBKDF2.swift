@@ -9,7 +9,7 @@ public enum PBKDF2Error: Error {
 /// Implementation of the Password-Based Key Derivation Function Version 2 (PBKDF2)  used by BIP39 seed generation from mnemonic.
 ///
 /// See [RFC2898](https://www.ietf.org/rfc/rfc2898.txt) for more information.
-/// 
+///
 public struct PBKDF2<H: HashFunction> {
 
     /// S

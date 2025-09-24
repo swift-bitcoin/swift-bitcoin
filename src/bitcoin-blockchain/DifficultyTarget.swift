@@ -46,12 +46,12 @@ public struct DifficultyTarget: Comparable, Sendable {
         n.allSatisfy { $0 == 0 }
     }
 
-    private var low64: UInt64 {
+    var low64: UInt64 {
         UInt64(n[0]) | UInt64(n[1]) << 32
     }
 
     // Returns the position of the highest bit set plus one, or zero if the value is zero.
-    private var bits: Int {
+    var bits: Int {
         for i in n.indices.reversed() {
             if n[i] != 0 {
                 for nBits in (1 ... 31).reversed() {

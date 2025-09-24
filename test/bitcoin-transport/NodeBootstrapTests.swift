@@ -21,7 +21,7 @@ struct NodeBootstrapTests {
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(ibdComplete: true, peers: [peerB : makePeerState()])
+            state: NodeState(peers: [peerB : makePeerState()])
         )
         await #expect(alice.state.peers[peerB]!.handshakeComplete)
 
@@ -30,7 +30,7 @@ struct NodeBootstrapTests {
         let bob = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true)])
+            state: NodeState(peers: [peerA : makePeerState(true)])
         )
         await #expect(bob.state.peers[peerA]!.handshakeComplete)
 
@@ -81,17 +81,20 @@ struct NodeBootstrapTests {
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(ibdComplete: true, peers: [peerB : makePeerState()])
+            state: NodeState(peers: [peerB : makePeerState()])
         )
+        let block0 = try #require(await alice.blockchain.generateTo(pubkey))
 
         // Bob's node
         let peerA = PeerID()
         let peerC = PeerID() // Carol on Bob's node
-        let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        try await bob.blockchain.processBlock(block0, immediate: true)
 
         // Carol's node
         let carolPeerB = PeerID() // Bob on Carol's node
-        let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
+        let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
+        try await carol.blockchain.processBlock(block0, immediate: true)
 
         // Start nodes
         Task { await alice.start() }
@@ -143,17 +146,17 @@ struct NodeBootstrapTests {
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(ibdComplete: true, peers: [peerB : makePeerState()])
+            state: NodeState(peers: [peerB : makePeerState()])
         )
 
         // Bob's node
         let peerA = PeerID()
         let peerC = PeerID() // Carol on Bob's node
-        let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
 
         // Carol node
         let carolPeerB = PeerID() // Bob on Carol's node
-        let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
+        let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
 
         // Setup blockchains
         let aliceBlock1 = try #require(await alice.blockchain.generateTo(pubkey))
@@ -269,17 +272,20 @@ struct NodeBootstrapTests {
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(ibdComplete: true, peers: [peerB : makePeerState()])
+            state: NodeState(peers: [peerB : makePeerState()])
         )
+        let block0 = try #require(await alice.blockchain.generateTo(pubkey))
 
         // Bob's node
         let peerA = PeerID()
         let peerC = PeerID() // Carol on Bob's node
-        let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        try await bob.blockchain.processBlock(block0, immediate: true)
 
         // Carol's node
         let carolPeerB = PeerID() // Bob on Carol's node
-        let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
+        let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
+        try await carol.blockchain.processBlock(block0, immediate: true)
 
         // Setup blockchains
         let aliceBlock1 = try #require(await alice.blockchain.generateTo(pubkey))
@@ -375,17 +381,17 @@ struct NodeBootstrapTests {
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(ibdComplete: true, peers: [peerB : makePeerState(highBandwidth: false)])
+            state: NodeState(peers: [peerB : makePeerState(highBandwidth: false)])
         )
 
         // Bob's node
         let peerA = PeerID()
         let peerC = PeerID() // Carol on Bob's node
-        let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [peerA : makePeerState(true), peerC : makePeerState(highBandwidth: false)]))
+        let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState(highBandwidth: false)]))
 
         // Carol's node
         let carolPeerB = PeerID() // Bob on Carol's node
-        let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(ibdComplete: true, peers: [carolPeerB : makePeerState(true)]))
+        let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
 
         // Setup blockchains
         let aliceBlock1 = try #require(await alice.blockchain.generateTo(pubkey))

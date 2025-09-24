@@ -4,7 +4,7 @@ import Foundation
 extension Environment {
 
     package struct Options: OptionSet, Sendable {
-    
+
         package let rawValue: Int32
         package init(rawValue: Int32) { self.rawValue = rawValue}
 

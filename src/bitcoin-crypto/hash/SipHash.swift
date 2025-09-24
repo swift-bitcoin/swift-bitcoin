@@ -3,7 +3,7 @@ import Crypto
 /// Implementation of the SipHash 2-4 hashing algorithm used by BIP152 short transaction identifiers.
 ///
 /// More information on this [article](https://en.wikipedia.org/wiki/SipHash).
-/// 
+///
 public struct SipHash: HashFunction {
 
     public struct Digest: Crypto.Digest {

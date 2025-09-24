@@ -45,15 +45,15 @@ extension ValidationStatus: BinaryCodable {
         }
         self = maybeSelf
     }
-    
+
     public func encode(to encoder: inout BinaryEncoder) {
         encoder.encode(rawValue)
     }
-    
+
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(UInt8.self)
     }
-    
+
 }
 
 extension BlockRef: BinaryCodable {
@@ -79,7 +79,7 @@ extension BlockRef: BinaryCodable {
             encoder.encode(BlockStorageLocator.placeholder)
         }
     }
-    
+
     func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(header)
         counter.count(height)

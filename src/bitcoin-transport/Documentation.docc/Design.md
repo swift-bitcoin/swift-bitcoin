@@ -14,4 +14,4 @@ Whenever a message is received from one of the peers the appropriate actions nee
 
 The node listens to blockchain events like the recognition of a new chain tip after fully validating and connecting a block.
 
-An event might result in new messages being generated and sent to our peers. This is the case of relaying a block or a transaction after it is validated by the blockchain/mempool service. 
+An event might result in new messages being generated and sent to our peers. This is the case of relaying a block or a transaction after it is validated by the blockchain/mempool service.

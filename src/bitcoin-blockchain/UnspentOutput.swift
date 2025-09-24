@@ -10,7 +10,7 @@ public struct UnspentOutput: Equatable, Sendable {
     let isCoinbase: Bool
 
     public init(_ out: TransactionOutput, height: Int = Self.mempoolHeight, isCoinbase: Bool = false) {
-        precondition(height > 0 && height <= Self.mempoolHeight && !(isCoinbase && height == Self.mempoolHeight))
+        precondition(height > 0 && height <= Self.mempoolHeight)
         self.out = out
         self.height = height
         self.isCoinbase = isCoinbase
@@ -29,13 +29,13 @@ extension UnspentOutput: BinaryCodable {
         height = try decoder.decode()
         isCoinbase = try decoder.decode()
     }
-    
+
     public func encode(to encoder: inout BinaryEncoder) {
         encoder.encode(out)
         encoder.encode(height)
         encoder.encode(isCoinbase)
     }
-    
+
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(out)
         counter.count(Int.self)

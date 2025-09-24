@@ -7,7 +7,7 @@ public extension SHA256 {
     /// Initialized the hasher and updates it with the hash of the tag twice.
     ///
     /// If the tag cannot be decoded as a valid UTF-8 string, the hasher is _still_ initialized but it remains empty.
-    /// 
+    ///
     init(tag: String) {
         self.init()
         guard let tagData = tag.data(using: .utf8) else { return }

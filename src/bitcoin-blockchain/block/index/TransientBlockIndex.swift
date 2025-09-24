@@ -84,6 +84,22 @@ actor TransientBlockIndex: BlockIndex {
         return candidate
     }
 
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
+        var current = tip
+        var blocks = Deque<Block.ID>(minimumCapacity: max)
+        // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
+        while current.height > stop.height /* current.header.id != stop.header.id */ {
+            if current.status == .header {
+                if blocks.count == max {
+                    _ = blocks.popLast()
+                }
+                blocks.prepend(current.header.id)
+            }
+            current = byID[current.header.previous]!
+        }
+        return .init(blocks)
+    }
+
     /// All block storage locators in reverse height order, including those for stale/invalid blocks.
     var blockStorageLocators: [BlockStorageLocator] {
         var locators = [BlockStorageLocator]()
@@ -158,6 +174,7 @@ actor TransientBlockIndex: BlockIndex {
         } while i < count
         return refs
     }
+
 
     /*
     func getParent(for childID: Block.ID) -> BlockRef? {
