@@ -70,7 +70,7 @@ let result = signedTx.verifyScript(prevouts: prevouts)
 
 ### Mnemonic
 
-- ``MnemonicPhrase`` 
+- ``MnemonicPhrase``
 
 <!-- links -->
 

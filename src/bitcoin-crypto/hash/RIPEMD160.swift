@@ -4,7 +4,7 @@ import Crypto
 /// RACE Integrity Primitives Evaluation (RIPE) 160-bit Message Digest (MD) implementation.
 ///
 /// More information on this [article](https://en.wikipedia.org/wiki/RIPEMD).
-/// 
+///
 public struct RIPEMD160: HashFunction {
 
     public struct Digest: Crypto.Digest {

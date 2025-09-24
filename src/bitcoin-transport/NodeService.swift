@@ -65,6 +65,9 @@ public actor NodeService: Sendable {
     /// Subscription to new blocks
     private var blockChannels = [AsyncChannel<Block>]()
 
+    /// BIP152
+    private var pendingBlockTxs: [Block.ID : [Transaction?]] = [:]
+
     public func start() async {
         status = .starting
         let blocks = await blockchain.subscribeToBlocks()
@@ -301,7 +304,7 @@ public actor NodeService: Sendable {
     private func sendBlock(_ block: Block, to id: PeerID, useQueue: Bool = false) async {
         guard let _ = state.peers[id] else { return }
         let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
-        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, txIDs: block.makeShortTxIDs(nonce: nonce), txs: [.init(index: 0, tx: block.txs[0])])
+        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, txIDs: block.makeShortTxIDs(nonce: nonce, dropIndices: [0]), txs: [.init(index: 0, tx: block.txs[0])])
         if useQueue {
             enqueue(.cmpctblock, payload: compactBlockMesssage.data, to: id)
         } else {
@@ -345,18 +348,17 @@ public actor NodeService: Sendable {
 
         state.peers[id]?.inTransitBlocks += blockIDs.count
 
+        let ibd = await blockchain.initialBlockDownload
         let getData = GetDataMessage(
-            items: blockIDs.map { .init(type: state.ibdComplete ? .compactBlock : .witnessBlock, hash: $0) }
+            items: blockIDs.map { .init(type: ibd ? .witnessBlock : .compactBlock, hash: $0) }
         )
         enqueue(.getdata, payload: getData.data, to: id)
     }
 
     private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
         if status == .active {
-            if !state.ibdComplete, await blockchain.synchronized {
-                state.ibdComplete = true
-            }
-            if state.ibdComplete {
+            let ibd = await blockchain.initialBlockDownload
+            if !ibd {
                 await handleBlockRelay(block, height: height)
             }
             // Notify subscribers of new tip
@@ -558,6 +560,8 @@ public actor NodeService: Sendable {
         }
         await sendPingTo(id, useQueue: true)
         await requestHeaders(id)
+
+        // TODO: During IBD set the fee filter to max money. Reset after IBD.
         enqueue(.feefilter, payload: FeeFilterMessage(feeRate: state.feeFilterRate).data, to: id)
     }
 
@@ -655,16 +659,6 @@ public actor NodeService: Sendable {
             state.peers[id]?.height = await blockchain.height
         }
 
-        // TODO: Review IBD logic. If multiple blocks need to be sync'ed, then we go into block download mode.
-        let bestHeaderHeight = await blockchain.headers
-        let bestBlockHeight = await blockchain.height
-        let percentage = bestHeaderHeight > 100 ? 0.01 : bestHeaderHeight > 10 ? 0.1 : 1
-        let threshold = Int(floor(Double(bestHeaderHeight) * percentage))
-        state.ibdComplete = bestHeaderHeight - bestBlockHeight < threshold
-        if state.ibdComplete {
-            logger.info("Initial block download complete.")
-        }
-
         if headersMessage.moreItems {
             await requestHeaders(id)
         } else {
@@ -726,6 +720,10 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
+        if await blockchain.initialBlockDownload {
+            return
+        }
+
         let compactBlockHashes = getDataMessage.items.filter { $0.type == .compactBlock }.map { $0.hash }
         if !compactBlockHashes.isEmpty {
             let blocks = await blockchain.getBlocks(compactBlockHashes)
@@ -770,8 +768,10 @@ public actor NodeService: Sendable {
             }
         }
         var items = [InventoryItem]()
-        for txID in await blockchain.calculateMissingTxs(ids: txIDs) {
-            items.append(.init(type: .witnessTx, hash: txID))
+        if await !blockchain.initialBlockDownload {
+            for txID in await blockchain.calculateMissingTxs(ids: txIDs) {
+                items.append(.init(type: .witnessTx, hash: txID))
+            }
         }
         for blockID in await blockchain.calculateMissingBlocks(ids: blockIDs) {
             items.append(.init(type: .witnessBlock, hash: blockID))
@@ -789,6 +789,9 @@ public actor NodeService: Sendable {
         } catch {
             throw Error.invalidPayload
         }
+        if await blockchain.initialBlockDownload {
+            return
+        }
         state.peers[id]!.registerKnownTxs([tx.id])
         try await blockchain.addTransaction(tx)
     }
@@ -801,12 +804,25 @@ public actor NodeService: Sendable {
         }
 
         let header = compactBlockMessage.header
-        try await blockchain.processHeaders([header])
         state.peers[id]!.registerKnownBlocks([header.id])
 
-        var txs = await blockchain.findMempoolTxs(shortIDs: compactBlockMessage.txIDs, header: compactBlockMessage.header, nonce: compactBlockMessage.nonce)
+        let txCount = compactBlockMessage.txIDs.count + compactBlockMessage.txs.count
+        var txs: [Transaction?] = .init(repeating: nil, count: txCount)
+
         for prefilled in compactBlockMessage.txs {
             txs[prefilled.index] = prefilled.tx
+        }
+
+        let mempoolTxs = await blockchain.findMempoolTxs(shortIDs: compactBlockMessage.txIDs, header: compactBlockMessage.header, nonce: compactBlockMessage.nonce)
+
+        var j = 0
+        for i in txs.indices {
+            if txs[i] == nil {
+                if mempoolTxs[j] != nil {
+                    txs[i] = mempoolTxs[j]
+                }
+                j += 1
+            }
         }
 
         let missingTxIndices = txs.enumerated().compactMap { i, tx in
@@ -816,9 +832,11 @@ public actor NodeService: Sendable {
         if missingTxIndices.isEmpty {
             var block = compactBlockMessage.header
             block.txs = txs.compactMap { $0 }
+            precondition(block.txs.count == txs.count)
             try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
         } else {
-            state.peers[id]?.pendingBlockTxs = txs
+            try await blockchain.processHeaders([header])
+            pendingBlockTxs[header.id] = txs
             let getBlockTxs = GetBlockTransactionsMessage(blockHash: compactBlockMessage.header.id, txIndices: missingTxIndices)
             enqueue(.getblocktxn, payload: getBlockTxs.data, to: id)
         }
@@ -841,14 +859,14 @@ public actor NodeService: Sendable {
     }
 
     private func processBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
-        guard let peer = state.peers[id] else { preconditionFailure() }
+        guard let _ = state.peers[id] else { preconditionFailure() }
 
         guard let blockTxsMessage = BlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
         }
 
-        guard var pendingBlockTxs = peer.pendingBlockTxs else { return }
-        state.peers[id]?.pendingBlockTxs = nil
+        guard var pendingBlockTxs = pendingBlockTxs[blockTxsMessage.blockHash] else { return }
+        self.pendingBlockTxs[blockTxsMessage.blockHash] = nil
 
         var j = 0
         for i in pendingBlockTxs.indices {

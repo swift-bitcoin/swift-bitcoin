@@ -10,7 +10,7 @@ public struct BlockInfo: Sendable {
         self.chainwork = chainwork
         self.medianTime = medianTime
     }
-    
+
     public let next: Block.ID?
     public let height: Int
     public let confirmations: Int

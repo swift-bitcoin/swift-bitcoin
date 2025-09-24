@@ -113,8 +113,11 @@ package extension Block {
         return (first, second)
     }
 
-    func makeShortTxIDs(nonce: UInt64) -> [UInt64] {
+    func makeShortTxIDs(nonce: UInt64, dropIndices: [Int]) -> [UInt64] {
         let (first, second) = makeShortIDParams(nonce: nonce)
+        let txs = txs.enumerated().compactMap { i, tx in
+            dropIndices.contains(i) ? nil :tx
+        }
         return txs.map { tx in tx.makeShortTxID(nonce: nonce, first: first, second: second) }
     }
 }

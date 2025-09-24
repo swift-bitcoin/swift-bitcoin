@@ -5,7 +5,7 @@
     @TitleHeading("Swift Bitcoin framework")
 }
 
-Bitcoin service layer namely transaction blocks, block headers, transaction memory pool (_mempool_) and coins (UTXO set). 
+Bitcoin service layer namely transaction blocks, block headers, transaction memory pool (_mempool_) and coins (UTXO set).
 
 ## Overview
 

@@ -43,15 +43,15 @@ import Bitcoin
 Additional products/modules exist for specific areas of functionality:
 
 - `BitcoinCrypto` - Cryptography, key management and encodings.
-- `BitcoinBase` - Transactions and script interpretation. 
+- `BitcoinBase` - Transactions and script interpretation.
 - `BitcoinWallet` - Wallet, addresses, mnemonics and key derivation.
 - `BitcoinBlockchain` - Blockchain services and memory pool.
 - `BitcoinTransport` - Peer-to-peer protocol implementation.
-- `BitcoinRPC` - Support for RPC (Remote Procedure Call). 
+- `BitcoinRPC` - Support for RPC (Remote Procedure Call).
 
 All functionalities are included in the umbrella `Bitcoin` module.
 
-Check out our [Getting Started](https://swiftbitcoin.org/docs/documentation/bitcoin/gettingstarted) guide to begin leveraging Swift Bitcoin's capabilities. 
+Check out our [Getting Started](https://swiftbitcoin.org/docs/documentation/bitcoin/gettingstarted) guide to begin leveraging Swift Bitcoin's capabilities.
 
 ## Usage as Command Line Tool
 
@@ -59,9 +59,9 @@ Check out our [Getting Started](https://swiftbitcoin.org/docs/documentation/bitc
 
 From the project's root use `swift run bcnode` to start a Bitcoin Node instance with default settings.
 
-Launch the Bitcoin Utility to perform off-chain operations or to control a running node instance. To query the node's status use `swift run bcutil status`.  
+Launch the Bitcoin Utility to perform off-chain operations or to control a running node instance. To query the node's status use `swift run bcutil status`.
 
-See [Running](https://swiftbitcoin.org/docs/documentation/bitcoin/running) for additional information on how to invoke the CLI tools. 
+See [Running](https://swiftbitcoin.org/docs/documentation/bitcoin/running) for additional information on how to invoke the CLI tools.
 
 ### Install with Mint
 
@@ -123,7 +123,7 @@ Fully implemented: scripts, transactions, blocks, key generation, key derivation
 
 Mostly implemented: wire protocol, RPC commands, mempool policy.
 
-Make sure to check the project's [blog](https://swiftbitcoin.org) for the latest news and updates. 
+Make sure to check the project's [blog](https://swiftbitcoin.org) for the latest news and updates.
 
 ## Roadmap
 

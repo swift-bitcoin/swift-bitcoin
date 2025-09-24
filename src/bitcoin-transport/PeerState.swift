@@ -74,9 +74,6 @@ public struct PeerState: Sendable {
     public private(set) var knownBlocks = [Block.ID]()
     public private(set) var knownTxs = [Transaction.ID]()
 
-    /// BIP152
-    var pendingBlockTxs = [Transaction?]?.none
-
     var nextPingTask: Task<(), Never>?
     var checkPongTask: Task<(), Never>?
 

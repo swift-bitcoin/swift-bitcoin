@@ -10,7 +10,7 @@ extension SchnorrSignature {
             self.sig = sig
             self.sighashType = sighashType
         }
-        
+
         public let sig: SchnorrSignature
         public let sighashType: SighashType?
     }

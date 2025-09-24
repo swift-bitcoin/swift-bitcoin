@@ -2,6 +2,7 @@ import LMDB
 import struct SystemPackage.FilePath
 import Foundation
 import Logging
+import Collections
 
 /// Database block index service implementation.
 actor PersistentBlockIndex: BlockIndex {
@@ -96,7 +97,6 @@ actor PersistentBlockIndex: BlockIndex {
             while candidate.status != .active {
                 candidate = try! _get(candidate.header.previous, byID: byID)!
             }
-            precondition(![.stale, .invalid].contains(candidate.status))
             return candidate
         }
     }
@@ -109,6 +109,24 @@ actor PersistentBlockIndex: BlockIndex {
                 candidate = try! _get(candidate.header.previous, byID: byID)!
             }
             return candidate
+        }
+    }
+
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+            var current = tip
+            var blocks = Deque<Block.ID>(minimumCapacity: max)
+            // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
+            while current.height > stop.height /* current.header.id != stop.header.id */ {
+                if current.status == .header {
+                    if blocks.count == max {
+                        _ = blocks.popLast()
+                    }
+                    blocks.prepend(current.header.id)
+                }
+                current = try! _get(current.header.previous, byID: byID)!
+            }
+            return .init(blocks)
         }
     }
 

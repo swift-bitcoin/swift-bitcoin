@@ -33,7 +33,7 @@ public struct GetBlockRPC: RPCCommand, Sendable {
             self.weight = weight
             self.txs = txs
         }
-        
+
 
         /// Block ID or _hash_ e.g. `1205ad9b86df6d01c2fbdaef1cc08dcbd02ec3b875763c978da44d87f55fedc2`
         public let id: String

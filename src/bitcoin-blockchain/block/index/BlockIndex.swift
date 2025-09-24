@@ -19,6 +19,8 @@ protocol BlockIndex: Sendable {
 
     func bestStaleAncestor(of header: BlockRef) async -> BlockRef
 
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) async -> [Block.ID]
+
     func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus) async throws(BlockIndexError) -> BlockRef
 
     @discardableResult

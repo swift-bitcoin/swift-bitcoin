@@ -34,21 +34,21 @@ extension ScriptRuntime {
     mutating func opCheckSequenceVerify() throws {
         let first = try getUnaryParam(keep: true)
         let sequence64 = try ScriptNumber(first, extendedLength: true, minimal: config.contains(.minimalData)).value
-        
+
         guard
             first.count < 6,
             sequence64 >= 0,
             sequence64 <= Transaction.Input.Sequence.maxCSVArgument
         else { throw ScriptError.invalidSequenceArgument }
-        
+
         let sequence = Transaction.Input.Sequence(sequence64)
         if sequence.isLocktimeDisabled { return }
-        
+
         if tx.version == .v1 { throw ScriptError.minimumTxVersionRequired }
-        
+
         let txSequence = tx.ins[input].sequence
         if txSequence.isLocktimeDisabled { throw ScriptError.sequenceLockTimeDisabled }
-        
+
         if let locktimeBlocks = sequence.locktimeBlocks, let txLocktimeBlocks = txSequence.locktimeBlocks {
             if locktimeBlocks > txLocktimeBlocks {
                 throw ScriptError.sequenceHeightEarly

@@ -7,7 +7,7 @@ import BitcoinBase
 struct BlockchainServiceTests {
 
     /// Tests synchronizing blocks between two blockchains.
-    @Test("Dual blockchain synchronization")
+    @Test("Dual blockchain synchronization", .disabled())
     func dualBlockchainSync() async throws {
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey

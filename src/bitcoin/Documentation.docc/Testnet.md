@@ -96,7 +96,7 @@ Additionally we are removing the default chainwork limit, otherwise the node wil
 
 We are also disabling version 2 transport as Swift Bitcoin does not support it.
 
-After this we can connect Carol's node to Alice's as usual with `bitcoin-cli addnode alice onetry`. 
+After this we can connect Carol's node to Alice's as usual with `bitcoin-cli addnode alice onetry`.
 
 To connect from a dockerized Bitcoin Core instance to a local Swift Bitcoin instance instead, `bitcoin-cli addnode host.docker.internal onetry` can be used.
 
