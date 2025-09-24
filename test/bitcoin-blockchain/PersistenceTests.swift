@@ -5,7 +5,7 @@ import BitcoinCrypto
 import BitcoinBase
 import SystemPackage
 
-struct PersistenceTests {
+@Suite(.disabled()) struct PersistenceTests {
 
     @Test func persistentToMemoryBlockchainSync() async throws {
         await withKnownIssue("Some blockchain persistence tests randomly crashing after NIO update #451", isIntermittent: true) {
