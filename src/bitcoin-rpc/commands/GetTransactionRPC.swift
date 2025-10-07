@@ -17,7 +17,7 @@ extension GetTransactionRPC {
 
         let ins = tx.ins.map {
             Result.Input(
-                tx: $0.outpoint.txID.hex,
+                tx: $0.outpoint.txID.reversed().hex, // We display hashes in big endian
                 output: $0.outpoint.out
             )
         }
@@ -31,8 +31,8 @@ extension GetTransactionRPC {
         }
 
         return .init(
-            id: tx.id.hex,
-            witnessID: tx.witnessID.hex,
+            id: tx.idHex,
+            witnessID: tx.witnessID.reversed().hex,
             inputs: ins,
             outputs: outs
         )
