@@ -101,17 +101,6 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    /// Stale of full ancestor
-    func bestStaleAncestor(of header: BlockRef) -> BlockRef {
-        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            var candidate = header
-            while ![.stale, .active].contains(candidate.status) {
-                candidate = try! _get(candidate.header.previous, byID: byID)!
-            }
-            return candidate
-        }
-    }
-
     func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
         try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             var current = tip
@@ -130,8 +119,17 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    @discardableResult
-    func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus) throws(BlockIndexError) -> BlockRef {
+    func addHeader(_ header: Block) throws(BlockIndexError) -> BlockRef {
+        precondition(header.txs.isEmpty)
+        return try add(header, locator: nil, status: .header, chainTxCount: -1)
+    }
+
+    func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) throws(BlockIndexError) -> BlockRef {
+        precondition(genesisBlock.previous == Block.nullParent)
+        return try add(genesisBlock, locator: locator, status: .active, chainTxCount: genesisBlock.txs.count)
+    }
+
+    private func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus, chainTxCount: Int) throws(BlockIndexError) -> BlockRef {
         let previous: BlockRef?
         let count: Int
         (previous, count) = try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
@@ -143,12 +141,15 @@ actor PersistentBlockIndex: BlockIndex {
             }
             return (previous, try byID.count)
         }
+
+        // We can only add the genesis block if the database is empty
+        precondition(locator == nil || count == 0)
+
         guard count == 0 || previous != nil else {
             throw BlockIndexError.parentMissing
         }
         let height = if let previous { previous.height + 1 } else { 0 }
         let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
-        let chainTxCount = if let previous { previous.chainTxCount + block.txs.count } else { block.txs.count }
         let blockRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
 
         // Add
@@ -159,23 +160,30 @@ actor PersistentBlockIndex: BlockIndex {
         return blockRef
     }
 
-    func update(_ id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus) -> BlockRef {
-        update(id: id, locator: locator, status: status)
+    func updateBlock(_ id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
+        precondition([.active, .stale].contains(status))
+        precondition(locator.isComplete)
+        return update(id: id, locator: locator, status: status, chainTxCount: chainTxCount)
     }
 
-    func update(_ id: Block.ID, status: ValidationStatus) -> BlockRef  {
-        update(id: id, locator: nil, status: status)
+    func updateHeader(_ id: Block.ID, locator: BlockStorageLocator) -> BlockRef  {
+        precondition(!locator.isPlaceholder && !locator.hasUndoOffset)
+        return update(id: id, locator: locator, status: .merkle, chainTxCount: nil)
     }
 
-    private func update(id: Block.ID, locator: BlockStorageLocator?, status: ValidationStatus) -> BlockRef {
+    private func update(id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?) -> BlockRef {
         let data = try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
             try byID.get(id)!
         }
         var blockRef = try! BlockRef(data)
-        if let locator {
-            blockRef.locator = locator
-        }
+
+        // Valid transitions header -> merkle; merkle -> active/stale
+        precondition(blockRef.status == .header && status == .merkle || (blockRef.status == .merkle && [.active, .stale].contains(status)))
+
+        blockRef.locator = locator
         blockRef.status = status
+        if let chainTxCount { blockRef.chainTxCount = chainTxCount }
+
         try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
             try byID.put(blockRef.data, key: blockRef.header.id)
             try byHeight.put(blockRef.header.id, key: blockRef.height)

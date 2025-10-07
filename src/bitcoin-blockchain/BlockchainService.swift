@@ -28,7 +28,69 @@ public actor BlockchainService: Sendable {
             dataDir = nil
         }
         self.logger = logger
-        try await setupPersistence()
+
+        let fm = FileManager.default // TODO: Switch for NIOFileSystem
+        if let dataDir {
+            do {
+                try fm.createDirectory(atPath: dataDir.string, withIntermediateDirectories: true)
+            } catch {
+                logger.error("There was an issue accessing/creating the specified data directory.")
+                throw .dataDirIssue
+            }
+        }
+
+        blockIndex = if let dataDir { PersistentBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
+        coins = if let dataDir { PersistentCoinsIndex(path: dataDir, logger: logger) } else { TransientCoinsIndex() }
+
+        let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
+        do {
+            blockStorage = if dataDir == nil {
+                try await TransientBlockStorage(config: config, logger: logger)
+            } else {
+                try await PersistentBlockStorage(config: config, logger: logger)
+            }
+        } catch {
+            logger.error("Could not start block storage.")
+            fatalError("Could not start block storage.")
+        }
+
+        logger.debug("Indexes and storage initialized.")
+        logger.debug("Searching for best header and block…")
+        if let bestHeader = await blockIndex.bestHeader {
+            self.bestHeader = bestHeader
+            if bestHeader.status == .active {
+                activeTip = bestHeader
+            } else {
+                logger.debug("Found best header, now searching for best block…")
+                activeTip = await blockIndex.bestBlock
+                logger.debug("Highest active block: \(activeTip.header.idHex)")
+                // The current best block is just the highest active block which may not actually be an ancestor of the best header, so we need to check for reorgs.
+                // Headers fork, may imply a block reorg
+                /*
+                let bestAncestor = await blockIndex.bestAncestor(of: bestHeader)
+                if bestAncestor.header.id != bestBlock.header.id { … }
+                */
+            }
+        } else {
+            logger.debug("No good header, seeding genesis block")
+            let genesisBlock = Block.genesis(params)
+            let locator = try! await blockStorage.store(genesisBlock, undo: BlockUndo(spentCoins: [])) // TODO: Throw
+            activeTip = try! await blockIndex.addGenesisBlock(genesisBlock, locator: locator)
+            bestHeader = activeTip
+        }
+        logger.debug("Best block (tip): \(activeTip.header.idHex)")
+        logger.debug("Best header: \(bestHeader.header.idHex)")
+
+        // Connect the next block if transactions are already downloaded and check against merkle root
+        if let nextRef = await blockIndex.ancestor(of: bestHeader, childOf: activeTip) {
+            logger.debug("Best child of tip: \(nextRef.header.idHex); Status: \(nextRef.status)")
+            if nextRef.status == .merkle {
+                logger.debug("Will connect next block \(nextRef.header.idHex)")
+                validationTask = Task {
+                    try await connectBlock(ref: nextRef)
+                }
+            }
+        }
     }
 
     /// Blockchain consensus parameters. These are pre-defined on the type of network: test, main, regtest or others.
@@ -47,18 +109,18 @@ public actor BlockchainService: Sendable {
     /// The index also tracks validation status as well as some calculated fields like chainwork.
     ///
     /// Typically the block index is implemented over a key-value storage or database but the blockchain can also be configured to use a transient in-memory version for regression testing, etc.
-    private var blockIndex: BlockIndex!
+    private var blockIndex: BlockIndex
 
     /// The block disk or transient storage which includes block undo (reversal) data.
-    private var blockStorage: BlockStorage!
+    private var blockStorage: BlockStorage
 
     /// The heighest block with "full" validation status.
-    private var bestBlock: BlockRef! = nil
+    private var activeTip: BlockRef
 
     /// The heighest block/header which could have less than "full" validation status – i.e. header or merkle.
     ///
     /// The best header may be a fork of the active chain which might not include the best block.
-    private var bestHeader: BlockRef! = nil
+    private var bestHeader: BlockRef
 
     /// The memory pool of transactions of _mempool_.
     ///
@@ -88,7 +150,7 @@ public actor BlockchainService: Sendable {
 
     /// The height of the best, fully validated block.
     public var height: Int {
-        bestBlock.height
+        activeTip.height
     }
 
     /// The height of the best header – i.e. the header with the most accumulated proof-of-work or _chainwork_.
@@ -99,8 +161,8 @@ public actor BlockchainService: Sendable {
     }
 
     /// The identifier (hash) of the best known block. Also referred to as the tip of the blockchain.
-    public var chainTip: Block.ID! {
-        bestBlock?.header.id
+    public var chainTip: Block.ID {
+        activeTip.header.id
     }
 
     /// The genesis block as it is stored on disk.
@@ -121,24 +183,24 @@ public actor BlockchainService: Sendable {
 
     /// The best block's time.
     public var time: Date {
-        bestBlock.header.time
+        activeTip.header.time
     }
 
     /// The best block's difficulty.
     public var difficulty: Double {
-        bestBlock.difficulty
+        activeTip.difficulty
     }
 
     /// The median time, calculated using the timestamps of the last 11 blocks starting from the best known block.
     public var medianTime: Date {
         get async {
-            await medianTimePast(for: bestBlock)
+            await medianTimePast(for: activeTip)
         }
     }
 
     /// How far along is the blockchain from being fully validated and synchronized.
     public var verificationProgress: Double {
-        guessVerificationProgress()
+        guessVerificationProgress(activeTip)
     }
 
     /// Whether the blockchain is in initial block download (IBD) mode.
@@ -150,7 +212,7 @@ public actor BlockchainService: Sendable {
 
     /// Accumulated proof-of-work by the block which has the most.
     public var chainwork: Data {
-        Data(bestBlock.chainwork.data.reversed())
+        Data(activeTip.chainwork.data.reversed())
     }
 
     /// Size of blocks on disk, including undo data.
@@ -159,88 +221,6 @@ public actor BlockchainService: Sendable {
     public var sizeOnDisk: Int { get async {
         await blockStorage.sizeOnDisk
     } }
-
-    /// Called from init after variables have been initialized.
-    private func setupPersistence() async throws(InitError) {
-        let fm = FileManager.default // TODO: Switch for NIOFileSystem
-        if let dataDir {
-            do {
-                try fm.createDirectory(atPath: dataDir.string, withIntermediateDirectories: true)
-            } catch {
-                logger.error("There was an issue accessing/creating the specified data directory.")
-                throw .dataDirIssue
-            }
-        }
-
-        blockIndex = if let dataDir { PersistentBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
-        coins = if let dataDir { PersistentCoinsIndex(path: dataDir, logger: logger) } else { TransientCoinsIndex() }
-
-        let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
-        do {
-            blockStorage = if dataDir == nil {
-                try await TransientBlockStorage(config: config, logger: logger)
-            } else {
-                try await PersistentBlockStorage(config: config, logger: logger)
-            }
-        } catch {
-            logger.error("Could not start block storage.")
-            fatalError("Could not start block storage.")
-        }
-
-        logger.debug("Indexes and storage initialized.")
-        logger.debug("Searching for best header and block…")
-        bestHeader = await blockIndex.bestHeader
-        if bestHeader == nil {
-            logger.debug("No good header, seeding genesis block")
-            let genesisBlock = Block.genesis(params)
-            let locator = try! await blockStorage.store(genesisBlock, undo: BlockUndo(spentCoins: [])) // TODO: Throw
-            bestBlock = try! await blockIndex.add(genesisBlock, locator: locator, status: .active)
-            bestHeader = bestBlock
-        } else if bestHeader.status == .active {
-            bestBlock = bestHeader
-        } else {
-            logger.debug("Found best header, now searching for best block…")
-            bestBlock = await blockIndex.bestBlock
-            logger.debug("Highest active before reorg: \(bestBlock.header.idHex)")
-            // The current best block is just the highest active block which may not actually be an ancestor of the best header, so we need to check for reorgs.
-            // await checkForReorg()
-            // Headers fork, may imply a block reorg
-            let bestAncestor = await blockIndex.bestAncestor(of: bestHeader)
-            if bestAncestor.header.id != bestBlock.header.id {
-                logger.debug("Reorg detected. Switching the active chain…")
-                // Re-org detected
-                validationTask?.cancel()
-                currentlyValidating = nil
-
-                // Deactivate current chain
-                let undoneRefs = await blockIndex.undo(from: bestBlock, backTo: bestAncestor)
-                for ref in undoneRefs {
-                    try! await undoCoins(ref)
-                }
-
-                // Reactivate new chain (if previously active)
-                let reactivatedRefs = await blockIndex.reactivate(from: bestHeader, backTo: bestAncestor)
-                for ref in reactivatedRefs {
-                    precondition(ref.status == .active)
-                    try! await redoCoins(ref)
-                }
-                bestBlock = reactivatedRefs.last ?? bestAncestor
-            }
-        }
-        logger.debug("Best block (tip): \(bestBlock.header.idHex)")
-        logger.debug("Best header: \(bestHeader.header.idHex)")
-
-        // Connect the next block if transactions are already downloaded and check against merkle root
-        if let nextRef = await blockIndex.ancestor(of: bestHeader, childOf: bestBlock) {
-            logger.debug("Best child of tip: \(nextRef.header.idHex); Status: \(nextRef.status)")
-            if nextRef.status == .merkle {
-                logger.debug("Will connect next block \(nextRef.header.idHex)")
-                validationTask = Task {
-                    try await connectBlock(ref: nextRef)
-                }
-            }
-        }
-    }
 
     /// Removes all subscriptions to block and transaction updates.
     public func unsubscribeAll() async {
@@ -260,7 +240,7 @@ public actor BlockchainService: Sendable {
 
         let blockRef = try await checkBlock(block)
 
-        if blockRef.header.previous == bestBlock.header.id {
+        if blockRef.header.previous == activeTip.header.id {
             // Connect now
             if currentlyValidating == nil {
                 if immediate {
@@ -275,7 +255,7 @@ public actor BlockchainService: Sendable {
                 logger.debug("Holding validation of block \(block.idHex)")
             }
         } else if !initialBlockDownload {
-            guard let nextRef = await blockIndex.ancestor(of: bestHeader, childOf: bestBlock), nextRef.status == .merkle else {
+            guard let nextRef = await blockIndex.ancestor(of: bestHeader, childOf: activeTip), nextRef.status == .merkle else {
                 return
             }
             logger.debug("Will connect next block \(nextRef.header.idHex)")
@@ -310,18 +290,18 @@ public actor BlockchainService: Sendable {
         try await mempoolAcceptPreChecks(tx)
 
         // Get a reference to previous block
-        guard bestBlock.header.previous != Block.nullParent else {
+        guard activeTip.header.previous != Block.nullParent else {
             logger.warning("Only genesis block exists")
             return
         }
 
-        guard let previous: BlockRef = await blockIndex.get(bestBlock.header.previous) else {
+        guard let previous: BlockRef = await blockIndex.get(activeTip.header.previous) else {
             logger.error("Could not accept transaction because of missing previous block reference.")
             return
         }
 
         do {
-            try await checkTx(tx, block: bestBlock, previous: previous, checkStandardness: true)
+            try await checkTx(tx, block: activeTip, previous: previous, checkStandardness: true)
         } catch {
             logger.error("Failed transaction check\n\n\(error)")
             return
@@ -350,7 +330,7 @@ public actor BlockchainService: Sendable {
 
     /// Gets a fully validated block by height complete with transactions.
     public func getBlockID(at height: Int) async -> Block.ID? {
-        guard height >= 0, bestBlock.height >= height else {
+        guard height >= 0, activeTip.height >= height else {
             return nil
         }
         return await blockIndex.get(at: height).header.id
@@ -368,7 +348,7 @@ public actor BlockchainService: Sendable {
     ///
     /// Usually called from unit tests.
     public func getBlock(at height: Int) async -> Block? {
-        guard height >= 0, bestBlock.height >= height else {
+        guard height >= 0, activeTip.height >= height else {
             return nil
         }
         let blockRef = await blockIndex.get(at: height)
@@ -382,7 +362,7 @@ public actor BlockchainService: Sendable {
 
     /// Gets a fully validated block by ID complete with transactions.
     public func getBlock(_ id: Block.ID) async -> Block? {
-        guard let blockRef = await blockIndex.get(id), let locator = blockRef.locator, bestBlock.height >= blockRef.height else {
+        guard let blockRef = await blockIndex.get(id), let locator = blockRef.locator, activeTip.height >= blockRef.height else {
             return nil
         }
         return if let (block, _) = try? await blockStorage.retrieve(locator) {
@@ -403,7 +383,7 @@ public actor BlockchainService: Sendable {
         guard let ref = await blockIndex.get(id) else {
             return nil
         }
-        let refNext = if ref.height < bestBlock.height {
+        let refNext = if ref.height < activeTip.height {
             // TODO: To support reorgs pass along this block's ID so that the correct successor can be returned
             await blockIndex.get(at: ref.height + 1)
         } else {
@@ -413,7 +393,7 @@ public actor BlockchainService: Sendable {
         return .init(
             next: refNext?.header.id,
             height: ref.height,
-            confirmations: bestBlock.height - ref.height + 1,
+            confirmations: activeTip.height - ref.height + 1,
             difficulty: ref.difficulty,
             chainwork: ref.chainwork.data,
             medianTime: medianTime
@@ -477,7 +457,7 @@ public actor BlockchainService: Sendable {
             }
         }
         guard let hitHeight else { return [] }
-        let maxHeight = bestBlock.height
+        let maxHeight = activeTip.height
         var heightTo = maxHeight
         let heightFrom = hitHeight + 1
         guard heightFrom <= heightTo else { return [] }
@@ -557,21 +537,21 @@ public actor BlockchainService: Sendable {
         }
 
         // We can use `try!` because we already checked that the parent exists
-        let newHeader = try! await blockIndex.add(header, locator: nil, status: .header)
+        let newHeader = try! await blockIndex.addHeader(header)
         if newHeader.chainwork > bestHeader.chainwork {
-            let previousBest = bestHeader!
+            let previousBest = bestHeader
             bestHeader = newHeader
             if newHeader.header.previous != previousBest.header.id {
                 // Headers fork, may imply a block reorg
                 let bestAncestor = await blockIndex.bestAncestor(of: bestHeader)
-                if bestAncestor.header.id != bestBlock.header.id {
+                if bestAncestor.header.id != activeTip.header.id {
                     logger.debug("Reorg detected. Switching the active chain…")
                     // Re-org detected
                     validationTask?.cancel()
                     currentlyValidating = nil
 
                     // Deactivate current chain
-                    let undoneRefs = await blockIndex.undo(from: bestBlock, backTo: bestAncestor)
+                    let undoneRefs = await blockIndex.undo(from: activeTip, backTo: bestAncestor)
                     for ref in undoneRefs {
                         try! await undoCoins(ref)
                     }
@@ -582,7 +562,7 @@ public actor BlockchainService: Sendable {
                         precondition(ref.status == .active)
                         try! await redoCoins(ref)
                     }
-                    bestBlock = reactivatedRefs.last ?? bestAncestor
+                    activeTip = reactivatedRefs.last ?? bestAncestor
                 }
             }
         }
@@ -605,7 +585,7 @@ public actor BlockchainService: Sendable {
 
     /// Returns the IDs of the headers missing transactions up to a maximum defined by the function argument.
     public func getNextMissingBlocks(_ numberOfBlocks: Int) async -> [Block.ID] {
-        await blockIndex.missingBlocks(tip: bestHeader, stop: bestBlock, max: numberOfBlocks)
+        await blockIndex.missingBlocks(tip: bestHeader, stop: activeTip, max: numberOfBlocks)
 
 //        guard !synchronized else {
 //            return []
@@ -644,9 +624,9 @@ public actor BlockchainService: Sendable {
         guard synchronized else {
             return
         }
-        try await undoCoins(bestBlock)
-        bestBlock = await blockIndex.undoLastBlock()
-        bestHeader = bestBlock
+        try await undoCoins(activeTip)
+        activeTip = await blockIndex.undoLastBlock()
+        bestHeader = activeTip
     }
 
     private func undoCoins(_ ref: BlockRef) async throws  {
@@ -741,13 +721,13 @@ public actor BlockchainService: Sendable {
         }
 
         let blockReward = params.blockSubsidy + totalFees
-        let coinbaseTx = Transaction.coinbase(version: txVersion, blockHeight: bestBlock.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot, tag: tag)
+        let coinbaseTx = Transaction.coinbase(version: txVersion, blockHeight: activeTip.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot, tag: tag)
 
-        let previousBlockHash = bestBlock.header.id
+        let previousBlockHash = activeTip.header.id
         let txs = [coinbaseTx] + mempoolTxs
         let merkleRoot = calculateMerkleRoot(txs)
 
-        let target = await getNextWorkRequired(lastHeader: bestBlock, newBlockTime: blockTime, params: params)
+        let target = await getNextWorkRequired(lastHeader: activeTip, newBlockTime: blockTime, params: params)
 
         var nonce = initialNonce
         var tries = maxTries
@@ -863,7 +843,7 @@ public actor BlockchainService: Sendable {
         precondition(!tx.isCoinbase)
 
         let valueIn: Amount
-        let nextHeight = bestBlock.height + 1
+        let nextHeight = activeTip.height + 1
 
         var valueInAcc = Amount(0)
         for input in tx.ins {
@@ -1001,7 +981,7 @@ public actor BlockchainService: Sendable {
         let updatedRef: BlockRef
         do {
             let locator = try await blockStorage.store(block)
-            updatedRef = await blockIndex.update(block.id, locator: locator, status: .merkle)
+            updatedRef = await blockIndex.updateHeader(block.id, locator: locator)
             if updatedRef.header.id == bestHeader.header.id {
                 bestHeader = updatedRef
             }
@@ -1027,7 +1007,6 @@ public actor BlockchainService: Sendable {
 
     /// If we have a header in our index it updates it's validation. If not it adds the block to the index. Adds the block to storage along with undo information and updates coins (chainstate).
     private func connectBlock(block cachedBlock: Block? = nil, ref blockRef: BlockRef? = nil) async throws(Error) {
-
         // This function is called recursively so we check for Task cancelation at every incarnation
         guard !Task.isCancelled else {
             currentlyValidating = nil
@@ -1047,6 +1026,7 @@ public actor BlockchainService: Sendable {
         } else {
             await blockIndex.get(blockID)!
         }
+        precondition(blockRef.header.previous != Block.nullParent) // Can't be genesis block
         precondition(blockRef.header.id == blockID && blockRef.status == .merkle)
         guard let blockOnlyLocator = blockRef.locator else {
             preconditionFailure()
@@ -1064,10 +1044,8 @@ public actor BlockchainService: Sendable {
         }
 
         // Get a reference to previous block
-        let previousRef: BlockRef?
-        if block.previous == Block.nullParent {
-            previousRef = nil
-        } else if let ref = await blockIndex.get(block.previous) {
+        let previousRef: BlockRef
+        if let ref = await blockIndex.get(block.previous) {
             previousRef = ref
         } else {
             logger.error("Could not connect block because parent is missing from index.")
@@ -1123,7 +1101,7 @@ public actor BlockchainService: Sendable {
             }
             let tx = block.txs[txIndex]
             do {
-                try await checkTx(tx, block: blockRef, previous: previousRef!, checkScripts: checkScripts, exclude: tmpExclude, auxCoins: tmpCoins)
+                try await checkTx(tx, block: blockRef, previous: previousRef, checkScripts: checkScripts, exclude: tmpExclude, auxCoins: tmpCoins)
             } catch {
 
                 // TODO: Invalidate all descendants (blocks that build upon this block)
@@ -1135,8 +1113,8 @@ public actor BlockchainService: Sendable {
 
                 // Check that transaction is BIP68 final
                 // BIP68 lock checks (as opposed to nLockTime checks) must be in ConnectBlock because they require the UTXO set
-                var previousHeights = await calculatePrevHeights(tx, tip: previousRef!, excludeCoins: tmpExclude, auxCoins: tmpCoins)
-                try await sequenceLocks(tx, block: blockRef, previous: previousRef!, verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights)
+                var previousHeights = await calculatePrevHeights(tx, tip: previousRef, excludeCoins: tmpExclude, auxCoins: tmpCoins)
+                try await sequenceLocks(tx, block: blockRef, previous: previousRef, verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights)
             }
             // Remove coins
             tmpExclude += tx.ins.map(\.outpoint)
@@ -1160,7 +1138,7 @@ public actor BlockchainService: Sendable {
         precondition(unclaimed >= 0 && unclaimed <= Transaction.maxMoney) // coinbase "fee" our of range, can this ever happen??
 
         // Will now update chain tip and coins
-        let newBlockHeight = if let previousRef { previousRef.height + 1} else { 0 }
+        let newBlockHeight = previousRef.height + 1
 
         var outpointsToRemove = [Outpoint]()
         for tx in block.txs {
@@ -1194,7 +1172,7 @@ public actor BlockchainService: Sendable {
         for tx in mempool {
             do {
                 // TODO: Revisit this hack, pass along only what's necessary
-                let nextTip = BlockRef(.init(previous: blockRef.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: blockRef.height + 1, chainwork: .init(), chainTxCount: 0)
+                let nextTip = BlockRef(.init(previous: blockRef.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: blockRef.height + 1, chainwork: .init(), chainTxCount: -1)
 
                 try await checkTx(tx, block: nextTip, previous: blockRef, exclude: mpExclude, auxCoins: mpCoins)
             } catch {
@@ -1220,14 +1198,14 @@ public actor BlockchainService: Sendable {
         let newLocator = try! await blockStorage.store(blockUndo, forBlockAt: blockOnlyLocator) // TODO: throw
 
         // TODO: Check that this recently verified block shouldn't go from merkle to stale
-        bestBlock = await blockIndex.update(block.id, locator: newLocator, status: .active)
-        if bestHeader.header.id == bestBlock.header.id {
-            bestHeader = bestBlock
+        activeTip = await blockIndex.updateBlock(block.id, locator: newLocator, status: .active, chainTxCount: block.txs.count + previousRef.chainTxCount)
+        if bestHeader.header.id == activeTip.header.id {
+            bestHeader = activeTip
         }
 
         logger.info("New tip: \(block.idHex)")
         // Notify other nodes of new tip
-        Task { [ status = bestBlock.status, height = bestBlock.height] in
+        Task { [ status = activeTip.status, height = activeTip.height] in
             await withDiscardingTaskGroup {
                 for channel in blockChannels {
                     $0.addTask {
@@ -1240,13 +1218,13 @@ public actor BlockchainService: Sendable {
         // Connect the next block if transactions are already downloaded and check against merkle root
         let nextRef: BlockRef?
         if initialBlockDownload {
-            guard bestHeader.height > bestBlock.height else {
+            guard bestHeader.height > activeTip.height else {
                 currentlyValidating = nil
                 return
             }
             nextRef = await blockIndex.get(at: blockRef.height + 1)
         } else {
-            nextRef = await blockIndex.ancestor(of: bestHeader, childOf: bestBlock)
+            nextRef = await blockIndex.ancestor(of: bestHeader, childOf: activeTip)
         }
         guard let nextRef, nextRef.status == .merkle else {
             currentlyValidating = nil
@@ -1352,20 +1330,32 @@ public actor BlockchainService: Sendable {
     /// Verification progress of the best block known so far.
     ///
     /// This function could be adapted to return the verification progress for any arbitrary block.
-    private func guessVerificationProgress() -> Double {
-        let now = nowSeconds()
-        let blockTime = floor(bestBlock.header.time.timeIntervalSince1970) // TODO: floor may be redundant as block always resets seconds (or at least it should)
+    private func guessVerificationProgress(_ block: BlockRef) -> Double {
 
-        let chainData = params.chainData
-        let chainDataTime = TimeInterval(chainData.time)
+        let data = params.chainData
 
-        let txTotal: Double
-        if bestBlock.chainTxCount <= chainData.txCount {
-            txTotal = Double(chainData.txCount) + (now - chainDataTime) * chainData.txRate
-        } else {
-            txTotal = Double(bestBlock.chainTxCount)  + (now - blockTime) * chainData.txRate
+        if block.chainTxCount == -1 {
+            logger.debug("Block \(block.header.idHex) has unset m_chain_tx_count. Unable to estimate verification progress.")
+            return 0
         }
-        return min(Double(bestBlock.chainTxCount) / txTotal, 1.0)
+
+        let now = nowSeconds()
+
+        let blockTime = if abs(now - block.header.time.timeIntervalSince1970) <= 2 * 60 * 60 && bestHeader.height >= block.height {
+            // When the header is known to be recent, switch to a height-based approach. This ensures the returned value is quantized when close to "1.0", because some users expect it to be. This also  avoids relying too much on the exact miner-set timestamp, which may be off.
+            now - Double(bestHeader.height - block.height) * Double(params.powTargetSpacing)
+        } else {
+            block.header.time.timeIntervalSince1970
+        }
+
+        let chainDataTime = TimeInterval(data.time)
+
+        let txTotal = if block.chainTxCount <= data.txCount {
+            Double(data.txCount) + (now - chainDataTime) * data.txRate
+        } else {
+            Double(block.chainTxCount)  + (now - blockTime) * data.txRate
+        }
+        return min(Double(block.chainTxCount) / txTotal, 1.0)
     }
 
     /// Whether we are in Initial Block Download (IBD) mode.
@@ -1381,14 +1371,11 @@ public actor BlockchainService: Sendable {
         // Currently this function is never called before the blockchain service has started which includes the initialization of the block storage. The process could become more async in the future so leaving the below line commented out for now.
         // if await blockStorage.status == .starting { return true }
 
-        // This is for the active chain only.
-        if bestBlock == nil { return true }
-
-        if try! DifficultyTarget(params.minChainwork.reversed()) > bestBlock.chainwork { return true }
+        if try! DifficultyTarget(params.minChainwork.reversed()) > activeTip.chainwork { return true }
 
         let maxTipAge = TimeInterval(24 * 60 * 60) // 24 hours
         let maxTipTime = Date(timeIntervalSince1970: nowSeconds() - maxTipAge)
-        if (bestBlock.header.time < maxTipTime ) { return true }
+        if (activeTip.header.time < maxTipTime ) { return true }
 
         logger.info("Leaving InitialBlockDownload (latching to false)")
         finishedIDB.store(true, ordering: .relaxed)
@@ -1427,7 +1414,7 @@ public actor BlockchainService: Sendable {
         var prevHeights = await calculatePrevHeights(tx, tip: tip, excludeCoins: mempoolExclude, auxCoins: mempoolCoins)
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
+        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
 
         // When SequenceLocks() is called within ConnectBlock(), the height
         // of the block *being* evaluated is what is used.
@@ -1476,9 +1463,9 @@ public actor BlockchainService: Sendable {
         // be mined yet.
         // Pass in m_view which has all of the relevant inputs cached. Note that, since m_view's
         // backend was removed, it no longer pulls coins from the mempool.
-        let lockPoints = await calculateLockPointsAtTip(tx, tip: bestBlock)
+        let lockPoints = await calculateLockPointsAtTip(tx, tip: activeTip)
         do {
-            try await checkSequenceLocksAtTip(bestBlock, lockPoints: lockPoints)
+            try await checkSequenceLocksAtTip(activeTip, lockPoints: lockPoints)
         } catch {
             logger.error("Invalid transaction \(tx.idHex): Premature spend, BIP68 non-final")
             throw .nonFinalTransaction
@@ -1497,9 +1484,9 @@ public actor BlockchainService: Sendable {
         // Thus if we want to know if a transaction can be part of the *next* block, we need to use one more than chainActive.Height()
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextBlockPlaceholder = BlockRef(.init(previous: bestBlock.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: bestBlock.height + 1, chainwork: .init(), chainTxCount: 0)
+        let nextBlockPlaceholder = BlockRef(.init(previous: activeTip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: activeTip.height + 1, chainwork: .init(), chainTxCount: -1)
 
-        try await evaluateSequenceLocks(nextBlockPlaceholder, previous: bestBlock, lockPair: (lockPoints.height, lockPoints.time))
+        try await evaluateSequenceLocks(nextBlockPlaceholder, previous: activeTip, lockPair: (lockPoints.height, lockPoints.time))
     }
 
     /// Called by `BlockchainService.connectBlock()`.
@@ -1605,7 +1592,7 @@ public actor BlockchainService: Sendable {
     }
 }
 
-private func nowSeconds() -> Double {
+private func nowSeconds() -> TimeInterval {
     var calendar = Calendar(identifier: .iso8601)
     calendar.timeZone = .gmt
     return floor(calendar.date(bySetting: .nanosecond, value: 0, of: Date.now)!.timeIntervalSince1970)

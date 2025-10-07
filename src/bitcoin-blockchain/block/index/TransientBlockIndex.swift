@@ -75,15 +75,6 @@ actor TransientBlockIndex: BlockIndex {
         return candidate
     }
 
-    /// Stale of full ancestor
-    func bestStaleAncestor(of header: BlockRef) async -> BlockRef {
-        var candidate = header
-        while ![.stale, .active].contains(candidate.status) {
-            candidate = byID[candidate.header.previous]!
-        }
-        return candidate
-    }
-
     func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
         var current = tip
         var blocks = Deque<Block.ID>(minimumCapacity: max)
@@ -113,8 +104,18 @@ actor TransientBlockIndex: BlockIndex {
         return locators
     }
 
-    @discardableResult
-    func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus) throws(BlockIndexError) -> BlockRef {
+    func addHeader(_ header: Block) throws(BlockIndexError) -> BlockRef {
+        precondition(header.txs.isEmpty)
+        return try add(header, locator: nil, status: .header, chainTxCount: -1)
+    }
+
+    func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) throws(BlockIndexError) -> BlockRef {
+        precondition(byID.isEmpty)
+        precondition(genesisBlock.previous == Block.nullParent)
+        return try add(genesisBlock, locator: locator, status: .active, chainTxCount: genesisBlock.txs.count)
+    }
+
+    private func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus, chainTxCount: Int) throws(BlockIndexError) -> BlockRef {
         let previous = if block.previous != Block.nullParent {
             get(block.previous)
         } else {
@@ -125,7 +126,6 @@ actor TransientBlockIndex: BlockIndex {
         }
         let height = if let previous { previous.height + 1 } else { 0 }
         let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
-        let chainTxCount = if let previous { previous.chainTxCount + block.txs.count } else { block.txs.count }
         let blockRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
         byID[blockRef.header.id] = blockRef
 
@@ -138,17 +138,30 @@ actor TransientBlockIndex: BlockIndex {
         return blockRef
     }
 
-    func update(_ id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus) -> BlockRef {
-        byID[id]!.locator = locator
-        byID[id]!.status = status
-        return byID[id]!
+    func updateBlock(_ id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
+        precondition([.active, .stale].contains(status))
+        precondition(locator.isComplete)
+        return update(id: id, locator: locator, status: status, chainTxCount: chainTxCount)
     }
 
-    @discardableResult
-    func update(_ id: Block.ID, status: ValidationStatus) -> BlockRef {
-        // TODO: deal with duplication of the different `update()` funcs.
-        byID[id]!.status = status
-        return byID[id]!
+    func updateHeader(_ id: Block.ID, locator: BlockStorageLocator) -> BlockRef  {
+        precondition(!locator.isPlaceholder && !locator.hasUndoOffset)
+        return update(id: id, locator: locator, status: .merkle, chainTxCount: nil)
+    }
+
+    private func update(id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?) -> BlockRef {
+        guard var blockRef = byID[id] else {
+            preconditionFailure()
+        }
+
+        // Valid transitions header -> merkle; merkle -> active/stale
+        precondition(blockRef.status == .header && status == .merkle || (blockRef.status == .merkle && [.active, .stale].contains(status)))
+
+        blockRef.locator = locator
+        blockRef.status = status
+        if let chainTxCount { blockRef.chainTxCount = chainTxCount }
+        byID[id] = blockRef
+        return blockRef
     }
 
     func get(_ id: Block.ID) -> BlockRef? { // TODO: Probably should throw

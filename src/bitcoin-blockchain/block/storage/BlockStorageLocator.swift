@@ -7,6 +7,18 @@ struct BlockStorageLocator: Hashable {
     let undoOffset: Int
 
     static let placeholder = Self(file: -1, offset: -1, undoOffset: -1)
+
+    var isComplete: Bool {
+        offset != -1 && undoOffset != -1
+    }
+
+    var isPlaceholder: Bool {
+        self == Self.placeholder
+    }
+
+    var hasUndoOffset: Bool {
+        undoOffset != -1
+    }
 }
 
 extension BlockStorageLocator: BinaryCodable {

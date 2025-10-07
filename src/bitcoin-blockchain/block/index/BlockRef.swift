@@ -20,7 +20,7 @@ struct BlockRef: Equatable, Sendable {
     public let header: Block
     public let height: Int
     public let chainwork: DifficultyTarget
-    public let chainTxCount: Int
+    public internal(set) var chainTxCount: Int
     public internal(set) var status: ValidationStatus
     public internal(set) var locator: BlockStorageLocator?
 
