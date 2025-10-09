@@ -47,6 +47,8 @@ extension Optional: BinaryCodable where Wrapped == UnspentOutput {
     public init(from decoder: inout BinaryDecoder) throws {
         let intData = decoder.peek(MemoryLayout<Int>.size)
         if intData == Data([UInt8](repeating: 0xff, count: MemoryLayout<Int>.size)) {
+            let decoded: Int = try decoder.decode()
+            precondition(decoded == -1)
             self = nil
         } else {
             self = try UnspentOutput(from: &decoder)

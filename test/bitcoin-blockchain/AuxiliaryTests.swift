@@ -21,4 +21,44 @@ struct AuxiliaryTests {
         print(merkleroot.hex)
         #expect(merkleroot == expected)
     }
+
+    @Test func undoData() async throws {
+        let coin = UnspentOutput(.init(value: 123), height: 4, isCoinbase: true)
+
+        let coin2 = try UnspentOutput(coin.data)
+        #expect(coin == coin2)
+
+        let maybeCoin = UnspentOutput?.some(coin)
+        let maybeCoin2 = try UnspentOutput(maybeCoin.data)
+        #expect(maybeCoin == maybeCoin2)
+
+        let maybeNotCoin = UnspentOutput?.none
+        let maybeNotCoin2: UnspentOutput? = try .init(maybeNotCoin.data)
+        #expect(maybeNotCoin == maybeNotCoin2)
+
+        let coins = [
+            coin,
+            .init(.init(value: 456), height: 7, isCoinbase: false),
+        ]
+        let data = coins.data
+        var decoder = BinaryDecoder(data)
+        let coins2: [UnspentOutput?] = try decoder.decodeExplicit()
+        #expect(coins == coins2)
+
+        let maybeCoins = [
+            nil,
+            coin,
+            .init(.init(value: 456), height: 7, isCoinbase: false)
+        ]
+        let maybeCoins2: [UnspentOutput?] = try .init(maybeCoins.data)
+        #expect(maybeCoins == maybeCoins2)
+
+        let undo = BlockUndo(spentCoins: coins)
+        let undo2 = try BlockUndo(undo.data)
+        #expect(undo == undo2)
+
+        let undoWithNils = BlockUndo(spentCoins: maybeCoins)
+        let undoWithNils2 = try BlockUndo(undoWithNils.data)
+        #expect(undoWithNils == undoWithNils2)
+    }
 }

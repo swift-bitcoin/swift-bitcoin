@@ -222,6 +222,11 @@ public actor BlockchainService: Sendable {
         await blockStorage.sizeOnDisk
     } }
 
+    /// Returns the current UTXO set or _coins_.
+    public var currentCoins: [Outpoint : UnspentOutput] { get async {
+        await coins.all
+    } }
+
     /// Removes all subscriptions to block and transaction updates.
     public func unsubscribeAll() async {
         // TODO: Evaluate if can be moved to an isolated deinit or such.
@@ -831,11 +836,6 @@ public actor BlockchainService: Sendable {
             }
             return mempool[i]
         }
-    }
-
-    /// Returns the current UTXO set or _coins_.
-    public func currentUTXOSet() async -> [Outpoint : UnspentOutput] {
-        await coins.all
     }
 
     /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``check()``
