@@ -1,5 +1,5 @@
 import Testing
-import System
+import struct NIOFileSystem.FilePath
 import Foundation
 import BitcoinCrypto
 import BitcoinBase
