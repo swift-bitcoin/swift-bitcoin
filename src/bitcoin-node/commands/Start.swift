@@ -102,15 +102,11 @@ private func launchNode(_ config: NodeConfig, host: String, port: Int?) async th
 
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
-    let p2pClients = (0 ..< 3).map { _ in
-        P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger)
-    }
-
     let p2pService = P2PService(eventLoopGroup: eventLoopGroup, node: node, logger: logger)
 
-    let rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, p2pService: p2pService, p2pClients: p2pClients, logger: logger)
+    let rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, p2pService: p2pService, logger: logger)
     let serviceGroup = ServiceGroup(configuration: .init(
-        services: [node] + p2pClients + [p2pService, rpcService],
+        services: [node, p2pService, rpcService],
         gracefulShutdownSignals: [.sigint, .sigterm],
         cancellationSignals: [.sigquit],
         logger: logger

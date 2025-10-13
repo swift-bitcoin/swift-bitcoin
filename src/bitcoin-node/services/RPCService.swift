@@ -14,14 +14,13 @@ import BitcoinRPC
 
 actor RPCService: Service {
 
-    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService, p2pService: P2PService, p2pClients: [P2PClient], logger: Logger) {
+    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService, p2pService: P2PService, logger: Logger) {
         self.host = host
         self.port = port
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.blockchain = blockchain
         self.p2pService = p2pService
-        self.p2pClients = p2pClients
         self.logger = logger
     }
 
@@ -31,7 +30,7 @@ actor RPCService: Service {
     let node: NodeService
     let blockchain: BlockchainService
     let p2pService: P2PService
-    let p2pClients: [P2PClient]
+    var p2pClients = [P2PClient]()
     let logger: Logger
 
     // Status and statistics
@@ -213,19 +212,10 @@ actor RPCService: Service {
     }
 
     private func rpcConnect(_ params: ConnectRPC.Params) async throws(JSONRPCResponse.Error) -> ConnectRPC.Result {
-        // Attempt to find an inactive client.
-        var client = P2PClient?.none
-        for c in p2pClients {
-            if await !c.connected {
-                client = c
-                break
-            }
-        }
-        guard let client else {
-            throw .init(.internalError, "Maximum P2P client instances reached.")
-        }
-        await client.connect(host: params.host, port: params.port)
-        // await serviceGroup?.addServiceUnlessShutdown(P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger))
+        let service = P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port)
+        p2pClients.append(service)
+        let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore)
+        await serviceGroup?.addServiceUnlessShutdown(config)
         return UUID().uuidString // FIXME: Find a way to return real peer ID
     }
 }

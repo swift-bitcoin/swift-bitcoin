@@ -10,50 +10,39 @@ import Logging
 
 actor P2PClient: Service {
 
-    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger) {
+    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.logger = logger
+        remoteHost = host
+        remotePort = port
     }
 
     let eventLoopGroup: EventLoopGroup
     let node: NodeService
     let logger: Logger
+    let remoteHost: String
+    let remotePort: Int
 
     // Status
     private(set) var running = false
     private(set) var connected = false
-    private(set) var remoteHost = String?.none
-    private(set) var remotePort = Int?.none
     private(set) var localPort = Int?.none
-    private(set) var overallConnections = 0
-
-    private let connectRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
 
     private var clientChannel: NIOAsyncChannel<NetworkMessage, NetworkMessage>?
 
     var status: StatusRPC.Result.P2PClient {
-        .init(running: running, connected: connected, remoteHost: remoteHost, remotePort: remotePort, localPort: localPort, overallConnections: overallConnections)
+        .init(running: running, connected: connected, remoteHost: remoteHost, remotePort: remotePort, localPort: localPort)
     }
 
     /// Runs the stand-by client service but does not attempt to initiate a peer-to-peer connection.
     func run() async throws {
         running = true
-
         try await withGracefulShutdownHandler {
-            for await _ in connectRequests.cancelOnGracefulShutdown() {
-                try await connectToPeer()
-            }
+            try await connectToPeer()
         } onGracefulShutdown: { [logger] in
             logger.info("P2P client shutting down gracefully…")
         }
-    }
-
-    func connect(host: String, port: Int) async {
-        guard clientChannel == nil else { return }
-        remoteHost = host
-        remotePort = port
-        await connectRequests.send(()) // Signal to connect to remote peer
     }
 
     func disconnect() async throws {
@@ -61,11 +50,6 @@ actor P2PClient: Service {
     }
 
     private func connectToPeer() async throws {
-        guard let remoteHost, let remotePort else {
-            logger.error("Missing remote host/port…")
-            return
-        }
-
         let clientChannel = try await ClientBootstrap(group: eventLoopGroup)
             .connect( host: remoteHost, port: remotePort) { connection in
                 connection.eventLoop.makeCompletedFuture {
@@ -82,7 +66,6 @@ actor P2PClient: Service {
         self.clientChannel = clientChannel
         connected = true
         localPort = clientChannel.channel.localAddress?.port
-        overallConnections += 1
         logger.info("P2P client @\(localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
 
         try await clientChannel.executeThenClose { @Sendable [logger] inbound, outbound in
@@ -126,11 +109,10 @@ actor P2PClient: Service {
     }
 
     private func peerDisconnected() {
-        logger.info("P2P client @\(localPort ?? -1) disconnected from remote peer @\(remoteHost ?? ""):\(remotePort ?? -1)…")
+        logger.info("P2P client @\(localPort ?? -1) disconnected from remote peer @\(remoteHost):\(remotePort)…")
         clientChannel = nil
+        running = false
         connected = false
         localPort = nil
-        remoteHost = nil
-        remotePort = nil
     }
 }
