@@ -45,22 +45,20 @@ public struct StatusRPC: RPCCommand, Sendable {
 
         public struct P2PClient: Codable, Sendable {
 
-            public init(running: Bool, connected: Bool, remoteHost: String?, remotePort: Int?, localPort: Int?, overallConnections: Int) {
+            public init(running: Bool, connected: Bool, remoteHost: String, remotePort: Int, localPort: Int?) {
                 self.running = running
                 self.connected = connected
                 self.remoteHost = remoteHost
                 self.remotePort = remotePort
                 self.localPort = localPort
-                self.overallConnections = overallConnections
             }
 
             public var index = -1
             let running: Bool
             let connected: Bool
-            let remoteHost: String?
-            let remotePort: Int?
+            let remoteHost: String
+            let remotePort: Int
             let localPort: Int?
-            let overallConnections: Int
         }
 
         public init(rpcStatus: StatusRPC.Result.RPCService, p2pStatus: StatusRPC.Result.P2PService, p2pClientStatus: [StatusRPC.Result.P2PClient]) {
