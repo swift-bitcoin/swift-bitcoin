@@ -10,12 +10,14 @@ import Logging
 
 actor P2PClient: Service {
 
-    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) {
+    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int,  onDisconnect: (@Sendable (PeerID) async -> ())? = nil) async {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.logger = logger
         remoteHost = host
         remotePort = port
+        self.onDisconnect = onDisconnect
+        peerID = await node.addPeer(host: remoteHost, port: remotePort, incoming: false)
     }
 
     let eventLoopGroup: EventLoopGroup
@@ -23,21 +25,21 @@ actor P2PClient: Service {
     let logger: Logger
     let remoteHost: String
     let remotePort: Int
+    let onDisconnect: (@Sendable (PeerID) async -> ())?
+    let peerID: Int
 
     // Status
-    private(set) var running = false
     private(set) var connected = false
     private(set) var localPort = Int?.none
 
     private var clientChannel: NIOAsyncChannel<NetworkMessage, NetworkMessage>?
 
     var status: StatusRPC.Result.P2PClient {
-        .init(running: running, connected: connected, remoteHost: remoteHost, remotePort: remotePort, localPort: localPort)
+        .init(peerID: peerID, connected: connected, remoteHost: remoteHost, remotePort: remotePort, localPort: localPort)
     }
 
     /// Runs the stand-by client service but does not attempt to initiate a peer-to-peer connection.
     func run() async throws {
-        running = true
         try await withGracefulShutdownHandler {
             try await connectToPeer()
         } onGracefulShutdown: { [logger] in
@@ -69,23 +71,22 @@ actor P2PClient: Service {
         logger.info("P2P client @\(localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
 
         try await clientChannel.executeThenClose { @Sendable [logger] inbound, outbound in
-            let peerID = await node.addPeer(host: remoteHost, port: remotePort, incoming: false)
 
             try await withThrowingDiscardingTaskGroup { [logger] group in
-                group.addTask {
+                group.addTask { [peerID] in
                     await self.node.connect(peerID)
                     while let message = await self.node.popMessage(peerID) {
                         try await outbound.write(message)
                     }
                     logger.info("Connected \(peerID)")
                 }
-                group.addTask {
+                group.addTask { [peerID] in
                     for await message in await self.node.getChannel(for: peerID).cancelOnGracefulShutdown() {
                         try await outbound.write(message)
                     }
                     try? await clientChannel.channel.close()
                 }
-                group.addTask { [logger] in
+                group.addTask { [logger, peerID] in
                     for try await message in inbound.cancelOnGracefulShutdown() {
                         do {
                             try await self.node.processMessage(message, from: peerID)
@@ -105,14 +106,14 @@ actor P2PClient: Service {
                 }
             }
         }
-        peerDisconnected() // Clean up, update status
+        await peerDisconnected() // Clean up, update status
     }
 
-    private func peerDisconnected() {
+    private func peerDisconnected() async {
         logger.info("P2P client @\(localPort ?? -1) disconnected from remote peer @\(remoteHost):\(remotePort)…")
         clientChannel = nil
-        running = false
         connected = false
         localPort = nil
+        await onDisconnect?(peerID)
     }
 }

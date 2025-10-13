@@ -45,16 +45,15 @@ public struct StatusRPC: RPCCommand, Sendable {
 
         public struct P2PClient: Codable, Sendable {
 
-            public init(running: Bool, connected: Bool, remoteHost: String, remotePort: Int, localPort: Int?) {
-                self.running = running
+            public init(peerID: Int /* PeerID */, connected: Bool, remoteHost: String, remotePort: Int, localPort: Int?) {
+                self.peerID = peerID
                 self.connected = connected
                 self.remoteHost = remoteHost
                 self.remotePort = remotePort
                 self.localPort = localPort
             }
 
-            public var index = -1
-            let running: Bool
+            let peerID: Int /* PeerID */
             let connected: Bool
             let remoteHost: String
             let remotePort: Int

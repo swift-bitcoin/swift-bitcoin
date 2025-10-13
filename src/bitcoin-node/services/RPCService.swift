@@ -30,7 +30,7 @@ actor RPCService: Service {
     let node: NodeService
     let blockchain: BlockchainService
     let p2pService: P2PService
-    var p2pClients = [P2PClient]()
+    var p2pClients = [PeerID: P2PClient]()
     let logger: Logger
 
     // Status and statistics
@@ -176,15 +176,16 @@ actor RPCService: Service {
 
         // Collect P2P Client Services' statuses in order
         let p2pClientStatus = await withTaskGroup(of: (Int, StatusRPC.Result.P2PClient).self, returning: [StatusRPC.Result.P2PClient].self) { group in
-            for i in p2pClients.indices {
+            for (i, client) in p2pClients {
                 group.addTask {
-                    let status = await self.p2pClients[i].status
+                    let status = await client.status
                     return (i, status)
                 }
             }
+            // Let's sort clients by their ID
             var items = [(Int, StatusRPC.Result.P2PClient)]()
-            for await var result in group {
-                result.1.index = result.0 // Set the index inside the struct
+            for await result in group {
+                // result.1.peerID = result.0 // Set the peerID inside the struct
                 items.append(result)
             }
             return items.sorted(by: { $0.0 < $1.0 }).map(\.1) // Get rid of the tuple index
@@ -212,10 +213,16 @@ actor RPCService: Service {
     }
 
     private func rpcConnect(_ params: ConnectRPC.Params) async throws(JSONRPCResponse.Error) -> ConnectRPC.Result {
-        let service = P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port)
-        p2pClients.append(service)
+        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port) { peerID  in
+            await self.clearPeer(peerID)
+        }
+        p2pClients[service.peerID] = service
         let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore)
         await serviceGroup?.addServiceUnlessShutdown(config)
-        return UUID().uuidString // FIXME: Find a way to return real peer ID
+        return service.peerID
+    }
+
+    private func clearPeer(_ peerID: Int) {
+        p2pClients[peerID] = nil
     }
 }
