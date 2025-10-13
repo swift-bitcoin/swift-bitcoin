@@ -286,10 +286,7 @@ actor PersistentBlockIndex: BlockIndex {
                 precondition(ref.status == .active)
                 ref.status = .stale
                 try byID.put(ref.data, key: id)
-
-                //refs.insert(ref, at: 0)
                 refs.append(ref)
-
                 id = ref.header.previous
             } while id != ancestor.header.id
             return refs

@@ -145,7 +145,7 @@ public actor NodeService: Sendable {
     }
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
-    public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) async -> UUID {
+    public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) -> UUID {
         let id = PeerID()
         state.peers[id] = PeerState(address: IPv6Address.fromHost(host), port: port, incoming: incoming)
         peerOuts[id] = .init()
@@ -793,7 +793,11 @@ public actor NodeService: Sendable {
             return
         }
         state.peers[id]!.registerKnownTxs([tx.id])
-        try await blockchain.addTransaction(tx)
+        do {
+            try await blockchain.addTransaction(tx)
+        } catch {
+            logger.warning("tx rejected by mempool: \(tx.idHex)")
+        }
     }
 
     private func processCompactBlock(_ message: NetworkMessage, from id: PeerID) async throws {

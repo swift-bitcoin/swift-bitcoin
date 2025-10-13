@@ -16,7 +16,7 @@ extension BlockchainService {
         /// A transaction in the block could not be validated.
         case invalidTransactionInBlock(TransactionValidationError)
 
-        case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insuficientProofOfWork, headerTooOld, headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRoot, blockAlreadyExists, futureLockTime
+        case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insuficientProofOfWork, headerTooOld, headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRoot, /* blockAlreadyExists, */ futureLockTime
 
         case dataDirIssue, blockFileIssue, receivedCancellation
 

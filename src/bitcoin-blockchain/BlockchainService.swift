@@ -280,19 +280,24 @@ public actor BlockchainService: Sendable {
     public func addTransaction(_ tx: Transaction) async throws(TransactionValidationError) {
 
         guard !mempool.contains(tx) else {
-            logger.warning("Transaction already in mempool")
+            logger.warning("Transaction already in mempool: \(tx.idHex)")
             return
         }
 
         for txIn in tx.ins {
             // TODO: Have the coins index return transaction's inputs' previous coins/heights all at once (when coins not from the mempool coins array)
             guard let _ = try! await coins.get(txIn.outpoint) ?? mempoolCoins[txIn.outpoint], !mempoolExclude.contains(txIn.outpoint) else {
-                logger.warning("Missing UTXO")
+                logger.warning("Missing UTXO in tx \(tx.idHex)")
                 return
             }
         }
 
-        try await mempoolAcceptPreChecks(tx)
+        do {
+            try await mempoolAcceptPreChecks(tx)
+        } catch {
+            logger.warning("Mempool precheck failed for tx \(tx.idHex)")
+            throw error
+        }
 
         // Get a reference to previous block
         guard activeTip.header.previous != Block.nullParent else {
@@ -920,7 +925,7 @@ public actor BlockchainService: Sendable {
 
         // Check that all transactions are finalized
         guard tx.isFinal(blockHeight: blockHeight, blockTime: lockTimeCutoff) else {
-            logger.error("Transaction not final")
+            logger.error("Tx not final: \(tx.idHex)")
             throw .nonFinalTransaction
         }
 
@@ -938,6 +943,19 @@ public actor BlockchainService: Sendable {
                 throw .scriptError
             }
         }
+    }
+
+    /// Checks if a mempool transaction still has all it's inputs available.
+    private func inputsAvailable(_ tx: Transaction, exclude: [Outpoint], auxCoins: [Outpoint : UnspentOutput]) async -> Bool {
+        precondition(!tx.isCoinbase)
+        for input in tx.ins {
+            let outpoint = input.outpoint
+            // are the actual inputs available?
+            guard let _ = try! await coins.get(outpoint) ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
+                return false
+            }
+        }
+        return true
     }
 
     /// Processes a block complete with transactions.
@@ -973,8 +991,9 @@ public actor BlockchainService: Sendable {
         logger.debug("Processing block txs \(block.idHex)")
 
         guard blockRef.status == .header else {
-            logger.warning("Block \(block.idHex) already exist with status \(blockRef.status)")
-            throw .blockAlreadyExists
+            logger.warning("Block \(block.idHex) already exists with status \(blockRef.status)")
+            // throw .blockAlreadyExists
+            return blockRef
         }
 
         logger.debug("Block \(block.idHex) merkle status validated")
@@ -1170,18 +1189,12 @@ public actor BlockchainService: Sendable {
         var mpExclude = [Outpoint]()
         var mpCoins = [Outpoint: UnspentOutput]()
         for tx in mempool {
-            do {
-                // TODO: Revisit this hack, pass along only what's necessary
-                let nextTip = BlockRef(.init(previous: blockRef.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: blockRef.height + 1, chainwork: .init(), chainTxCount: -1)
-
-                try await checkTx(tx, block: nextTip, previous: blockRef, exclude: mpExclude, auxCoins: mpCoins)
-            } catch {
-                logger.warning("Mempool transaction became invalid")
-                continue // Exclude this transaction from the new mempool
+            if await inputsAvailable(tx, exclude: mpExclude, auxCoins: mpCoins) {
+                newMempool.append(tx)
+            } else {
+                logger.debug("Removing tx from mempool: \(tx.idHex)")
+                continue
             }
-
-            newMempool.append(tx)
-
             // Remove coins
             mpExclude += tx.ins.map(\.outpoint)
             // Add coins
