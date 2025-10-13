@@ -91,19 +91,19 @@ public struct PeerState: Sendable {
     }
 
     mutating func registerKnownBlocks(_ ids: [Block.ID]) {
-        knownBlocks = knownBlocks + ids
-        let count = knownBlocks.count
+        let count = knownBlocks.count + ids.count
         if count > maxKnownBlocks {
             knownBlocks.removeFirst(count - maxKnownBlocks)
         }
+        knownBlocks += ids
     }
 
     mutating func registerKnownTxs(_ ids: [Transaction.ID]) {
-        knownTxs = knownTxs + ids
-        let count = knownTxs.count
+        let count = knownTxs.count + ids.count
         if count > maxKnownTxs {
             knownTxs.removeFirst(count - maxKnownTxs)
         }
+        knownTxs += ids
     }
 }
 

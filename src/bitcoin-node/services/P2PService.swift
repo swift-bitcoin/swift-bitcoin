@@ -155,13 +155,10 @@ actor P2PService: Service {
                     logger.info("P2P server received incoming connection from peer @ \(remoteAddress).")
 
                     await connectionMade()
-
+                    let peerID = await node.addPeer(host: remoteHost, port: remotePort)
                     group.addTask {
                         do {
                             try await connectionChannel.executeThenClose { [logger] inbound, outbound in
-
-                                let peerID = await self.node.addPeer(host: remoteHost, port: remotePort)
-
                                 try await withThrowingDiscardingTaskGroup { group in
                                     group.addTask {
                                         for await message in await self.node.getChannel(for: peerID).cancelOnGracefulShutdown() {
@@ -182,7 +179,7 @@ actor P2PService: Service {
                                                 try await outbound.write(message)
                                             }
                                         }
-                                        // Disconnected
+                                        // Channel was closed
                                         logger.info("Removing incoming peer \(peerID).")
                                         await self.node.removePeer(peerID) // stop sibbling tasks
                                     }
@@ -191,6 +188,7 @@ actor P2PService: Service {
                         } catch {
                             logger.error("An unexpected error has occurred:\n\(error)")
                         }
+                        // Disconnected
                         await self.clientDisconnected()
                     }
                 }

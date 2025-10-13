@@ -257,34 +257,31 @@ struct BlockchainIntegrationTests {
 
         let fm = FileManager.default
         let disambiguator = UInt.random(in: UInt.min ... UInt.max)
-        let dataDirURL = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)/swift-bitcoin-data")
-        let dataDirURL2 = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)/swift-bitcoin-data2")
-        let dataDirURL3 = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)/swift-bitcoin-data3")
-        let dataDir = FilePath(dataDirURL.relativePath)
-        let dataDir2 = FilePath(dataDirURL3.relativePath)
-        let dataDir3 = FilePath(dataDirURL2.relativePath)
 
-        if persistence {
-            try? fm.removeItem(atPath: dataDir.string)
-            try? fm.removeItem(atPath: dataDir2.string)
-            try? fm.removeItem(atPath: dataDir3.string)
-            try fm.createDirectory(at: dataDirURL, withIntermediateDirectories: true)
-            try fm.createDirectory(at: dataDirURL2, withIntermediateDirectories: true)
-            try fm.createDirectory(at: dataDirURL3, withIntermediateDirectories: true)
+        func dataDir(_ index: Int) throws -> FilePath {
+            let url = fm.temporaryDirectory.appendingPathComponent(disambiguator.description).appendingPathComponent(#fileID).appendingPathComponent(#function).appendingPathComponent(index.description)
+            let path = FilePath(url.relativePath)
+            try? fm.removeItem(atPath: path.string)
+            try fm.createDirectory(at: url, withIntermediateDirectories: true)
+            return path
         }
 
+        let dataPath = persistence ? try dataDir(0) : nil
+        let dataPath1 = persistence ? try dataDir(1) : nil
+        let dataPath2 = persistence ? try dataDir(2) : nil
+
         defer {
-            if persistence {
-                try? fm.removeItem(atPath: dataDir.string)
-                try? fm.removeItem(atPath: dataDir2.string)
-                try? fm.removeItem(atPath: dataDir3.string)
+            if let dataPath, let dataPath1, let dataPath2 {
+                try? fm.removeItem(atPath: dataPath.string)
+                try? fm.removeItem(atPath: dataPath1.string)
+                try? fm.removeItem(atPath: dataPath2.string)
             }
         }
 
-        let satoshi = try await BlockchainService(params: .swiftTesting, config: persistence ? .init(dataLocation: .custom(path: dataDir.string)) : .init())
+        let satoshi = try await BlockchainService(params: .swiftTesting, config: persistence ? .init(dataLocation: .custom(path: dataPath!.string)) : .init())
 
-        let alice = try await BlockchainService(params: .swiftTesting, config: .init(dataLocation: .custom(path: dataDir2.string)))
-        let bob = try await BlockchainService(params: .swiftTesting, config: .init(dataLocation: .custom(path: dataDir3.string)))
+        let alice = try await BlockchainService(params: .swiftTesting, config: persistence ?.init(dataLocation: .custom(path: dataPath1!.string)) : .init())
+        let bob = try await BlockchainService(params: .swiftTesting, config: persistence ? .init(dataLocation: .custom(path: dataPath2!.string)) : .init())
 
         let satoshiKey = SecretKey()
         let satoshiID = satoshiKey.pubkey
