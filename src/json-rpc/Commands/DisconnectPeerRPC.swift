@@ -4,11 +4,11 @@ import Foundation
 public struct DisconnectPeerRPC: RPCCommand, Sendable {
 
     public struct Params: Codable, Sendable {
-        public init(peerID: UUID) {
+        public init(peerID: Int /* PeerID */) {
             self.peerID = peerID
         }
 
-        public let peerID: UUID
+        public let peerID: Int /* PeerID */
     }
 
     public typealias Result = Bool

@@ -17,7 +17,7 @@ struct NodeBootstrapTests {
     @Test("Ping Pong")
     func pingPong() async throws {
         // Alice's node
-        let peerB = PeerID()
+        let peerB = 0
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
@@ -26,7 +26,7 @@ struct NodeBootstrapTests {
         await #expect(alice.state.peers[peerB]!.handshakeComplete)
 
         // Bob's node
-        let peerA = PeerID()
+        let peerA = 0
         let bob = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
@@ -77,7 +77,7 @@ struct NodeBootstrapTests {
     @Test("Empty block relay")
     func emptyBlockRelay() async throws {
         // Alices's node
-        let peerB = PeerID()
+        let peerB = 0
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
@@ -86,13 +86,13 @@ struct NodeBootstrapTests {
         let block0 = try #require(await alice.blockchain.generateTo(pubkey))
 
         // Bob's node
-        let peerA = PeerID()
-        let peerC = PeerID() // Carol on Bob's node
+        let peerA = 0
+        let peerC = 1 // Carol on Bob's node
         let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
         try await bob.blockchain.processBlock(block0, immediate: true)
 
         // Carol's node
-        let carolPeerB = PeerID() // Bob on Carol's node
+        let carolPeerB = 0 // Bob on Carol's node
         let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
         try await carol.blockchain.processBlock(block0, immediate: true)
 
@@ -142,7 +142,7 @@ struct NodeBootstrapTests {
     @Test("Mempool transaction relay")
     func mempoolTxRelay() async throws {
         // Alice's node
-        let peerB = PeerID()
+        let peerB = 0
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
@@ -150,12 +150,12 @@ struct NodeBootstrapTests {
         )
 
         // Bob's node
-        let peerA = PeerID()
-        let peerC = PeerID() // Carol on Bob's node
+        let peerA = 0
+        let peerC = 1 // Carol on Bob's node
         let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
 
         // Carol node
-        let carolPeerB = PeerID() // Bob on Carol's node
+        let carolPeerB = 0 // Bob on Carol's node
         let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
 
         // Setup blockchains
@@ -268,7 +268,7 @@ struct NodeBootstrapTests {
     @Test("Compact block (high bandwidth mode)")
     func  compactBlockHighBandwidth() async throws {
         // Alices's node
-        let peerB = PeerID()
+        let peerB = 0
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
@@ -277,13 +277,13 @@ struct NodeBootstrapTests {
         let block0 = try #require(await alice.blockchain.generateTo(pubkey))
 
         // Bob's node
-        let peerA = PeerID()
-        let peerC = PeerID() // Carol on Bob's node
+        let peerA = 0
+        let peerC = 1 // Carol on Bob's node
         let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
         try await bob.blockchain.processBlock(block0, immediate: true)
 
         // Carol's node
-        let carolPeerB = PeerID() // Bob on Carol's node
+        let carolPeerB = 0 // Bob on Carol's node
         let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
         try await carol.blockchain.processBlock(block0, immediate: true)
 
@@ -377,7 +377,7 @@ struct NodeBootstrapTests {
     @Test("Compact block (low bandwidth mode)")
     func  compactBlockLowBandwidth() async throws {
         // Alices's node
-        let peerB = PeerID()
+        let peerB = 0
         let alice = NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
@@ -385,12 +385,12 @@ struct NodeBootstrapTests {
         )
 
         // Bob's node
-        let peerA = PeerID()
-        let peerC = PeerID() // Carol on Bob's node
+        let peerA = 0
+        let peerC = 1 // Carol on Bob's node
         let bob = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState(highBandwidth: false)]))
 
         // Carol's node
-        let carolPeerB = PeerID() // Bob on Carol's node
+        let carolPeerB = 0 // Bob on Carol's node
         let carol = NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
 
         // Setup blockchains

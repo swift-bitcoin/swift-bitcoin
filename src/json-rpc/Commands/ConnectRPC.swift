@@ -14,7 +14,7 @@ public struct ConnectRPC: RPCCommand, Sendable {
         public let port: Int
     }
 
-    public typealias Result = String // UUID
+    public typealias Result = Int // PeerID
 
     public init(_ params: Params) {
         self.params = params

@@ -10,7 +10,7 @@ extension GetPeerInfoRPC {
 
         return peers.keys.map { id in
             let peer = peers[id]!
-            return ResultItem(id: id.uuidString, connectionType: peer.incoming ? .incoming : .outgoing)
+            return ResultItem(id: id, connectionType: peer.incoming ? .incoming : .outgoing)
         }
     }
 }

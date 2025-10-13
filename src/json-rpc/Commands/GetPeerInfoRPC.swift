@@ -11,12 +11,12 @@ public struct GetPeerInfoRPC: RPCCommand, Sendable {
 
         public enum ConnectiontType: Codable, Sendable { case outgoing, incoming }
 
-        public init(id: String, connectionType: ConnectiontType) {
+        public init(id: Int, connectionType: ConnectiontType) {
             self.id = id
             self.connectionType = connectionType
         }
 
-        public let id: String
+        public let id: Int
         public let connectionType: ConnectiontType
     }
 

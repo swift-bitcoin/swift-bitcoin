@@ -9,12 +9,12 @@ struct NodeServiceTests: ~Copyable {
 
     var satoshiChain = BlockchainService?.none
     var satoshi = NodeService?.none
-    var halPeer = UUID?.none
+    var halPeer = PeerID?.none
     var satoshiOut = AsyncChannel<NetworkMessage>.Iterator?.none
 
     var halChain = BlockchainService?.none
     var hal = NodeService?.none
-    var satoshiPeer = UUID?.none
+    var satoshiPeer = PeerID?.none
     var halOut = AsyncChannel<NetworkMessage>.Iterator?.none
 
     init() async throws {

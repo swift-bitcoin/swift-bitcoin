@@ -5,7 +5,7 @@ import BitcoinBlockchain
 import Logging
 
 /// A peer's unique identifier.
-public typealias PeerID = UUID
+public typealias PeerID = Int
 
 /// Manages connection with state.peers, process incoming messages and sends responses.
 public actor NodeService: Sendable {
@@ -57,7 +57,7 @@ public actor NodeService: Sendable {
     private var port = Int?.none
 
     /// Channel for delivering message to state.peers.
-    private var peerOuts = [UUID : AsyncChannel<NetworkMessage>]()
+    private var peerOuts = [PeerID : AsyncChannel<NetworkMessage>]()
 
     /// The node's randomly generated identifier (nonce). This is sent with `version` messages.
     private let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
@@ -67,6 +67,8 @@ public actor NodeService: Sendable {
 
     /// BIP152
     private var pendingBlockTxs: [Block.ID : [Transaction?]] = [:]
+
+    private var maxPeerID = 0
 
     public func start() async {
         status = .starting
@@ -145,8 +147,9 @@ public actor NodeService: Sendable {
     }
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
-    public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) -> UUID {
-        let id = PeerID()
+    public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) -> PeerID {
+        let id = maxPeerID
+        maxPeerID += 1
         state.peers[id] = PeerState(address: IPv6Address.fromHost(host), port: port, incoming: incoming)
         peerOuts[id] = .init()
         return id
@@ -163,12 +166,14 @@ public actor NodeService: Sendable {
     }
 
     /// Deregisters a peer and cleans up outbound channels.
-    public func removePeer(_ id: PeerID) {
+    @discardableResult public func removePeer(_ id: PeerID) -> Bool {
+        guard let _ = state.peers[id] else { return false }
         state.peers[id]?.nextPingTask?.cancel()
         state.peers[id]?.checkPongTask?.cancel()
         peerOuts[id]?.finish()
         peerOuts.removeValue(forKey: id)
         state.peers.removeValue(forKey: id)
+        return true
     }
 
     /// Returns a channel for a given peer's outbox. The caller can be notified of new messages generated for this peer.
@@ -697,7 +702,7 @@ public actor NodeService: Sendable {
         /*
         // Code for requesting blocks from multiple blocks
         var minInTransitBlocks = config.maxInTransitBlocks
-        var selectedPeerID = UUID?.none
+        var selectedPeerID = PeerID?.none
         for (id, peer) in state.peers {
             let inTransitBlocks = peer.inTransitBlocks
             if peer.height > height, inTransitBlocks < minInTransitBlocks {
