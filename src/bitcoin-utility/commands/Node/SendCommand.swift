@@ -29,6 +29,7 @@ struct SendCommand: AsyncParsableCommand {
             GetBlockRPC.self,
             GenerateToAddressRPC.self,
             GetBlockchainInfoRPC.self,
+            GetChainTipsRPC.self,
             GetMempoolRPC.self,
             GetPeerInfoRPC.self,
             GetTransactionRPC.self,

@@ -1,4 +1,5 @@
 import Collections
+
 /// In-memory block index service implementation.
 actor TransientBlockIndex: BlockIndex {
 
@@ -190,35 +191,35 @@ actor TransientBlockIndex: BlockIndex {
 
 
     /*
-    func getParent(for childID: Block.ID) -> BlockRef? {
-        let child = get(childID)
-        if child.previous == Block.nullParent {
-            return nil
-        }
-        return get(child.previous)
-    }
-    */
+     func getParent(for childID: Block.ID) -> BlockRef? {
+     let child = get(childID)
+     if child.previous == Block.nullParent {
+     return nil
+     }
+     return get(child.previous)
+     }
+     */
 
     /*
-    /// Either removes (if header-only) or marks block as invalid
-    func removeAll(from height: Int) -> BlockRef {
-        precondition(height > 0)
-        var refs = [BlockRef]()
-        for h in height ... byHeight.count - 1 {
-            refs.append(get(at: h))
-        }
-        for ref in refs {
-            if ref.status == .header {
-                byID[ref.header.id] = nil
-            } else {
-                update(ref.header.id, status: .invalid)
-            }
-        }
-        let totalRemoved = byHeight.count - height
-        byHeight.removeLast(totalRemoved)
-        return byID[byHeight[height - 1]]!
-    }
-    */
+     /// Either removes (if header-only) or marks block as invalid
+     func removeAll(from height: Int) -> BlockRef {
+     precondition(height > 0)
+     var refs = [BlockRef]()
+     for h in height ... byHeight.count - 1 {
+     refs.append(get(at: h))
+     }
+     for ref in refs {
+     if ref.status == .header {
+     byID[ref.header.id] = nil
+     } else {
+     update(ref.header.id, status: .invalid)
+     }
+     }
+     let totalRemoved = byHeight.count - height
+     byHeight.removeLast(totalRemoved)
+     return byID[byHeight[height - 1]]!
+     }
+     */
 
     func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
         var missing = [Block.ID]()
@@ -279,6 +280,28 @@ actor TransientBlockIndex: BlockIndex {
         precondition(ref.status == .active) // The chain is fully sync'ed
         byID[ref.header.id]!.status = .stale
         return byID[ref.header.previous]!
+    }
+
+    func findChainForks() async -> [ChainFork] {
+        var forks = [ChainFork]()
+        for blockIDs in byHeight.values.reversed() {
+            for blockID in blockIDs {
+                let ref = byID[blockID]!
+                var foundBestChild = false
+                for (i, fork) in forks.enumerated() {
+                    if fork.start.header.previous == blockID {
+                        forks[i].start = ref
+                        foundBestChild = true
+                        break
+                    }
+                }
+                if !foundBestChild {
+                    forks.append(.init(ref))
+                    forks.sort { $0 > $1 }
+                }
+            }
+        }
+        return forks
     }
 
     private func findActiveRef(_ height: Int) -> BlockRef? {

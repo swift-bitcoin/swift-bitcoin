@@ -250,6 +250,14 @@ struct BlockchainIntegrationTests {
         try await carol.processBlock(blockCC, immediate: true)
 
         #expect(await carol.chainTip == blockCC.id)
+
+        let tips = await carol.chainTips
+
+        let expectedTips: [ChainTipSummary] = [
+            .init(tip: blockCC.id, height: 3, branchLength: 4, status: .active),
+            .init(tip: blockB.id, height: 2, branchLength: 1, status: .stale)
+        ]
+        #expect(tips == expectedTips)
     }
 
     /// Makes the active chain switch twice. In the first reorg the last block become stale. Afterwards another reorganization reactivates it and two different blocks turn stale.
@@ -453,5 +461,13 @@ struct BlockchainIntegrationTests {
 
         try await satoshi.processBlock(blockD, immediate: true)
         #expect(await satoshi.currentCoins == expectedUTXOSetD)
+
+        let tips = await satoshi.chainTips
+
+        let expectedTips: [ChainTipSummary] = [
+            .init(tip: blockD.id, height: 4, branchLength: 5, status: .active),
+            .init(tip: blockCC.id, height: 3, branchLength: 2, status: .stale)
+        ]
+        #expect(tips == expectedTips)
     }
 }
