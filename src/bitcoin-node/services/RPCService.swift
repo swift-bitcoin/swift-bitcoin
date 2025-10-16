@@ -151,6 +151,9 @@ actor RPCService: Service {
             case .getBlockchainInfo:
                 let result = await GetBlockchainInfoRPC().run(blockchain: blockchain)
                 try await outbound.write(.init(id: request.id, result: .getBlockchainInfo(result)))
+            case .getChainTips:
+                let result = await GetChainTipsRPC().run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .getChainTips(result)))
             case .getMempool:
                 let result = await GetMempoolRPC().run(blockchain: blockchain)
                 try await outbound.write(.init(id: request.id, result: .getMempool(result)))

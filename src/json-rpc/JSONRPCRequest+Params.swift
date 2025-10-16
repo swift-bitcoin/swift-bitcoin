@@ -14,6 +14,7 @@ extension JSONRPCRequest {
             getBlock(GetBlockRPC.Params),
             generateToAddress(GenerateToAddressRPC.Params),
             getBlockchainInfo,
+            getChainTips,
             getMempool,
             getPeerInfo,
             getTransaction(GetTransactionRPC.Params),
@@ -43,6 +44,7 @@ extension JSONRPCRequest.Params {
         case GetBlockRPC.method: .getBlock(try .init(from: decoder))
         case GenerateToAddressRPC.method: .generateToAddress(try .init(from: decoder))
         case GetBlockchainInfoRPC.method: .getBlockchainInfo
+        case GetChainTipsRPC.method: .getChainTips
         case GetMempoolRPC.method: .getMempool
         case GetPeerInfoRPC.method: .getPeerInfo
         case GetTransactionRPC.method: .getTransaction(try .init(from: decoder))
@@ -65,6 +67,7 @@ extension JSONRPCRequest.Params {
         case .getBlock(let params): try params.encode(to: encoder)
         case .generateToAddress(let params): try params.encode(to: encoder)
         case .getBlockchainInfo: try container.encodeNil()
+        case .getChainTips: try container.encodeNil()
         case .getMempool: try container.encodeNil()
         case .getPeerInfo: try container.encodeNil()
         case .getTransaction(let params): try params.encode(to: encoder)
@@ -85,6 +88,7 @@ extension JSONRPCRequest.Params {
         case .getBlock(_): GetBlockRPC.method
         case .generateToAddress(_): GenerateToAddressRPC.method
         case .getBlockchainInfo: GetBlockchainInfoRPC.method
+        case .getChainTips: GetChainTipsRPC.method
         case .getMempool: GetMempoolRPC.method
         case .getPeerInfo: GetPeerInfoRPC.method
         case .getTransaction(_): GetTransactionRPC.method

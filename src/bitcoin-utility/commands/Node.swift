@@ -20,6 +20,7 @@ struct Node: AsyncParsableCommand {
             GetBlock.self,
             GenerateToAddress.self,
             GetBlockchainInfo.self,
+            GetChainTips.self,
             GetMempool.self,
             GetPeerInfo.self,
             GetTransaction.self,

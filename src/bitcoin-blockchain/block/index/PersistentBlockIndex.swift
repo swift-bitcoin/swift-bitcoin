@@ -344,6 +344,40 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
+    func findChainForks() async -> [ChainFork] {
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
+            try! byHeight.withCursor(readOnly: true) { cursor in
+                var forks = [ChainFork]()
+                var header: BlockRef? = nil
+                var maybeID = try! cursor.get(.last)
+                while let id = maybeID {
+                    let ref = try! _get(id, byID: byID)!
+                    var foundBestChild = false
+                    for (i, fork) in forks.enumerated() {
+                        if fork.start.header.previous == id {
+                            forks[i].start = ref
+                            foundBestChild = true
+                            break
+                        }
+                    }
+                    if !foundBestChild {
+                        forks.append(.init(ref))
+                        forks.sort { $0 > $1 }
+                    }
+
+                    // Move backwards
+                    if let nextID = try! cursor.get(.prevDup) {
+                        // If no more duplicates for this height, move to previous height
+                        maybeID = nextID
+                    } else {
+                        maybeID = try! cursor.get(.prevNodup)
+                    }
+                }
+                return forks
+            }
+        }
+    }
+
     /*
     func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
         try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in

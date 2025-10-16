@@ -48,6 +48,7 @@ private let commands: [any RPCCommand.Type] = [
     GetBlockRPC.self,
     GenerateToAddressRPC.self,
     GetBlockchainInfoRPC.self,
+    GetChainTipsRPC.self,
     GetMempoolRPC.self,
     GetTransactionRPC.self,
     SendTransactionRPC.self,

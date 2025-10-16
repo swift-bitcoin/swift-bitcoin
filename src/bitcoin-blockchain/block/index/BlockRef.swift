@@ -92,4 +92,19 @@ extension BlockRef: BinaryCodable {
 
 public enum ValidationStatus: UInt8, Sendable {
     case header, merkle, active, invalid, stale
+
+    var score: Int {
+        switch self {
+        case .header:
+            0
+        case .merkle:
+            1
+        case .active:
+            3
+        case .invalid:
+            -1
+        case .stale:
+            2
+        }
+    }
 }

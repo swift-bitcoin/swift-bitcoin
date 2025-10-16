@@ -40,6 +40,9 @@ protocol BlockIndex: Sendable {
     /// To check which inventory block items we don't have.
     func calculateMissingBlocks(_ ids: [Block.ID]) async -> [Block.ID]
 
+    /// Find all known chain forks (tips) and return a their start and end block references
+    func findChainForks() async -> [ChainFork]
+
     /// Changes a string of fully validated (acvite) blocks to stale (deactivated).
     /// - Parameters:
     ///   - tip: The best fully validated block to work our way backwards from.

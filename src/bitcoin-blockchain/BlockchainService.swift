@@ -165,6 +165,10 @@ public actor BlockchainService: Sendable {
         activeTip.header.id
     }
 
+    public var chainTips: [ChainTipSummary] { get async {
+        await blockIndex.findChainForks().map { ChainTipSummary($0) }
+    } }
+
     /// The genesis block as it is stored on disk.
     public var genesisBlock: Block {
         get async {

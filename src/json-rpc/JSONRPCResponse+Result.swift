@@ -14,6 +14,7 @@ extension JSONRPCResponse {
             getBlock(GetBlockRPC.Result),
             generateToAddress(GenerateToAddressRPC.Result),
             getBlockchainInfo(GetBlockchainInfoRPC.Result),
+            getChainTips(GetChainTipsRPC.Result),
             getMempool(GetMempoolRPC.Result),
             getPeerInfo(GetPeerInfoRPC.Result),
             getTransaction(GetTransactionRPC.Result),
@@ -39,6 +40,7 @@ extension JSONRPCResponse.Result {
         case GetBlockRPC.method: .getBlock(try .init(from: decoder))
         case GenerateToAddressRPC.method: .generateToAddress(try .init(from: decoder))
         case GetBlockchainInfoRPC.method: .getBlockchainInfo(try .init(from: decoder))
+        case GetChainTipsRPC.method: .getChainTips(try .init(from: decoder))
         case GetMempoolRPC.method: .getMempool(try .init(from: decoder))
         case GetPeerInfoRPC.method: .getPeerInfo(try .init(from: decoder))
         case GetTransactionRPC.method: .getTransaction(try .init(from: decoder))
@@ -61,6 +63,7 @@ extension JSONRPCResponse.Result {
         case .getBlock(let result): try result.encode(to: encoder)
         case .generateToAddress(let result): try result.encode(to: encoder)
         case .getBlockchainInfo(let result): try result.encode(to: encoder)
+        case .getChainTips(let result): try result.encode(to: encoder)
         case .getMempool(let result): try result.encode(to: encoder)
         case .getPeerInfo(let result): try result.encode(to: encoder)
         case .getTransaction(let result): try result.encode(to: encoder)
