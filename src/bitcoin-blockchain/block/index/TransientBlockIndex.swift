@@ -47,7 +47,7 @@ actor TransientBlockIndex: BlockIndex {
         return nil
     }
 
-    func ancestor(of tip: BlockRef, at height: Int) async -> BlockRef {
+    func ancestor(of tip: BlockRef, at height: Int) -> BlockRef {
         precondition(height <= tip.height)
         var candidate = tip
         while candidate.height > height {
@@ -56,19 +56,7 @@ actor TransientBlockIndex: BlockIndex {
         return candidate
     }
 
-    func ancestor(of tip: BlockRef, childOf parent: BlockRef) async -> BlockRef? {
-        var candidate = tip
-        while candidate.height > parent.height, candidate.header.previous != parent.header.id {
-            candidate = byID[candidate.header.previous]!
-        }
-        return if candidate.header.previous == parent.header.id {
-            candidate
-        } else {
-            nil
-        }
-    }
-
-    func bestAncestor(of header: BlockRef) async -> BlockRef {
+    func bestAncestor(of header: BlockRef) -> BlockRef {
         var candidate = header
         while candidate.status != .active {
             candidate = byID[candidate.header.previous]!
@@ -93,7 +81,7 @@ actor TransientBlockIndex: BlockIndex {
     }
 
     /// All block storage locators in reverse height order, including those for stale/invalid blocks.
-    var blockStorageLocators: [BlockStorageLocator] {
+    var storageLocators: [BlockStorageLocator] {
         var locators = [BlockStorageLocator]()
         for ids in byHeight.values.reversed() {
             for id in ids {
@@ -172,6 +160,10 @@ actor TransientBlockIndex: BlockIndex {
     func get(at height: Int) -> BlockRef {
         // guard height < byHeight.endIndex else { return nil }
         findActiveRef(height)!
+    }
+
+    func getAll(at height: Int) -> [BlockRef] {
+        byHeight[height]!.map { id in byID[id]! }
     }
 
     func get(from ref: BlockRef, count: Int) -> [BlockRef] {
@@ -282,7 +274,7 @@ actor TransientBlockIndex: BlockIndex {
         return byID[ref.header.previous]!
     }
 
-    func findChainForks() async -> [ChainFork] {
+    func findChainForks() -> [ChainFork] {
         var forks = [ChainFork]()
         for blockIDs in byHeight.values.reversed() {
             for blockID in blockIDs {

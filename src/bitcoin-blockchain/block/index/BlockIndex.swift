@@ -2,7 +2,7 @@
 protocol BlockIndex: Sendable {
 
     /// Locators in reverse height order.
-    var blockStorageLocators: [BlockStorageLocator] { get async }
+    var storageLocators: [BlockStorageLocator] { get async }
 
     /// Valid header/block with the most chainwork.
     var bestHeader: BlockRef? { get async }
@@ -11,8 +11,6 @@ protocol BlockIndex: Sendable {
     var bestBlock: BlockRef { get async }
 
     func ancestor(of tip: BlockRef, at height: Int) async -> BlockRef
-
-    func ancestor(of tip: BlockRef, childOf parent: BlockRef) async -> BlockRef?
 
     /// Most recent fully validated block which is an ancestor to the specified header.
     func bestAncestor(of header: BlockRef) async -> BlockRef
@@ -31,6 +29,9 @@ protocol BlockIndex: Sendable {
 
     /// Gets the block reference at the specified height which is part of the active chain.
     func get(at height: Int) async -> BlockRef
+
+    /// Gets all block references at the specified heigh including forks.
+    func getAll(at height: Int) async -> [BlockRef]
 
     /// For _Median Time Past_ calculation.
     ///

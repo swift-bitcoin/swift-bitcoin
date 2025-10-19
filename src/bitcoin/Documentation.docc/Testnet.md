@@ -46,7 +46,7 @@ swift run bcutil -n testnet status
 Assuming you have `bitcoind` and `bitcoin-cli` built as docker images – see <doc:Building> for instructions – we can launch an instance named _Carol_ on a separate terminal:
 
 ```sh
-docker run --name carol --rm -it --network bitcoin-test -v /bitcoin_auth/ -chain=testnet4 -disablewallet -txindex -server -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -rpccookiefile=/bitcoin_auth/cookie
+docker run --name carol --rm -it --network bitcoin-test -v /bitcoin_auth/ bitcoind -chain=testnet4 -disablewallet -txindex -server -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -rpccookiefile=/bitcoin_auth/cookie
 ```
 
 With the command above are disabling wallet functionality and enabling the transaction index.
@@ -89,7 +89,7 @@ We are also adding a volume to keep the downloaded block data between launches.
 Once the instance stops automatically after reaching the block limit we'll remove the limit and re-launch with `-connect=0` to prevent the node from downloading further blocks.
 
 ```sh
-docker run --name carol --rm -it --network bitcoin-test -v /bitcoin_auth/ -v bitcoin-test:/root/.bitcoin bitcoind -chain=testnet4 -disablewallet -txindex -server -debug=net -connect=0 -v2transport=0 -minimumchainwork=0x0000000000000000000000000000000000000000000000000000000000000000 -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -rpccookiefile=/bitcoin_auth/cookie
+docker run --name carol --rm -it --network bitcoin-test -v /bitcoin_auth/ -v bitcoin-test:/root/.bitcoin -p 48333:48333 bitcoind -chain=testnet4 -disablewallet -txindex -server -debug=net -connect=0 -v2transport=0 -minimumchainwork=0x0000000000000000000000000000000000000000000000000000000000000000 -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -rpccookiefile=/bitcoin_auth/cookie
 ```
 
 Additionally we are removing the default chainwork limit, otherwise the node will not serve blocks to connecting peers.
@@ -98,7 +98,16 @@ We are also disabling version 2 transport as Swift Bitcoin does not support it.
 
 After this we can connect Carol's node to Alice's as usual with `bitcoin-cli addnode alice onetry`.
 
-To connect from a dockerized Bitcoin Core instance to a local Swift Bitcoin instance instead, `bitcoin-cli addnode host.docker.internal onetry` can be used.
+To connnect from a local Swift Bitcoin instance to the Bitcoin Core docker container run `bcutil -n testnet connect`.
+
+To connect from a dockerized Bitcoin Core instance to a local Swift Bitcoin instance use:
+
+```sh
+bcutil -n testnet start-p2p
+bitcoin-cli addnode host.docker.internal onetry
+```
+
+To disconnect use `bitcoin-cli disconnectnode host.docker.internal`.
 
 To check that the synchronization was successful check Alice's blockchain information:
 

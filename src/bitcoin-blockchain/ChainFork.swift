@@ -27,7 +27,7 @@ import Playgrounds
         .init(ref1), .init(ref2), .init(ref3)
     ])
     tips.sort { $0 > $1 }
-    var counts = tips.map(\.tip.chainTxCount)
+    // var counts = tips.map(\.tip.chainTxCount)
 }
 
 #endif

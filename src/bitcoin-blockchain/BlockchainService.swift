@@ -45,7 +45,7 @@ public actor BlockchainService: Sendable {
         let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
         do {
             blockStorage = if dataDir == nil {
-                try await TransientBlockStorage(config: config, logger: logger)
+                try TransientBlockStorage(config: config, logger: logger)
             } else {
                 try await PersistentBlockStorage(config: config, logger: logger)
             }
@@ -53,8 +53,8 @@ public actor BlockchainService: Sendable {
             logger.error("Could not start block storage.")
             fatalError("Could not start block storage.")
         }
-
         logger.debug("Indexes and storage initialized.")
+
         logger.debug("Searching for best header and block…")
         if let bestHeader = await blockIndex.bestHeader {
             self.bestHeader = bestHeader
@@ -64,12 +64,17 @@ public actor BlockchainService: Sendable {
                 logger.debug("Found best header, now searching for best block…")
                 activeTip = await blockIndex.bestBlock
                 logger.debug("Highest active block: \(activeTip.header.idHex)")
-                // The current best block is just the highest active block which may not actually be an ancestor of the best header, so we need to check for reorgs.
-                // Headers fork, may imply a block reorg
+                // The current best block is just the highest active block which may not actually be an ancestor of the best header, so we might need to check for reorgs.
+                // Headers fork, could imply a block reorg
                 /*
                 let bestAncestor = await blockIndex.bestAncestor(of: bestHeader)
                 if bestAncestor.header.id != bestBlock.header.id { … }
                 */
+                if let next = await nextBlockToValidate() {
+                    validationTask = Task {
+                        try await connectBlock(ref: next)
+                    }
+                }
             }
         } else {
             logger.debug("No good header, seeding genesis block")
@@ -80,17 +85,6 @@ public actor BlockchainService: Sendable {
         }
         logger.debug("Best block (tip): \(activeTip.header.idHex)")
         logger.debug("Best header: \(bestHeader.header.idHex)")
-
-        // Connect the next block if transactions are already downloaded and check against merkle root
-        if let nextRef = await blockIndex.ancestor(of: bestHeader, childOf: activeTip) {
-            logger.debug("Best child of tip: \(nextRef.header.idHex); Status: \(nextRef.status)")
-            if nextRef.status == .merkle {
-                logger.debug("Will connect next block \(nextRef.header.idHex)")
-                validationTask = Task {
-                    try await connectBlock(ref: nextRef)
-                }
-            }
-        }
     }
 
     /// Blockchain consensus parameters. These are pre-defined on the type of network: test, main, regtest or others.
@@ -146,7 +140,7 @@ public actor BlockchainService: Sendable {
     private var finishedIDB = ManagedAtomic<Bool>(false)
 
     private var currentlyValidating: Block.ID?
-    private var validationTask: Task<(), Swift.Error>? = nil
+    private var validationTask: Task<(), Swift.Error>? = nil // TODO: Use custom error once `Swift.Task` supports typed throws
 
     /// The height of the best, fully validated block.
     public var height: Int {
@@ -247,35 +241,64 @@ public actor BlockchainService: Sendable {
     /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
     public func processBlock(_ block: Block, immediate: Bool = true) async throws(Error) {
 
-        let blockRef = try await checkBlock(block)
+        let headerRef = if let ref = await blockIndex.get(block.id) {
+            ref
+        } else {
+            try await processHeaderInternal(block.header)
+        }
 
-        if blockRef.header.previous == activeTip.header.id {
-            // Connect now
-            if currentlyValidating == nil {
-                if immediate {
-                    try await connectBlock(block: block)
-                } else {
-                    logger.debug("Initiating validation of block \(block.idHex)")
-                    validationTask = Task {
-                        try await connectBlock(block: block)
-                    }
-                }
-            } else {
-                logger.debug("Holding validation of block \(block.idHex)")
-            }
-        } else if !initialBlockDownload {
-            guard let nextRef = await blockIndex.ancestor(of: bestHeader, childOf: activeTip), nextRef.status == .merkle else {
-                return
-            }
-            logger.debug("Will connect next block \(nextRef.header.idHex)")
-            if immediate {
-                try await connectBlock(ref: nextRef)
-            } else {
-                validationTask = Task {
-                    try await connectBlock(ref: nextRef)
-                }
+        switch headerRef.status {
+        case .header: try await checkBlock(block, ref: headerRef)
+        case .merkle: break
+        case .active, .stale: return
+        case .invalid: throw .invalidBlockAlreadyExists
+        }
+
+        guard currentlyValidating == nil else { return }
+
+        let nextRef: BlockRef
+        if let next = await nextBlockToValidate() {
+            precondition(next.header.previous == activeTip.header.id)
+            nextRef = next
+        } else {
+            return
+        }
+
+        validationTask = Task {
+            try await connectBlock(ref: nextRef)
+        }
+        if immediate {
+            do {
+                try await validationTask?.value
+            } catch {
+                throw error as! Error // TODO: Remove once `Swift.Task` supports typed throws
             }
         }
+    }
+
+    private func nextBlockToValidate() async -> BlockRef? {
+        if bestHeader.status == .active {
+            return nil
+        }
+        precondition(bestHeader.height > activeTip.height)
+
+        let nextHeight = activeTip.height + 1
+        let nextRefs = await blockIndex.getAll(at: nextHeight)
+        let nextChildren = nextRefs.filter { $0.header.previous == activeTip.header.id }
+
+        precondition(!nextChildren.isEmpty)
+        let nextRef: BlockRef
+        if nextChildren.count == 1 {
+            nextRef = nextChildren[0]
+        } else {
+            nextRef = await blockIndex.ancestor(of: bestHeader, at: nextHeight)
+            precondition(nextRef.header.previous == activeTip.header.id)
+        }
+
+        if nextRef.status == .merkle {
+            return nextRef
+        }
+        return nil
     }
 
     /// Adds a transaction to the mempool.
@@ -397,12 +420,13 @@ public actor BlockchainService: Sendable {
         guard let ref = await blockIndex.get(id) else {
             return nil
         }
+        // TODO: Get all refs at the next height and find the best child by validation status/chainwork (if at least one child exists)
         let refNext = if ref.height < activeTip.height {
-            // TODO: To support reorgs pass along this block's ID so that the correct successor can be returned
             await blockIndex.get(at: ref.height + 1)
         } else {
             BlockRef?.none
         }
+
         let medianTime = await medianTimePast(for: ref)
         return .init(
             next: refNext?.header.id,
@@ -436,23 +460,6 @@ public actor BlockchainService: Sendable {
     public func unsubscribe(_ channel: AsyncChannel<Transaction>) {
         channel.finish()
         txChannels.removeAll(where: { $0 === channel })
-    }
-
-    /// To create the block locator hashes, keep pushing hashes until you go back to the genesis block. After pushing 10 hashes back, the step backwards doubles every loop.
-    private func makeBlockLocatorHeightBased() async -> [Data] {
-        var have = [Data]()
-        var height = bestHeader.height
-        var step = 1
-        while height >= 0 {
-            let blockRef = await blockIndex.get(at: height)
-            have.append(blockRef.header.id)
-            if height == 0 { break }
-
-            // Exponentially larger steps back, plus the genesis block.
-            if have.count >= 10 { step *= 2 }
-            height = max(height - step, 0) // TODO: Use "skiplist"
-        }
-        return have
     }
 
     /// Produces a discontinuous list of block hashes in descending height order that may be used to request missing headers from a peer.
@@ -494,7 +501,7 @@ public actor BlockchainService: Sendable {
     /// Validates the block header.
     ///
     /// This function contains similar logic to `ContextualCheckBlockHeader()` in Bitcoin Core's `validation.cpp`.
-    private func processHeaderInternal(_ header: Block) async throws(Error) -> (BlockRef, BlockRef) {
+    private func processHeaderInternal(_ header: Block) async throws(Error) -> BlockRef {
         precondition(header.txs.isEmpty)
 
         guard let previousHeader = await blockIndex.get(header.previous) else {
@@ -561,8 +568,18 @@ public actor BlockchainService: Sendable {
                 if bestAncestor.header.id != activeTip.header.id {
                     logger.debug("Reorg detected. Switching the active chain…")
                     // Re-org detected
-                    validationTask?.cancel()
-                    currentlyValidating = nil
+
+                    // Cancel current validation task
+                    if currentlyValidating != nil {
+                        validationTask?.cancel()
+                        do {
+                            try await validationTask?.value
+                        } catch {
+                            throw error as! Error // TODO: Remove once `Swift.Task` supports typed throws
+                        }
+                        // NOTE: At this point the active chain may have been extended but the "best ancestor" (highest active block in best header ancestry) should not change
+                        precondition(currentlyValidating == nil)
+                    }
 
                     // Deactivate current chain
                     let undoneRefs = await blockIndex.undo(from: activeTip, backTo: bestAncestor)
@@ -581,7 +598,7 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        return (newHeader, previousHeader)
+        return newHeader
     }
 
     /// Processes a list of block headers without transactions.
@@ -600,22 +617,6 @@ public actor BlockchainService: Sendable {
     /// Returns the IDs of the headers missing transactions up to a maximum defined by the function argument.
     public func getNextMissingBlocks(_ numberOfBlocks: Int) async -> [Block.ID] {
         await blockIndex.missingBlocks(tip: bestHeader, stop: activeTip, max: numberOfBlocks)
-
-//        guard !synchronized else {
-//            return []
-//        }
-//        var h = bestBlock.height + 1
-//        var hashes = [Block.ID]()
-//        // TODO: We MUST work backwards from the best header!!!
-//        // TODO: For efficiency purposes consider jumping to the header at `numberOfBlocks` and work backwards the active chain using `block.previous`
-//        while h <= headers, hashes.count < numberOfBlocks {
-//            let ref = await blockIndex.get(at: h)
-//            if ref.status == .header {
-//                hashes.append(ref.header.id)
-//            }
-//            h += 1
-//        }
-//        return hashes
     }
 
     /// Returns multiple fully validated blocks matching the provided IDs.
@@ -764,8 +765,8 @@ public actor BlockchainService: Sendable {
 
         block.txs = txs
 
-        let blockRef = try! await checkBlock(block)
-        try! await connectBlock(block: block, ref: blockRef)
+        // Process the header and block normally
+        try! await processBlock(block, immediate: true)
 
         // Reset mempool
         mempool = []
@@ -811,7 +812,7 @@ public actor BlockchainService: Sendable {
                 return tx
             }
         }
-        for locator in await blockIndex.blockStorageLocators {
+        for locator in await blockIndex.storageLocators {
             guard let (block, _) = try? await blockStorage.retrieve(locator) else {
                 continue
             }
@@ -967,7 +968,7 @@ public actor BlockchainService: Sendable {
     /// If it is the first time we see this block, its header will be processed first.
     /// If the block builds on the acvite chain tip, it will be connected thus validating its transactions.
     /// Otherwise the index will be updated to reflect that the merkle root has been verified.
-    private func checkBlock(_ block: Block) async throws(Error) -> BlockRef {
+    @discardableResult private func checkBlock(_ block: Block, ref blockRef: BlockRef) async throws(Error) -> BlockRef {
         logger.debug("Processing block \(block.idHex)")
 
         // Verify coinbase
@@ -981,15 +982,6 @@ public actor BlockchainService: Sendable {
         guard block.merkleRoot == expectedMerkleRoot else {
             logger.error("Wrong merkle root")
             throw .wrongMerkleRoot
-        }
-
-        let maybeBlockRef = await blockIndex.get(block.id)
-        let blockRef: BlockRef
-        if let maybeBlockRef {
-            blockRef = maybeBlockRef
-        } else {
-            logger.debug("Unknown block \(block.idHex), processing header")
-            (blockRef, _) = try await processHeaderInternal(block.header)
         }
 
         logger.debug("Processing block txs \(block.idHex)")
@@ -1030,18 +1022,15 @@ public actor BlockchainService: Sendable {
 
     /// If we have a header in our index it updates it's validation. If not it adds the block to the index. Adds the block to storage along with undo information and updates coins (chainstate).
     private func connectBlock(block cachedBlock: Block? = nil, ref blockRef: BlockRef? = nil) async throws(Error) {
+
         // This function is called recursively so we check for Task cancelation at every incarnation
         guard !Task.isCancelled else {
             currentlyValidating = nil
-            throw .receivedCancellation
+            return
         }
 
         precondition(cachedBlock != nil || blockRef != nil)
         let blockID = cachedBlock?.id ?? blockRef!.header.id
-
-        if currentlyValidating == blockID {
-            return
-        }
         currentlyValidating = blockID
 
         let blockRef = if let blockRef {
@@ -1049,12 +1038,14 @@ public actor BlockchainService: Sendable {
         } else {
             await blockIndex.get(blockID)!
         }
+
         precondition(blockRef.header.previous != Block.nullParent) // Can't be genesis block
         precondition(blockRef.header.id == blockID && blockRef.status == .merkle)
         guard let blockOnlyLocator = blockRef.locator else {
             preconditionFailure()
         }
         precondition(blockOnlyLocator.undoOffset == -1)
+
         let block: Block
         if let cachedBlock {
             block = cachedBlock
@@ -1065,16 +1056,6 @@ public actor BlockchainService: Sendable {
                 throw .blockFileIssue
             }
         }
-
-        // Get a reference to previous block
-        let previousRef: BlockRef
-        if let ref = await blockIndex.get(block.previous) {
-            previousRef = ref
-        } else {
-            logger.error("Could not connect block because parent is missing from index.")
-            return
-        }
-
         logger.debug("Connecting block \(block.idHex)")
 
         let checkScripts: Bool
@@ -1120,11 +1101,11 @@ public actor BlockchainService: Sendable {
         for txIndex in block.txs.indices {
             guard !Task.isCancelled else {
                 currentlyValidating = nil
-                throw .receivedCancellation
+                return
             }
             let tx = block.txs[txIndex]
             do {
-                try await checkTx(tx, block: blockRef, previous: previousRef, checkScripts: checkScripts, exclude: tmpExclude, auxCoins: tmpCoins)
+                try await checkTx(tx, block: blockRef, previous: activeTip, checkScripts: checkScripts, exclude: tmpExclude, auxCoins: tmpCoins)
             } catch {
 
                 // TODO: Invalidate all descendants (blocks that build upon this block)
@@ -1136,8 +1117,8 @@ public actor BlockchainService: Sendable {
 
                 // Check that transaction is BIP68 final
                 // BIP68 lock checks (as opposed to nLockTime checks) must be in ConnectBlock because they require the UTXO set
-                var previousHeights = await calculatePrevHeights(tx, tip: previousRef, excludeCoins: tmpExclude, auxCoins: tmpCoins)
-                try await sequenceLocks(tx, block: blockRef, previous: previousRef, verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights)
+                var previousHeights = await calculatePrevHeights(tx, tip: activeTip, excludeCoins: tmpExclude, auxCoins: tmpCoins)
+                try await sequenceLocks(tx, block: blockRef, previous: activeTip, verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights)
             }
             // Remove coins
             tmpExclude += tx.ins.map(\.outpoint)
@@ -1161,7 +1142,7 @@ public actor BlockchainService: Sendable {
         precondition(unclaimed >= 0 && unclaimed <= Transaction.maxMoney) // coinbase "fee" our of range, can this ever happen??
 
         // Will now update chain tip and coins
-        let newBlockHeight = previousRef.height + 1
+        let newBlockHeight = activeTip.height + 1
 
         var outpointsToRemove = [Outpoint]()
         for tx in block.txs {
@@ -1180,9 +1161,10 @@ public actor BlockchainService: Sendable {
             }
         }
 
+        // Last chance to exit before modifying coins, mempool, activeTip
         guard !Task.isCancelled else {
             currentlyValidating = nil
-            throw .receivedCancellation
+            return
         }
 
         let spentCoins = try! await coins.update(remove: outpointsToRemove, add: newCoins)
@@ -1214,11 +1196,7 @@ public actor BlockchainService: Sendable {
         // Update best block and header
         let newLocator = try! await blockStorage.store(blockUndo, forBlockAt: blockOnlyLocator) // TODO: throw
 
-        // TODO: Check that this recently verified block shouldn't go from merkle to stale
-        activeTip = await blockIndex.updateBlock(block.id, locator: newLocator, status: .active, chainTxCount: block.txs.count + previousRef.chainTxCount)
-        if bestHeader.header.id == activeTip.header.id {
-            bestHeader = activeTip
-        }
+        activeTip = await blockIndex.updateBlock(block.id, locator: newLocator, status: .active, chainTxCount: activeTip.chainTxCount + block.txs.count)
 
         logger.info("New tip: \(block.idHex)")
         // Notify other nodes of new tip
@@ -1232,23 +1210,14 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        // Connect the next block if transactions are already downloaded and check against merkle root
-        let nextRef: BlockRef?
-        if initialBlockDownload {
-            guard bestHeader.height > activeTip.height else {
-                currentlyValidating = nil
-                return
-            }
-            nextRef = await blockIndex.get(at: blockRef.height + 1)
-        } else {
-            nextRef = await blockIndex.ancestor(of: bestHeader, childOf: activeTip)
-        }
-        guard let nextRef, nextRef.status == .merkle else {
+        if bestHeader.header.id == activeTip.header.id {
+            bestHeader = activeTip
             currentlyValidating = nil
-            return
+        } else if let next = await nextBlockToValidate() {
+            try await connectBlock(ref: next)
+        } else {
+            currentlyValidating = nil
         }
-        logger.debug("Will connect next block \(nextRef.header.idHex)")
-        try await connectBlock(ref: nextRef)
     }
 
     private func getNextWorkRequired(lastHeader: BlockRef, newBlockTime: Date, params: ConsensusParams) async -> Int {
@@ -1265,6 +1234,16 @@ public actor BlockchainService: Sendable {
                 if Int(newBlockTime.timeIntervalSince1970) > Int(lastHeader.header.time.timeIntervalSince1970) + params.powTargetSpacing * 2 {
                     return proofOfWorkLimit
                 } else {
+
+                    // TODO: - Traverse back from last header
+                    ///
+                    /// ```cpp
+                    /// const CBlockIndex* pindex = pindexLast;
+                    /// while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
+                    ///     pindex = pindex->pprev;
+                    /// return pindex->nBits;
+                    /// ```
+
                     // Return the last non-special-min-difficulty-rules-block
                     var height = heightLast
                     var header = lastHeader
@@ -1304,6 +1283,15 @@ public actor BlockchainService: Sendable {
 
         var new: DifficultyTarget
         if params.preventBlockStorms {
+
+            // TODO: - Use `BlockIndex.ancestor(of:at:)` instead of `get(at:)`
+            ///
+            /// ```cpp
+            /// int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval()-1);
+            /// const CBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
+            /// bnNew.SetCompact(pindexFirst->nBits);
+            /// ```
+
             // Here we use the first block of the difficulty period. This way the real difficulty is always preserved in the first block as it is not allowed to use the min-difficulty exception.
             let heightFirst = lastHeader.height - (params.difficultyAdjustmentInterval - 1)
             let first = await blockIndex.get(at: heightFirst)
