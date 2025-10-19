@@ -77,20 +77,6 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    func ancestor(of tip: BlockRef, childOf parent: BlockRef) -> BlockRef? {
-        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            var candidate = tip
-            while candidate.height > parent.height, candidate.header.previous != parent.header.id {
-                candidate = try! _get(candidate.header.previous, byID: byID)!
-            }
-            return if candidate.header.previous == parent.header.id {
-                candidate
-            } else {
-                nil
-            }
-        }
-    }
-
     func bestAncestor(of header: BlockRef) -> BlockRef {
         try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             var candidate = header
@@ -222,6 +208,23 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
+    func getAll(at height: Int) -> [BlockRef] {
+        try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
+            var all = [BlockRef]()
+            try byHeight.withCursor(readOnly: true) { cursor in
+                try cursor.set(key: height)
+                var maybeBlockID = try cursor.get(.firstDup)
+                while let blockID = maybeBlockID {
+                    let refData = try byID.get(blockID)!
+                    let ref = try BlockRef(refData)
+                    all.append(ref)
+                    maybeBlockID = try cursor.get(.nextDup)
+                }
+            }
+            return all
+        }
+    }
+
     func get(from ref: BlockRef, count: Int) -> [BlockRef] {
         try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
 
@@ -241,7 +244,7 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     /// All block storage locators in reverse height order including those for stale/invalid blocks.
-    var blockStorageLocators: [BlockStorageLocator] {
+    var storageLocators: [BlockStorageLocator] {
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             try! byHeight.withCursor(readOnly: true) { cursor in
                 var id = try! cursor.get(.last)
@@ -348,7 +351,6 @@ actor PersistentBlockIndex: BlockIndex {
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             try! byHeight.withCursor(readOnly: true) { cursor in
                 var forks = [ChainFork]()
-                var header: BlockRef? = nil
                 var maybeID = try! cursor.get(.last)
                 while let id = maybeID {
                     let ref = try! _get(id, byID: byID)!
