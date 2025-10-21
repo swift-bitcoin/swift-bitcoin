@@ -54,14 +54,14 @@ struct BlockSyncTests {
         }
         if let alice, let aliceChain {
             await alice.stop()
-            await aliceChain.unsubscribeAll()
+            await aliceChain.shutdown()
         }
         if let peerA, let bob {
             await bob.removePeer(peerA)
         }
         if let bob, let bobChain {
             await bob.stop()
-            await bobChain.unsubscribeAll()
+            await bobChain.shutdown()
         }
     }
 

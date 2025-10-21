@@ -5,6 +5,7 @@ import Logging
 import _NIOFileSystem
 import BitcoinCrypto
 import BitcoinBase
+import Metrics
 
 /// Notification type for block updates with height and validation status.
 public typealias BlockUpdate = (Block, ValidationStatus, Int /* Height */)
@@ -225,9 +226,19 @@ public actor BlockchainService: Sendable {
         await coins.all
     } }
 
-    /// Removes all subscriptions to block and transaction updates.
-    public func unsubscribeAll() async {
-        // TODO: Evaluate if can be moved to an isolated deinit or such.
+    /// Use ``shutdown()`` to free blockchain resources asynchronously.
+    deinit {
+        // Intentionally left empty
+    }
+
+    /// Cancels concurrent tasks and removes all subscriptions to block and transaction updates.
+    public func shutdown() async {
+
+        // Cancel validation task and wait for it to fishish
+        validationTask?.cancel()
+        _ = try? await validationTask?.value
+
+        // Removes all subscriptions to block and transaction updates.
         for blockChannel in blockChannels {
             unsubscribe(blockChannel)
         }
@@ -240,6 +251,8 @@ public actor BlockchainService: Sendable {
     ///
     /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
     public func processBlock(_ block: Block, immediate: Bool = true) async throws(Error) {
+
+        knownBlocksCounter.increment()
 
         let headerRef = if let ref = await blockIndex.get(block.id) {
             ref
@@ -305,6 +318,8 @@ public actor BlockchainService: Sendable {
     ///
     /// Returns silently if transaction is already in the mempool.
     public func addTransaction(_ tx: Transaction) async throws(TransactionValidationError) {
+
+        transactionsCounter.increment()
 
         guard !mempool.contains(tx) else {
             logger.warning("Transaction already in mempool: \(tx.idHex)")
@@ -495,6 +510,8 @@ public actor BlockchainService: Sendable {
 
     /// Processes a block header without its transactions.
     public func processHeader(_ header: Block) async throws(Error) {
+        headersCounter.increment()
+
         _ = try await processHeaderInternal(header)
     }
 
@@ -1056,7 +1073,10 @@ public actor BlockchainService: Sendable {
                 throw .blockFileIssue
             }
         }
+
         logger.debug("Connecting block \(block.idHex)")
+
+        let startTime = ContinuousClock.Instant.now
 
         let checkScripts: Bool
         if let assumeValid = params.assumeValid, let assumeValidRef = await blockIndex.get(assumeValid) {
@@ -1210,6 +1230,10 @@ public actor BlockchainService: Sendable {
             }
         }
 
+        validBlocksCounter.increment()
+        validTransactionsCounter.increment(by: block.txs.count)
+        blockValidationTimer.record(duration: .now - startTime)
+
         if bestHeader.header.id == activeTip.header.id {
             bestHeader = activeTip
             currentlyValidating = nil
@@ -1218,6 +1242,7 @@ public actor BlockchainService: Sendable {
         } else {
             currentlyValidating = nil
         }
+
     }
 
     private func getNextWorkRequired(lastHeader: BlockRef, newBlockTime: Date, params: ConsensusParams) async -> Int {
@@ -1605,3 +1630,10 @@ private func nowSeconds() -> TimeInterval {
 
 private typealias LockPoints = (height: Int, time: Int, ancestor: BlockRef)
 private typealias LockPair = (height: Int, time: Int)
+
+private let transactionsCounter = Counter(label: "transactions")
+private let headersCounter = Counter(label: "headers")
+private let knownBlocksCounter = Counter(label: "known-blocks")
+private let validBlocksCounter = Counter(label: "valid-blocks")
+private let validTransactionsCounter = Counter(label: "valid-transactions")
+private let blockValidationTimer = Timer(label: "block-validation", preferredDisplayUnit: .seconds)

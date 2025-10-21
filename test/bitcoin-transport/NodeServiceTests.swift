@@ -50,7 +50,7 @@ struct NodeServiceTests: ~Copyable {
         if let satoshi, let satoshiChain {
             Task {
                 await satoshi.stop()
-                await satoshiChain.unsubscribeAll()
+                await satoshiChain.shutdown()
             }
         }
         if let satoshiPeer, let hal {
@@ -61,7 +61,7 @@ struct NodeServiceTests: ~Copyable {
         if let hal, let halChain {
             Task {
                 await hal.stop()
-                await halChain.unsubscribeAll()
+                await halChain.shutdown()
             }
         }
     }

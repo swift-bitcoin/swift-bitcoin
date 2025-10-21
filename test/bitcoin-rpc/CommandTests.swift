@@ -91,6 +91,6 @@ struct CommandTests {
         ])
 
         await satoshi.stop()
-        await satoshiChain.unsubscribeAll()
+        await satoshiChain.shutdown()
     }
 }
