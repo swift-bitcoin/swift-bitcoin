@@ -53,13 +53,13 @@ actor P2PClient: Service {
 
     private func connectToPeer() async throws {
         let clientChannel = try await ClientBootstrap(group: eventLoopGroup)
-            .connect( host: remoteHost, port: remotePort) { connection in
+            .connect( host: remoteHost, port: remotePort) { [logger] connection in
                 connection.eventLoop.makeCompletedFuture {
                     try connection.pipeline.syncOperations.addHandlers([
                         MessageToByteHandler(MessageCoder()),
                         ByteToMessageHandler(MessageCoder()),
-                        DebugInboundEventsHandler(),
-                        DebugOutboundEventsHandler()
+                        DebugInboundEventsHandler(logger: logger),
+                        DebugOutboundEventsHandler(logger: logger)
                     ])
                     return try NIOAsyncChannel<NetworkMessage, NetworkMessage>(wrappingChannelSynchronously: connection)
                 }

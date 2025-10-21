@@ -24,9 +24,12 @@ let package = Package(
         .executable(name: "bcutil", targets: ["BitcoinUtility"])
     ],
     dependencies: [
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-metrics.git", from: "2.0.0"),
+        .package(url: "https://github.com/apple/swift-statsd-client.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-profile-recorder.git", .upToNextMinor(from: "0.3.0")),
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
         .package(url: "https://github.com/swiftlang/swift-lmdb", branch: "main"),
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-system.git", from: "1.0.0"),
@@ -37,7 +40,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
-        .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0")
     ],
     targets: [
         // Exposed libraries
@@ -53,11 +56,12 @@ let package = Package(
         .target(
             name: "BitcoinBlockchain",
             dependencies: ["BitcoinBase", "BitcoinCrypto", "LMDB",
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "Metrics", package: "swift-metrics"),
                 .product(name: "Atomics", package: "swift-atomics"),
                 .product(name: "Collections", package: "swift-collections"),
                 .product(name: "Algorithms", package: "swift-algorithms"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-                .product(name: "Logging", package: "swift-log"),
                 .product(name: "_NIOFileSystem", package: "swift-nio")],
             path: "src/bitcoin-blockchain"),
         .target(
@@ -123,6 +127,9 @@ let package = Package(
             name: "BitcoinNode", dependencies: [
                 "BitcoinRPC", "BitcoinTransport", "BitcoinBlockchain", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC", "JSONRPC",
                 .product(name: "Logging", package: "swift-log"),
+                .product(name: "Metrics", package: "swift-metrics"),
+                .product(name: "StatsdClient", package: "swift-statsd-client"),
+                .product(name: "ProfileRecorderServer", package: "swift-profile-recorder"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),

@@ -68,3 +68,66 @@ swift run bcutil --help
 ## Mac
 
 The simplest way to build and run Swift Bitcoin on a Mac is to have Xcode installed. After that you can use the IDE or run `swift` from the command line.
+
+## Tooling
+
+The examples below assume Swift Bitcoin is built with `swift build -c release`.
+
+### Logs
+
+For logging we use [Swift Log](https://github.com/apple/swift-log) with the default standard output backend.
+
+To override the default _info_ log level:
+
+    ./.build/release/bcnode --log-level=debug
+
+Possible values are: `critical, `error`, `warning`, `info`, `notice`, `debug` and `trace`. It is also possible to specify the log level via configuration file `~/.swift-bitcoin/config.swift`:
+
+```swift
+let config = NodeConfig(…
+    logLevel: .info, …)
+```
+
+### Metrics
+
+We use [Swift Metrics](https://github.com/apple/swift-metrics) with [Statsd Client](https://github.com/apple/swift-statsd-client) backend.
+
+To configure use:
+
+```swift
+let config = NodeConfig( …
+    metrics: .init(host: "localhost", port: 8125), …
+)
+```
+
+To start the [Graphite](https://graphiteapp.org) Docker container:
+
+```bash
+docker run --rm -it --name graphite -p 8008:80 -p 8125:8125/udp graphiteapp/graphite-statsd
+```
+
+### Profiler
+
+The Bitcoin Node (bcnode) daemon has a [profiler](https://github.com/apple/swift-profile-recorder) built in.
+
+To configure use:
+
+```swift
+let config = NodeConfig( …
+    enableProfiling: true, …
+)
+```
+
+ The Profile Recorder Server will run in the background if enabled if environment variable `PROFILE_RECORDER_SERVER_URL_PATTERN` is set:
+
+    PROFILE_RECORDER_SERVER_URL_PATTERN=unix:///tmp/bcnode-samples-{PID}.sock ./.build/release/bcnode
+
+In the logs you should see a message similar to the one below:
+
+    ServerInfo(startResult: ProfileRecorderServer.ProfileRecorderServer.ServerInfo.ServerStartResult.successful([UDS]/tmp/bcnode-samples-94846.sock)) [ProfileRecorderServer] profile recorder server up and running
+
+That message contains the process ID, `94846` in this case. With that you can record using `curl`:
+
+    curl --unix-socket /tmp/bcnode-samples-94846.sock -sd '{"numberOfSamples":10,"timeInterval":"100 ms"}' http://localhost/sample | swift demangle --compact > /tmp/samples.perf
+
+To visualize you can upload to a service like [Speedscope](https://www.speedscope.app) or some other flamegraph visualizer.

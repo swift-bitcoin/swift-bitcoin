@@ -541,7 +541,7 @@ private func cleanup(_ services: [NodeService]) async {
             await s.removePeer(p)
         }
         await s.stop()
-        await s.blockchain.unsubscribeAll()
+        await s.blockchain.shutdown()
     }
 }
 

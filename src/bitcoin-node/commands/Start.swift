@@ -6,6 +6,9 @@ import ServiceLifecycle
 import NIOCore
 import NIOPosix
 import Logging
+import Metrics
+import StatsdClient
+import ProfileRecorderServer
 
 extension NodeNetwork: Decodable, ExpressibleByArgument { }
 
@@ -57,13 +60,17 @@ struct Start: AsyncParsableCommand {
         } catch {
             throw ValidationError(error)
         }
+
+        // WARNING: New configuration options need to be added here regardless of whether there is a command line parameter override!
         let resolvedConfig = NodeConfig(
             dataLocation: dataLocation ?? config.dataLocation,
             network: network ?? config.network,
             name: config.name,
             logLevel: logLevel ?? config.logLevel,
-            feeRate: config.feeRate
-        )
+            feeRate: config.feeRate,
+            metrics: config.metrics,
+            enableProfiling: config.enableProfiling
+        ) // TODO: Find a solution that copies all properties "as is" except for the overridable by command line arguments
 
         try await launchNode(resolvedConfig, host: host, port: port)
     }
@@ -83,6 +90,21 @@ private func launchNode(_ config: NodeConfig, host: String, port: Int?) async th
         fatalError("Could not encode configuration")
     }
     logger.info("\(configString)")
+
+    if config.enableProfiling {
+        logger.info("Profiling capability enabled as per configuration")
+        async let _ = ProfileRecorderServer(configuration: .parseFromEnvironment()).runIgnoringFailures(logger: logger)
+    }
+
+    let statsdClient: StatsdClient?
+    if let statsd = config.metrics {
+        logger.info("Metrics enabled as per statsd configuration: UDP+statsd://\(statsd.host):\(statsd.port)")
+        let client = try StatsdClient(host: statsd.host, port: statsd.port)
+        MetricsSystem.bootstrap(client)
+        statsdClient = client
+    } else {
+        statsdClient = nil
+    }
 
     let params: ConsensusParams = switch network {
     case .mainnet:
@@ -114,7 +136,18 @@ private func launchNode(_ config: NodeConfig, host: String, port: Int?) async th
     await rpcService.setServiceGroup(serviceGroup)
     try await serviceGroup.run()
 
-    await blockchain.unsubscribeAll()
+    await blockchain.shutdown()
+
+    if let statsdClient {
+        logger.info("Shutting down statsd client…")
+        statsdClient.shutdown { [logger] error in
+            if let error {
+                logger.error("\(error.localizedDescription)")
+                return
+            }
+            logger.info("Statsd client shut down")
+        }
+    }
 }
 
 enum DataLocationType: String, ExpressibleByArgument {
