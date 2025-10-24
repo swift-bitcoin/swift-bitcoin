@@ -10,22 +10,25 @@ import Logging
 
 actor P2PClient: Service {
 
-    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int,  onDisconnect: (@Sendable (PeerID) async -> ())? = nil) async {
+    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int, onConnect: (@Sendable (UUID) async -> ())? = nil, onDisconnect: (@Sendable (UUID) async -> ())? = nil) async {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.logger = logger
         remoteHost = host
         remotePort = port
+        self.onConnect = onConnect
         self.onDisconnect = onDisconnect
         peerID = await node.addPeer(host: remoteHost, port: remotePort, incoming: false)
     }
 
-    let eventLoopGroup: EventLoopGroup
-    let node: NodeService
-    let logger: Logger
+    let id = UUID()
+    private let eventLoopGroup: EventLoopGroup
+    private let node: NodeService
+    private let logger: Logger
     let remoteHost: String
     let remotePort: Int
-    let onDisconnect: (@Sendable (PeerID) async -> ())?
+    private var onConnect: (@Sendable (UUID) async -> ())?
+    private var onDisconnect: (@Sendable (UUID) async -> ())?
     let peerID: Int
 
     // Status
@@ -47,13 +50,20 @@ actor P2PClient: Service {
         }
     }
 
+    func setConnectHandler(_ onConnect: (@escaping @Sendable (UUID) async -> ()), onDisconnect: (@escaping @Sendable (UUID) async -> ())) {
+        self.onConnect = onConnect
+        self.onDisconnect = onDisconnect
+    }
+
     func disconnect() async throws {
         try await clientChannel?.channel.close()
     }
 
     private func connectToPeer() async throws {
-        let clientChannel = try await ClientBootstrap(group: eventLoopGroup)
-            .connect( host: remoteHost, port: remotePort) { [logger] connection in
+        let bootstrap = ClientBootstrap(group: eventLoopGroup)
+        let clientChannel: NIOAsyncChannel<NetworkMessage, NetworkMessage>
+        do {
+            clientChannel = try await bootstrap.connect( host: remoteHost, port: remotePort) { [logger] connection in
                 connection.eventLoop.makeCompletedFuture {
                     try connection.pipeline.syncOperations.addHandlers([
                         MessageToByteHandler(MessageCoder()),
@@ -64,11 +74,21 @@ actor P2PClient: Service {
                     return try NIOAsyncChannel<NetworkMessage, NetworkMessage>(wrappingChannelSynchronously: connection)
                 }
             }
+        } catch let error as NIOConnectionError {
+            logger.warning("Could not connect to \(remoteHost):\(remotePort)")
+            logger.warning("\(error.description)")
+            await node.removePeer(peerID)
+            await onDisconnect?(id)
+            return
+        } catch {
+            throw error
+        }
 
         self.clientChannel = clientChannel
         connected = true
         localPort = clientChannel.channel.localAddress?.port
         logger.info("P2P client @\(localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
+        await onConnect?(id)
 
         try await clientChannel.executeThenClose { @Sendable [logger] inbound, outbound in
 
@@ -110,10 +130,10 @@ actor P2PClient: Service {
     }
 
     private func peerDisconnected() async {
-        logger.info("P2P client @\(localPort ?? -1) disconnected from remote peer @\(remoteHost):\(remotePort)…")
+        logger.info("P2P client disconnected from remote peer \(peerID) @ \(remoteHost):\(remotePort)…")
         clientChannel = nil
         connected = false
         localPort = nil
-        await onDisconnect?(peerID)
+        await onDisconnect?(id)
     }
 }

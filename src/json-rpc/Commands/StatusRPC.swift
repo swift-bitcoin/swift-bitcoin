@@ -24,8 +24,7 @@ public struct StatusRPC: RPCCommand, Sendable {
 
         public struct P2PService: Codable, Sendable {
 
-            public init(running: Bool, listening: Bool, host: String?, port: Int?, overallConnections: Int, sessionConnections: Int, activeConnections: Int) {
-                self.running = running
+            public init(listening: Bool, host: String?, port: Int?, overallConnections: Int, sessionConnections: Int, activeConnections: Int) {
                 self.listening = listening
                 self.host = host
                 self.port = port
@@ -34,7 +33,6 @@ public struct StatusRPC: RPCCommand, Sendable {
                 self.activeConnections = activeConnections
             }
 
-            let running: Bool
             let listening: Bool
             let host: String?
             let port: Int?
@@ -53,7 +51,7 @@ public struct StatusRPC: RPCCommand, Sendable {
                 self.localPort = localPort
             }
 
-            let peerID: Int /* PeerID */
+            public let peerID: Int /* PeerID */
             let connected: Bool
             let remoteHost: String
             let remotePort: Int

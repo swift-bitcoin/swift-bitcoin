@@ -14,13 +14,12 @@ import BitcoinRPC
 
 actor RPCService: Service {
 
-    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService, p2pService: P2PService, logger: Logger) {
+    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService, logger: Logger) {
         self.host = host
         self.port = port
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.blockchain = blockchain
-        self.p2pService = p2pService
         self.logger = logger
     }
 
@@ -29,8 +28,6 @@ actor RPCService: Service {
     let eventLoopGroup: EventLoopGroup
     let node: NodeService
     let blockchain: BlockchainService
-    let p2pService: P2PService
-    var p2pClients = [PeerID: P2PClient]()
     let logger: Logger
 
     // Status and statistics
@@ -39,7 +36,7 @@ actor RPCService: Service {
     private(set) var activeConnections = 0
 
     // State
-    private var serviceGroup: ServiceGroup?
+    private var app: ServerApp!
 
     func run() async throws {
         // Bootstraping server channel.
@@ -100,9 +97,9 @@ actor RPCService: Service {
         }
     }
 
-    func setServiceGroup(_ serviceGroup: ServiceGroup) {
-        precondition(self.serviceGroup == nil)
-        self.serviceGroup = serviceGroup
+    func setServerApp(_ app: ServerApp) {
+        precondition(self.app == nil)
+        self.app = app
     }
 
     private func serviceUp() {
@@ -125,16 +122,16 @@ actor RPCService: Service {
                 let result = try await HelpRPC(params).run()
                 try await outbound.write(.init(id: request.id, result: .help(result)))
             case .status:
-                let result = await rpcStatus()
+                let result = await app.rpcStatus()
                 try await outbound.write(.init(id: request.id, result: .status(result)))
             case .stop:
-                await rpcStop()
+                await app.rpcStop()
             case .startP2P(let params):
-                await rpcStartP2P(params)
+                await app.rpcStartP2P(params)
             case .stopP2P:
-                try await rpcStopP2P()
+                try await app.rpcStopP2P()
             case .connect(let params):
-                let result = try await rpcConnect(params)
+                let result = try await app.rpcConnect(params)
                 try await outbound.write(.init(id: request.id, result: .connect(result)))
             case .disconnectPeer(let params):
                 let result = await DisconnectPeerRPC(params).run(node: node)
@@ -173,59 +170,7 @@ actor RPCService: Service {
         }
     }
 
-    private func rpcStatus() async -> StatusRPC.Result {
-
-        let status = StatusRPC.Result.RPCService(listening: listening, host: host, port: port, overallConnections: overallConnections, activeConnections: activeConnections)
-
-        // Collect P2P Client Services' statuses in order
-        let p2pClientStatus = await withTaskGroup(of: (Int, StatusRPC.Result.P2PClient).self, returning: [StatusRPC.Result.P2PClient].self) { group in
-            for (i, client) in p2pClients {
-                group.addTask {
-                    let status = await client.status
-                    return (i, status)
-                }
-            }
-            // Let's sort clients by their ID
-            var items = [(Int, StatusRPC.Result.P2PClient)]()
-            for await result in group {
-                // result.1.peerID = result.0 // Set the peerID inside the struct
-                items.append(result)
-            }
-            return items.sorted(by: { $0.0 < $1.0 }).map(\.1) // Get rid of the tuple index
-        }
-
-        // Execute RPC Command
-        return await StatusRPC().run(rpcStatus: status, p2pStatus: await p2pService.status, p2pClientStatus: p2pClientStatus)
-    }
-
-    private func rpcStop() async {
-        await serviceGroup?.triggerGracefulShutdown()
-    }
-
-    private func rpcStartP2P(_ params: StartP2PRPC.Params) async {
-        await p2pService.start(host: params.host, port: params.port)
-    }
-
-    private func rpcStopP2P() async throws(JSONRPCResponse.Error) {
-        do {
-            try await p2pService.stopListening()
-        } catch {
-            throw .init(.internalError, error.localizedDescription)
-        }
-        await node.removeAllPeers(incomingOnly: true)
-    }
-
-    private func rpcConnect(_ params: ConnectRPC.Params) async throws(JSONRPCResponse.Error) -> ConnectRPC.Result {
-        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port) { peerID  in
-            await self.clearPeer(peerID)
-        }
-        p2pClients[service.peerID] = service
-        let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore)
-        await serviceGroup?.addServiceUnlessShutdown(config)
-        return service.peerID
-    }
-
-    private func clearPeer(_ peerID: Int) {
-        p2pClients[peerID] = nil
+    var status: StatusRPC.Result.RPCService {
+        StatusRPC.Result.RPCService(listening: listening, host: host, port: port, overallConnections: overallConnections, activeConnections: activeConnections)
     }
 }

@@ -1,14 +1,5 @@
-import Foundation
 import ArgumentParser
-import BitcoinBlockchain
 import BitcoinTransport
-import ServiceLifecycle
-import NIOCore
-import NIOPosix
-import Logging
-import Metrics
-import StatsdClient
-import ProfileRecorderServer
 
 extension NodeNetwork: Decodable, ExpressibleByArgument { }
 
@@ -29,6 +20,12 @@ struct Start: AsyncParsableCommand {
 
     @Option(name: [.customShort("q"), .long], help: "A custom absolute path to Swift Bitcoin's data directory (will be created if it does not yet exist).")
     var dataLocationPath: String?
+
+    @Option(name: .long, help: "Listen for incoming connections on the peer-to-peer network at the speficied \"address:port\".")
+    var bind: String?
+
+    @Option(name: .long, help: "Connect to remote peers automatically on startup.")
+    var connect: [String] = []
 
     @Option(name: .shortAndLong, help: "The address to bind the RPC server to.")
     var host = "0.0.0.0"
@@ -61,106 +58,43 @@ struct Start: AsyncParsableCommand {
             throw ValidationError(error)
         }
 
+        let bind: NodeConfig.BindSettings? = if let bind {
+            if let (host, port) = IPv4Address.parse(bind) {
+                .init(host: host, port: port)
+            } else if let (host, port) = IPv6Address.parse(bind) {
+                .init(host: host, port: port)
+            } else {
+                throw ValidationError("Invalid bind address format")
+            }
+        } else { config.bind }
+
+        let connect: [NodeConfig.RemotePeer] = try connect.map { address in
+            if let (host, port) = IPv4Address.parse(address) {
+                .init(host: host, port: port)
+            } else if let (host, port) = IPv6Address.parse(address) {
+                .init(host: host, port: port)
+            } else {
+                throw ValidationError("Invalid bind address format")
+            }
+        }
+
         // WARNING: New configuration options need to be added here regardless of whether there is a command line parameter override!
         let resolvedConfig = NodeConfig(
             dataLocation: dataLocation ?? config.dataLocation,
             network: network ?? config.network,
             name: config.name,
+            bind: bind,
+            connect: connect + config.connect,
             logLevel: logLevel ?? config.logLevel,
             feeRate: config.feeRate,
             metrics: config.metrics,
             enableProfiling: config.enableProfiling
         ) // TODO: Find a solution that copies all properties "as is" except for the overridable by command line arguments
 
-        try await launchNode(resolvedConfig, host: host, port: port)
-    }
-}
-
-private func launchNode(_ config: NodeConfig, host: String, port: Int?) async throws {
-    let network = NodeNetwork(config.network)
-    let dataLocation = BlockchainService.Config.DataLocation(config.dataLocation)
-    let port = port ?? network.defaultRPCPort
-
-    var logger = Logger(label: "bcnode")
-    logger.logLevel = .init(config.logLevel)
-
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = .prettyPrinted
-    guard let configStringData = try? encoder.encode(config), let configString = String(data: configStringData, encoding: .utf8) else {
-        fatalError("Could not encode configuration")
-    }
-    logger.info("\(configString)")
-
-    if config.enableProfiling {
-        logger.info("Profiling capability enabled as per configuration")
-        async let _ = ProfileRecorderServer(configuration: .parseFromEnvironment()).runIgnoringFailures(logger: logger)
-    }
-
-    let statsdClient: StatsdClient?
-    if let statsd = config.metrics {
-        logger.info("Metrics enabled as per statsd configuration: UDP+statsd://\(statsd.host):\(statsd.port)")
-        let client = try StatsdClient(host: statsd.host, port: statsd.port)
-        MetricsSystem.bootstrap(client)
-        statsdClient = client
-    } else {
-        statsdClient = nil
-    }
-
-    let params: ConsensusParams = switch network {
-    case .mainnet:
-        .mainnet
-    case .testnet:
-        .testnet
-    case .regtest:
-        .regtest
-    }
-    let blockchain = try await BlockchainService(
-        params: params,
-        config: .init(dataLocation: dataLocation),
-        logger: logger
-    )
-
-    let node = NodeService(blockchain: blockchain, config: .init(network: network), logger: logger)
-
-    let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-
-    let p2pService = P2PService(eventLoopGroup: eventLoopGroup, node: node, logger: logger)
-
-    let rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, p2pService: p2pService, logger: logger)
-    let serviceGroup = ServiceGroup(configuration: .init(
-        services: [node, p2pService, rpcService],
-        gracefulShutdownSignals: [.sigint, .sigterm],
-        cancellationSignals: [.sigquit],
-        logger: logger
-    ))
-    await rpcService.setServiceGroup(serviceGroup)
-    try await serviceGroup.run()
-
-    await blockchain.shutdown()
-
-    if let statsdClient {
-        logger.info("Shutting down statsd client…")
-        statsdClient.shutdown { [logger] error in
-            if let error {
-                logger.error("\(error.localizedDescription)")
-                return
-            }
-            logger.info("Statsd client shut down")
-        }
+        _ = try await ServerApp(resolvedConfig, host: host, port: port)
     }
 }
 
 enum DataLocationType: String, ExpressibleByArgument {
     case inMemory = "in-memory", defaultPath = "default-path"
-}
-
-extension BlockchainService.Config.DataLocation {
-
-    init(_ dataLocation: NodeConfig.DataLocation) {
-        self = switch dataLocation {
-        case .inMemory: .inMemory
-        case .defaultPath: .defaultPath
-        case let .custom(path: path): .custom(path: path)
-        }
-    }
 }
