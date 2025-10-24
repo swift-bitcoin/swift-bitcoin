@@ -37,3 +37,32 @@ public struct IPv4Address: Equatable, Sendable, CustomStringConvertible, CustomD
     public static let loopback = Self(Data([0x7f, 0x00, 0x00, 0x01]))
     public static let empty = Self(Data([0x00, 0x00, 0x00, 0x00]))
 }
+
+extension IPv4Address {
+    public static func parse(_ address: String) -> (host: String, port: Int?)? {
+        let regex = /([\d\.]+)(\:(\d{1,5}))?/
+        guard let _ = address.wholeMatch(of: regex) else {
+            return nil
+        }
+        let matches = address.matches(of: regex)
+        let host: String = matches[0].output.1.description
+        let portString: String? = matches[0].output.3?.description
+        let port: Int? = if let portString { Int(portString) } else { nil }
+        return (host, port)
+    }
+}
+
+#if canImport(Playgrounds)
+import Playgrounds
+#Playground {
+    let ipv6 = "[::1]"
+    let ipv6p = "[::1]:80"
+    let ipv4 = "127.0.0.1"
+    let ipv4p = "127.0.0.1:80"
+
+    _ = IPv4Address.parse(ipv4)
+    _ = IPv4Address.parse(ipv4p)
+    _ = IPv4Address.parse(ipv6)
+    _ = IPv4Address.parse(ipv6p)
+}
+#endif

@@ -126,3 +126,32 @@ public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomD
         }
     }
 }
+
+extension IPv6Address {
+    public static func parse(_ address: String) -> (host: String, port: Int?)? {
+        let regex = /\[([\d\:A-Fa-f]+)\](\:(\d{1,5}))?/
+        guard let _ = address.wholeMatch(of: regex) else {
+            return nil
+        }
+        let matches = address.matches(of: regex)
+        let host: String = matches[0].output.1.description
+        let portString: String? = matches[0].output.3?.description
+        let port: Int? = if let portString { Int(portString) } else { nil }
+        return (host, port)
+    }
+}
+
+#if canImport(Playgrounds)
+import Playgrounds
+#Playground {
+    let ipv6 = "[aaaa:FFFF::]"
+    let ipv6p = "[::1]:80"
+    let ipv4 = "127.0.0.1"
+    let ipv4p = "127.0.0.1:80"
+
+    _ = IPv6Address.parse(ipv6)
+    _ = IPv6Address.parse(ipv6p)
+    _ = IPv6Address.parse(ipv4)
+    _ = IPv6Address.parse(ipv4p)
+}
+#endif

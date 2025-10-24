@@ -10,68 +10,54 @@ import Logging
 
 actor P2PService: Service {
 
-    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger) {
+    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.logger = logger
+        self.host = host
+        self.port = port
     }
 
     let eventLoopGroup: EventLoopGroup
     let node: NodeService
     let logger: Logger
+    let host: String
+    let port: Int
 
     // Status
-    private(set) var running = false
     private(set) var listening = false
-    private(set) var host = String?.none
-    private(set) var port = Int?.none
+
     private(set) var overallConnections = 0
     private(set) var sessionConnections = 0
     private(set) var activeConnections = 0
-
-    private let listenRequests = AsyncChannel<()>() // We'll send () to this channel whenever we want the service to bootstrap itself
 
     private var serverChannel: NIOAsyncChannel<NIOAsyncChannel<NetworkMessage, NetworkMessage>, Never>?
     private var peerIDs = [UUID]()
 
     var status: StatusRPC.Result.P2PService {
-        .init(running: running, listening: listening, host: host, port: port, overallConnections: overallConnections, sessionConnections: sessionConnections, activeConnections: activeConnections)
+        .init(listening: listening, host: host, port: port, overallConnections: overallConnections, sessionConnections: sessionConnections, activeConnections: activeConnections)
     }
 
     func run() async throws {
-        // Update status
-        running = true
-
         try await withGracefulShutdownHandler {
-            for await _ in listenRequests.cancelOnGracefulShutdown() {
-                try await startListening()
-            }
+            try await startListening()
         } onGracefulShutdown: { [logger] in
             logger.info("P2P server shutting down gracefully…")
         }
-    }
-
-    func start(host: String, port: Int) async {
-        guard serverChannel == nil else { return }
-        self.host = host
-        self.port = port
-        await node.setAddress(host, port)
-        await listenRequests.send(()) // Signal to start listening
     }
 
     func stopListening() async throws {
         try await serverChannel?.channel.close()
         serverChannel = nil
         listening = false
-        host = nil
-        port = nil
         sessionConnections = 0
         activeConnections = 0
         await node.resetAddress()
     }
 
-    private func serviceUp() {
+    private func serviceUp() async {
         listening = true
+        await node.setAddress(host, port)
     }
 
     private func connectionMade() {
@@ -87,11 +73,6 @@ actor P2PService: Service {
     }
 
     private func startListening() async throws {
-        guard let host, let port else {
-            logger.error("Host and port not set.")
-            return
-        }
-
         // Bootstraping server channel.
         let bootstrap = ServerBootstrap(group: eventLoopGroup)
         let serverChannel = try await bootstrap.bind(
