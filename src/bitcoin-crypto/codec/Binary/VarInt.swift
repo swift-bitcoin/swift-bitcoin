@@ -2,7 +2,7 @@
 ///
 /// In many cases ``BinaryEncoder`` and ``BinaryDecoder`` can handle variable integer prefixes automatically via a `variable` boolean parameter like in ``BinaryEncoder/encode(_:variable:byteSwapped:)`` or ``BinaryDecoder/decode(variable:byteSwapped:)``.
 /// The default behavior when working with `Array<BinaryCodable>` is to prefix all arrays with their count encoded a `VarInt`.
-public struct VarInt: BinaryCodable, CustomBinaryCodable {
+public struct VarInt: Equatable, Sendable, BinaryCodable, CustomBinaryCodable {
 
     public typealias Encoding = Never
 
@@ -60,3 +60,28 @@ public struct VarInt: BinaryCodable, CustomBinaryCodable {
         }
     }
 }
+
+// Binary parsing
+
+#if canImport(BinaryParsing) // Restore once BinaryParsing supports iOS ( >= 0.0.2)
+
+import BinaryParsing
+
+extension VarInt {
+    public init(parsing input: inout ParserSpan) throws {
+        let firstByte = try UInt8(parsing: &input)
+        if firstByte < 0xfd {
+            rawValue = UInt64(firstByte)
+        } else if firstByte == 0xfd {
+            let value = try UInt16(parsingLittleEndian: &input)
+            rawValue = UInt64(value)
+        } else if firstByte == 0xfe {
+            let value = try UInt32(parsingLittleEndian: &input)
+            rawValue = UInt64(value)
+        } else {
+            rawValue = try UInt64(parsingLittleEndian: &input)
+        }
+    }
+}
+
+#endif
