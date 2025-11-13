@@ -32,6 +32,7 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-lmdb", branch: "main"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-binary-parsing", .upToNextMinor(from: "0.0.1")),
         .package(url: "https://github.com/apple/swift-system.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.0.0"),
@@ -70,11 +71,15 @@ let package = Package(
             path: "src/bitcoin-psbt"),
         .target(name: "BitcoinWallet", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-wallet"),
         .target(name: "BitcoinMiniscript", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-miniscript"),
-        .target(name: "BitcoinBase", dependencies: ["BitcoinCrypto"], path: "src/bitcoin-base"),
+        .target(name: "BitcoinBase", dependencies: [
+            "BitcoinCrypto",
+            .product(name: "BinaryParsing", package: "swift-binary-parsing", condition: .when(platforms: [.macOS, .linux]))
+        ], path: "src/bitcoin-base"),
         .target(name: "BitcoinCrypto", dependencies: ["ECCHelper",
                 .product(name: "LibSECP256k1", package: "secp256k1"),
-                .product(name: "Crypto", package: "swift-crypto")],
-            path: "src/bitcoin-crypto" /*, swiftSettings: [.strictMemorySafety()]*/),
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "BinaryParsing", package: "swift-binary-parsing", condition: .when(platforms: [.macOS, .linux]))
+        ], path: "src/bitcoin-crypto" /*, swiftSettings: [.strictMemorySafety()]*/),
 
         // Internal libraries
         .target(

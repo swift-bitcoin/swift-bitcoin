@@ -257,3 +257,32 @@ extension Script: BinaryCodable {
         return counter.size
     }
 }
+
+// Binary parsing
+
+#if canImport(BinaryParsing) // Restore once BinaryParsing supports iOS ( >= 0.0.2)
+
+import BinaryParsing
+
+extension Script {
+    public init(parsing input: inout ParserSpan) throws {
+        let size = try VarInt(parsing: &input)
+
+        // decoder.setLimit(size.value)
+        let range = try input.sliceRange(byteCount: size.value)
+        try input.seek(toRange: range)
+
+        var ops = [Script.Operation]()
+        while let op = try? Script.Operation(parsing: &input) {
+            ops.append(op)
+        }
+        self.ops = ops
+        //unparsable = try decoder.decode()
+        unparsable = .init([UInt8](parsingRemainingBytes: &input))
+
+        // decoder.resetLimit()
+        try input.seek(toAbsoluteOffset: range.upperBound)
+    }
+}
+
+#endif

@@ -49,3 +49,18 @@ extension TransactionOutput: BinaryCodable {
         return counter.size
     }
 }
+
+// Binary parsing
+
+#if canImport(BinaryParsing) // Restore once BinaryParsing supports iOS ( >= 0.0.2)
+
+import BinaryParsing
+
+extension TransactionOutput {
+    public init(parsing input: inout ParserSpan) throws {
+        value = try Int(parsing: &input, storedAsLittleEndian: UInt64.self)
+        script = .init([])
+    }
+}
+
+#endif
