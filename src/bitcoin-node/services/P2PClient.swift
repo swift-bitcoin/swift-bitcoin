@@ -74,14 +74,15 @@ actor P2PClient: Service {
                     return try NIOAsyncChannel<NetworkMessage, NetworkMessage>(wrappingChannelSynchronously: connection)
                 }
             }
-        } catch let error as NIOConnectionError {
+        } catch {
+            guard error is NIOConnectionError || error is ChannelError else {
+                throw error
+            }
             logger.warning("Could not connect to \(remoteHost):\(remotePort)")
-            logger.warning("\(error.description)")
+            logger.warning("\(error)")
             await node.removePeer(peerID)
             await onDisconnect?(id)
             return
-        } catch {
-            throw error
         }
 
         self.clientChannel = clientChannel
