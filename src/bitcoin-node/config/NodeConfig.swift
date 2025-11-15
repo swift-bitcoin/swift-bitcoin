@@ -3,11 +3,11 @@
 struct NodeConfig: Codable {
 
     init(
-        dataLocation: DataLocation = .inMemory,
-        network: Network = .regtest,
-        name: String = "SwiftBitcoin",
+        dataLocation: DataLocation = .defaultPath,
+        network: Network = .testnet,
         bind: BindSettings? = nil,
         connect: [RemotePeer] = [],
+        autoConnect: Bool = true,
         logLevel: LogLevel = .info,
         feeRate: Int = 100,
         metrics: StatsdMetrics? = nil,
@@ -15,9 +15,9 @@ struct NodeConfig: Codable {
     ) {
         self.dataLocation = dataLocation
         self.network = network
-        self.name = name
         self.bind = bind
         self.connect = connect
+        self.autoConnect = autoConnect
         self.logLevel = logLevel
         self.feeRate = feeRate
         self.metrics = metrics
@@ -26,9 +26,9 @@ struct NodeConfig: Codable {
 
     let dataLocation: DataLocation
     let network: Network
-    let name: String
     let bind: BindSettings?
     let connect: [RemotePeer]
+    let autoConnect: Bool
     let logLevel: LogLevel
     let feeRate: Int
     let metrics: StatsdMetrics?
@@ -41,9 +41,9 @@ struct NodeConfig: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.dataLocation = try container.decodeIfPresent(NodeConfig.DataLocation.self, forKey: .dataLocation) ?? defaults.dataLocation
         self.network = try container.decodeIfPresent(NodeConfig.Network.self, forKey: .network) ?? defaults.network
-        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? defaults.name
         self.bind = try container.decodeIfPresent(BindSettings.self, forKey: .bind) ?? defaults.bind
         self.connect = try container.decodeIfPresent([RemotePeer].self, forKey: .connect) ?? defaults.connect
+        self.autoConnect = try container.decodeIfPresent(Bool.self, forKey: .autoConnect) ?? defaults.autoConnect
         self.logLevel = try container.decodeIfPresent(LogLevel.self, forKey: .logLevel) ?? defaults.logLevel
         self.feeRate = try container.decodeIfPresent(Int.self, forKey: .feeRate) ?? defaults.feeRate
         self.metrics = try container.decodeIfPresent(NodeConfig.StatsdMetrics.self, forKey: .metrics) ?? defaults.metrics

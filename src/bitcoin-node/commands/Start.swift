@@ -12,8 +12,8 @@ struct Start: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "The absolute path to either the folder containing Swift Bitcoin's configuration file or the configuration file itself, e.g. \"/some/folder/myConfig.json\".")
     var configPath = NodeConfig.defaultLocation
 
-    @Option(name: .shortAndLong, help: "The P2P network to connect to. Defaults to what's specified in the configuration file.")
-    var network: NodeConfig.Network? // TODO: Eventually switch to testnet4 and then mainnet.
+    @Option(name: .shortAndLong, help: "The P2P network to connect to. Defaults to what's specified in the configuration file. (default: \(NodeConfig.default.network))")
+    var network: NodeConfig.Network?
 
     @Option(name: .shortAndLong, help: "Use in-memory for ephemeral in-memory data. Use default-path for storing data in the default location (will be created if it does not yet exist).")
     var dataLocationType: DataLocationType?
@@ -24,13 +24,16 @@ struct Start: AsyncParsableCommand {
     @Option(name: .long, help: "Listen for incoming connections on the peer-to-peer network at the speficied \"address:port\".")
     var bind: String?
 
-    @Option(name: .long, help: "Connect to remote peers automatically on startup.")
+    @Option(name: .long, help: "Connect to specified remote peers automatically on startup.")
     var connect: [String] = []
+
+    @Option(name: .long, help: "Connect to randomly selected public peers automatically on startup. (default: \(NodeConfig.default.autoConnect))")
+    var autoConnect: Bool?
 
     @Option(name: .shortAndLong, help: "The address to bind the RPC server to.")
     var host = "0.0.0.0"
 
-    @Option(name: .shortAndLong, help: "The TCP port number to bind the server instance to. Default's to network's default port (\(NodeNetwork.mainnet.defaultRPCPort) for \(NodeNetwork.mainnet))")
+    @Option(name: .shortAndLong, help: "The TCP port number to bind the server instance to. Default's to network's default port (\(NodeNetwork.testnet.defaultRPCPort) for \(NodeNetwork.testnet))")
     var port: Int?
 
     @Option(name: .shortAndLong, help: "Log level.")
@@ -82,14 +85,18 @@ struct Start: AsyncParsableCommand {
         let resolvedConfig = NodeConfig(
             dataLocation: dataLocation ?? config.dataLocation,
             network: network ?? config.network,
-            name: config.name,
             bind: bind,
             connect: connect + config.connect,
+            autoConnect: autoConnect ?? config.autoConnect,
             logLevel: logLevel ?? config.logLevel,
             feeRate: config.feeRate,
             metrics: config.metrics,
             enableProfiling: config.enableProfiling
-        ) // TODO: Find a solution that copies all properties "as is" except for the overridable by command line arguments
+        )
+
+        if resolvedConfig.network == .mainnet {
+            throw ValidationError("Main network connectivity disabled during alpha development stage")
+        }
 
         _ = try await ServerApp(resolvedConfig, host: host, port: port)
     }

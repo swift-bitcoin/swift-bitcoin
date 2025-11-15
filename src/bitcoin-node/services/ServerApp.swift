@@ -10,6 +10,56 @@ import ServiceLifecycle
 import NIOCore
 import NIOPosix
 
+/// A top-level actor that composes and orchestrates the node’s services.
+///
+/// ServerApp is responsible for:
+/// - Bootstrapping logging, metrics (StatsD), and optional profiling support.
+/// - Creating and wiring core services (BlockchainService, NodeService).
+/// - Hosting the JSON-RPC server (RPCService).
+/// - Managing the peer-to-peer listener (P2PService) and outbound peer clients (P2PClient).
+/// - Coordinating service lifecycles via ServiceLifecycle’s ServiceGroup, including graceful shutdown.
+///
+/// Initialization parses the provided NodeConfig, selects the appropriate network
+/// (mainnet, testnet, regtest), prepares persistent data location, and builds the
+/// service graph. It then starts the service group and suspends until shutdown signals
+/// are received (SIGINT/SIGTERM) or a fatal failure occurs.
+///
+/// Concurrency
+/// - This type is an actor. All mutable state (peer clients, pending connects, etc.)
+///   is protected by the actor’s isolation.
+/// - Services that run on SwiftNIO event loops are created and managed here, while
+///   inbound RPC calls into ServerApp hop across actor boundaries as needed.
+///
+/// Lifecycle
+/// - After initialization completes, ServerApp awaits `serviceGroup.run()`; execution
+///   resumes only when services shut down.
+/// - On shutdown, the blockchain service is asked to shut down and any metrics client
+///   is cleanly closed.
+///
+/// Configuration
+/// - Network and ports come from NodeConfig and NodeNetwork defaults:
+///   - RPC: defaults to the network’s default RPC port unless overridden by the init `port`.
+///   - P2P: defaults to the network’s default P2P port unless overridden via NodeConfig.BindSettings.
+/// - Metrics (StatsD) are enabled when NodeConfig.metrics is present.
+/// - Profiling is optionally enabled when NodeConfig.enableProfiling is true.
+/// - Auto-connect peers can be randomly selected from public peers or manually provided via NodeConfig.connect; ServerApp will chain
+///   through these addresses, advancing on successful connection or failure.
+///
+/// Exposed RPC operations handled directly by this actor
+/// - status (StatusRPC): Aggregates status from RPCService, P2PService, and all P2PClient instances.
+/// - stop: Triggers a graceful shutdown of the entire service group.
+/// - connect (ConnectRPC): Creates and starts a new outbound peer client and returns its PeerID.
+/// - start-p2p (StartP2PRPC): Starts a listener for inbound peer connections (if not already running).
+/// - stopP2P: Stops the P2P listener and removes all inbound peers.
+///
+/// - Note: This actor owns the EventLoopGroup used by RPC and P2P services and must
+///   outlive them for the duration of the process.
+///
+/// - SeeAlso:
+///   - NodeConfig for configuration options
+///   - RPCService for JSON-RPC hosting
+///   - P2PService and P2PClient for peer-to-peer networking
+///   - StatusRPC, ConnectRPC, StartP2PRPC for RPC command interfaces
 actor ServerApp {
 
     init(_ config: NodeConfig, host: String, port: Int?) async throws {
@@ -45,11 +95,11 @@ actor ServerApp {
 
         let params: ConsensusParams = switch network {
         case .mainnet:
-            .mainnet
+                .mainnet
         case .testnet:
-            .testnet
+                .testnet
         case .regtest:
-            .regtest
+                .regtest
         }
         let blockchain = try await BlockchainService(
             params: params,
@@ -73,8 +123,12 @@ actor ServerApp {
             services.append(.init(service: p2pService, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup))
         }
 
-        pendingConnect = config.connect.map {
-            ($0.host, $0.port ?? network.defaultP2PPort)
+        if config.autoConnect && config.connect.isEmpty {
+            pendingConnect = network.autoconnectPeers.shuffled()
+        } else {
+            pendingConnect = config.connect.map {
+                ($0.host, $0.port ?? network.defaultP2PPort)
+            }
         }
 
         if let (host, port) = pendingConnect.first {
@@ -98,7 +152,9 @@ actor ServerApp {
 
         if let client = p2pClients.values.first {
             await client.setConnectHandler { id in
-                await self.connectNext(id)
+                // TODO: Support multiple connections (see also inside `connectNext()`)
+                // await self.connectNext(id)
+                await self.cancelPendingPeers(id)
             } onDisconnect: { id in
                 await self.connectNext(id, previousFailed: true)
             }
@@ -134,6 +190,12 @@ actor ServerApp {
     private let eventLoopGroup: EventLoopGroup
     private let serviceGroup: ServiceGroup
 
+    /// Aggregates a snapshot of the node’s status across services.
+    ///
+    /// - Returns: A StatusRPC.Result that includes:
+    ///   - RPC server listening state and connection counters.
+    ///   - P2P listener state (if running) and connection counters.
+    ///   - A sorted list of outbound P2P client statuses by PeerID.
     func rpcStatus() async -> StatusRPC.Result {
 
         let status = await rpcService.status
@@ -161,10 +223,19 @@ actor ServerApp {
         return await StatusRPC().run(rpcStatus: status, p2pStatus: p2pStatus, p2pClientStatus: p2pClientStatus)
     }
 
+    /// Initiates graceful shutdown of the entire service group.
+    ///
+    /// This is invoked by the JSON-RPC `stop` command and results in the RPC server
+    /// closing, P2P services stopping, and the blockchain service shutting down cleanly.
     func rpcStop() async {
         await serviceGroup.triggerGracefulShutdown()
     }
 
+    /// Connects to a remote peer and starts a new outbound P2P client.
+    ///
+    /// - Parameter params: Host and port for the remote peer (ConnectRPC.Params).
+    /// - Returns: The new peer’s numeric ID (PeerID) on success.
+    /// - Throws: JSONRPCResponse.Error if the connection cannot be started.
     func rpcConnect(_ params: ConnectRPC.Params) async throws(JSONRPCResponse.Error) -> ConnectRPC.Result {
         let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port) { _ in } onDisconnect: { id in
             await self.clearPeer(id)
@@ -175,6 +246,10 @@ actor ServerApp {
         return service.peerID
     }
 
+    /// Starts the inbound P2P listener if it is not already running.
+    ///
+    /// - Parameter params: The bind host and port for the P2P listener (StartP2PRPC.Params).
+    /// - Note: If the listener is already running, this call logs a warning and does nothing.
     func rpcStartP2P(_ params: StartP2PRPC.Params) async {
         guard p2pService == nil else {
             logger.warning("Already listening for incoming peer-to-peer connections")
@@ -186,6 +261,10 @@ actor ServerApp {
         await serviceGroup.addServiceUnlessShutdown(config)
     }
 
+    /// Stops the inbound P2P listener and clears all inbound peers.
+    ///
+    /// - Throws: JSONRPCResponse.Error if the listener cannot be stopped.
+    /// - Note: If the listener is already stopped, this call logs a warning and returns.
     func rpcStopP2P() async throws(JSONRPCResponse.Error) {
         guard let p2pService else {
             logger.warning("Peer-to-peer service already stopped – ignoring")
@@ -200,6 +279,25 @@ actor ServerApp {
         self.p2pService = nil
     }
 
+    private func cancelPendingPeers(_ id: UUID) async {
+        guard let client = p2pClients[id] else {
+            logger.error("Missing client from pending auto-connect list, clearing remainder of list")
+            pendingConnect = []
+            return
+        }
+        // Replace the handler
+        await client.setConnectHandler { _ in } onDisconnect: { id in await self.clearPeer(id) }
+    }
+
+    /// Internal helper that advances through the configured auto-connect peer list.
+    ///
+    /// When a client connects successfully, the next pending address is attempted.
+    /// When a client disconnects or fails, the same advancement occurs, and the failed
+    /// client is removed from the tracking map.
+    ///
+    /// - Parameters:
+    ///   - id: The UUID of the client that just connected or disconnected.
+    ///   - previousFailed: Pass true to indicate the previous client failed and should be cleared.
     private func connectNext(_ id: UUID, previousFailed: Bool = false) async {
         guard let client = p2pClients[id] else {
             logger.error("Missing client from pending auto-connect list, clearing remainder of list")
@@ -222,7 +320,9 @@ actor ServerApp {
         guard let (host, port) = pendingConnect.first else { return } // No more auto connections
 
         let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: host, port: port) { id in
-            await self.connectNext(id)
+            // TODO: Support multiple connections (see also inside `init()`)
+            // await self.connectNext(id)
+            await self.cancelPendingPeers(id)
         } onDisconnect: { id in
             await self.connectNext(id, previousFailed: true)
         }
@@ -231,6 +331,9 @@ actor ServerApp {
         await serviceGroup.addServiceUnlessShutdown(config)
     }
 
+    /// Removes a client from the managed P2P client map.
+    ///
+    /// - Parameter id: The UUID of the client to remove.
     private func clearPeer(_ id: UUID) {
         p2pClients[id] = nil
     }
@@ -238,6 +341,10 @@ actor ServerApp {
 
 extension BlockchainService.Config.DataLocation {
 
+    /// Maps the application’s NodeConfig.DataLocation to the blockchain service’s data location.
+    ///
+    /// - Parameter dataLocation: The app-level data location setting.
+    /// - Note: `.custom(path:)` is forwarded as-is to the underlying service.
     init(_ dataLocation: NodeConfig.DataLocation) {
         self = switch dataLocation {
         case .inMemory: .inMemory
