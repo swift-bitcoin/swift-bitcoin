@@ -88,7 +88,12 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
-        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
+        precondition(max >= 0)
+
+        // TODO: Test this out:
+        // let max = min(max, tip.height - stop.height)
+
+        return try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             var current = tip
             var blocks = Deque<Block.ID>(minimumCapacity: max)
             // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into

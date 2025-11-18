@@ -341,19 +341,16 @@ public actor BlockchainService: Sendable {
             throw error
         }
 
-        // Get a reference to previous block
+        // Check that we have at leat one non-genesis block
         guard activeTip.header.previous != Block.nullParent else {
             logger.warning("Only genesis block exists")
             return
         }
 
-        guard let previous: BlockRef = await blockIndex.get(activeTip.header.previous) else {
-            logger.error("Could not accept transaction because of missing previous block reference.")
-            return
-        }
-
+        // TODO:  There's at least 3 occurrences of this "hack" where we create a fake future block only to pass the height
+        let nextBlockPlaceholder = BlockRef(.init(previous: activeTip.header.id, merkleRoot: .init(), time: Date.distantPast, target: 0), height: activeTip.height + 1, chainwork: .init(), chainTxCount: -1)
         do {
-            try await checkTx(tx, block: activeTip, previous: previous, checkStandardness: true)
+            try await checkTx(tx, block: nextBlockPlaceholder, previous: activeTip, checkingMempoolAcceptance: true)
         } catch {
             logger.error("Failed transaction check\n\n\(error)")
             return
@@ -633,7 +630,8 @@ public actor BlockchainService: Sendable {
 
     /// Returns the IDs of the headers missing transactions up to a maximum defined by the function argument.
     public func getNextMissingBlocks(_ numberOfBlocks: Int) async -> [Block.ID] {
-        await blockIndex.missingBlocks(tip: bestHeader, stop: activeTip, max: numberOfBlocks)
+        precondition(numberOfBlocks > 0 && numberOfBlocks <= 1024) // TODO: Get the number of blocks limit from somewhere
+        return await blockIndex.missingBlocks(tip: bestHeader, stop: activeTip, max: numberOfBlocks)
     }
 
     /// Returns multiple fully validated blocks matching the provided IDs.
@@ -920,7 +918,7 @@ public actor BlockchainService: Sendable {
         return valueIn - tx.valueOut
     }
 
-    private func checkTx(_ tx: Transaction, block: BlockRef, previous: BlockRef, checkStandardness: Bool = false, checkScripts: Bool = true, exclude: [Outpoint]? = nil, auxCoins: [Outpoint : UnspentOutput]? = nil) async throws(TransactionValidationError) {
+    private func checkTx(_ tx: Transaction, block: BlockRef, previous: BlockRef, checkingMempoolAcceptance: Bool = false, checkScripts: Bool = true, exclude: [Outpoint]? = nil, auxCoins: [Outpoint : UnspentOutput]? = nil) async throws(TransactionValidationError) {
         let exclude = exclude ?? mempoolExclude
         let auxCoins = auxCoins ?? mempoolCoins
 
@@ -935,20 +933,23 @@ public actor BlockchainService: Sendable {
             throw .transactionCheckError(error)
         }
 
-        let blockHeight = block.height + 1
+        // The block passed is the block in which the transaction exists
+        // let blockHeight = block.height + 1
 
-        // TODO: Enforce BIP113 (Median Time Past) for block validation only (not mempool acceptance)
-        let enforceLocktimeMedianTimePast = !checkStandardness && blockHeight >= params.csvHeight
-        let lockTimeCutoff = if enforceLocktimeMedianTimePast {
-            Int(await medianTimePast(for: previous).timeIntervalSince1970)
-        } else {
-            Int(block.header.time.timeIntervalSince1970)
-        }
+        // Enforce BIP113 (Median Time Past) for block validation only (not mempool acceptance)
+        if !checkingMempoolAcceptance {
+            let enforceLocktimeMedianTimePast = block.height >= params.csvHeight
+            let lockTimeCutoff = if enforceLocktimeMedianTimePast {
+                Int(await medianTimePast(for: previous).timeIntervalSince1970)
+            } else {
+                Int(block.header.time.timeIntervalSince1970)
+            }
 
-        // Check that all transactions are finalized
-        guard tx.isFinal(blockHeight: blockHeight, blockTime: lockTimeCutoff) else {
-            logger.error("Tx not final: \(tx.idHex)")
-            throw .nonFinalTransaction
+            // Check that all transactions are finalized
+            guard tx.isFinal(blockHeight: block.height, blockTime: lockTimeCutoff) else {
+                logger.error("Tx not final: \(tx.idHex)")
+                throw .nonFinalTransaction
+            }
         }
 
         if !tx.isCoinbase {
@@ -960,7 +961,7 @@ public actor BlockchainService: Sendable {
                 prevouts.append(coin.out)
             }
             guard checkScripts else { return }
-            if !tx.verifyScripts(prevouts: prevouts, config: checkStandardness ? .standard : .mandatory) {
+            if !tx.verifyScripts(prevouts: prevouts, config: checkingMempoolAcceptance ? .standard : .mandatory) {
                 logger.error("Failed script validation")
                 throw .scriptError
             }
@@ -1488,6 +1489,14 @@ public actor BlockchainService: Sendable {
     /// Looks up inputs, calculates feerate, considers replacement, evaluates package limits, etc. As this function can be invoked for "free" by a peer, only tests that are fast should be done here (to avoid CPU DoS).
     private func mempoolAcceptPreChecks(_ tx: Transaction) async throws(TransactionValidationError) {
 
+        // Only accept nLockTime-using transactions that can be mined in the next
+        // block; we don't want our mempool filled up with transactions that can't
+        // be mined yet.
+        guard await checkFinalTxAtTip(tx, activeChainTip: activeTip) else {
+            logger.error("Invalid transaction \(tx.idHex): Premature spend, non-final")
+            throw .nonFinalTransaction
+        }
+
         // Only accept BIP68 sequence locked transactions that can be mined in the next
         // block; we don't want our mempool filled up with transactions that can't
         // be mined yet.
@@ -1514,9 +1523,9 @@ public actor BlockchainService: Sendable {
         // Thus if we want to know if a transaction can be part of the *next* block, we need to use one more than chainActive.Height()
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextBlockPlaceholder = BlockRef(.init(previous: activeTip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: activeTip.height + 1, chainwork: .init(), chainTxCount: -1)
+        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
 
-        try await evaluateSequenceLocks(nextBlockPlaceholder, previous: activeTip, lockPair: (lockPoints.height, lockPoints.time))
+        try await evaluateSequenceLocks(nextBlockPlaceholder, previous: tip, lockPair: (lockPoints.height, lockPoints.time))
     }
 
     /// Called by `BlockchainService.connectBlock()`.
@@ -1588,7 +1597,7 @@ public actor BlockchainService: Sendable {
         let blockTimeDate = await medianTimePast(for: previous)
         let blockTime = Int(blockTimeDate.timeIntervalSince1970)
         if lockPair.height >= block.height || lockPair.time >= blockTime {
-            logger.error("Non final transaction at block height \(block.height) . BIP68 non-final transaction")
+            logger.error("Non final transaction at block height \(block.height) (future lock time). BIP68 non-final transaction")
             throw .futureLockTime
         }
     }
