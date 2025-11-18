@@ -7,7 +7,7 @@ import BitcoinBase
 struct BlockchainServiceTests {
 
     /// Tests synchronizing blocks between two blockchains.
-    @Test("Dual blockchain synchronization", .disabled())
+    @Test("Dual blockchain synchronization")
     func dualBlockchainSync() async throws {
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey
@@ -21,7 +21,7 @@ struct BlockchainServiceTests {
         try await bob.processHeaders([header1])
         await #expect(bob.headers == 1)
 
-        let bobMissingBlockIDs = await bob.getNextMissingBlocks(.max)
+        let bobMissingBlockIDs = await bob.getNextMissingBlocks(2)
         #expect(bobMissingBlockIDs == [header1.id])
 
         let bobMissingBlocks = await alice.getBlocks(bobMissingBlockIDs)
