@@ -1,6 +1,6 @@
 import Foundation
 import LibSECP256k1
-import ECCHelper // For `ecdsa_signature_parse_der_lax()`
+import func ECCHelper.ecdsa_signature_parse_der_lax
 
 extension ECDSASignature {
     /// Supported ECDSA serialization formats.
@@ -323,7 +323,9 @@ private func verifyECDSA(sigData: Data, hash: Data, pubkey: PublicKey) -> Bool {
     let hashBytes = [UInt8](hash)
 
     var sig = secp256k1_ecdsa_signature()
-    guard ECCHelper.ecdsa_signature_parse_der_lax(&sig, sigBytes, sigBytes.count) != 0 else {
+
+
+    guard ecdsa_signature_parse_der_lax(&sig, sigBytes, sigBytes.count) != 0 else {
         preconditionFailure()
     }
 
@@ -363,6 +365,8 @@ private func internalIsLowS(compactSignatureData: Data) -> Bool {
 private func internalIsLowS(laxSignatureData: Data) -> Bool {
     let sigBytes = [UInt8](laxSignatureData)
     var sig = secp256k1_ecdsa_signature()
+
+    // TODO: Call with `sigBytes.span` once we can get the compiler to provide a safe function signature that takes a Span
     guard ecdsa_signature_parse_der_lax(&sig, sigBytes, sigBytes.count) != 0 else {
         preconditionFailure()
     }

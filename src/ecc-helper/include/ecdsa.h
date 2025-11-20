@@ -3,6 +3,7 @@
 
 #include <secp256k1.h>
 
-int ecdsa_signature_parse_der_lax(secp256k1_ecdsa_signature* sig, const unsigned char *input, size_t inputlen);
+int ecdsa_signature_parse_der_lax(secp256k1_ecdsa_signature* sig, const unsigned char *__counted_by(inputLen)
+                                  input __attribute((__noescape__)), size_t inputlen);
 
 #endif /* ecdsa_h */
