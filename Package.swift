@@ -29,7 +29,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-statsd-client.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-profile-recorder.git", .upToNextMinor(from: "0.3.0")),
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
-        .package(url: "https://github.com/swiftlang/swift-lmdb", branch: "main"),
+        //.package(path: "/Users/swiftbitcoin/Developer/secp256k1"),
+        .package(url: "https://github.com/swift-bitcoin/swift-lmdb", from: "6.2.1"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-binary-parsing", .upToNextMinor(from: "0.0.1")),
@@ -79,7 +80,7 @@ let package = Package(
                 .product(name: "LibSECP256k1", package: "secp256k1"),
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "BinaryParsing", package: "swift-binary-parsing", condition: .when(platforms: [.macOS, .linux]))
-        ], path: "src/bitcoin-crypto" /*, swiftSettings: [.strictMemorySafety()]*/),
+        ], path: "src/bitcoin-crypto", swiftSettings: [/*.strictMemorySafety(),*/ .enableExperimentalFeature("SafeInteropWrappers")]),
 
         // Internal libraries
         .target(
@@ -93,7 +94,7 @@ let package = Package(
             .product(name: "CLMDB", package: "swift-lmdb"),
             .product(name: "SystemPackage", package: "swift-system"),
         ], path: "src/lmdb"),
-        .target(name: "ECCHelper", dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")], path: "src/ecc-helper"),
+        .target(name: "ECCHelper", dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")], path: "src/ecc-helper"/*, swiftSettings: [.strictMemorySafety()]*/),
 
         // Tests
         .testTarget(name: "BitcoinTests", dependencies: ["Bitcoin"], path: "test/bitcoin"),
@@ -153,5 +154,6 @@ let package = Package(
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
             path: "src/bitcoin-utility")
-    ]
+    ],
+    cLanguageStandard: .c2x
 )

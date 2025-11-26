@@ -1,5 +1,5 @@
 {
-  "originHash" : "1820a560061128e5eed663e8bf716ed643ca385b0ee4a58f3b3266b74deab67d",
+  "originHash" : "b3792e710257d99a99d7ba4285ff725d986a227ed4123057cdec39c32150b5fc",
   "pins" : [
     {
       "identity" : "secp256k1",
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-async-algorithms",
       "state" : {
-        "revision" : "042e1c4d9d19748c9c228f8d4ebc97bb1e339b0b",
-        "version" : "1.0.4"
+        "revision" : "2773d4125311133a2f705ec374c363a935069d45",
+        "version" : "1.1.0"
       }
     },
     {
@@ -69,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-certificates.git",
       "state" : {
-        "revision" : "c399f90e7bbe8874f6cbfda1d5f9023d1f5ce122",
-        "version" : "1.15.1"
+        "revision" : "66a8512c4e7466582bab21e0e0c333f01974e5b6",
+        "version" : "1.16.0"
       }
     },
     {
@@ -130,10 +130,10 @@
     {
       "identity" : "swift-lmdb",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swiftlang/swift-lmdb",
+      "location" : "https://github.com/swift-bitcoin/swift-lmdb",
       "state" : {
-        "branch" : "main",
-        "revision" : "1ad9a2d80b6fcde498c2242f509bd1be7d667ff8"
+        "revision" : "adfc036d41476dce03425e0182f7c96cd9f5d022",
+        "version" : "6.2.1"
       }
     },
     {
@@ -159,8 +159,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio.git",
       "state" : {
-        "revision" : "56724a2b6d8e2aed1b2c5f23865b9ea5c43f9977",
-        "version" : "2.89.0"
+        "revision" : "3eea09220e07d34ace722221cbda90306f48c86c",
+        "version" : "2.90.1"
       }
     },
     {
@@ -204,8 +204,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-profile-recorder.git",
       "state" : {
-        "revision" : "68286c66a8d20e7d92577e1cc988a69f66321a73",
-        "version" : "0.3.8"
+        "revision" : "03c1510ae7375e5dc887e233558af650219fddfe",
+        "version" : "0.3.9"
       }
     },
     {

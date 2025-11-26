@@ -65,6 +65,11 @@ actor TransientBlockIndex: BlockIndex {
     }
 
     func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
+        precondition(max >= 0)
+
+        // TODO: Test this out:
+        // let max = min(max, tip.height - stop.height)
+
         var current = tip
         var blocks = Deque<Block.ID>(minimumCapacity: max)
         // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into

@@ -13,7 +13,8 @@
  *  strict DER before being passed to this module, and we know it supports all
  *  violations present in the blockchain before that point.
  */
-int ecdsa_signature_parse_der_lax(secp256k1_ecdsa_signature* sig, const unsigned char *input, size_t inputlen) {
+int ecdsa_signature_parse_der_lax(secp256k1_ecdsa_signature* sig, const unsigned char *__counted_by(inputLen)
+                                  input __noescape, size_t inputlen) {
     size_t rpos, rlen, spos, slen;
     size_t pos = 0;
     size_t lenbyte;

@@ -5,7 +5,7 @@ import BitcoinCrypto
 import BitcoinBase
 import SystemPackage
 
-@Suite(.disabled()) struct PersistenceTests {
+struct PersistenceTests {
 
     @Test func persistentToMemoryBlockchainSync() async throws {
         await withKnownIssue("Some blockchain persistence tests randomly crashing after NIO update #451", isIntermittent: true) {
@@ -34,7 +34,7 @@ import SystemPackage
             try await bob.processHeaders([header1.header])
             await #expect(bob.headers == 1)
 
-            let bobMissingBlockIDs = await bob.getNextMissingBlocks(.max)
+            let bobMissingBlockIDs = await bob.getNextMissingBlocks(2)
             #expect(bobMissingBlockIDs == [header1.id])
 
             let bobMissingBlocks = await alice.getBlocks(bobMissingBlockIDs)
@@ -77,7 +77,7 @@ import SystemPackage
 
             await #expect(bob.headers == 1)
 
-            let bobMissingBlockIDs = await bob.getNextMissingBlocks(.max)
+            let bobMissingBlockIDs = await bob.getNextMissingBlocks(2)
             #expect(bobMissingBlockIDs == [header1.id])
 
             let bobMissingBlocks = await alice.getBlocks(bobMissingBlockIDs)
