@@ -30,7 +30,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-profile-recorder.git", .upToNextMinor(from: "0.3.0")),
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
         //.package(path: "/Users/swiftbitcoin/Developer/secp256k1"),
-        .package(url: "https://github.com/swiftlang/swift-lmdb", branch: "main"),
+        .package(url: "https://github.com/swift-bitcoin/swift-lmdb", from: "6.2.1"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-binary-parsing", .upToNextMinor(from: "0.0.1")),
