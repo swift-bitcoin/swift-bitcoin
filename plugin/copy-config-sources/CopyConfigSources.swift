@@ -28,7 +28,7 @@ struct CopyConfigSources: BuildToolPlugin {
             displayName: "",
             // executable: context.tool(named: "/bin/cp").url,
             executable: URL(fileURLWithPath: "/bin/cp"),
-            arguments: [sourceFile.relativePath, destinationFile.relativePath],
+            arguments: ["-f", sourceFile.relativePath, destinationFile.relativePath],
             environment: [:],
             outputFilesDirectory: context.pluginWorkDirectoryURL)
 
