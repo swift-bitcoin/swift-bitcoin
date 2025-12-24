@@ -12,13 +12,17 @@ extension JSONRPCResponse {
             disconnectPeer(DisconnectPeerRPC.Result),
             getBlockHash(GetBlockHashRPC.Result),
             getBlock(GetBlockRPC.Result),
+            getHeader(GetHeaderRPC.Result),
             generateToAddress(GenerateToAddressRPC.Result),
             getBlockchainInfo(GetBlockchainInfoRPC.Result),
             getChainTips(GetChainTipsRPC.Result),
             getMempool(GetMempoolRPC.Result),
             getPeerInfo(GetPeerInfoRPC.Result),
             getTransaction(GetTransactionRPC.Result),
-            sendTransaction(SendTransactionRPC.Result)
+            sendTransaction(SendTransactionRPC.Result),
+            reindex,
+            reindexStatus(ReindexStatusRPC.Result),
+            reindexStop
     }
 }
 
@@ -38,6 +42,7 @@ extension JSONRPCResponse.Result {
         case DisconnectPeerRPC.method: .disconnectPeer(try .init(from: decoder))
         case GetBlockHashRPC.method: .getBlockHash(try .init(from: decoder))
         case GetBlockRPC.method: .getBlock(try .init(from: decoder))
+        case GetHeaderRPC.method: .getHeader(try .init(from: decoder))
         case GenerateToAddressRPC.method: .generateToAddress(try .init(from: decoder))
         case GetBlockchainInfoRPC.method: .getBlockchainInfo(try .init(from: decoder))
         case GetChainTipsRPC.method: .getChainTips(try .init(from: decoder))
@@ -45,6 +50,9 @@ extension JSONRPCResponse.Result {
         case GetPeerInfoRPC.method: .getPeerInfo(try .init(from: decoder))
         case GetTransactionRPC.method: .getTransaction(try .init(from: decoder))
         case SendTransactionRPC.method: .sendTransaction(try .init(from: decoder))
+        case ReindexRPC.method: .reindex
+        case ReindexStatusRPC.method: .reindexStatus(try .init(from: decoder))
+        case ReindexStopRPC.method: .reindexStop
         default: throw DecodingError.typeMismatch(Self.self, .init(codingPath: decoder.codingPath, debugDescription: ""))
         }
     }
@@ -61,6 +69,7 @@ extension JSONRPCResponse.Result {
         case .disconnectPeer(let result): try result.encode(to: encoder)
         case .getBlockHash(let result): try result.encode(to: encoder)
         case .getBlock(let result): try result.encode(to: encoder)
+        case .getHeader(let result): try result.encode(to: encoder)
         case .generateToAddress(let result): try result.encode(to: encoder)
         case .getBlockchainInfo(let result): try result.encode(to: encoder)
         case .getChainTips(let result): try result.encode(to: encoder)
@@ -68,6 +77,9 @@ extension JSONRPCResponse.Result {
         case .getPeerInfo(let result): try result.encode(to: encoder)
         case .getTransaction(let result): try result.encode(to: encoder)
         case .sendTransaction(let result): try result.encode(to: encoder)
+        case .reindex: try container.encodeNil()
+        case .reindexStatus(let result): try result.encode(to: encoder)
+        case .reindexStop: try container.encodeNil()
         }
     }
 }

@@ -90,21 +90,26 @@ extension BlockRef: BinaryCodable {
     }
 }
 
-public enum ValidationStatus: UInt8, Sendable {
+public enum ValidationStatus: UInt8, CustomStringConvertible, Sendable {
     case header, merkle, active, invalid, stale
 
     var score: Int {
         switch self {
-        case .header:
-            0
-        case .merkle:
-            1
-        case .active:
-            3
-        case .invalid:
-            -1
-        case .stale:
-            2
+        case .header: 0
+        case .merkle: 1
+        case .active: 3
+        case .invalid: -1
+        case .stale: 2
+        }
+    }
+
+    public var description: String {
+        switch self {
+        case .header: "header"
+        case .merkle: "merkle"
+        case .active: "active"
+        case .invalid: "invalid"
+        case .stale: "stale"
         }
     }
 }

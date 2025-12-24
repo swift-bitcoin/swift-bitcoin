@@ -19,8 +19,9 @@ actor TransientBlockStorage: BlockStorage {
 
     internal private(set) var sizeOnDisk = 0
 
-    func store(_ block: Block, undo: BlockUndo) throws(BlockStorageError) -> BlockStorageLocator {
-        try store(block: block, undo: undo)
+    func storeGenesisBlock(_ block: Block, undo: BlockUndo) throws(BlockStorageError) -> BlockStorageLocator {
+        precondition(blocks.isEmpty)
+        return try store(block: block, undo: undo)
     }
 
     func store(_ block: Block) throws(BlockStorageError) -> BlockStorageLocator {
@@ -66,5 +67,44 @@ actor TransientBlockStorage: BlockStorage {
             undo = nil
         }
         return (blocks[locator.offset], undo)
+    }
+
+    var iterator: BlockIterator? {
+        next(BlockStorageLocator(file: -1, offset: -1, undoOffset: -1), includeUndo: true)
+    }
+
+    func next(_ iterator: BlockIterator) -> BlockIterator? {
+        next(iterator.locator, includeUndo: false)
+    }
+
+    func next(_ iterator: BlockIterator, includeUndo: Bool) -> BlockIterator? {
+        next(iterator.locator, includeUndo: includeUndo)
+    }
+
+    func clearUndo() {
+        blockUndos = .init()
+    }
+
+    private func next(_ locator: BlockStorageLocator, includeUndo: Bool) -> BlockIterator? {
+        let offset: Int
+        if locator.offset == -1 {
+            offset = 0
+        } else {
+            offset = locator.offset + 1
+        }
+        guard blocks.indices.contains(offset) else {
+            return nil
+        }
+        let block = blocks[offset]
+
+        let undoOffset: Int
+        if locator.offset == -1 {
+            undoOffset = blockUndos.isEmpty || !includeUndo ? -1 : 0
+        } else {
+            undoOffset = locator.undoOffset == -1 || !includeUndo || !blockUndos.indices.contains(locator.undoOffset + 1) ? -1 : locator.undoOffset + 1
+        }
+        let blockUndo = undoOffset == -1 ? nil : blockUndos[undoOffset]
+        let locator = BlockStorageLocator(file: -1, offset: offset, undoOffset: undoOffset)
+        return .init(locator: locator, block: block, undo: blockUndo)
     }
 }

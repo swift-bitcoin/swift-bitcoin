@@ -12,13 +12,17 @@ extension JSONRPCRequest {
             disconnectPeer(DisconnectPeerRPC.Params),
             getBlockHash(GetBlockHashRPC.Params),
             getBlock(GetBlockRPC.Params),
+            getHeader(GetHeaderRPC.Params),
             generateToAddress(GenerateToAddressRPC.Params),
             getBlockchainInfo,
             getChainTips,
             getMempool,
             getPeerInfo,
             getTransaction(GetTransactionRPC.Params),
-            sendTransaction(SendTransactionRPC.Params)
+            sendTransaction(SendTransactionRPC.Params),
+            reindex,
+            reindexStatus,
+            reindexStop
     }
 }
 
@@ -42,6 +46,7 @@ extension JSONRPCRequest.Params {
         case DisconnectPeerRPC.method: .disconnectPeer(try .init(from: decoder))
         case GetBlockHashRPC.method: .getBlockHash(try .init(from: decoder))
         case GetBlockRPC.method: .getBlock(try .init(from: decoder))
+        case GetHeaderRPC.method: .getHeader(try .init(from: decoder))
         case GenerateToAddressRPC.method: .generateToAddress(try .init(from: decoder))
         case GetBlockchainInfoRPC.method: .getBlockchainInfo
         case GetChainTipsRPC.method: .getChainTips
@@ -49,6 +54,9 @@ extension JSONRPCRequest.Params {
         case GetPeerInfoRPC.method: .getPeerInfo
         case GetTransactionRPC.method: .getTransaction(try .init(from: decoder))
         case SendTransactionRPC.method: .sendTransaction(try .init(from: decoder))
+        case ReindexRPC.method: .reindex
+        case ReindexStatusRPC.method: .reindexStatus
+        case ReindexStopRPC.method: .reindexStop
         default: throw DecodingError.typeMismatch(Self.self, .init(codingPath: decoder.codingPath, debugDescription: ""))
         }
     }
@@ -65,6 +73,7 @@ extension JSONRPCRequest.Params {
         case .disconnectPeer(let params): try params.encode(to: encoder)
         case .getBlockHash(let params): try params.encode(to: encoder)
         case .getBlock(let params): try params.encode(to: encoder)
+        case .getHeader(let params): try params.encode(to: encoder)
         case .generateToAddress(let params): try params.encode(to: encoder)
         case .getBlockchainInfo: try container.encodeNil()
         case .getChainTips: try container.encodeNil()
@@ -72,6 +81,9 @@ extension JSONRPCRequest.Params {
         case .getPeerInfo: try container.encodeNil()
         case .getTransaction(let params): try params.encode(to: encoder)
         case .sendTransaction(let params): try params.encode(to: encoder)
+        case .reindex: try container.encodeNil()
+        case .reindexStatus: try container.encodeNil()
+        case .reindexStop: try container.encodeNil()
         }
     }
 
@@ -86,6 +98,7 @@ extension JSONRPCRequest.Params {
         case .disconnectPeer(_): DisconnectPeerRPC.method
         case .getBlockHash(_): GetBlockHashRPC.method
         case .getBlock(_): GetBlockRPC.method
+        case .getHeader(_): GetHeaderRPC.method
         case .generateToAddress(_): GenerateToAddressRPC.method
         case .getBlockchainInfo: GetBlockchainInfoRPC.method
         case .getChainTips: GetChainTipsRPC.method
@@ -93,6 +106,9 @@ extension JSONRPCRequest.Params {
         case .getPeerInfo: GetPeerInfoRPC.method
         case .getTransaction(_): GetTransactionRPC.method
         case .sendTransaction(_): SendTransactionRPC.method
+        case .reindex: ReindexRPC.method
+        case .reindexStatus: ReindexStatusRPC.method
+        case .reindexStop: ReindexStopRPC.method
         }
     }
 }

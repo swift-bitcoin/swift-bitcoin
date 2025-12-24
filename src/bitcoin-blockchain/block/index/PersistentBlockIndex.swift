@@ -1,4 +1,5 @@
 import LMDB
+import _NIOFileSystem
 import struct SystemPackage.FilePath
 import Foundation
 import Logging
@@ -8,14 +9,14 @@ import Collections
 actor PersistentBlockIndex: BlockIndex {
 
     init(path: FilePath, logger: Logger) {
+        self.path = path.appending("block-index")
         self.logger = logger
-        env = try! Environment(at: URL(filePath: path.appending("block-index").string), maxDBs: 2, pages: 3_000, options: [.noSubDir])
-        try! env.createDB(byID)
-        try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey, .duplicateSort, .duplicateFixed])) { _, _ in }
+        env = initEnv(path: self.path)
     }
 
+    private let path: FilePath
     private let logger: Logger
-    private let env: Environment
+    private var env: Environment!
 
     var bestHeader: BlockRef? {
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
@@ -151,22 +152,19 @@ actor PersistentBlockIndex: BlockIndex {
         return blockRef
     }
 
-    func updateBlock(_ id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
+    func updateBlock(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
         precondition([.active, .stale].contains(status))
         precondition(locator.isComplete)
-        return update(id: id, locator: locator, status: status, chainTxCount: chainTxCount)
+        return update(ref, locator: locator, status: status, chainTxCount: chainTxCount)
     }
 
-    func updateHeader(_ id: Block.ID, locator: BlockStorageLocator) -> BlockRef  {
+    func updateHeader(_ ref: BlockRef, locator: BlockStorageLocator) -> BlockRef  {
         precondition(!locator.isPlaceholder && !locator.hasUndoOffset)
-        return update(id: id, locator: locator, status: .merkle, chainTxCount: nil)
+        return update(ref, locator: locator, status: .merkle, chainTxCount: nil)
     }
 
-    private func update(id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?) -> BlockRef {
-        let data = try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
-            try byID.get(id)!
-        }
-        var blockRef = try! BlockRef(data)
+    private func update(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?) -> BlockRef {
+        var blockRef = ref
 
         // Valid transitions header -> merkle; merkle -> active/stale
         precondition(blockRef.status == .header && status == .merkle || (blockRef.status == .merkle && [.active, .stale].contains(status)))
@@ -177,7 +175,7 @@ actor PersistentBlockIndex: BlockIndex {
 
         try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
             try byID.put(blockRef.data, key: blockRef.header.id)
-            try byHeight.put(blockRef.header.id, key: blockRef.height)
+            // try byHeight.put(blockRef.header.id, key: blockRef.height)
         }
         return blockRef
     }
@@ -385,6 +383,21 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
+    func clear() async {
+        env = nil // closes env
+
+        // Removes folder
+        let fs = FileSystem.shared
+        do {
+            try await fs.removeItem(at: path)
+        } catch {
+            logger.error("Issue removing block index directory: \(error.localizedDescription)")
+            return // TODO: Probably throw here
+        }
+
+        env = initEnv(path: path)
+    }
+
     /*
     func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
         try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
@@ -486,4 +499,11 @@ private func findBestBlock(byID: borrowing LMDB.Database, byHeight: borrowing LM
         } while found == nil
         return found!
     }
+}
+
+private func initEnv(path: FilePath) -> Environment {
+    let env = try! Environment(at: URL(filePath: path.string), maxDBs: 2, pages: 3_000, options: [.noSubDir])
+    try! env.createDB(byID)
+    try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey, .duplicateSort, .duplicateFixed])) { _, _ in }
+    return env
 }

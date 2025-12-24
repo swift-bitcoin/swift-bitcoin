@@ -148,7 +148,7 @@ let package = Package(
             resources: [.copy("dummy")], plugins: [.plugin(name: "CopyConfigSources")]),
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
-                "BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC", "JSONRPC",
+                "BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC", "JSONRPC", "LMDB",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),

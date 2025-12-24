@@ -1,4 +1,5 @@
 import LMDB
+import _NIOFileSystem
 import Foundation
 import struct SystemPackage.FilePath
 import Logging
@@ -12,13 +13,14 @@ actor PersistentCoinsIndex: CoinsIndex {
     }
 
     init(path: FilePath, logger: Logger) {
+        self.path = path.appending("coins")
         self.logger = logger
-        env = try! Environment(at: URL(filePath: path.appending("coins").string), maxDBs: 1, pages: 380_000, options: [.noSubDir])
-        try! env.createDB(byID)
+        env = initEnv(path: self.path)
     }
 
-    let logger: Logger
-    private let env: Environment
+    private let path: FilePath
+    private let logger: Logger
+    private var env: Environment!
 
     var all: [Outpoint : UnspentOutput] { get {
         var unordered = [Outpoint : UnspentOutput]()
@@ -113,6 +115,21 @@ actor PersistentCoinsIndex: CoinsIndex {
             throw .deletionIssue
         }
     }
+
+    func clear() async {
+        env = nil // closes env
+
+        // Removes folder
+        let fs = FileSystem.shared
+        do {
+            try await fs.removeItem(at: path)
+        } catch {
+            logger.error("Issue removing block index directory: \(error.localizedDescription)")
+            return // TODO: Probably throw here
+        }
+
+        env = initEnv(path: path)
+    }
 }
 
 private let byID = Database.Descriptor("by-id")
@@ -132,4 +149,10 @@ private func _get(_ outpoint: Outpoint, byID: borrowing LMDB.Database) throws(Co
     } catch {
         throw .corruptedCoinData
     }
+}
+
+private func initEnv(path: FilePath) -> Environment {
+    let env = try! Environment(at: URL(filePath: path.string), maxDBs: 1, pages: 380_000, options: [.noSubDir])
+    try! env.createDB(byID)
+    return env
 }

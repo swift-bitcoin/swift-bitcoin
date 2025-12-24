@@ -46,11 +46,15 @@ private let commands: [any RPCCommand.Type] = [
     ConnectRPC.self,
     GetBlockHashRPC.self,
     GetBlockRPC.self,
+    GetHeaderRPC.self,
     GenerateToAddressRPC.self,
     GetBlockchainInfoRPC.self,
     GetChainTipsRPC.self,
     GetMempoolRPC.self,
     GetTransactionRPC.self,
     SendTransactionRPC.self,
-    GetPeerInfoRPC.self
+    GetPeerInfoRPC.self,
+    ReindexRPC.self,
+    ReindexStatusRPC.self,
+    ReindexStopRPC.self
 ]

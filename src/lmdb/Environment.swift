@@ -10,7 +10,7 @@ package struct Environment: ~Copyable {
 
         var handle: OpaquePointer?
         var status = mdb_env_create(&handle)
-        guard status == MDB_SUCCESS else {
+        guard status == MDB_SUCCESS, let handle else {
             throw .createIssue
         }
 
@@ -38,10 +38,50 @@ package struct Environment: ~Copyable {
             throw .openIssue
         }
 
-        self.handle = handle!
+        self.handle = handle
     }
 
     private let handle: OpaquePointer
+
+    func databases() throws -> [String] {
+        try withTransaction(db: .init()) { _, db in
+            try db.withCursor(readOnly: true) { cursor in
+                var names = [String]()
+                while let (key, _) = try cursor.getPair() {
+                    guard let name = String(data: key, encoding: .utf8) else {
+                        continue
+                    }
+                    names.append(name)
+                }
+                return names
+            }
+        }
+    }
+
+    func dropAll() throws {
+        for db in try databases() {
+            try withTransaction(db: .init(db)) { _, db in
+                try db.drop(delete: true)
+            }
+        }
+    }
+
+    package mutating func drop() {
+        guard mdb_env_sync(handle, 1) == MDB_SUCCESS else {
+            preconditionFailure()
+        }
+    }
+
+    public func copy(options: CopyOptions = []) throws(InitError) {
+        var cPathPtr: UnsafePointer<CChar>? = nil
+        guard mdb_env_get_path(handle, &cPathPtr) == MDB_SUCCESS, let cPathPtr else {
+            throw .createIssue
+        }
+        let path = String(cString: cPathPtr) + "-2"
+        guard mdb_env_copy2(handle, path.cString(using: .utf8), options.unsigned) == MDB_SUCCESS else {
+            throw .createIssue
+        }
+    }
 
     package func createDB(_ db: Database.Descriptor) throws(Transaction.InitError<Never>) {
         var db = db

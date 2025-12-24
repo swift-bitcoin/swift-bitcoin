@@ -142,6 +142,9 @@ actor RPCService: Service {
             case .getBlock(let params):
                 let result = try await GetBlockRPC(params).run(blockchain: blockchain)
                 try await outbound.write(.init(id: request.id, result: .getBlock(result)))
+            case .getHeader(let params):
+                let result = try await GetHeaderRPC(params).run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .getHeader(result)))
             case .generateToAddress(let params):
                 let result = try await GenerateToAddressRPC(params).run(blockchain: blockchain)
                 try await outbound.write(.init(id: request.id, result: .generateToAddress(result)))
@@ -163,6 +166,13 @@ actor RPCService: Service {
             case .sendTransaction(let params):
                 let result = try await SendTransactionRPC(params).run(blockchain: blockchain)
                 try await outbound.write(.init(id: request.id, result: .sendTransaction(result)))
+            case .reindex:
+                await ReindexRPC().run(blockchain: blockchain)
+            case .reindexStatus:
+                let result = await ReindexStatusRPC().run(blockchain: blockchain)
+                try await outbound.write(.init(id: request.id, result: .reindexStatus(result)))
+            case .reindexStop:
+                await ReindexStopRPC().run(blockchain: blockchain)
             }
         } catch let error as JSONRPCResponse.Error {
             // try await outbound.write(.init(id: request.id, error: error))

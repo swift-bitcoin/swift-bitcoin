@@ -1,7 +1,7 @@
 import Collections
 
 /// In-memory block index service implementation.
-actor TransientBlockIndex: BlockIndex {
+struct TransientBlockIndex: BlockIndex {
 
     private var byID = [Block.ID : BlockRef]()
 
@@ -98,18 +98,18 @@ actor TransientBlockIndex: BlockIndex {
         return locators
     }
 
-    func addHeader(_ header: Block) throws(BlockIndexError) -> BlockRef {
+    mutating func addHeader(_ header: Block) throws(BlockIndexError) -> BlockRef {
         precondition(header.txs.isEmpty)
         return try add(header, locator: nil, status: .header, chainTxCount: -1)
     }
 
-    func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) throws(BlockIndexError) -> BlockRef {
+    mutating func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) throws(BlockIndexError) -> BlockRef {
         precondition(byID.isEmpty)
         precondition(genesisBlock.previous == Block.nullParent)
         return try add(genesisBlock, locator: locator, status: .active, chainTxCount: genesisBlock.txs.count)
     }
 
-    private func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus, chainTxCount: Int) throws(BlockIndexError) -> BlockRef {
+    private mutating func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus, chainTxCount: Int) throws(BlockIndexError) -> BlockRef {
         let previous = if block.previous != Block.nullParent {
             get(block.previous)
         } else {
@@ -132,21 +132,19 @@ actor TransientBlockIndex: BlockIndex {
         return blockRef
     }
 
-    func updateBlock(_ id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
+    mutating func updateBlock(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
         precondition([.active, .stale].contains(status))
         precondition(locator.isComplete)
-        return update(id: id, locator: locator, status: status, chainTxCount: chainTxCount)
+        return update(ref, locator: locator, status: status, chainTxCount: chainTxCount)
     }
 
-    func updateHeader(_ id: Block.ID, locator: BlockStorageLocator) -> BlockRef  {
+    mutating func updateHeader(_ ref: BlockRef, locator: BlockStorageLocator) -> BlockRef  {
         precondition(!locator.isPlaceholder && !locator.hasUndoOffset)
-        return update(id: id, locator: locator, status: .merkle, chainTxCount: nil)
+        return update(ref, locator: locator, status: .merkle, chainTxCount: nil)
     }
 
-    private func update(id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?) -> BlockRef {
-        guard var blockRef = byID[id] else {
-            preconditionFailure()
-        }
+    private mutating func update(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?) -> BlockRef {
+        var blockRef = ref
 
         // Valid transitions header -> merkle; merkle -> active/stale
         precondition(blockRef.status == .header && status == .merkle || (blockRef.status == .merkle && [.active, .stale].contains(status)))
@@ -154,7 +152,7 @@ actor TransientBlockIndex: BlockIndex {
         blockRef.locator = locator
         blockRef.status = status
         if let chainTxCount { blockRef.chainTxCount = chainTxCount }
-        byID[id] = blockRef
+        byID[ref.header.id] = blockRef
         return blockRef
     }
 
@@ -226,7 +224,7 @@ actor TransientBlockIndex: BlockIndex {
         return missing
     }
 
-    func undo(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
+    mutating func undo(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
         var id = tip.header.id
         var refs = [BlockRef]()
         repeat {
@@ -239,7 +237,7 @@ actor TransientBlockIndex: BlockIndex {
         return refs
     }
 
-    func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
+    mutating func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
         var id = tip.header.id
         var refs = [BlockRef]()
         repeat {
@@ -272,7 +270,7 @@ actor TransientBlockIndex: BlockIndex {
         return have
     }
 
-    func undoLastBlock() -> BlockRef {
+    mutating func undoLastBlock() -> BlockRef {
         let ref = bestHeader!
         precondition(ref.status == .active) // The chain is fully sync'ed
         byID[ref.header.id]!.status = .stale
@@ -299,6 +297,11 @@ actor TransientBlockIndex: BlockIndex {
             }
         }
         return forks
+    }
+
+    mutating func clear() {
+        byHeight = .init()
+        byID = .init()
     }
 
     private func findActiveRef(_ height: Int) -> BlockRef? {
