@@ -80,7 +80,7 @@ public actor BlockchainService: Sendable {
         } else {
             logger.debug("No good header, seeding genesis block")
             let genesisBlock = Block.genesis(params)
-            let locator = try! await blockStorage.store(genesisBlock, undo: BlockUndo(spentCoins: [])) // TODO: Throw
+            let locator = try! await blockStorage.storeGenesisBlock(genesisBlock, undo: BlockUndo(spentCoins: [])) // TODO: Throw
             activeTip = try! await blockIndex.addGenesisBlock(genesisBlock, locator: locator)
             bestHeader = activeTip
         }
@@ -142,6 +142,9 @@ public actor BlockchainService: Sendable {
 
     private var currentlyValidating: Block.ID?
     private var validationTask: Task<(), Swift.Error>? = nil // TODO: Use custom error once `Swift.Task` supports typed throws
+
+    private var reindexing = false
+    private var reindexTask: Task<(), Never>? = nil
 
     /// The height of the best, fully validated block.
     public var height: Int {
@@ -234,6 +237,10 @@ public actor BlockchainService: Sendable {
     /// Cancels concurrent tasks and removes all subscriptions to block and transaction updates.
     public func shutdown() async {
 
+        // Cancel reindex task and wait for it to fishish
+        reindexTask?.cancel()
+        _ = await reindexTask?.value
+
         // Cancel validation task and wait for it to fishish
         validationTask?.cancel()
         _ = try? await validationTask?.value
@@ -251,6 +258,10 @@ public actor BlockchainService: Sendable {
     ///
     /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
     public func processBlock(_ block: Block, immediate: Bool = true) async throws(Error) {
+        try await processBlockInternal(block, immediate: immediate, locator: nil)
+    }
+
+    private func processBlockInternal(_ block: Block, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) {
 
         knownBlocksCounter.increment()
 
@@ -261,7 +272,7 @@ public actor BlockchainService: Sendable {
         }
 
         switch headerRef.status {
-        case .header: try await checkBlock(block, ref: headerRef)
+        case .header: try await checkBlock(block, ref: headerRef, locator: locator)
         case .merkle: break
         case .active, .stale: return
         case .invalid: throw .invalidBlockAlreadyExists
@@ -444,6 +455,7 @@ public actor BlockchainService: Sendable {
             next: refNext?.header.id,
             height: ref.height,
             confirmations: activeTip.height - ref.height + 1,
+            status: ref.status,
             difficulty: ref.difficulty,
             chainwork: ref.chainwork.data,
             medianTime: medianTime
@@ -791,6 +803,105 @@ public actor BlockchainService: Sendable {
         return block
     }
 
+    public func startReindex() async {
+        guard !reindexing else {
+            precondition(reindexTask != nil)
+            logger.info("Re-indexation already in progress")
+            return
+        }
+        logger.info("Starting re-indexation…")
+        precondition(reindexTask == nil)
+        reindexTask = Task {
+            await reindex()
+        }
+    }
+
+    public var isReindexing: Bool {
+        reindexing
+    }
+
+    public func stopReindex() async {
+        guard reindexing else {
+            precondition(reindexTask == nil)
+            return
+        }
+        logger.info("Stopping re-indexation…")
+        precondition(reindexTask != nil)
+        reindexTask?.cancel()
+        Task {
+            _ = await reindexTask?.value
+            precondition(!reindexing)
+            reindexTask = nil
+        }
+    }
+
+    public func reindex() async {
+        logger.info("Re-indexation started")
+        reindexing = true
+        defer {
+            reindexing = false
+        }
+
+        // Cancel validation task and wait for it to fishish
+        validationTask?.cancel()
+        _ = try? await validationTask?.value
+
+        await coins.clear()
+        await blockIndex.clear()
+        await blockStorage.clearUndo()
+
+        let clock = ContinuousClock()
+        let start = clock.now
+
+        var maybeIt = await blockStorage.iterator
+        guard let genesisBlockIterator = maybeIt else {
+            logger.warning("No blocks stored")
+            return
+        }
+        precondition(genesisBlockIterator.block.id ==  Block.genesis(params).id)
+        precondition(genesisBlockIterator.locator == .init(file: 0, offset: 0, undoOffset: 0))
+        do {
+            activeTip = try await blockIndex.addGenesisBlock(genesisBlockIterator.block, locator: genesisBlockIterator.locator)
+            bestHeader = activeTip
+        } catch {
+            logger.error("Could not index genesis block.\n\(error)")
+            return
+        }
+
+        logger.info("Block index, coins, undo data cleared")
+
+        var count = 1
+        var lastFileTime = start
+        var file = genesisBlockIterator.locator.file
+
+        if Task.isCancelled {
+            logger.info("Reindexation cancelled")
+            return
+        }
+
+        maybeIt = await blockStorage.next(genesisBlockIterator, includeUndo: false)
+        while let it = maybeIt /*, count < 10000*/ {
+            if it.locator.file != file {
+                logger.info("Reindexed file \(file); Blocks: \(count); Time: \(clock.now - lastFileTime); Progress: \(guessVerificationProgress(activeTip))")
+                count = 0
+                file = it.locator.file
+                lastFileTime = clock.now
+            }
+            count += 1
+            try! await processBlockInternal(it.block, immediate: true, locator: it.locator)
+
+            if Task.isCancelled {
+                logger.info("Reindexation cancelled")
+                return
+            }
+
+            maybeIt = await blockStorage.next(it, includeUndo: false)
+        }
+
+        let time = clock.now - start
+        logger.info("Reindex finished in \(time); Blocks: \(activeTip.height + 1); Headers: \(bestHeader.height + 1)")
+    }
+
     /// Searches the mempool for missing transactions from the provided list.
     public func calculateMissingTxs(ids: [Transaction.ID]) async -> [Transaction.ID] {
         var newIDs = ids
@@ -986,7 +1097,7 @@ public actor BlockchainService: Sendable {
     /// If it is the first time we see this block, its header will be processed first.
     /// If the block builds on the acvite chain tip, it will be connected thus validating its transactions.
     /// Otherwise the index will be updated to reflect that the merkle root has been verified.
-    @discardableResult private func checkBlock(_ block: Block, ref blockRef: BlockRef) async throws(Error) -> BlockRef {
+    @discardableResult private func checkBlock(_ block: Block, ref blockRef: BlockRef, locator: BlockStorageLocator? = nil) async throws(Error) -> BlockRef {
         logger.debug("Processing block \(block.idHex)")
 
         // Verify coinbase
@@ -1013,8 +1124,12 @@ public actor BlockchainService: Sendable {
         logger.debug("Block \(block.idHex) merkle status validated")
         let updatedRef: BlockRef
         do {
-            let locator = try await blockStorage.store(block)
-            updatedRef = await blockIndex.updateHeader(block.id, locator: locator)
+            let locator = if let locator {
+                locator
+            } else {
+                try await blockStorage.store(block)
+            }
+            updatedRef = await blockIndex.updateHeader(blockRef, locator: locator)
             if updatedRef.header.id == bestHeader.header.id {
                 bestHeader = updatedRef
             }
@@ -1217,9 +1332,12 @@ public actor BlockchainService: Sendable {
         // Update best block and header
         let newLocator = try! await blockStorage.store(blockUndo, forBlockAt: blockOnlyLocator) // TODO: throw
 
-        activeTip = await blockIndex.updateBlock(block.id, locator: newLocator, status: .active, chainTxCount: activeTip.chainTxCount + block.txs.count)
+        activeTip = await blockIndex.updateBlock(blockRef, locator: newLocator, status: .active, chainTxCount: activeTip.chainTxCount + block.txs.count)
 
-        logger.info("New tip: \(block.idHex)")
+        if !reindexing {
+            logger.info("New tip: \(block.idHex)")
+        }
+
         // Notify other nodes of new tip
         Task { [ status = activeTip.status, height = activeTip.height] in
             await withDiscardingTaskGroup {

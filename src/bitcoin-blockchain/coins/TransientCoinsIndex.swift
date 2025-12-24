@@ -42,4 +42,8 @@ struct TransientCoinsIndex: CoinsIndex {
     mutating func remove(_ outpoint: Outpoint) {
         coins[outpoint] = nil
     }
+
+    mutating func clear() {
+        coins = .init()
+    }
 }

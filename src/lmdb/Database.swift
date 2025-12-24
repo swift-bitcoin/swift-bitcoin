@@ -140,8 +140,8 @@ package struct Database: ~Copyable {
     /// - warning: Dropping a database also closes it. You may no longer use the database after dropping it.
     /// - seealso: `empty()`
     /// - throws: an error if operation fails. See `AccessError`.
-    public func drop() throws(AccessError) {
-        guard mdb_drop(txHandle, handle, 0) == MDB_SUCCESS else {
+    public func drop(delete: Bool = false) throws(AccessError) {
+        guard mdb_drop(txHandle, handle, delete ? 1 : 0) == MDB_SUCCESS else {
             throw .dropIssue
         }
     }

@@ -15,7 +15,7 @@ extension NodeConfig {
         // Check whether we are accessing the default location
         let isDefault = location == Self.defaultLocation
         if isDefault {
-            print("Checking default location \"\(location)\"…")
+            print("Checking default location \"\(location)\"…") // TODO: Remove prints
         } else {
             print("Checking custom location \"\(location)\"…")
         }

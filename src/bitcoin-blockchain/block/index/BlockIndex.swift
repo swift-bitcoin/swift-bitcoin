@@ -17,13 +17,13 @@ protocol BlockIndex: Sendable {
 
     func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) async -> [Block.ID]
 
-    func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) async throws(BlockIndexError) -> BlockRef
+    mutating func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) async throws(BlockIndexError) -> BlockRef
 
-    func addHeader(_ header: Block) async throws(BlockIndexError) -> BlockRef
+    mutating func addHeader(_ header: Block) async throws(BlockIndexError) -> BlockRef
 
-    func updateBlock(_ id: Block.ID, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) async -> BlockRef
+    mutating func updateBlock(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) async -> BlockRef
 
-    func updateHeader(_ id: Block.ID, locator: BlockStorageLocator) async -> BlockRef
+    mutating func updateHeader(_ ref: BlockRef, locator: BlockStorageLocator) async -> BlockRef
 
     func get(_ id: Block.ID) async -> BlockRef?
 
@@ -49,16 +49,18 @@ protocol BlockIndex: Sendable {
     ///   - tip: The best fully validated block to work our way backwards from.
     ///   - ancestor: The ancestor at which to stop (non-inclusive).
     /// - Returns: The deactivated (stale) blocks in descending height order. Use this to revert changes chainstate (coins) one by one.
-    func undo(from tip: BlockRef, backTo ancestor: BlockRef) async -> [BlockRef]
+    mutating func undo(from tip: BlockRef, backTo ancestor: BlockRef) async -> [BlockRef]
 
     /// Changes a string of stale blocks back to active (full).
     /// - Parameters:
     ///   - tip: The last header to work our way backwards from.
     ///   - ancestor: The ancestor at which to stop (non-inclusive).
     /// - Returns: The reactivated blocks in ascending height order. Use this to reapply changes to chainstate (coins) one by one.
-    func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) async -> [BlockRef]
+    mutating func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) async -> [BlockRef]
 
     func makeBlockLocator(from tip: BlockRef) async -> [Block.ID]
 
-    func undoLastBlock() async -> BlockRef
+    mutating func undoLastBlock() async -> BlockRef
+
+    mutating func clear() async
 }

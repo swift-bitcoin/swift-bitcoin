@@ -27,13 +27,17 @@ struct SendCommand: AsyncParsableCommand {
             DisconnectPeerRPC.self,
             GetBlockHashRPC.self,
             GetBlockRPC.self,
+            GetHeaderRPC.self,
             GenerateToAddressRPC.self,
             GetBlockchainInfoRPC.self,
             GetChainTipsRPC.self,
             GetMempoolRPC.self,
             GetPeerInfoRPC.self,
             GetTransactionRPC.self,
-            SendTransactionRPC.self
+            SendTransactionRPC.self,
+            ReindexRPC.self,
+            ReindexStatusRPC.self,
+            ReindexStopRPC.self
         ] as [any RPCCommand.Type]).map({ $0.method}).contains(method) {
             // try StartP2P.parseAsRoot(params).run()
             throw ValidationError("Use bcutil node \(method) command instead.")

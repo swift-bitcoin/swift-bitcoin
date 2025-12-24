@@ -17,6 +17,7 @@ protocol CoinsIndex: Sendable {
 
     mutating func add(_ coin: UnspentOutput, for outpoint: Outpoint) async
     mutating func remove(_ outpoint: Outpoint) async throws
+    mutating func clear() async
 }
 
 enum CoinsError: Error {
