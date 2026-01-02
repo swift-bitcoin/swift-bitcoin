@@ -13,6 +13,6 @@ struct Chain: AsyncParsableCommand {
         ]
     )
 
-    @Option(name: .shortAndLong, help: "The P2P network for the data directory. During development this value will default to regtest.")
-    var network = NodeNetwork.testnet // TODO: Eventually switch to testnet4 and then mainnet.
+    @Option(name: .shortAndLong, help: "The P2P network for the data directory.")
+    var network = NodeNetwork.mainnet
 }

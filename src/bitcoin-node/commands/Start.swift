@@ -33,7 +33,7 @@ struct Start: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "The address to bind the RPC server to.")
     var host = "0.0.0.0"
 
-    @Option(name: .shortAndLong, help: "The TCP port number to bind the server instance to. Default's to network's default port (\(NodeNetwork.testnet.defaultRPCPort) for \(NodeNetwork.testnet))")
+    @Option(name: .shortAndLong, help: "The TCP port number to bind the server instance to. Default's to network's default port (\(NodeNetwork.mainnet.defaultRPCPort) for \(NodeNetwork.mainnet))")
     var port: Int?
 
     @Option(name: .shortAndLong, help: "Log level.")
@@ -93,10 +93,6 @@ struct Start: AsyncParsableCommand {
             metrics: config.metrics,
             enableProfiling: config.enableProfiling
         )
-
-        if resolvedConfig.network == .mainnet {
-            throw ValidationError("Main network connectivity disabled during alpha development stage")
-        }
 
         _ = try await ServerApp(resolvedConfig, host: host, port: port)
     }

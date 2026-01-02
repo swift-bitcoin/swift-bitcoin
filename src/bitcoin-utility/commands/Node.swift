@@ -34,13 +34,13 @@ struct Node: AsyncParsableCommand {
         defaultSubcommand: SendCommand.self
     )
 
-    @Option(name: .shortAndLong, help: "The P2P network to connect to. During development this value will default to regtest.")
-    var network = NodeNetwork.testnet // TODO: Eventually switch to testnet4 and then mainnet.
+    @Option(name: .shortAndLong, help: "The P2P network to connect to.")
+    var network = NodeNetwork.mainnet
 
     @Option(name: .shortAndLong, help: "The hostname or address of the RPC service to connect to.")
     var host = "0.0.0.0"
 
-    @Option(name: .shortAndLong, help: "The server TCP port to connect to. Default's to network's default port (\(NodeNetwork.testnet.defaultRPCPort) for \(NodeNetwork.testnet))")
+    @Option(name: .shortAndLong, help: "The server TCP port to connect to. Default's to network's default port (\(NodeNetwork.mainnet.defaultRPCPort) for \(NodeNetwork.mainnet))")
     var port: Int?
 
     var resolvedPort: Int {

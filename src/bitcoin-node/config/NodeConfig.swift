@@ -4,7 +4,7 @@ struct NodeConfig: Codable {
 
     init(
         dataLocation: DataLocation = .defaultPath,
-        network: Network = .testnet,
+        network: Network = .mainnet,
         bind: BindSettings? = nil,
         connect: [RemotePeer] = [],
         autoConnect: Bool = true,

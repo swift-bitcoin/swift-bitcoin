@@ -152,7 +152,7 @@ private func _get(_ outpoint: Outpoint, byID: borrowing LMDB.Database) throws(Co
 }
 
 private func initEnv(path: FilePath) -> Environment {
-    let env = try! Environment(at: URL(filePath: path.string), maxDBs: 1, pages: 380_000, options: [.noSubDir])
+    let env = try! Environment(at: URL(filePath: path.string), maxDBs: 1, pages: 400_000, options: [.noSubDir])
     try! env.createDB(byID)
     return env
 }
