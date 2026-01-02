@@ -161,9 +161,11 @@ extension Block: CustomBinaryCodable {
             self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
         case .file(let magicBytes):
             let magic = Int(try decoder.decode() as UInt32)
-            guard magic == magicBytes else { throw BinaryDecodingError.limitExceeded } // TODO: Replace error for something appropriate
+            guard magic == magicBytes else {
+                throw BinaryDecodingError.limitExceeded
+            } // TODO: Replace error for something appropriate
             let length = Int(try decoder.decode() as UInt32)
-            decoder.setLimit(length - MemoryLayout<UInt32>.size * 2)
+            decoder.setLimit(length)
             try self.init(from: &decoder)
             decoder.resetLimit()
         }
@@ -183,7 +185,7 @@ extension Block: CustomBinaryCodable {
             }
         case .file(let magicBytes):
             encoder.encode(UInt32(magicBytes))
-            encoder.encode(UInt32(dataSize(encoding: encoding)))
+            encoder.encode(UInt32(dataSize))
             encode(to: &encoder)
         }
     }

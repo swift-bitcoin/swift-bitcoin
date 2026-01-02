@@ -353,8 +353,8 @@ actor PersistentBlockStorage: BlockStorage {
                 let length = lengthBytes.withUnsafeBytes {
                     $0.loadUnaligned(as: UInt32.self)
                 }
-                return buffer.readBytes(length: Int(length))!
-                // `Int(length +  MemoryLayout<UInt32>.size * 2)` could also be `newFileInfo.size - offset` which will be higher.
+                return buffer.readBytes(length: Int(length) +  MemoryLayout<UInt32>.size * 2)!
+                // `Int(length) +  MemoryLayout<UInt32>.size * 2` could also be `newFileInfo.size - offset` which will be higher.
             }
         } catch {
             logger.error("There was an issue reading the file or attempting to decode block from file's data at \(locator.file):\(locator.offset)")
