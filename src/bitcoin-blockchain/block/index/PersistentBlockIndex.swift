@@ -502,7 +502,7 @@ private func findBestBlock(byID: borrowing LMDB.Database, byHeight: borrowing LM
 }
 
 private func initEnv(path: FilePath) -> Environment {
-    let env = try! Environment(at: URL(filePath: path.string), maxDBs: 2, pages: 3_000, options: [.noSubDir])
+    let env = try! Environment(at: URL(filePath: path.string), maxDBs: 2, pages: 50_000, options: [.noSubDir])
     try! env.createDB(byID)
     try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey, .duplicateSort, .duplicateFixed])) { _, _ in }
     return env
