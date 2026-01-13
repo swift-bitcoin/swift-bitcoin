@@ -14,17 +14,19 @@ actor HybridBlockIndex: BlockIndex {
         env = initEnv(path: self.path)
 
         var cache = [Block.ID : BlockRef]()
-        var cache2 = [[Block.ID]]()
+        var heightsCache = [[Block.ID]]()
 
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             try! byHeight.withCursor(readOnly: true) { cursor in
                 var maybeID = try! cursor.get(.first)
                 while let id = maybeID {
                     let ref = try! _get(id, byID: byID)!
-                    if cache2.count <= ref.height {
-                        cache2.append([id])
+                    if ref.height < heightsCache.count {
+                        heightsCache[ref.height].append(id)
+                    } else if ref.height == heightsCache.count {
+                        heightsCache.append([id])
                     } else {
-                        cache2[ref.height].append(id)
+                        fatalError("Height higher than cache size")
                     }
                     cache[id] = ref
                     // Move backwards
@@ -38,7 +40,7 @@ actor HybridBlockIndex: BlockIndex {
             }
         }
         self.cache = cache
-        self.cache2 = cache2
+        self.heightsCache = heightsCache
     }
 
     private let path: FilePath
@@ -49,11 +51,11 @@ actor HybridBlockIndex: BlockIndex {
     private var cache = [Block.ID : BlockRef]()
 
     /// Either the ID of the Block at each height in the active chain. Or additionally, the IDs of blocks at that height not on the active chain.
-    private var cache2 = [[Block.ID]]()
+    private var heightsCache = [[Block.ID]]()
 
     var bestHeader: BlockRef? {
         var header: BlockRef? = nil
-        for ids in cache2.reversed().prefix(144) {
+        for ids in heightsCache.reversed().prefix(144) {
             for id in ids {
                 let ref = cache[id]!
                 guard ref.status != .invalid else {
@@ -68,7 +70,7 @@ actor HybridBlockIndex: BlockIndex {
     }
 
     var bestBlock: BlockRef {
-        for ids in cache2.reversed() {
+        for ids in heightsCache.reversed() {
             for id in ids {
                 let ref = cache[id]!
                 if ref.status == .active {
@@ -80,7 +82,7 @@ actor HybridBlockIndex: BlockIndex {
     }
 
     var bestHeader2: BlockRef? {
-        for ids in cache2.reversed() {
+        for ids in heightsCache.reversed() {
             if let ref = findActiveRef(ids) {
                 return ref
             }
@@ -129,7 +131,7 @@ actor HybridBlockIndex: BlockIndex {
     /// All block storage locators in reverse height order, including those for stale/invalid blocks.
     var storageLocators: [BlockStorageLocator] {
         var locators = [BlockStorageLocator]()
-        for ids in cache2.reversed() {
+        for ids in heightsCache.reversed() {
             for id in ids {
                 if let locator = cache[id]!.locator {
                     locators.append(locator)
@@ -171,10 +173,12 @@ actor HybridBlockIndex: BlockIndex {
         cache[newRef.header.id] = newRef
 
         // We might have some previous forks at this height
-        if cache2.count <= height {
-            cache2[height].append(newRef.header.id)
+        if height < heightsCache.count {
+            heightsCache[height].append(newRef.header.id)
+        } else if height == heightsCache.count {
+            heightsCache.append([newRef.header.id])
         } else {
-            cache2[height] = [newRef.header.id]
+            fatalError("Height higher than cache size")
         }
         addPersistent(newRef)
         return newRef
@@ -229,7 +233,7 @@ actor HybridBlockIndex: BlockIndex {
     }
 
     func getAll(at height: Int) -> [BlockRef] {
-        cache2[height].map { id in cache[id]! }
+        heightsCache[height].map { id in cache[id]! }
     }
 
     func get(from ref: BlockRef, count: Int) -> [BlockRef] {
@@ -364,7 +368,7 @@ actor HybridBlockIndex: BlockIndex {
 
     func findChainForks() -> [ChainFork] {
         var forks = [ChainFork]()
-        for blockIDs in cache2.reversed() {
+        for blockIDs in heightsCache.reversed() {
             for blockID in blockIDs {
                 let ref = cache[blockID]!
                 var foundBestChild = false
@@ -385,12 +389,12 @@ actor HybridBlockIndex: BlockIndex {
     }
 
     func clear() {
-        cache2 = .init()
+        heightsCache = .init()
         cache = .init()
     }
 
     private func findActiveRef(_ height: Int) -> BlockRef? {
-        findActiveRef(cache2[height])
+        findActiveRef(heightsCache[height])
     }
 
     private func findActiveRef(_ ids: [Block.ID]) -> BlockRef? {
