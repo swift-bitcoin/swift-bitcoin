@@ -918,7 +918,11 @@ public actor BlockchainService: Sendable {
             count += 1
 
             if !decodeOnly {
-                try! await processBlockInternal(headersOnly ? it.block.header : it.block, immediate: true, locator: it.locator)
+                if headersOnly, let prev = await checkConnectivity(it.block.header, locator: it.locator) {
+                    _ = try! await processHeaderInternal(it.block.header, previousHeader: prev)
+                } else if !headersOnly {
+                    try! await processBlockInternal(it.block, immediate: true, locator: it.locator)
+                }
             }
 
             if Task.isCancelled {
