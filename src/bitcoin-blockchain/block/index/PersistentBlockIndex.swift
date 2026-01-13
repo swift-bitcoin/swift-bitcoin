@@ -181,7 +181,7 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func get(_ id: Block.ID) -> BlockRef? { // TODO: Probably should throw
-        let data = try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+        let data = try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             try byID.get(id)
         }
         return if let data {
@@ -193,7 +193,7 @@ actor PersistentBlockIndex: BlockIndex {
 
     func get(at height: Int) -> BlockRef {
         // guard height < byHeight.endIndex else { return nil }
-        try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             try byHeight.withCursor(readOnly: true) { cursor in
                 try cursor.set(key: height)
                 var maybeBlockID = try cursor.get(.firstDup)
@@ -212,7 +212,7 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func getAll(at height: Int) -> [BlockRef] {
-        try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             var all = [BlockRef]()
             try byHeight.withCursor(readOnly: true) { cursor in
                 try cursor.set(key: height)
@@ -229,7 +229,7 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func get(from ref: BlockRef, count: Int) -> [BlockRef] {
-        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
 
             var refs = [BlockRef]()
             var i = 0
@@ -273,7 +273,7 @@ actor PersistentBlockIndex: BlockIndex {
 
     func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
         var missing = [Block.ID]()
-        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             for id in ids {
                 if try byID.get(id) == nil {
                     missing.append(id)
@@ -400,7 +400,7 @@ actor PersistentBlockIndex: BlockIndex {
 
     /*
     func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
-        try! env.withTransaction(db: byID, byHeight, options: [.readOnly]) { _, byID, byHeight in
+        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             try (startHeight...endHeight).map { height in
                 let blockID = try byHeight.get(height)!
                 let data = try byID.get(blockID)!
@@ -410,7 +410,7 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func getParent(for childID: Block.ID) -> BlockRef? {
-        try! env.withTransaction(db: byID, options: [.readOnly]) { _, byID in
+        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             let childData = try byID.get(childID)!
             let child = try BlockRef(childData)
             if child.previous == Block.nullParent {

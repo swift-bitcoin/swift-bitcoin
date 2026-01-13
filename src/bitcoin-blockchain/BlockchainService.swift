@@ -40,7 +40,7 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        blockIndex = if let dataDir { PersistentBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
+        blockIndex = if let dataDir { HybridBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
         coins = if let dataDir { PersistentCoinsIndex(path: dataDir, logger: logger) } else { TransientCoinsIndex() }
 
         let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
@@ -166,7 +166,15 @@ public actor BlockchainService: Sendable {
     }
 
     public var chainTips: [ChainTipSummary] { get async {
-        await blockIndex.findChainForks().map { ChainTipSummary($0) }
+        let clock = ContinuousClock()
+        let start = clock.now
+
+        let result = await blockIndex.findChainForks().map { ChainTipSummary($0) }
+
+        let time = clock.now - start
+        logger.info("\(result.count) tips found in \(time)")
+
+        return result
     } }
 
     /// The genesis block as it is stored on disk.
@@ -918,7 +926,11 @@ public actor BlockchainService: Sendable {
             count += 1
 
             if !decodeOnly {
-                try! await processBlockInternal(headersOnly ? it.block.header : it.block, immediate: true, locator: it.locator)
+                if headersOnly, let prev = await checkConnectivity(it.block.header, locator: it.locator) {
+                    _ = try! await processHeaderInternal(it.block.header, previousHeader: prev)
+                } else if !headersOnly {
+                    try! await processBlockInternal(it.block, immediate: true, locator: it.locator)
+                }
             }
 
             if Task.isCancelled {
