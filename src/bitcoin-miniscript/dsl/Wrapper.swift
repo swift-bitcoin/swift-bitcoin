@@ -2,11 +2,11 @@ import Foundation
 import BitcoinBase
 import BitcoinCrypto
 
-infix operator ~: AssignmentPrecedence
+infix operator ¦: AssignmentPrecedence
 
 // MARK: - Identity A
 
-public func ~<X: ExpB>(lhs: @escaping (_ x: X) -> A_<X>, rhs: X) -> A_<X> { lhs(rhs) }
+public func ¦<X: ExpB>(lhs: @escaping (_ x: X) -> A_<X>, rhs: X) -> A_<X> { lhs(rhs) }
 public func A<X: ExpB>(_ x: X) -> A_<X> { A_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `a:X`; BitcoinScript: `TOALTSTACK [X] FROMALTSTACK`.
@@ -28,7 +28,7 @@ extension A_: ModU where X: ModU { }
 
 // MARK: - Identity S
 
-public func ~<X: ExpB>(lhs: @escaping (_ x: X) -> S_<X>, rhs: X) -> S_<X> { lhs(rhs) }
+public func ¦<X: ExpB>(lhs: @escaping (_ x: X) -> S_<X>, rhs: X) -> S_<X> { lhs(rhs) }
 public func S<X: ExpB>(_ x: X) -> S_<X> { S_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `s:X`; BitcoinScript: `SWAP [X]`.
@@ -55,7 +55,7 @@ extension S_: ModU where X: ModU { }
 
 // MARK: - Identity T
 
-public func ~<X: ExpV>(lhs: @escaping (_ x: X) -> T_<X>, rhs: X) -> T_<X> { lhs(rhs) }
+public func ¦<X: ExpV>(lhs: @escaping (_ x: X) -> T_<X>, rhs: X) -> T_<X> { lhs(rhs) }
 public func T<X: ExpV>(_ x: X) -> T_<X> { T_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `t:X = and_v(X,1)`; BitcoinScript: `[X] 1`.
@@ -81,7 +81,7 @@ extension T_: ModN where X: ModN { }
 
 // MARK: - Identity C
 
-public func ~<X: ExpK>(lhs: @escaping (_ x: X) -> C_<X>, rhs: X) -> C_<X> { lhs(rhs) }
+public func ¦<X: ExpK>(lhs: @escaping (_ x: X) -> C_<X>, rhs: X) -> C_<X> { lhs(rhs) }
 public func C<X: ExpK>(_ x: X) -> C_<X> { C_(x) }
 
 /// Semantics: `C (identities)`; Miniscript: `c:X`; BitcoinScript: `[X] CHECKSIG`.
@@ -110,7 +110,7 @@ extension C_: ModD where X: ModD { }
 
 // MARK: - Identity D
 
-public func ~<X: ExpV>(lhs: @escaping (_ x: X) -> D_<X>, rhs: X) -> D_<X> { lhs(rhs) }
+public func ¦<X: ExpV>(lhs: @escaping (_ x: X) -> D_<X>, rhs: X) -> D_<X> { lhs(rhs) }
 public func D<X: ExpV>(_ x: X) -> D_<X> { D_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `d:X`; BitcoinScript: `DUP IF [X] ENDIF`.
@@ -137,7 +137,7 @@ public struct D_<X: ExpV>: ExpB, ModO, ModN, ModD, ModU {
 
 // MARK: - Identity V
 
-public func ~<X: ExpB>(lhs: @escaping (_ x: X) -> V_<X>, rhs: X) -> V_<X> { lhs(rhs) }
+public func ¦<X: ExpB>(lhs: @escaping (_ x: X) -> V_<X>, rhs: X) -> V_<X> { lhs(rhs) }
 public func V<X: ExpB>(_ x: X) -> V_<X> { V_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `v:X`; BitcoinScript: `[X] VERIFY (or VERIFY version of last opcode in [X])`.
@@ -182,7 +182,7 @@ extension V_: ModN where X: ModN { }
 
 // MARK: - Identity J
 
-public func ~<X: ExpB>(lhs: @escaping (_ x: X) -> J_<X>, rhs: X) -> J_<X> { lhs(rhs) }
+public func ¦<X: ExpB>(lhs: @escaping (_ x: X) -> J_<X>, rhs: X) -> J_<X> { lhs(rhs) }
 public func J<X: ExpB>(_ x: X) -> J_<X> { J_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `j:X`; BitcoinScript: `SIZE 0NOTEQUAL IF [X] ENDIF`.
@@ -210,7 +210,7 @@ extension J_: ModU where X: ModU { }
 
 // MARK: - Identity N
 
-public func ~<X: ExpB>(lhs: @escaping (_ x: X) -> N_<X>, rhs: X) -> N_<X> { lhs(rhs) }
+public func ¦<X: ExpB>(lhs: @escaping (_ x: X) -> N_<X>, rhs: X) -> N_<X> { lhs(rhs) }
 public func N<X: ExpB>(_ x: X) -> N_<X> { N_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `n:X`; BitcoinScript: `[X] 0NOTEQUAL`.
@@ -239,7 +239,7 @@ extension N_: ModD where X: ModD { }
 
 // MARK: - Identity L
 
-public func ~<X: ExpB>(lhs: @escaping (_ x: X) -> L_<X>, rhs: X) -> L_<X> { lhs(rhs) }
+public func ¦<X: ExpB>(lhs: @escaping (_ x: X) -> L_<X>, rhs: X) -> L_<X> { lhs(rhs) }
 public func L<X: ExpB>(_ x: X) -> L_<X> { L_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `l:X = or_i(0,X)`; BitcoinScript: `IF 0 ELSE [X] ENDIF`.
@@ -264,7 +264,7 @@ extension L_: ModU where X: ModU { }
 
 // MARK: - Identity U
 
-public func ~<X: ExpB>(lhs: @escaping (_ x: X) -> U_<X>, rhs: X) -> U_<X> { lhs(rhs) }
+public func ¦<X: ExpB>(lhs: @escaping (_ x: X) -> U_<X>, rhs: X) -> U_<X> { lhs(rhs) }
 public func U<X: ExpB>(_ x: X) -> U_<X> { U_(x) }
 
 /// Semantics: `X (identities)`; Miniscript: `u:X = or_i(X,0)`; BitcoinScript: `IF [X] ELSE 0 ENDIF`.
