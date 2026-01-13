@@ -9,7 +9,7 @@ struct Chain: AsyncParsableCommand {
         Access local chain data.
         """,
         subcommands: [
-            ChainInfo.self, Reindex.self
+            ChainInfo.self, ChainTips.self, Reindex.self
         ]
     )
 

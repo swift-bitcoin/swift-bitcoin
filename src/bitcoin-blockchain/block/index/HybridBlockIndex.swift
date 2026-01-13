@@ -8,22 +8,25 @@ import Collections
 /// Hybrid in-memory / database block index service implementation.
 actor HybridBlockIndex: BlockIndex {
 
-    init(path: FilePath, logger: Logger) async {
+    init(path: FilePath, logger: Logger) {
         self.path = path.appending("block-index")
         self.logger = logger
         env = initEnv(path: self.path)
+
+        var cache = [Block.ID : BlockRef]()
+        var cache2 = [[Block.ID]]()
 
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             try! byHeight.withCursor(readOnly: true) { cursor in
                 var maybeID = try! cursor.get(.first)
                 while let id = maybeID {
                     let ref = try! _get(id, byID: byID)!
-                    if self.cache2.count <= ref.height {
-                        self.cache2.append([id])
+                    if cache2.count <= ref.height {
+                        cache2.append([id])
                     } else {
-                        self.cache2[ref.height].append(id)
+                        cache2[ref.height].append(id)
                     }
-                    self.cache[id] = ref
+                    cache[id] = ref
                     // Move backwards
                     if let nextID = try! cursor.get(.nextDup) {
                         // If no more duplicates for this height, move to previous height
@@ -34,6 +37,8 @@ actor HybridBlockIndex: BlockIndex {
                 }
             }
         }
+        self.cache = cache
+        self.cache2 = cache2
     }
 
     private let path: FilePath

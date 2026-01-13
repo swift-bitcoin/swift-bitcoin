@@ -40,7 +40,7 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        blockIndex = if let dataDir { PersistentBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
+        blockIndex = if let dataDir { HybridBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
         coins = if let dataDir { PersistentCoinsIndex(path: dataDir, logger: logger) } else { TransientCoinsIndex() }
 
         let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
@@ -166,7 +166,15 @@ public actor BlockchainService: Sendable {
     }
 
     public var chainTips: [ChainTipSummary] { get async {
-        await blockIndex.findChainForks().map { ChainTipSummary($0) }
+        let clock = ContinuousClock()
+        let start = clock.now
+
+        let result = await blockIndex.findChainForks().map { ChainTipSummary($0) }
+
+        let time = clock.now - start
+        logger.info("\(result.count) tips found in \(time)")
+
+        return result
     } }
 
     /// The genesis block as it is stored on disk.
