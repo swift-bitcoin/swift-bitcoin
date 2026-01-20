@@ -13,5 +13,5 @@ struct DB: AsyncParsableCommand {
         defaultSubcommand: Stats.self
     )
 
-    @Option var path: String
+    @Option var path: String?
 }
