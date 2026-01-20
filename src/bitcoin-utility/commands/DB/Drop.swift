@@ -1,7 +1,8 @@
 import ArgumentParser
 import LMDB
-import struct SystemPackage.FilePath
 import Foundation
+import struct SystemPackage.FilePath
+import _NIOFileSystem
 
 struct Drop: AsyncParsableCommand {
 
@@ -12,7 +13,12 @@ struct Drop: AsyncParsableCommand {
     @OptionGroup var parent: DB
 
     mutating func run() async throws {
-        let path = FilePath(URL.homeDirectory.relativePath).appending(".swift-bitcoin/data").appending("block-index")
+        let path: FilePath
+        if let p = parent.path {
+            path = FilePath(p)
+        } else {
+            path = try await FileSystem.shared.homeDirectory.appending(".swift-bitcoin/data").appending("block-index")
+        }
         var env = try! Environment(at: URL(filePath: path.string), maxDBs: 2, pages: 3_000, options: [.noSubDir])
         try! env.createDB(byID)
         try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey, .duplicateSort, .duplicateFixed])) { _, _ in }
