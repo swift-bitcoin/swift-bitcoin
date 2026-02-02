@@ -173,4 +173,47 @@ struct MiniscriptTests {
         #expect(miniscript.properties.mods.contains(.d))
         #expect(miniscript.properties.k)
     }
+
+    @Test("Invalid Wrapper") func invalidWrapper() {
+        // `s:X` requires `X` is `Bo`
+        // `0` is of type `B`, but doesn't have the `o` property 
+        let exp = S¦Zero()
+
+        #expect(exp.description == "s:0")
+        let asm = Script(exp.compiled).asm()
+        #expect(asm == "OP_SWAP 0 ")
+        #expect(throws: ParseError.invalidWrapperArgument) {
+            try Miniscript(exp.description)
+        }
+    }
+
+    @Test("Valid Wrapper Mashups") func validWrapperMashups() throws {
+        let exp = SC¦PK_K(key1)
+
+        #expect(exp.description == "sc:pk_k(\(key1Hex))")
+        let asm = Script(exp.compiled).asm()
+        #expect(asm == "OP_SWAP \(key1Hex) OP_CHECKSIG ")
+        let miniscript = try Miniscript(exp.description)
+        #expect(miniscript.evaluated == exp.compiled)
+
+        #expect(miniscript.evaluated.data.count == 37)
+        #expect(miniscript.properties.type == .W)
+        #expect(miniscript.properties.mods.contains(.d))
+        #expect(miniscript.properties.mods.contains(.u))
+        #expect(miniscript.properties.k)
+    }
+
+    @Test("Invalid Wrapper Mashups") func invalidWrapperMashups() {
+        // `s:X` requires `X` is `Bo`
+        // `c:X` is of type `B`, but its property `o` is `o=oX;`
+        // `pk_h(key)` does not have the `o` property, so `c:pk_h(key)` doesn't either
+        let exp = SC¦PK_H(key2)
+
+        #expect(exp.description == "sc:pk_h(\(key2Hex))")
+        let asm = Script(exp.compiled).asm()
+        #expect(asm == "OP_SWAP OP_DUP OP_HASH160 \(key2Hash) OP_EQUALVERIFY OP_CHECKSIG ")
+        #expect(throws: ParseError.invalidWrapperArgumentType) {
+            try Miniscript(exp.description)
+        }
+    }
 }

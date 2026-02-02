@@ -127,6 +127,19 @@ let package = Package(
             ),
             path: "plugin/generate-contributors"
         ),
+        .plugin(
+            name: "GenerateMiniscriptWrapperMashups",
+            capability: .command(
+                intent: .custom(
+                    verb: "generate-miniscript-wrapper-mashups",
+                    description: "Generates mashups of Miniscript wrappers (identities) in `WrapperCombinations.swift`"
+                ),
+                permissions: [
+                    .writeToPackageDirectory(reason: "This command writes generated source code to the source directory.")
+                ]
+            ),
+            path: "plugin/generate-miniscript-wrapper-mashups"
+        ),
 
         // Executables
         .executableTarget(
