@@ -1,7 +1,10 @@
 # Workflow for running tests on Linux
 name: Test Linux
 
-on: [push]
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
 
 jobs:
   # Build job

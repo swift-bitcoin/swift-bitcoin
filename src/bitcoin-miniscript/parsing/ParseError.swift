@@ -1,4 +1,4 @@
-public enum ParseError: Error {
+public enum ParseError: Error, Equatable {
     case emptyExpression
     // Parsing
     case missingWrapperArgument, invalidWrapperArgument, missingFragmentArguments, invalidFragmentArguments, invalidFragmentArgument, unrecognizedSymbol, unrecognizedSymbolsAtEnd
