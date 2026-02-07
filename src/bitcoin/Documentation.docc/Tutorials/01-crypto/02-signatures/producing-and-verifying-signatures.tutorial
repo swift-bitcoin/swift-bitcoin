@@ -1,0 +1,277 @@
+@Tutorial(time: 35, projectFiles: "bitcoin-key-tool.zip") {
+    @XcodeRequirement(title: "Xcode 26", destination: "https://developer.apple.com/download/")
+
+    @Intro(title: "Producing and verifying signatures") {
+        This tutorial builds on <doc:generating-secret-and-public-keys> and adds new commands to sign messages and verify different types of signatures.
+        You’ll learn how to generate hashes, recover public keys from signatures, and tweak keys used in Schnorr signatures.
+
+        Download the project files and follow the steps below.
+
+        @Image(source: SwiftBitcoinLogo, alt: "")
+    }
+
+    @Section(title: "Signing arbitrary messages") {
+        @ContentAndMedia {
+            Create a command for signing messages with a secret key. Add a second command to verify a signature against the original message using the public key provided as a parameter.
+
+            Use the Terminal to execute the new commands and validate the implemented operations.
+
+            @Image(source: c01-t02, alt: "")
+        }
+        @Steps {
+            @Step {
+                Create a `SignMessage` command with a `secretKey` named option (string) and a `message` unnamed argument (string).
+                
+                The secret key is parsed and validated the same way as in `DerivePublicKey`.
+                
+                @Code(name: "SignMessage.swift", file: c01-t02-s01-01-SignMessage)
+            }
+            @Step {
+                Sign the message by calling `sign(message)` on the secret key. Output the serialized signature using string interpolation.
+                
+                The resulting signature is of type `ECDSASignature`.
+
+                @Code(name: "SignMessage.swift", file: c01-t02-s01-02-SignMessage)
+            }
+
+            Open a Terminal in the project's directory.
+
+            @Step {
+                Run `keytool sign-message --secret-key=… "Hello, Swift Bitcoin."` with your own secret key. The new ECDSA signature is displayed as hex string.
+                
+                > Tip: Create a `keytool` alias to avoid prefixing each call with `swift run`. Type `alias keytool="swift run keytool"` in your Terminal and you're all set for the session. 
+                
+                @Image(source: c01-t02-s01-03, alt: "")
+            }
+            @Step {
+                Create a new command for verifying signatures. Include a named `publicKey` option and two unnamed parameters for the signature and the message.
+                
+                To parse the public key call the optional initializer with the hex string as a parameter.
+                
+                @Code(name: "VerifySignature.swift", file: c01-t02-s01-04-VerifySignature)
+            }
+            
+            > Make sure to add the new subcommands to the `Keytool` command configuration.
+
+            @Step {
+                Parse the ECDSA signature by calling the correct type's initializer.
+                
+                Swift Bitcoin offers different types for different kinds of signatures: ECDSA, compact, recoverable, Schnorr.
+                
+                @Code(name: "VerifySignature.swift", file: c01-t02-s01-05-VerifySignature)
+            }
+            @Step {
+                Call `verify()` on the signature passing the message and public key as parameters. The function returns `true` if the signature is valid. Print a message with the result.
+                
+                @Code(name: "VerifySignature.swift", file: c01-t02-s01-06-VerifySignature)
+            }
+            @Step {
+                Run the command `keytool verify-signature --public-key=$PUBLIC_KEY $SIGNATURE "Hello, Swift Bitcoin."` replacing placeholder values with your own public key and the signature generated in the previous step.  The message _Signature is valid_ is displayed as a result.
+                
+                > Important: You must use the public key that was derived from the secret key used to produce the signature.
+                
+                @Image(source: c01-t02-s01-07, alt: "")
+            }
+            @Step {
+                Repeat the command from the previous step but this time remove the last character – a period symbol – from the message. The result now changes to _Signature is invalid_.
+                
+                Altering the message in any way invalidates the signature completely.
+                
+                @Image(source: c01-t02-s01-08, alt: "")
+            }
+        }
+    }
+
+    @Section(title: "Hashing messages") {
+        @ContentAndMedia {
+            Produce a digest by applying the Hash-256 hashing function to a text message. Sign the message hash using a secret key and validate the signature with the corresponding public key.
+        }
+        @Steps {            
+            @Step {
+                Create a new `HashMessage` command with a `message` string argument.
+                @Code(name: "HashMessage.swift", file: c01-t02-s02-01-HashMessage)
+            }
+            @Step {
+                Convert the message parameter to binary data using UTF-8 encoding.
+                @Code(name: "HashMessage.swift", file: c01-t02-s02-02-HashMessage)
+            }
+            @Step {
+                Use the `Hash256` hash function to generate a digest from the message data. Output the digest using string interpolation.
+                
+                > The Hash-256 algorithm consists of applying the SHA256 hashing function twice. 
+                @Code(name: "HashMessage.swift", file: c01-t02-s02-03-HashMessage)
+            }
+            @Step {
+                Test the new `hash-message` command on a Terminal using _Hello, Swift Bitcoin._ as message.
+                > The output reflects how the Hash-256 is actually a SHA256 digest.
+                @Image(source: c01-t02-s02-04, alt: "")
+            }
+            @Step {
+                Create a new command for signing a message hash. Copy the implementation from `SignMessage` as it is very similar.
+                @Code(name: "SignMessageHash.swift", file: c01-t02-s02-05-SignMessageHash)
+            }
+            @Step {
+                Rename the message argument _hash_ and parse it with a `Base16Decoder`. Comment out the final lines generating and printing the signature.
+                @Code(name: "SignMessageHash.swift", file: c01-t02-s02-06-SignMessageHash)
+            }
+            @Step {
+                Verify the length of the hash data to match that of a Hash-256 digest (32 bytes).
+                @Code(name: "SignMessageHash.swift", file: c01-t02-s02-07-SignMessageHash)
+            }
+            @Step {
+                Call `SecretKey.sign(hash:)` with the hash data to produce an ECDSA signature and print it.
+                @Code(name: "SignMessageHash.swift", file: c01-t02-s02-08-SignMessageHash)
+            }
+            @Step {
+                Test the new command passing it the digest produced by the previous `hash-message` command.
+                @Image(source: c01-t02-s02-09, alt: "")
+            }
+            @Step {
+                Verify the signature calling the existing `verify-signature` command.
+                @Image(source: c01-t02-s02-10, alt: "")
+            }
+        }
+    }
+
+    @Section(title: "Signatures with recoverable public key") {
+        @ContentAndMedia {
+            Hash a public key using the Hash-160 algorithm. Sign a message with a secret key using the recoverable public key option. Validate the signature against the public key hash by recovering the public key from the signature.
+        }
+        @Steps {            
+            @Step {
+                Create a new command named `HashPublicKey` with a `publicKey` argument. Parse the public key by passing it to the `PublicKey()` initializer.
+                
+                The command will apply the Hash-160 function to the public key.
+                @Code(name: "HashPublicKey.swift", file: c01-t02-s03-01-HashPublicKey)
+            }
+            @Step {
+                Pass the public key data to `Hash160.hash(data:)` and print out the resulting digest.
+                
+                The Hash-160 algorithm is the composition of SHA256 with RIPEMD160
+                @Code(name: "HashPublicKey.swift", file: c01-t02-s03-02-HashPublicKey)
+            }
+            @Step {
+                Test the command by calling `hash-public-key` on a Terminal. Use the public key derived in the previous tutorial.
+                @Image(source: c01-t02-s03-03, alt: "")
+            }
+            @Step {
+                Create a new `recoverable-sign-message` command for producing signatures with recoverable public key.
+            
+                The command is similar to the existing `SignMessage` command as it takes the same arguments.
+                @Code(name: "RecoverableSignMessage.swift", file: c01-t02-s03-04-RecoverableSignMessage)
+            }
+            @Step {
+                Initialize a `RecoverableSignature` from the message data using the provided secret key. Output the serialized signature using string interpolation.
+                @Code(name: "RecoverableSignMessage.swift", file: c01-t02-s03-05-RecoverableSignMessage)
+            }
+            @Step {
+                Test the command by signing the same message as in previous steps: `Hello, Swift Bitcoin.`
+                
+                Use the same secret key generated in the previous tutorial.
+                @Image(source: c01-t02-s03-06, alt: "")
+            }
+            @Step {
+                Create a `VerifyRecoverableSignature` command taking a public key hash as an argument.
+                
+                The command will recover the public key from the signature and compare its hash against the argument.
+                @Code(name: "VerifyRecoverableSignature.swift", file: c01-t02-s03-07-VerifyRecoverableSignature)
+            }
+            @Step {
+                Parse the hex string hash parameter and check that the length matches the that of the Hash-160 digest (20 bytes).
+                @Code(name: "VerifyRecoverableSignature.swift", file: c01-t02-s03-08-VerifyRecoverableSignature)
+            }
+            @Step {
+                Parse the signature initializing a `RecoverableSignature`. Get the UTF-8 data for the message.
+                @Code(name: "VerifyRecoverableSignature.swift", file: c01-t02-s03-09-VerifyRecoverableSignature)
+            }
+            @Step {
+                Attempt to recover the public key from the signature. If we get a public key check that its hash matches the command's hash argument. Print the result.
+                @Code(name: "VerifyRecoverableSignature.swift", file: c01-t02-s03-10-VerifyRecoverableSignature)
+            }
+            @Step {
+                Try the `verify-recoverable-signature` command on the Terminal. Pass in the public key hash, the recoverable signature and the message as parameters.
+                @Image(source: c01-t02-s03-11, alt: "")
+            }
+        }
+    }
+
+    @Section(title: "Schnorr signatures") {
+        @ContentAndMedia {
+            Produce a Schnorr signature for a message using a secret key. Validate using the corresponding public key. Regenerate the signature using a tweak. Validate using a tweaked public key.
+        }
+        @Steps {
+            @Step {
+                Create a `SchnorrSignMessage` command with similar structure to the regular `SignMessage` command. Parse the secret key.
+                @Code(name: "SchnorrSignMessage.swift", file: c01-t02-s04-01-SchnorrSignMessage)
+            }
+            @Step {
+                Produce a Schnorr signature by calling `signSchnorr()` on the secret key. Print out the signature using string interpolation.
+                
+                The code throws a validation error if there are errors signing the message (e.g. the message is not UTF-8 compatible).
+                @Code(name: "SchnorrSignMessage.swift", file: c01-t02-s04-02-SchnorrSignMessage)
+            }
+            @Step {
+                Test the command on the Terminal by signing the usual message with the usual secret key.
+                @Image(source: c01-t02-s04-03, alt: "")
+            }
+            @Step {
+                Go back to the `SchnorrSignMessage` command and add an optional tweak parameter. Hash the tweak data and pass the hash to `tweakXOnly()`. Use the tweaked key instead of the original key to generate the signature.
+                
+                > Tip: Tweaked secret keys produce signatures that can be verified with tweaked public keys when using the same tweak data.
+                @Code(name: "SchnorrSignMessage.swift", file: c01-t02-s04-04-SchnorrSignMessage)
+            }
+            @Step {
+                In the Terminal repeat the last command but this time add the tweak _magicinternetmoney_ using the `--tweak` option.
+                
+                You will get a signature that is different from the previous one as this one can only be verified with a tweaked public key.
+                @Image(source: c01-t02-s04-05, alt: "")
+            }
+            @Step {
+                Create a `VerifySchnorrSignature` command with similar structure to the regular `VerifySignature` command. Parse the public key parameter.
+                
+                > Verifying a Schnorr signature does not require information about the tweak. The tweaked public key needs to be passed as argument instead.
+                @Code(name: "VerifySchnorrSignature.swift", file: c01-t02-s04-06-VerifySchnorrSignature)
+            }
+            @Step {
+                Parse the signature with `SchnorrSignature()` and throw a validation error if the initializer returns `nil`.
+                @Code(name: "VerifySchnorrSignature.swift", file: c01-t02-s04-07-VerifySchnorrSignature)
+            }
+            @Step {
+                Verify the signature with `verify()` and print out the result.
+                @Code(name: "VerifySchnorrSignature.swift", file: c01-t02-s04-08-VerifySchnorrSignature)
+            }
+            @Step {
+                In the Terminal check that the `verify-schnorr-signature` validates the non-tweaked signature using the non-tweaked public key.
+                @Image(source: c01-t02-s04-09, alt: "")
+            }
+            @Step {
+                Create a `TweakPublicKey` command taking a tweak option and a `publicKey` argument. Parse the public key as usual.
+                @Code(name: "TweakPublicKey.swift", file: c01-t02-s04-10-TweakPublicKey)
+            }
+            @Step {
+                Convert the tweak string into binary data using UTF-8 encoding.
+                @Code(name: "TweakPublicKey.swift", file: c01-t02-s04-11-TweakPublicKey)
+            }
+            @Step {
+                Hash the tweak data with Hash-256.
+                @Code(name: "TweakPublicKey.swift", file: c01-t02-s04-12-TweakPublicKey)
+            }
+            @Step {
+                Call `tweakXOnly()` on the public key with the tweak hash. Output the result as hex.
+                @Code(name: "TweakPublicKey.swift", file: c01-t02-s04-13-TweakPublicKey)
+            }
+            @Step {
+                Test the new command by tweaking the public key used before.
+                @Image(source: c01-t02-s04-14, alt: "")
+            }
+            @Step {
+                Now verify the Schnorr signature generated using the tweak _magicinternetmoney_. Pass it the tweaked public key from the previous step.
+                @Image(source: c01-t02-s04-15, alt: "")
+            }
+            @Step {
+                Repeat the last command but this time use the un-tweaked public key. Notice how that results in an invalid signature response.
+                @Image(source: c01-t02-s04-16, alt: "")
+            }
+        }
+    }
+}

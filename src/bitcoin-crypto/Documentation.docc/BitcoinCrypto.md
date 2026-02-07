@@ -39,7 +39,7 @@ Encode and decode binary data into and from strings using Base58 or Bech32 encod
 - ``SHA256``
 - ``SHA512``
 - ``HMAC``
-- ``SHA256(tag:)``
+- ``CryptoKit/SHA256/init(tag:)``
 
 ### Data/string coders
 
