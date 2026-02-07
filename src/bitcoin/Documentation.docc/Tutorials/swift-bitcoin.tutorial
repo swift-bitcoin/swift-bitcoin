@@ -1,0 +1,25 @@
+@Tutorials(name: "Swift Bitcoin") {
+
+    @Intro(title: "Introducing Swift Bitcoin") {
+        Swift Bitcoin is a modern way to develop multi-platform Bitcoin applications. Add simple wallet features or full node capabilities using an idiomatic Swift API.
+        
+        @Image(source: SwiftBitcoinLogo, alt: "Swift Bitcoin logo")
+    }
+
+    @Chapter(name: "Bitcoin cryptography") {
+        Learn how to use Swift Bitcoin to generate, serialize and parse keys, hash and sign messages and verify signatures using the ECDSA or Schnorr schemes.
+        
+        @Image(source: c01-t01, alt: "Diagram of how entropy is used to generate a secret key which is used to derive a public key.")
+        
+        @TutorialReference(tutorial: "doc:generating-secret-and-public-keys")
+        @TutorialReference(tutorial: "doc:producing-and-verifying-signatures")
+    }
+
+    @Resources {
+        Explore more resources for learning about Swift Bitcoin.
+
+        @Downloads(destination: "https://www.swift.org/install") {
+            Get the latest Swift Toolchain –for Linux, macOS or Windows– from the official Swift.org website.
+        }
+    }
+}
