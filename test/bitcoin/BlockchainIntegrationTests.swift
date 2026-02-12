@@ -128,7 +128,7 @@ struct BlockchainIntegrationTests {
         let block = try #require(await blockchain.generateTo(alicePK))
         let coinbaseTx1 = block.txs[0]
 
-        let utxoSet1 = await blockchain.currentCoins
+        let utxoSet1 = await blockchain.unspentOutputs
 
         let expectedUTXOSet1 = [
             coinbaseTx1.outpoint(0): UnspentOutput(coinbaseTx1.outs[0], height: 1, isCoinbase: true),
@@ -176,7 +176,7 @@ struct BlockchainIntegrationTests {
         let block2 = try #require(await blockchain.generateTo(alicePK))
         let coinbaseTx2 = block2.txs[0]
 
-        let utxoSet2 = await blockchain.currentCoins
+        let utxoSet2 = await blockchain.unspentOutputs
 
         let expectedUTXOSet2 = [
             coinbaseTx1.outpoint(1): UnspentOutput(coinbaseTx1.outs[1], height: 1, isCoinbase: true),
@@ -201,7 +201,7 @@ struct BlockchainIntegrationTests {
 
         try await blockchain.undoLastBlock()
 
-        let utxoSet1_ = await blockchain.currentCoins
+        let utxoSet1_ = await blockchain.unspentOutputs
         #expect(utxoSet1_.count == expectedUTXOSet1.count)
         #expect(utxoSet1_ == expectedUTXOSet1)
 
@@ -308,13 +308,13 @@ struct BlockchainIntegrationTests {
             coinbaseTxA.outpoint(1): UnspentOutput(coinbaseTxA.outs[1], height: 1, isCoinbase: true)
         ]
 
-        #expect(await satoshi.currentCoins == expectedUTXOSetA)
+        #expect(await satoshi.unspentOutputs == expectedUTXOSetA)
 
         try await alice.processBlock(blockA, immediate: true)
         try await bob.processBlock(blockA, immediate: true)
 
-        #expect(await alice.currentCoins == expectedUTXOSetA)
-        #expect(await bob.currentCoins == expectedUTXOSetA)
+        #expect(await alice.unspentOutputs == expectedUTXOSetA)
+        #expect(await bob.unspentOutputs == expectedUTXOSetA)
 
         var tx1 = Transaction(
             ins: [.init(outpoint: coinbaseTxA.outpoint(0))],
@@ -340,10 +340,10 @@ struct BlockchainIntegrationTests {
             tx1.outpoint(0): UnspentOutput(tx1.outs[0], height: 2, isCoinbase: false),
             tx1.outpoint(1): UnspentOutput(tx1.outs[1], height: 2, isCoinbase: false)
         ]
-        #expect(await alice.currentCoins == expectedUTXOSetB)
+        #expect(await alice.unspentOutputs == expectedUTXOSetB)
 
         try await satoshi.processBlock(blockB, immediate: true)
-        #expect(await satoshi.currentCoins == expectedUTXOSetB)
+        #expect(await satoshi.unspentOutputs == expectedUTXOSetB)
 
         var tx11 = Transaction(
             ins: [.init(outpoint: coinbaseTxA.outpoint(0))],
@@ -368,7 +368,7 @@ struct BlockchainIntegrationTests {
             tx11.outpoint(0): UnspentOutput(tx11.outs[0], height: 2, isCoinbase: false),
             tx11.outpoint(1): UnspentOutput(tx11.outs[1], height: 2, isCoinbase: false)
         ]
-        #expect(await bob.currentCoins == expectedUTXOSetBB)
+        #expect(await bob.unspentOutputs == expectedUTXOSetBB)
 
         var tx2 = Transaction(
             ins: [.init(outpoint: tx1.outpoint(0))],
@@ -419,18 +419,18 @@ struct BlockchainIntegrationTests {
             tx22.outpoint(1): UnspentOutput(tx22.outs[1], height: 3, isCoinbase: false)
         ]
 
-        #expect(await bob.currentCoins == expectedUTXOSetCC)
+        #expect(await bob.unspentOutputs == expectedUTXOSetCC)
 
         try await satoshi.processBlock(blockBB, immediate: true)
         #expect(await satoshi.mempool.count == 1)
-        #expect(await satoshi.currentCoins == expectedUTXOSetB)
+        #expect(await satoshi.unspentOutputs == expectedUTXOSetB)
 
         try await satoshi.processHeaders([blockCC.header])
-        #expect(await satoshi.currentCoins == expectedUTXOSetA)
+        #expect(await satoshi.unspentOutputs == expectedUTXOSetA)
 
         try await satoshi.processBlock(blockCC, immediate: true)
         #expect(await satoshi.mempool.count == 0)
-        #expect(await satoshi.currentCoins == expectedUTXOSetCC)
+        #expect(await satoshi.unspentOutputs == expectedUTXOSetCC)
 
         let blockC = try #require(await alice.generateTo(satoshiID))
         let coinbaseTxC = blockC.txs[0]
@@ -451,16 +451,16 @@ struct BlockchainIntegrationTests {
             tx2.outpoint(1): UnspentOutput(tx2.outs[1], height: 3, isCoinbase: false)
         ]
 
-        #expect(await alice.currentCoins == expectedUTXOSetD)
+        #expect(await alice.unspentOutputs == expectedUTXOSetD)
 
         try await satoshi.processBlock(blockC, immediate: true)
-        #expect(await satoshi.currentCoins == expectedUTXOSetCC)
+        #expect(await satoshi.unspentOutputs == expectedUTXOSetCC)
 
         try await satoshi.processHeaders([blockD.header])
-        #expect(await satoshi.currentCoins == expectedUTXOSetB)
+        #expect(await satoshi.unspentOutputs == expectedUTXOSetB)
 
         try await satoshi.processBlock(blockD, immediate: true)
-        #expect(await satoshi.currentCoins == expectedUTXOSetD)
+        #expect(await satoshi.unspentOutputs == expectedUTXOSetD)
 
         let tips = await satoshi.chainTips
 

@@ -73,7 +73,7 @@ public actor NodeService: Sendable {
     public func start() async {
         status = .starting
         let blocks = await blockchain.subscribeToBlocks()
-        let txs = await blockchain.subscribeToTxs()
+        let txs = await blockchain.subscribeToTransactions()
         self.blocks = blocks
         self.txs = txs
         await withDiscardingTaskGroup { group in
@@ -320,7 +320,7 @@ public actor NodeService: Sendable {
     /// Request headers from a specific peer.
     private func requestHeaders(_ id: PeerID) async {
         guard let _ = state.peers[id] else { preconditionFailure() }
-        let locatorHashes = await blockchain.makeBlockLocator()
+        let locatorHashes = await blockchain.blockLocator()
         let getHeaders = GetHeadersMessage(protocolVersion: .latest, locatorHashes: locatorHashes)
         enqueue(.getheaders, payload: getHeaders.data, to: id)
     }
@@ -347,13 +347,13 @@ public actor NodeService: Sendable {
         let numberOfBlocksToRequest = config.maxInTransitBlocks - peer.inTransitBlocks
         guard numberOfBlocksToRequest > 0 else { return }
 
-        let blockIDs = await blockchain.getNextMissingBlocks(numberOfBlocksToRequest)
+        let blockIDs = await blockchain.nextMissingBlocks(max: numberOfBlocksToRequest)
 
         guard !blockIDs.isEmpty else { return }
 
         state.peers[id]?.inTransitBlocks += blockIDs.count
 
-        let ibd = await blockchain.initialBlockDownload
+        let ibd = await blockchain.isInitialBlockDownload
         let getData = GetDataMessage(
             items: blockIDs.map { .init(type: ibd ? .witnessBlock : .compactBlock, hash: $0) }
         )
@@ -362,7 +362,7 @@ public actor NodeService: Sendable {
 
     private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
         if status == .active {
-            let ibd = await blockchain.initialBlockDownload
+            let ibd = await blockchain.isInitialBlockDownload
             if !ibd {
                 await handleBlockRelay(block, height: height)
             }
@@ -644,7 +644,7 @@ public actor NodeService: Sendable {
         }
 
         logger.info("getheaders: \(getHeaders.locatorHashes.first?.hex ?? "-")")
-        let headers = await blockchain.findHeaders(using: getHeaders.locatorHashes)
+        let headers = await blockchain.headers(matching: getHeaders.locatorHashes)
         let headersMessage = HeadersMessage(items: headers)
         enqueue(.headers, payload: headersMessage.data, to: id)
     }
@@ -725,13 +725,13 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
-        if await blockchain.initialBlockDownload {
+        if await blockchain.isInitialBlockDownload {
             return
         }
 
         let compactBlockHashes = getDataMessage.items.filter { $0.type == .compactBlock }.map { $0.hash }
         if !compactBlockHashes.isEmpty {
-            let blocks = await blockchain.getBlocks(compactBlockHashes)
+            let blocks = await blockchain.blocks(matching: compactBlockHashes)
             for block in blocks {
                 await sendBlock(block, to: id, useQueue: true)
             }
@@ -739,7 +739,7 @@ public actor NodeService: Sendable {
 
         let blockHashes = getDataMessage.items.filter { $0.type == .witnessBlock }.map { $0.hash }
         if !blockHashes.isEmpty {
-            let blocks = await blockchain.getBlocks(blockHashes)
+            let blocks = await blockchain.blocks(matching: blockHashes)
 
             for block in blocks {
                 enqueue(.block, payload: block.data, to: id)
@@ -748,7 +748,7 @@ public actor NodeService: Sendable {
 
         let txHashes = getDataMessage.items.filter { $0.type == .witnessTx }.map { $0.hash }
         if !txHashes.isEmpty {
-            let txs = await blockchain.getTransactions(txHashes)
+            let txs = await blockchain.transactions(matching: txHashes)
             for tx in txs {
                 enqueue(.tx, payload: tx.data, to: id)
             }
@@ -773,12 +773,12 @@ public actor NodeService: Sendable {
             }
         }
         var items = [InventoryItem]()
-        if await !blockchain.initialBlockDownload {
-            for txID in await blockchain.calculateMissingTxs(ids: txIDs) {
+        if await !blockchain.isInitialBlockDownload {
+            for txID in await blockchain.missingTransactions(matching: txIDs) {
                 items.append(.init(type: .witnessTx, hash: txID))
             }
         }
-        for blockID in await blockchain.calculateMissingBlocks(ids: blockIDs) {
+        for blockID in await blockchain.missingBlocks(matching: blockIDs) {
             items.append(.init(type: .witnessBlock, hash: blockID))
         }
         let getData = GetDataMessage(items: items)
@@ -794,7 +794,7 @@ public actor NodeService: Sendable {
         } catch {
             throw Error.invalidPayload
         }
-        if await blockchain.initialBlockDownload {
+        if await blockchain.isInitialBlockDownload {
             return
         }
         state.peers[id]!.registerKnownTxs([tx.id])
@@ -822,7 +822,7 @@ public actor NodeService: Sendable {
             txs[prefilled.index] = prefilled.tx
         }
 
-        let mempoolTxs = await blockchain.findMempoolTxs(shortIDs: compactBlockMessage.txIDs, header: compactBlockMessage.header, nonce: compactBlockMessage.nonce)
+        let mempoolTxs = await blockchain.mempoolTransactions(shortIDs: compactBlockMessage.txIDs, header: compactBlockMessage.header, nonce: compactBlockMessage.nonce)
 
         var j = 0
         for i in txs.indices {
@@ -856,7 +856,7 @@ public actor NodeService: Sendable {
         guard let getBlockTxsMessage = GetBlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
         }
-        guard let block = await blockchain.getBlock(getBlockTxsMessage.blockHash) else {
+        guard let block = await blockchain.block(for: getBlockTxsMessage.blockHash) else {
             throw .blockNotFound
         }
         var txs = [Transaction]()
@@ -885,7 +885,7 @@ public actor NodeService: Sendable {
             }
         }
 
-        guard var block = await blockchain.getHeader(blockTxsMessage.blockHash) else {
+        guard var block = await blockchain.header(for: blockTxsMessage.blockHash) else {
             throw .blockNotFound
         }
         block.txs = pendingBlockTxs.compactMap { $0 }

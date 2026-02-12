@@ -34,12 +34,12 @@ struct PersistenceTests {
             try await bob.processHeaders([header1.header])
             await #expect(bob.headers == 1)
 
-            let bobMissingBlockIDs = await bob.getNextMissingBlocks(2)
+            let bobMissingBlockIDs = await bob.nextMissingBlocks(max: 2)
             #expect(bobMissingBlockIDs == [header1.id])
 
-            let bobMissingBlocks = await alice.getBlocks(bobMissingBlockIDs)
+            let bobMissingBlocks = await alice.blocks(matching: bobMissingBlockIDs)
             let bobMissingBlock = bobMissingBlocks[0]
-            let block1 = try #require(await alice.getBlock(at: 1))
+            let block1 = try #require(await alice.block(at: 1))
             #expect(bobMissingBlocks.count == 1 && bobMissingBlock == header1 && bobMissingBlock.txs == block1.txs)
 
             try await bob.processBlock(block1)
@@ -77,12 +77,12 @@ struct PersistenceTests {
 
             await #expect(bob.headers == 1)
 
-            let bobMissingBlockIDs = await bob.getNextMissingBlocks(2)
+            let bobMissingBlockIDs = await bob.nextMissingBlocks(max: 2)
             #expect(bobMissingBlockIDs == [header1.id])
 
-            let bobMissingBlocks = await alice.getBlocks(bobMissingBlockIDs)
+            let bobMissingBlocks = await alice.blocks(matching: bobMissingBlockIDs)
             let bobMissingBlock = bobMissingBlocks[0]
-            let block1 = try #require(await alice.getBlock(at: 1))
+            let block1 = try #require(await alice.block(at: 1))
             #expect(bobMissingBlocks.count == 1 && bobMissingBlock == header1 && bobMissingBlock.txs == block1.txs)
 
             try await bob.processBlock(block1)
