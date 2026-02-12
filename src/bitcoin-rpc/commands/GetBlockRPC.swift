@@ -12,10 +12,10 @@ extension GetBlockRPC {
             throw .init(.invalidParams, "Invalid block hash.")
         }
         let blockID = Data(blockIDByteSwapped.reversed())
-        guard let block = await blockchain.getBlock(blockID) else {
+        guard let block = await blockchain.block(for: blockID) else {
             throw .init(.invalidParams, "Block not found.")
         }
-        guard let info = await blockchain.getBlockInfo(blockID) else {
+        guard let info = await blockchain.blockInfo(for: blockID) else {
             throw .init(.internalError, "Failed to get blockchain information for block.")
         }
 

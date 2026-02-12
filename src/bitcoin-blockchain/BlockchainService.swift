@@ -88,7 +88,9 @@ public actor BlockchainService: Sendable {
         logger.debug("Best header: \(bestHeader.header.idHex)")
     }
 
-    /// Blockchain consensus parameters. These are pre-defined on the type of network: test, main, regtest or others.
+    /// Blockchain consensus parameters.
+    ///
+    /// Use predefined values for each network – e.g. test, main, regtest, …
     public let params: ConsensusParams
 
     /// Blockchain configuration.
@@ -97,6 +99,7 @@ public actor BlockchainService: Sendable {
     /// The logger instance for blockchain events.
     public let logger: Logger
 
+    /// Path to the data directory where blocks and indices are stored.
     private let dataDir: FilePath?
 
     /// The block index which includes headers as well as additional information.
@@ -165,6 +168,10 @@ public actor BlockchainService: Sendable {
         activeTip.header.id
     }
 
+    /// Returns a list of known chain tips across all forks.
+    ///
+    /// The result includes the active tip and any stale or forked tips discovered in the index.
+    /// This property performs an asynchronous search and logs timing information.
     public var chainTips: [ChainTipSummary] { get async {
         let clock = ContinuousClock()
         let start = clock.now
@@ -189,16 +196,16 @@ public actor BlockchainService: Sendable {
     /// Whether the blockchain is synchronized with the best header.
     ///
     /// Being synchronized means that the best  known block and the best known header are the same. In other words, the status of the best header is fully validated.
-    public var synchronized: Bool {
+    public var isSynchronized: Bool {
         bestHeader.status == .active
     }
 
-    /// The best block's time.
+    /// The time of the best block.
     public var time: Date {
         activeTip.header.time
     }
 
-    /// The best block's difficulty.
+    /// The difficulty of the best block.
     public var difficulty: Double {
         activeTip.difficulty
     }
@@ -218,8 +225,8 @@ public actor BlockchainService: Sendable {
     /// Whether the blockchain is in initial block download (IBD) mode.
     ///
     /// IBD status can affect how the node operates and communicates with peers. For instance, it may refrain from validating and relaying transactions until the blockchain is fully synchronized.
-    public var initialBlockDownload: Bool {
-        isInitialBlockDownload()
+    public var isInitialBlockDownload: Bool {
+        checkInitialBlockDownload()
     }
 
     /// Accumulated proof-of-work by the block which has the most.
@@ -235,7 +242,7 @@ public actor BlockchainService: Sendable {
     } }
 
     /// Returns the current UTXO set or _coins_.
-    public var currentCoins: [Outpoint : UnspentOutput] { get async {
+    public var unspentOutputs: [Outpoint : UnspentOutput] { get async {
         await coins.all
     } }
 
@@ -404,7 +411,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Gets a fully validated block by height complete with transactions.
-    public func getBlockID(at height: Int) async -> Block.ID? {
+    public func blockID(at height: Int) async -> Block.ID? {
         guard height >= 0, activeTip.height >= height else {
             return nil
         }
@@ -412,7 +419,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Returns a block header, meaning a block without it's transactions.
-    public func getHeader(_ id: Block.ID) async -> Block? {
+    public func header(for id: Block.ID) async -> Block? {
         guard let blockRef = await blockIndex.get(id) else {
             return nil
         }
@@ -422,7 +429,7 @@ public actor BlockchainService: Sendable {
     /// Gets a fully validated block by height complete with transactions.
     ///
     /// Usually called from unit tests.
-    public func getBlock(at height: Int) async -> Block? {
+    public func block(at height: Int) async -> Block? {
         guard height >= 0, activeTip.height >= height else {
             return nil
         }
@@ -436,7 +443,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Gets a fully validated block by ID complete with transactions.
-    public func getBlock(_ id: Block.ID) async -> Block? {
+    public func block(for id: Block.ID) async -> Block? {
         guard let blockRef = await blockIndex.get(id), let locator = blockRef.locator, activeTip.height >= blockRef.height else {
             return nil
         }
@@ -446,7 +453,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Gets a fully validated block by ID complete with transactions.
-    public func getBlockHeight(_ id: Block.ID) async -> Int? {
+    public func height(for id: Block.ID) async -> Int? {
         guard let blockRef = await blockIndex.get(id) else {
             return nil
         }
@@ -454,7 +461,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Summarized information about a block.
-    public func getBlockInfo(_ id: Block.ID) async -> BlockInfo? {
+    public func blockInfo(for id: Block.ID) async -> BlockInfo? {
         guard let ref = await blockIndex.get(id) else {
             return nil
         }
@@ -484,7 +491,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Subscribe to mempool transaction updates.
-    public func subscribeToTxs() -> AsyncChannel<Transaction> {
+    public func subscribeToTransactions() -> AsyncChannel<Transaction> {
         txChannels.append(.init())
         return txChannels.last!
     }
@@ -502,12 +509,12 @@ public actor BlockchainService: Sendable {
     }
 
     /// Produces a discontinuous list of block hashes in descending height order that may be used to request missing headers from a peer.
-    public func makeBlockLocator() async -> [Data] {
+    public func blockLocator() async -> [Data] {
         await blockIndex.makeBlockLocator(from: bestHeader)
     }
 
     /// Finds headers using a discontinuous list of block hashes ordered by descending height.
-    public func findHeaders(using locator: [Data]) async -> [Block] {
+    public func headers(matching locator: [Data]) async -> [Block] {
         // TODO: Migrate to traversing by `block.previous` as it would be more robust towards reorgs.
         var hitHeight = Int?.none
         for blockID in locator {
@@ -677,13 +684,13 @@ public actor BlockchainService: Sendable {
     }
 
     /// Returns the IDs of the headers missing transactions up to a maximum defined by the function argument.
-    public func getNextMissingBlocks(_ numberOfBlocks: Int) async -> [Block.ID] {
+    public func nextMissingBlocks(max numberOfBlocks: Int) async -> [Block.ID] {
         precondition(numberOfBlocks > 0 && numberOfBlocks <= 1024) // TODO: Get the number of blocks limit from somewhere
         return await blockIndex.missingBlocks(tip: bestHeader, stop: activeTip, max: numberOfBlocks)
     }
 
     /// Returns multiple fully validated blocks matching the provided IDs.
-    public func getBlocks(_ blockIDs: [Block.ID]) async -> [Block] {
+    public func blocks(matching blockIDs: [Block.ID]) async -> [Block] {
         var ret = [Block]()
         for blockID in blockIDs {
             guard let blockRef = await blockIndex.get(blockID), let locator = blockRef.locator, blockRef.status == .active else {
@@ -699,7 +706,7 @@ public actor BlockchainService: Sendable {
 
     /// Reverts the last block and its effects on the UTXO set.
     public func undoLastBlock() async throws  {
-        guard synchronized else {
+        guard isSynchronized else {
             return
         }
         try await undoCoins(activeTip)
@@ -784,7 +791,7 @@ public actor BlockchainService: Sendable {
     @discardableResult public func generateTo(_ script: Script, initialNonce: Int = 0, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now, tag: String? = nil, txVersion: Transaction.Version? = nil) async -> Block? {
         logger.info("Generating blocks with coinbase reward going to public key hash.")
 
-        guard synchronized else {
+        guard isSynchronized else {
             // Waiting for pending block transactions for known headers
             preconditionFailure("Chain cannot contain unvalidated blocks.")
         }
@@ -946,7 +953,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Searches the mempool for missing transactions from the provided list.
-    public func calculateMissingTxs(ids: [Transaction.ID]) async -> [Transaction.ID] {
+    public func missingTransactions(matching ids: [Transaction.ID]) async -> [Transaction.ID] {
         var newIDs = ids
         for tx in mempool {
             if ids.contains(tx.id) {
@@ -970,12 +977,12 @@ public actor BlockchainService: Sendable {
     }
 
     /// Finds out which of the blocks/headers from the provided list are not yet in the blockchain.
-    public func calculateMissingBlocks(ids: [Block.ID]) async -> [Block.ID] {
+    public func missingBlocks(matching ids: [Block.ID]) async -> [Block.ID] {
         await blockIndex.calculateMissingBlocks(ids)
     }
 
     /// Gets a transaction by ID looking into mempool and blocks.
-    public func getTransaction(_ id: Transaction.ID) async -> Transaction? {
+    public func transaction(for id: Transaction.ID) async -> Transaction? {
         for tx in mempool {
             if id == tx.id {
                 return tx
@@ -995,7 +1002,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Finds transactions in mempool which match any of the provided IDs.
-    public func getTransactions(_ ids: [Transaction.ID]) async -> [Transaction] {
+    public func transactions(matching ids: [Transaction.ID]) async -> [Transaction] {
         var ret = [Transaction]()
         for tx in mempool {
             if ids.contains(tx.id) {
@@ -1006,7 +1013,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Checks mempool for missing transactions.
-    public func findMempoolTxs(shortIDs: [UInt64], header: Block, nonce: UInt64) -> [Transaction?] {
+    public func mempoolTransactions(shortIDs: [UInt64], header: Block, nonce: UInt64) -> [Transaction?] {
         let (first, second) = header.makeShortIDParams(nonce: nonce)
         let mempoolShortIDs = mempool.map { tx in tx.makeShortTxID(nonce: nonce, first: first, second: second)}
         return shortIDs.map { id in
@@ -1560,7 +1567,7 @@ public actor BlockchainService: Sendable {
     /// Note that though this function is non-mutating, we may end up modifying `finishedIDB`, which is a performance-related implementation detail.
     ///
     /// This function is similar to `ChainstateManager::IsInitialBlockDownload()` in Bitcoin Core (`validation.cpp`).
-    private func isInitialBlockDownload() -> Bool {
+    private func checkInitialBlockDownload() -> Bool {
 
         // Optimization: pre-test latch before taking the lock.
         if finishedIDB.load(ordering: .relaxed) { return false }

@@ -21,12 +21,12 @@ struct BlockchainServiceTests {
         try await bob.processHeaders([header1])
         await #expect(bob.headers == 1)
 
-        let bobMissingBlockIDs = await bob.getNextMissingBlocks(2)
+        let bobMissingBlockIDs = await bob.nextMissingBlocks(max: 2)
         #expect(bobMissingBlockIDs == [header1.id])
 
-        let bobMissingBlocks = await alice.getBlocks(bobMissingBlockIDs)
+        let bobMissingBlocks = await alice.blocks(matching: bobMissingBlockIDs)
         let bobMissingBlock = bobMissingBlocks[0]
-        let block1 = try #require(await alice.getBlock(at: 1))
+        let block1 = try #require(await alice.block(at: 1))
         #expect(bobMissingBlocks.count == 1 && bobMissingBlock == block1_ && bobMissingBlock.txs == block1.txs)
 
         try await bob.processBlock(block1)
@@ -46,20 +46,20 @@ struct BlockchainServiceTests {
         await bob.generateTo(pubkey) // TODO: This block would/should fail if it shares the same timestamp as the previous, as they need to be strictly newer than the median time
         await bob.generateTo(pubkey)
 
-        let aliceLocator = await alice.makeBlockLocator()
+        let aliceLocator = await alice.blockLocator()
         #expect(aliceLocator.count == 1)
 
-        let bobHeaders = await bob.findHeaders(using: aliceLocator)
+        let bobHeaders = await bob.headers(matching: aliceLocator)
         #expect(bobHeaders.count == 3)
 
         try await alice.processHeaders(bobHeaders)
         await #expect(alice.headers == 3)
         await #expect(alice.height == 0)
 
-        let aliceMissing = await alice.getNextMissingBlocks(2)
+        let aliceMissing = await alice.nextMissingBlocks(max: 2)
         #expect(aliceMissing.count == 2)
 
-        let bobBlocks1to2 = await bob.getBlocks(aliceMissing)
+        let bobBlocks1to2 = await bob.blocks(matching: aliceMissing)
         #expect(bobBlocks1to2.count == 2)
 
         try await alice.processBlock(bobBlocks1to2[0])
@@ -70,10 +70,10 @@ struct BlockchainServiceTests {
         await #expect(alice.headers == 3)
         await #expect(alice.height == 2)
 
-        let aliceMissing2 = await alice.getNextMissingBlocks(2)
+        let aliceMissing2 = await alice.nextMissingBlocks(max: 2)
         #expect(aliceMissing2.count == 1)
 
-        let bobBlocks3to3 = await bob.getBlocks(aliceMissing2)
+        let bobBlocks3to3 = await bob.blocks(matching: aliceMissing2)
         #expect(bobBlocks3to3.count == 1)
 
         try await alice.processBlock(bobBlocks3to3[0])
@@ -98,7 +98,7 @@ struct BlockchainServiceTests {
         }
 
         // Grab block 1's coinbase transaction and output.
-        let previousTx = await blockchain.getBlock(at: 1)!.txs[0]
+        let previousTx = await blockchain.block(at: 1)!.txs[0]
         let prevout = previousTx.outs[0]
 
         // Create a new transaction spending from the previous transaction's outpoint.
