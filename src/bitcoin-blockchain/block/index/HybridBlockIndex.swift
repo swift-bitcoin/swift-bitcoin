@@ -388,9 +388,25 @@ actor HybridBlockIndex: BlockIndex {
         return forks
     }
 
-    func clear() {
+    func clear() async {
         heightsCache = .init()
         cache = .init()
+        await clearPersistent()
+    }
+
+    private func clearPersistent() async {
+        env = nil // closes env
+
+        // Removes folder
+        let fs = FileSystem.shared
+        do {
+            try await fs.removeItem(at: path)
+        } catch {
+            logger.error("Issue removing block index directory: \(error.localizedDescription)")
+            return // TODO: Probably throw here
+        }
+
+        env = initEnv(path: path)
     }
 
     private func findActiveRef(_ height: Int) -> BlockRef? {
