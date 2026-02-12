@@ -5,15 +5,9 @@ import BitcoinBase
 /// An index plus in-memory storage for coins.
 struct TransientCoinsIndex: CoinsIndex {
 
-    private var coins = OrderedDictionary<Outpoint, UnspentOutput>()
+    private var coins = [Outpoint: UnspentOutput]()
 
-    var all: [Outpoint : UnspentOutput] {
-        var unordered = [Outpoint : UnspentOutput]()
-        for (k, v) in coins {
-            unordered[k] = v
-        }
-        return unordered
-    }
+    var all: [Outpoint : UnspentOutput] { coins }
 
     func get(_ outpoint: Outpoint) -> UnspentOutput? {
         coins[outpoint]
