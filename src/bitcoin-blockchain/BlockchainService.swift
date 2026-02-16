@@ -41,7 +41,7 @@ public actor BlockchainService: Sendable {
         }
 
         blockIndex = if let dataDir { HybridBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
-        coins = if let dataDir { PersistentCoinsIndex(path: dataDir, logger: logger) } else { TransientCoinsIndex() }
+        coins = if let dataDir { HybridCoinsIndex(path: dataDir, logger: logger) } else { TransientCoinsIndex() }
 
         let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
         do {
@@ -71,10 +71,8 @@ public actor BlockchainService: Sendable {
                 let bestAncestor = await blockIndex.bestAncestor(of: bestHeader)
                 if bestAncestor.header.id != bestBlock.header.id { … }
                 */
-                if let next = await nextBlockToValidate() {
-                    validationTask = Task {
-                        try await connectBlock(ref: next)
-                    }
+                validationTask = Task {
+                    try await validateBlocks()
                 }
             }
         } else {
@@ -280,7 +278,7 @@ public actor BlockchainService: Sendable {
 
     private func processBlockInternal(_ block: Block, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) {
 
-        knownBlocksCounter.increment()
+        Metrics.knownBlocksCounter.increment()
 
         let headerRef: BlockRef
         if let ref = await blockIndex.get(block.id) {
@@ -301,17 +299,8 @@ public actor BlockchainService: Sendable {
         }
 
         guard currentlyValidating == nil else { return }
-
-        let nextRef: BlockRef
-        if let next = await nextBlockToValidate() {
-            precondition(next.header.previous == activeTip.header.id)
-            nextRef = next
-        } else {
-            return
-        }
-
         validationTask = Task {
-            try await connectBlock(ref: nextRef)
+            try await validateBlocks()
         }
         if immediate {
             do {
@@ -352,7 +341,7 @@ public actor BlockchainService: Sendable {
     /// Returns silently if transaction is already in the mempool.
     public func addTransaction(_ tx: Transaction) async throws(TransactionValidationError) {
 
-        transactionsCounter.increment()
+        Metrics.transactionsCounter.increment()
 
         guard !mempool.contains(tx) else {
             logger.warning("Transaction already in mempool: \(tx.idHex)")
@@ -541,7 +530,7 @@ public actor BlockchainService: Sendable {
 
     /// Processes a block header without its transactions.
     public func processHeader(_ header: Block) async throws(Error) {
-        headersCounter.increment()
+        Metrics.headersCounter.increment()
 
         guard let prev = await checkConnectivity(header) else {
             return
@@ -1208,24 +1197,31 @@ public actor BlockchainService: Sendable {
         return updatedRef
     }
 
-    /// If we have a header in our index it updates it's validation. If not it adds the block to the index. Adds the block to storage along with undo information and updates coins (chainstate).
-    private func connectBlock(block cachedBlock: Block? = nil, ref blockRef: BlockRef? = nil) async throws(Error) {
-
-        // This function is called recursively so we check for Task cancelation at every incarnation
-        guard !Task.isCancelled else {
-            currentlyValidating = nil
-            return
+    private func validateBlocks() async throws(Error) {
+        var maybeNext: BlockRef? = await nextBlockToValidate()
+        while let next = maybeNext {
+            currentlyValidating = next.header.id
+            try await connectBlock(next)
+            guard !Task.isCancelled else {
+                continue
+            }
+            maybeNext = await nextBlockToValidate()
         }
+        currentlyValidating = nil
+    }
 
-        precondition(cachedBlock != nil || blockRef != nil)
-        let blockID = cachedBlock?.id ?? blockRef!.header.id
-        currentlyValidating = blockID
+    /// If we have a header in our index it updates it's validation. If not it adds the block to the index. Adds the block to storage along with undo information and updates coins (chainstate).
+    private func connectBlock(_ blockRef: BlockRef) async throws(Error) {
+        // precondition(cachedBlock != nil || blockRef != nil)
+        //let blockID = cachedBlock?.id ?? blockRef!.header.id
+        let blockID = blockRef.header.id
 
+        /*
         let blockRef = if let blockRef {
             blockRef
         } else {
             await blockIndex.get(blockID)!
-        }
+        }*/
 
         precondition(blockRef.header.previous != Block.nullParent) // Can't be genesis block
         precondition(blockRef.header.id == blockID && blockRef.status == .merkle)
@@ -1235,51 +1231,44 @@ public actor BlockchainService: Sendable {
         precondition(blockOnlyLocator.undoOffset == -1)
 
         let block: Block
-        if let cachedBlock {
+        /*if let cachedBlock {
             block = cachedBlock
-        } else {
+        } else {*/
             do {
                 (block, _) = try await blockStorage.retrieve(blockOnlyLocator)
             } catch {
                 throw .blockFileIssue
             }
-        }
+        /*}*/
 
         logger.debug("Connecting block \(block.idHex)")
 
         let startTime = ContinuousClock.Instant.now
 
-        let checkScripts: Bool
-        if let assumeValid = params.assumeValid, let assumeValidRef = await blockIndex.get(assumeValid) {
-            // We've been configured with the hash of a block which has been externally verified to have a valid history.
-            // A suitable default value is included with the software and updated from time to time.  Because validity relative to a piece of software is an objective fact these defaults can be easily reviewed.
-            // This setting doesn't force the selection of any particular chain but makes validating some faster by effectively caching the result of part of the verification.
-            let assumeValidAncestor = await blockIndex.ancestor(of: assumeValidRef, at: blockRef.height)
-            let bestHeaderAncestor = await blockIndex.ancestor(of: bestHeader, at: blockRef.height)
-            let minChainwork = try! DifficultyTarget(Data(params.minChainwork.reversed()))
-            if assumeValidAncestor.header.id == blockRef.header.id, bestHeaderAncestor.header.id == blockRef.header.id, bestHeader.chainwork >= minChainwork {
-
-                /*
-                if (it->second.GetAncestor(pindex->nHeight) == pindex &&
-                    m_chainman.m_best_header->GetAncestor(pindex->nHeight) == pindex &&
-                    m_chainman.m_best_header->nChainWork >= m_chainman.MinimumChainWork()) {
-                 */
-
-                // This block is a member of the assumed verified chain and an ancestor of the best header.
-                // Script verification is skipped when connecting blocks under the assumevalid block. Assuming the assumevalid block is valid this is safe because block merkle hashes are still computed and checked,
-                // Of course, if an assumed valid block is invalid due to false scriptSigs this optimization would allow an invalid chain to be accepted.
-                // The equivalent time check discourages hash power from extorting the network via DOS attack into accepting an invalid block through telling users they must manually set assumevalid.
-                // Requiring a software change or burying the invalid block, regardless of the setting, makes it hard to hide the implication of the demand.  This also avoids having release candidates  that are hardly doing any signature verification at all in testing without having to artificially set the default assumed verified block further back.
-                // The test against the minimum chain work prevents the skipping when denied access to any chain at least as good as the expected chain.
-                checkScripts = blockProofEquivalentTime(to: bestHeader, from: blockRef, tip: bestHeader) <= 60 * 60 * 24 * 7 * 2
+        let scriptCheckReason: String?
+        if let assumeValid = params.assumeValid {
+            if let assumeValidRef = await blockIndex.get(assumeValid) {
+                if await blockIndex.ancestor(of: assumeValidRef, at: blockRef.height).header.id != blockRef.header.id {
+                    scriptCheckReason = blockRef.height > assumeValidRef.height ? "block height above assumevalid height" : "block not in assumevalid chain"
+                } else if await blockIndex.ancestor(of: bestHeader, at: blockRef.height).header.id != blockRef.header.id {
+                    scriptCheckReason = "block not in best header chain"
+                } else if try! DifficultyTarget(Data(params.minChainwork.reversed())) > bestHeader.chainwork {
+                    scriptCheckReason = "best header chainwork below minimumchainwork"
+                } else if blockProofEquivalentTime(to: bestHeader, from: blockRef, tip: bestHeader) <= 60 * 60 * 24 * 7 * 2 {
+                    scriptCheckReason = "block too recent relative to best header";
+                } else {
+                    scriptCheckReason = nil
+                }
             } else {
-                checkScripts = true
+                scriptCheckReason = "assumevalid hash not in headers"
             }
         } else {
-            checkScripts = true
+            scriptCheckReason = "assumevalid=0 (always verify)"
         }
 
-        if !checkScripts {
+        if let scriptCheckReason {
+            logger.info("Checking scripts validation due to \(scriptCheckReason)")
+        } else {
             logger.info("Skipping script validation due to assume valid configuration")
         }
 
@@ -1290,13 +1279,10 @@ public actor BlockchainService: Sendable {
         var tmpExclude = [Outpoint]()
         var tmpCoins = [Outpoint: UnspentOutput]()
         for txIndex in block.txs.indices {
-            guard !Task.isCancelled else {
-                currentlyValidating = nil
-                return
-            }
+            guard !Task.isCancelled else { return }
             let tx = block.txs[txIndex]
             do {
-                try await checkTx(tx, block: blockRef, previous: activeTip, checkScripts: checkScripts, exclude: tmpExclude, auxCoins: tmpCoins)
+                try await checkTx(tx, block: blockRef, previous: activeTip, checkScripts: scriptCheckReason != nil, exclude: tmpExclude, auxCoins: tmpCoins)
             } catch {
 
                 // TODO: Invalidate all descendants (blocks that build upon this block)
@@ -1353,10 +1339,7 @@ public actor BlockchainService: Sendable {
         }
 
         // Last chance to exit before modifying coins, mempool, activeTip
-        guard !Task.isCancelled else {
-            currentlyValidating = nil
-            return
-        }
+        guard !Task.isCancelled else { return }
 
         let spentCoins = try! await coins.update(remove: outpointsToRemove, add: newCoins)
         let blockUndo = BlockUndo(spentCoins: spentCoins)
@@ -1404,19 +1387,13 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        validBlocksCounter.increment()
-        validTransactionsCounter.increment(by: block.txs.count)
-        blockValidationTimer.record(duration: .now - startTime)
+        Metrics.validBlocksCounter.increment()
+        Metrics.validTransactionsCounter.increment(by: block.txs.count)
+        Metrics.blockValidationTimer.record(duration: .now - startTime)
 
         if bestHeader.header.id == activeTip.header.id {
             bestHeader = activeTip
-            currentlyValidating = nil
-        } else if let next = await nextBlockToValidate() {
-            try await connectBlock(ref: next)
-        } else {
-            currentlyValidating = nil
         }
-
     }
 
     private func getNextWorkRequired(lastHeader: BlockRef, newBlockTime: Date, params: ConsensusParams) async -> Int {
@@ -1813,9 +1790,11 @@ private func nowSeconds() -> TimeInterval {
 private typealias LockPoints = (height: Int, time: Int, ancestor: BlockRef)
 private typealias LockPair = (height: Int, time: Int)
 
-private let transactionsCounter = Counter(label: "transactions")
-private let headersCounter = Counter(label: "headers")
-private let knownBlocksCounter = Counter(label: "known-blocks")
-private let validBlocksCounter = Counter(label: "valid-blocks")
-private let validTransactionsCounter = Counter(label: "valid-transactions")
-private let blockValidationTimer = Timer(label: "block-validation", preferredDisplayUnit: .seconds)
+private enum Metrics {
+    static let transactionsCounter = Counter(label: "transactions")
+    static let headersCounter = Counter(label: "headers")
+    static let knownBlocksCounter = Counter(label: "known-blocks")
+    static let validBlocksCounter = Counter(label: "valid-blocks")
+    static let validTransactionsCounter = Counter(label: "valid-transactions")
+    static let blockValidationTimer = Timer(label: "block-validation", preferredDisplayUnit: .seconds)
+}
