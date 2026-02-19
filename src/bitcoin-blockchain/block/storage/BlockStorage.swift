@@ -23,6 +23,7 @@ protocol BlockStorage: Sendable {
     func next(_ iterator: BlockIterator, includeUndo: Bool) async -> BlockIterator?
 
     func clearUndo() async
+    func flush() async
 }
 
 struct BlockIterator {

@@ -252,6 +252,8 @@ public actor BlockchainService: Sendable {
     /// Cancels concurrent tasks and removes all subscriptions to block and transaction updates.
     public func shutdown() async {
 
+        await blockStorage.flush() // Flush blocks and undo to disk
+
         // Cancel reindex task and wait for it to fishish
         reindexTask?.cancel()
         _ = await reindexTask?.value
