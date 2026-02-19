@@ -24,6 +24,8 @@ struct BlockRef: Equatable, Sendable {
     public internal(set) var status: ValidationStatus
     public internal(set) var locator: BlockStorageLocator?
 
+    var skip: Block.ID? = nil
+
     // MARK: - Computed Properties
 
     /// Calculate the difficulty for a given block index.
@@ -36,6 +38,15 @@ struct BlockRef: Equatable, Sendable {
     // MARK: - Type Properties
 
     // MARK: - Type Methods
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.header == rhs.header &&
+        lhs.height == rhs.height &&
+        lhs.chainwork == rhs.chainwork &&
+        lhs.chainTxCount == rhs.chainTxCount &&
+        lhs.status == rhs.status &&
+        lhs.locator == rhs.locator
+    }
 }
 
 extension ValidationStatus: BinaryCodable {
