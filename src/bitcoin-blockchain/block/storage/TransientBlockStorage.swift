@@ -107,4 +107,6 @@ actor TransientBlockStorage: BlockStorage {
         let locator = BlockStorageLocator(file: -1, offset: offset, undoOffset: undoOffset)
         return .init(locator: locator, block: block, undo: blockUndo)
     }
+
+    func flush() async { }
 }

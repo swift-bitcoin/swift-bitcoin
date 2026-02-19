@@ -44,7 +44,14 @@ struct PersistenceTests {
 
             try await bob.processBlock(block1)
             await #expect(bob.height == 1)
-
+            await withTaskGroup {
+                $0.addTask {
+                    await alice.shutdown()
+                }
+                $0.addTask {
+                    await bob.shutdown()
+                }
+            }
             try? fm.removeItem(atPath: dataDir.string)
         }
     }
@@ -87,6 +94,15 @@ struct PersistenceTests {
 
             try await bob.processBlock(block1)
             await #expect(bob.height == 1)
+
+            await withTaskGroup {
+                $0.addTask {
+                    await alice.shutdown()
+                }
+                $0.addTask {
+                    await bob.shutdown()
+                }
+            }
 
             try! fm.removeItem(atPath: dataDir.string)
         }
