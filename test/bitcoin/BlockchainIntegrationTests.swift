@@ -469,5 +469,13 @@ struct BlockchainIntegrationTests {
             .init(tip: blockCC.id, height: 3, branchLength: 2, status: .stale)
         ]
         #expect(tips == expectedTips)
+
+        await withTaskGroup {
+            $0.addTask {
+                await satoshi.shutdown()
+                await alice.shutdown()
+                await bob.shutdown()
+            }
+        }
     }
 }
