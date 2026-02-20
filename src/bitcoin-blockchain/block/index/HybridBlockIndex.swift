@@ -20,7 +20,8 @@ actor HybridBlockIndex: BlockIndex {
             try! byHeight.withCursor(readOnly: true) { cursor in
                 var maybeID = try! cursor.get(.first)
                 while let id = maybeID {
-                    let ref = try! _get(id, byID: byID)!
+                    var ref = try! _get(id, byID: byID)!
+                    ref.skip = _ancestor(of: ref, at: skipHeight(from: ref.height), refs: cache).header.id
                     if ref.height < heightsCache.count {
                         heightsCache[ref.height].append(id)
                     } else if ref.height == heightsCache.count {
@@ -91,12 +92,15 @@ actor HybridBlockIndex: BlockIndex {
     }
 
     func ancestor(of tip: BlockRef, at height: Int) -> BlockRef {
+        _ancestor(of: tip, at: height, refs: cache)
+        /*
         precondition(height <= tip.height)
         var candidate = tip
         while candidate.height > height {
             candidate = cache[candidate.header.previous]!
         }
         return candidate
+         */
     }
 
     func bestAncestor(of header: BlockRef) -> BlockRef {
@@ -169,7 +173,8 @@ actor HybridBlockIndex: BlockIndex {
 
         let height = if let previous { previous.height + 1 } else { 0 }
         let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
-        let newRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
+        var newRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
+        newRef.skip = ancestor(of: newRef, at: skipHeight(from: height)).header.id
         cache[newRef.header.id] = newRef
 
         // We might have some previous forks at this height
@@ -477,4 +482,37 @@ private func initEnv(path: FilePath) -> Environment {
     try! env.createDB(byID)
     try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey, .duplicateSort, .duplicateFixed])) { _, _ in }
     return env
+}
+
+/// Turns the lowest `1` bit in the binary representation of a number into a `0`.
+private func invertLowestOne(_ n: Int) -> Int { n & (n - 1) }
+
+/// Compute what height to jump back to with the `BlockRef.previous` pointer.
+private func skipHeight(from height: Int) -> Int {
+    if height < 2 { return 0 }
+
+    // Determine which height to jump back to. Any number strictly lower than height is acceptable, but the following expression seems to perform well in simulations (max 110 steps to go back up to 2**18 blocks).
+    return height & 1 != 0 ? invertLowestOne(invertLowestOne(height - 1)) + 1 : invertLowestOne(height)
+}
+
+private func _ancestor(of tip: BlockRef, at height: Int, refs: [Block.ID : BlockRef]) -> BlockRef {
+    precondition(height <= tip.height)
+    var indexWalk = tip // const CBlockIndex* pindexWalk = this;
+    var heightWalk = tip.height
+    while (heightWalk > height) {
+        let heightSkip = skipHeight(from: heightWalk)
+        let heightSkipPrev = skipHeight(from: heightWalk - 1)
+        if let skip = indexWalk.skip, heightSkip == height || (
+            heightSkip > height && !(
+                heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height))
+        {
+            // Only follow skip if previous->skip isn't better than skip->previous.
+            indexWalk = refs[skip]!
+            heightWalk = heightSkip
+        } else {
+            indexWalk = refs[indexWalk.header.previous]!
+            heightWalk -= 1
+        }
+    }
+    return indexWalk
 }
