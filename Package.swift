@@ -80,7 +80,9 @@ let package = Package(
                 .product(name: "LibSECP256k1", package: "secp256k1"),
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "BinaryParsing", package: "swift-binary-parsing", condition: .when(platforms: [.macOS, .linux]))
-        ], path: "src/bitcoin-crypto", swiftSettings: [/*.strictMemorySafety(),*/ .enableExperimentalFeature("SafeInteropWrappers")]),
+        ], path: "src/bitcoin-crypto",
+                swiftSettings: [/*.strictMemorySafety(),*/
+                   .enableExperimentalFeature("SafeInteropWrappers")]),
 
         // Internal libraries
         .target(

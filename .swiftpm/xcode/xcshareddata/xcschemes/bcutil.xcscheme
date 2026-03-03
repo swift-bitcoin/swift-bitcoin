@@ -29,6 +29,88 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinBaseTests"
+               BuildableName = "BitcoinBaseTests"
+               BlueprintName = "BitcoinBaseTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinBlockchainTests"
+               BuildableName = "BitcoinBlockchainTests"
+               BlueprintName = "BitcoinBlockchainTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinCryptoTests"
+               BuildableName = "BitcoinCryptoTests"
+               BlueprintName = "BitcoinCryptoTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinMiniscriptTests"
+               BuildableName = "BitcoinMiniscriptTests"
+               BlueprintName = "BitcoinMiniscriptTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinPSBTTests"
+               BuildableName = "BitcoinPSBTTests"
+               BlueprintName = "BitcoinPSBTTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinTransportTests"
+               BuildableName = "BitcoinTransportTests"
+               BlueprintName = "BitcoinTransportTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BitcoinWalletTests"
+               BuildableName = "BitcoinWalletTests"
+               BlueprintName = "BitcoinWalletTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LMDBTests"
+               BuildableName = "LMDBTests"
+               BlueprintName = "LMDBTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
