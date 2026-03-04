@@ -16,7 +16,7 @@ jobs:
       - name: Install Swift
         uses: vapor/swiftly-action@v0.2
         with:
-            toolchain: 6.2
+            toolchain: 6.2.4
         # uses: sersoft-gmbh/swifty-linux-action@v3
         # with:
             # release-version: 6.1.2

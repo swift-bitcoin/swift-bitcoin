@@ -100,8 +100,7 @@ struct UInt256Tests {
         #expect(UInt256.zero == 0)
     }
 
-    @Test("Addition commutativity",
-          )
+    @Test("Addition commutativity") // TODO: Find a way to use UInt256 as test arguments
     func additionCommutativity(/*a: UInt256, b: UInt256*/) {
         let arguments = [(UInt256(1), UInt256(2)), (UInt256(0), UInt256(100))]
         for (a, b) in arguments {
@@ -775,7 +774,7 @@ struct UInt256Tests {
 
     // MARK: - 11. Codable (Encodable + Decodable)
 
-    @Test("JSON encode/decode round-trip",
+    @Test("JSON encode/decode round-trip", .disabled("Crashing Swift Linux 6.2.4"),
           arguments: [UInt256(0), UInt256(1), UInt256(UInt64.max), UInt256.max])
     func jsonRoundTrip(v: UInt256) throws {
         let encoder = JSONEncoder()
@@ -785,7 +784,7 @@ struct UInt256Tests {
         #expect(decoded == v)
     }
 
-    @Test("PropertyList encode/decode round-trip", .disabled())
+    @Test("PropertyList encode/decode round-trip", .disabled("Crashing Swift Linux 6.2.4"))
     func plistRoundTrip() throws {
         let v: UInt256 = 9_999_999_999
         let encoder = PropertyListEncoder()
@@ -918,7 +917,7 @@ struct UInt256Tests {
 
     // MARK: - 14. Sendable & Concurrency
 
-    @Test("UInt256 values can be shared across actor boundaries")
+    @Test("UInt256 values can be shared across actor boundaries", .disabled("Crashing Swift Linux 6.2.4"))
     func sharedAcrossActors() async {
         let v: UInt256 = 42
         let result = await Task.detached { v * v }.value
@@ -927,7 +926,7 @@ struct UInt256Tests {
         #expect(result == UInt256(1764))
     }
 
-    @Test("Concurrent reads produce consistent results")
+    @Test("Concurrent reads produce consistent results", .disabled("Crashing Swift Linux 6.2.4"))
     func concurrentReads() async {
         let values: [UInt256] = (0..<100).map { UInt256($0) }
         await withTaskGroup(of: Bool.self) { group in
