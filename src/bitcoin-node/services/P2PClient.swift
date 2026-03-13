@@ -96,16 +96,18 @@ actor P2PClient: Service {
             try await withThrowingDiscardingTaskGroup { [logger] group in
                 group.addTask { [peerID] in
                     await self.node.connect(peerID)
+                    logger.info("Connected \(peerID)")
                     while let message = await self.node.popMessage(peerID) {
                         try await outbound.write(message)
                     }
-                    logger.info("Connected \(peerID)")
+                    logger.debug("Initial response messages sent for \(peerID)")
                 }
                 group.addTask { [peerID] in
                     for await message in await self.node.getChannel(for: peerID).cancelOnGracefulShutdown() {
                         try await outbound.write(message)
                     }
                     try? await clientChannel.channel.close()
+                    logger.debug("Done listening for spontaneous outgoing messages for \(peerID)")
                 }
                 group.addTask { [logger, peerID] in
                     for try await message in inbound.cancelOnGracefulShutdown() {
@@ -117,7 +119,12 @@ actor P2PClient: Service {
                             break // Important that we don't return or continue here as the removal of the peer happens on this task but we don't want to process any more incoming/outgoing messages once an exception occurred.
 
                         }
+                        // Send all queued responses
                         while let message = await self.node.popMessage(peerID) {
+                            guard clientChannel.channel.isActive else {
+                                logger.warning("Client channel became inactive")
+                                break // Break the loop manually as no `cancelOnGracefulShutdown()` on `while`.
+                            }
                             try await outbound.write(message)
                         }
                     }
