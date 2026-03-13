@@ -252,8 +252,6 @@ public actor BlockchainService: Sendable {
     /// Cancels concurrent tasks and removes all subscriptions to block and transaction updates.
     public func shutdown() async {
 
-        await blockStorage.flush() // Flush blocks and undo to disk
-
         // Cancel reindex task and wait for it to fishish
         reindexTask?.cancel()
         _ = await reindexTask?.value
@@ -261,6 +259,8 @@ public actor BlockchainService: Sendable {
         // Cancel validation task and wait for it to fishish
         validationTask?.cancel()
         _ = try? await validationTask?.value
+
+        await blockStorage.flush() // Flush blocks and undo to disk
 
         // Removes all subscriptions to block and transaction updates.
         for blockChannel in blockChannels {
@@ -1205,7 +1205,7 @@ public actor BlockchainService: Sendable {
             currentlyValidating = next.header.id
             try await connectBlock(next)
             guard !Task.isCancelled else {
-                continue
+                break // Break while-loop otherwise could be stuck trying to connect same block over and over
             }
             maybeNext = await nextBlockToValidate()
         }

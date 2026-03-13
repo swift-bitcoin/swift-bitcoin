@@ -241,7 +241,7 @@ actor ServerApp {
             await self.clearPeer(id)
         }
         p2pClients[service.id] = service
-        let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore)
+        let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup) // TODO: Maybe do not shut down when we timeout on an outgoing peer?
         await serviceGroup.addServiceUnlessShutdown(config)
         return service.peerID
     }

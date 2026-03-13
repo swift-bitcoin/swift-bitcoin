@@ -81,6 +81,14 @@ actor PersistentBlockStorage: BlockStorage {
         self.fileSizes = [Int](fileSizes.values)
         self.undoFileSizes = [Int](undoFileSizes.values)
 
+        // Initialize `lastStoredBlockFileSize` and `lastStoredUndoFileSize` for the out of band storage queue and `isCaughtUp`
+        if !self.fileSizes.isEmpty {
+            lastStoredBlockFileSize = (file: self.fileSizes.count - 1, size: self.fileSizes[self.fileSizes.count - 1])
+        } // else { lastStoredBlockFileSize = (file: -1, size: -1) }
+        if !self.undoFileSizes.isEmpty {
+            lastStoredUndoFileSize = (file: self.undoFileSizes.count - 1, size: self.undoFileSizes[self.undoFileSizes.count - 1])
+        } // else { lastStoredUndoFileSize = (file: -1, size: -1) }
+
         logger.info("Files: \(fileSizes.count), \(undoFileSizes.count); Total size: \(sizeOnDisk)")
         // TODO: Prepopulate cache with the last `Self.cacheSize` blocks.
     }
