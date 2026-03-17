@@ -93,14 +93,6 @@ actor HybridBlockIndex: BlockIndex {
 
     func ancestor(of tip: BlockRef, at height: Int) -> BlockRef {
         _ancestor(of: tip, at: height, refs: cache)
-        /*
-        precondition(height <= tip.height)
-        var candidate = tip
-        while candidate.height > height {
-            candidate = cache[candidate.header.previous]!
-        }
-        return candidate
-         */
     }
 
     func bestAncestor(of header: BlockRef) -> BlockRef {
@@ -119,7 +111,7 @@ actor HybridBlockIndex: BlockIndex {
 
         var current = tip
         var blocks = Deque<Block.ID>(minimumCapacity: max)
-        // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
+        // TODO: It has occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
         while current.height > stop.height /* current.header.id != stop.header.id */ {
             if current.status == .header {
                 if blocks.count == max {

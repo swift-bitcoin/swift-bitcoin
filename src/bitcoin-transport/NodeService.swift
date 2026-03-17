@@ -630,6 +630,7 @@ public actor NodeService: Sendable {
     /// BIP133
     private func processFeeFilter(_ message: NetworkMessage, from id: PeerID) throws {
         guard let feeFilter = FeeFilterMessage(message.payload) else {
+            logger.error("Could not parse fee filter message")
             throw Error.invalidPayload
         }
 
@@ -640,6 +641,7 @@ public actor NodeService: Sendable {
         guard let _ = state.peers[id] else { return }
 
         guard let getHeaders = GetHeadersMessage(message.payload) else {
+            logger.error("Could not parse get headers message")
             throw Error.invalidPayload
         }
 

@@ -5,8 +5,8 @@ import struct SystemPackage.FilePath
 import Logging
 import BitcoinBase
 
-/// An index plus in-memory storage for coins.
-actor HybridCoinsIndex: CoinsIndex {
+/// An index plus on-disk LMDB storage for coins.
+actor PersistentCoinIndex: CoinIndex {
 
     enum Error: Swift.Error {
         case deletionIssue
@@ -16,8 +16,14 @@ actor HybridCoinsIndex: CoinsIndex {
         self.path = path.appending("coins")
         self.logger = logger
         env = initEnv(path: self.path)
+    }
 
-        var coins = [Outpoint : UnspentOutput]()
+    private let path: FilePath
+    private let logger: Logger
+    private var env: Environment!
+
+    var coins: [Outpoint : UnspentOutput] { get {
+        var unordered = [Outpoint : UnspentOutput]()
         do {
             try env.withTransaction(db: byID, options: .readOnly) { _, byID in
                 try byID.withCursor(readOnly: true) { cursor in
@@ -26,51 +32,44 @@ actor HybridCoinsIndex: CoinsIndex {
                         let (outpointData, coinData) = kv
                         let outpoint = try Outpoint(outpointData)
                         let coin = try UnspentOutput(coinData)
-                        coins[outpoint] = coin
+                        unordered[outpoint] = coin
                         maybeKv = try cursor.getPair(.next)
                     }
                 }
             }
         } catch {
-            coins = [:] // TODO: Throw error
+            return [ : ]
         }
-        self.coins = coins
-    }
+        return unordered
+    } }
 
-    private let path: FilePath
-    private let logger: Logger
-    private var env: Environment!
-    private var coins: [Outpoint: UnspentOutput]
-
-    var all: [Outpoint : UnspentOutput] { coins }
-
-    func get(_ outpoint: Outpoint) -> UnspentOutput? {
-        coins[outpoint]
+    func get(_ outpoint: Outpoint) throws(CoinsError) -> UnspentOutput? {
+        let result: UnspentOutput?
+        do {
+            result = try env.withTransaction(db: byID, options: .readOnly) { _, byID  throws(CoinsError) in
+                try _get(outpoint, byID: byID)
+            }
+        } catch {
+            switch error {
+            case let .handlerIssue(nestedError):
+                throw nestedError
+            default:
+                throw .databaseError(error)
+            }
+        }
+        return result
     }
 
     func update(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) throws(CoinsError) -> [UnspentOutput?] {
-        var removedOutpoints = [Outpoint]()
         var removedCoins = [UnspentOutput?]()
-        for outpoint in outpointsToRemove {
-            guard let coin = coins[outpoint] else {
-                removedCoins.append(nil)
-                continue // Some coins may be spends from within the block
-            }
-            removedOutpoints.append(outpoint)
-            removedCoins.append(coin)
-            coins[outpoint] = nil
-        }
-        for (outpoint, coin) in coinsToAdd {
-            coins[outpoint] = coin
-        }
-        try updatePersistent(remove: removedOutpoints, add: coinsToAdd)
-        return removedCoins
-    }
-
-    private func updatePersistent(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) throws(CoinsError) {
         do {
             try env.withTransaction(db: byID) { _, byID throws(CoinsError) in
                 for outpoint in outpointsToRemove {
+                    guard let coin = try _get(outpoint, byID: byID) else {
+                        removedCoins.append(nil)
+                        continue // Some coins may be spends from within the block
+                    }
+                    removedCoins.append(coin)
                     let deleted: Bool
                     do {
                         deleted = try byID.delete(outpoint.data)
@@ -97,25 +96,16 @@ actor HybridCoinsIndex: CoinsIndex {
                 throw .databaseError(error)
             }
         }
+        return removedCoins
     }
 
     func add(_ coin: UnspentOutput, for outpoint: Outpoint) {
-        coins[outpoint] = coin
-        addPersistent(coin, for: outpoint)
-    }
-
-    private func addPersistent(_ coin: UnspentOutput, for outpoint: Outpoint) {
         try! env.withTransaction(db: byID) { _, byID in
             try byID.put(coin.data, key: outpoint.data)
         }
     }
 
     func remove(_ outpoint: Outpoint) throws(Error) {
-        coins[outpoint] = nil
-        try removePersistent(outpoint)
-    }
-
-    private func removePersistent(_ outpoint: Outpoint) throws(Error) {
         do {
             try env.withTransaction(db: byID) { _, byID in
                 try byID.delete(outpoint.data)
@@ -127,11 +117,6 @@ actor HybridCoinsIndex: CoinsIndex {
     }
 
     func clear() async {
-        coins = .init()
-        await clearPersistent()
-    }
-
-    private func clearPersistent() async {
         env = nil // closes env
 
         // Removes folder
@@ -148,6 +133,23 @@ actor HybridCoinsIndex: CoinsIndex {
 }
 
 private let byID = Database.Descriptor("by-id")
+
+private func _get(_ outpoint: Outpoint, byID: borrowing LMDB.Database) throws(CoinsError) -> UnspentOutput? {
+    let data: Data?
+    do {
+        data = try byID.get(outpoint.data)
+    } catch {
+        throw .databaseError(error)
+    }
+    guard let data else {
+        return nil
+    }
+    do {
+        return try UnspentOutput(data)
+    } catch {
+        throw .corruptedCoinData
+    }
+}
 
 private func initEnv(path: FilePath) -> Environment {
     let env = try! Environment(at: URL(filePath: path.string), maxDBs: 1, pages: 400_000, options: [.noSubDir])
