@@ -3,41 +3,33 @@ import Logging
 import BitcoinBase
 
 /// An index plus in-memory storage for coins.
-struct TransientCoinsIndex: CoinsIndex {
+struct TransientCoinIndex: CoinIndex {
 
-    private var coins = [Outpoint: UnspentOutput]()
+    private var _coins = [Outpoint: UnspentOutput]()
 
-    var all: [Outpoint : UnspentOutput] { coins }
+    var coins: [Outpoint : UnspentOutput] { _coins }
 
     func get(_ outpoint: Outpoint) -> UnspentOutput? {
-        coins[outpoint]
+        _coins[outpoint]
     }
 
     mutating func update(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) throws(CoinsError) -> [UnspentOutput?] {
         var removedCoins = [UnspentOutput?]()
         for outpoint in outpointsToRemove {
-            guard let coin = coins[outpoint] else {
+            guard let coin = _coins[outpoint] else {
                 removedCoins.append(nil)
                 continue // Some coins may be spends from within the block
             }
             removedCoins.append(coin)
-            coins[outpoint] = nil
+            _coins[outpoint] = nil
         }
         for (outpoint, coin) in coinsToAdd {
-            coins[outpoint] = coin
+            _coins[outpoint] = coin
         }
         return removedCoins
     }
 
-    mutating func add(_ coin: UnspentOutput, for outpoint: Outpoint) {
-        coins[outpoint] = coin
-    }
-
-    mutating func remove(_ outpoint: Outpoint) {
-        coins[outpoint] = nil
-    }
-
     mutating func clear() {
-        coins = .init()
+        _coins = .init()
     }
 }
