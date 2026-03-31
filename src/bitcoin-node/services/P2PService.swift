@@ -117,7 +117,7 @@ actor P2PService: Service {
                             try await connectionChannel.executeThenClose { [logger] inbound, outbound in
                                 try await withThrowingDiscardingTaskGroup { group in
                                     group.addTask {
-                                        for await message in await self.node.getChannel(for: peerID).cancelOnGracefulShutdown() {
+                                        for await message in await self.node.channel(for: peerID).cancelOnGracefulShutdown() {
                                             try await outbound.write(message)
                                         }
                                         try? await connectionChannel.channel.close()

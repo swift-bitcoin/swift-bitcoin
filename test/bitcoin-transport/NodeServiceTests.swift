@@ -27,7 +27,7 @@ struct NodeServiceTests: ~Copyable {
         self.satoshi = satoshi
         let halPeer = await satoshi.addPeer()
         self.halPeer = halPeer
-        satoshiOut = await satoshi.getChannel(for: halPeer).makeAsyncIterator()
+        satoshiOut = await satoshi.channel(for: halPeer).makeAsyncIterator()
 
         let halChain = try await BlockchainService()
         self.halChain = halChain
@@ -38,7 +38,7 @@ struct NodeServiceTests: ~Copyable {
         self.hal = hal
         let satoshiPeer = await hal.addPeer(incoming: false)
         self.satoshiPeer = satoshiPeer
-        halOut = await hal.getChannel(for: satoshiPeer).makeAsyncIterator()
+        halOut = await hal.channel(for: satoshiPeer).makeAsyncIterator()
     }
 
     deinit {
