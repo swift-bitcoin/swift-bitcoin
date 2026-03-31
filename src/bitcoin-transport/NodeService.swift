@@ -68,6 +68,9 @@ public actor NodeService: Sendable {
     /// BIP152
     private var pendingBlockTxs: [Block.ID : [Transaction?]] = [:]
 
+    /// The peer currently downloading headers from; `nil` means the peer has not been selected yet or we are close to the tip and accepting headers from all peers.
+    private var headersSyncPeerID: PeerID?
+
     private var maxPeerID = 0
 
     public func start() async {
@@ -135,6 +138,7 @@ public actor NodeService: Sendable {
         }
     }
 
+    /*
     /// Request headers from peers.
     public func requestHeaders() async {
         let maxHeight = state.peers.values.reduce(-1) { max($0, $1.height) }
@@ -145,6 +149,7 @@ public actor NodeService: Sendable {
         }
         await requestHeaders(id)
     }
+     */
 
     /// Registers a peer with the node. Incoming means we are the listener. Otherwise we are the node initiating the connection.
     public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) -> PeerID {
@@ -168,6 +173,9 @@ public actor NodeService: Sendable {
     /// Deregisters a peer and cleans up outbound channels.
     @discardableResult public func removePeer(_ id: PeerID) -> Bool {
         guard let _ = state.peers[id] else { return false }
+        if headersSyncPeerID == id {
+            headersSyncPeerID = nil
+        }
         state.peers[id]?.nextPingTask?.cancel()
         state.peers[id]?.checkPongTask?.cancel()
         peerOuts[id]?.finish()
@@ -177,7 +185,7 @@ public actor NodeService: Sendable {
     }
 
     /// Returns a channel for a given peer's outbox. The caller can be notified of new messages generated for this peer.
-    public func getChannel(for id: PeerID) -> AsyncChannel<NetworkMessage> {
+    public func channel(for id: PeerID) -> AsyncChannel<NetworkMessage> {
         precondition(state.peers[id] != nil)
         return peerOuts[id]!
     }
@@ -666,18 +674,50 @@ public actor NodeService: Sendable {
             state.peers[id]?.height = await blockchain.height
         }
 
+        // If we are close to the tip (24 hours) we allow parallel
+        if await blockchain.hasRecentHeader {
+            headersSyncPeerID = nil
+        } else if headersSyncPeerID == nil {
+            headersSyncPeerID = id
+        }
+
         if headersMessage.moreItems {
+            guard headersSyncPeerID == nil || headersSyncPeerID == id else {
+                return
+            }
             await requestHeaders(id)
         } else {
-            let headers = await blockchain.headers
-            logger.info("Headers downloaded \(headers).")
+            let headers = await blockchain.headers // Just the total
+            logger.info("All headers downloaded from peer \(id): \(headers).")
 
-            // BIP130 delaying `sendheaders` until we don't need more headers
-            if state.peers[id]?.sendHeadersSent == false {
+            if headersSyncPeerID == id {
+                headersSyncPeerID = nil
+
+                // BIP130 delay `sendheaders` until we don't need more headers. Do this for all peers except this one.
+                await withTaskGroup { group in
+                    for peerID in state.peers.keys {
+                        guard peerID != id else { continue }
+                        if !state.peers[peerID]!.sendHeadersSent {
+                            group.addTask {
+                                await self.sendSendHeaders(peerID)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // BIP130 delaying `sendheaders` until we don't need more headers. Do this for this particular peer.
+            if !state.peers[id]!.sendHeadersSent {
                 enqueue(.sendheaders, to: id)
+                state.peers[id]!.sendHeadersSent = true
             }
             await requestNextMissingBlocks(id)
         }
+    }
+
+    private func sendSendHeaders(_ id: PeerID) async {
+        await self.send(.sendheaders, to: id)
+        self.state.peers[id]!.sendHeadersSent = true
     }
 
     private func processSendHeaders(_ message: NetworkMessage, from id: PeerID) async throws {

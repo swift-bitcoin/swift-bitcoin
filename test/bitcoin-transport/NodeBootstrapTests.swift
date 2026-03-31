@@ -40,7 +40,7 @@ struct NodeBootstrapTests {
         await Task.yield()
 
         // Channels
-        var aliceToBob = await alice.getChannel(for: peerB).makeAsyncIterator()
+        var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
         // var bobToAlice = await bob.getChannel(for: peerA).makeAsyncIterator()
 
         // Begin testing
@@ -103,8 +103,8 @@ struct NodeBootstrapTests {
         await Task.yield()
 
         // Peer channels
-        var aliceToBob = await alice.getChannel(for: peerB).makeAsyncIterator()
-        var bobToCarol = await bob.getChannel(for: peerC).makeAsyncIterator()
+        var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
+        var bobToCarol = await bob.channel(for: peerC).makeAsyncIterator()
 
         // Begin testing
         let block1 = try #require(await alice.blockchain.generateTo(pubkey))
@@ -190,8 +190,8 @@ struct NodeBootstrapTests {
         await Task.yield()
 
         // Peer channels
-        var aliceToBob = await alice.getChannel(for: peerB).makeAsyncIterator()
-        var bobToCarol = await bob.getChannel(for: peerC).makeAsyncIterator()
+        var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
+        var bobToCarol = await bob.channel(for: peerC).makeAsyncIterator()
 
         // Begin testing
         try await alice.blockchain.addTransaction(tx)
@@ -318,8 +318,8 @@ struct NodeBootstrapTests {
         await Task.yield()
 
         // Peer channels
-        var aliceToBob = await alice.getChannel(for: peerB).makeAsyncIterator()
-        var bobToCarol = await bob.getChannel(for: peerC).makeAsyncIterator()
+        var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
+        var bobToCarol = await bob.channel(for: peerC).makeAsyncIterator()
 
         // Begin testing
         let aliceBlock2 = try #require(await alice.blockchain.generateTo(pubkey))
@@ -431,8 +431,8 @@ struct NodeBootstrapTests {
         await Task.yield()
 
         // Peer channels
-        var aliceToBob = await alice.getChannel(for: peerB).makeAsyncIterator()
-        var bobToCarol = await bob.getChannel(for: peerC).makeAsyncIterator()
+        var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
+        var bobToCarol = await bob.channel(for: peerC).makeAsyncIterator()
 
         // Begin testing
         let aliceBlock2 = try #require(await alice.blockchain.generateTo(pubkey))

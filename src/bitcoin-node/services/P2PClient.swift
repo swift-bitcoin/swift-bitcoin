@@ -103,7 +103,7 @@ actor P2PClient: Service {
                     logger.debug("Initial response messages sent for \(peerID)")
                 }
                 group.addTask { [peerID] in
-                    for await message in await self.node.getChannel(for: peerID).cancelOnGracefulShutdown() {
+                    for await message in await self.node.channel(for: peerID).cancelOnGracefulShutdown() {
                         try await outbound.write(message)
                     }
                     try? await clientChannel.channel.close()

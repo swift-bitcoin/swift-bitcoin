@@ -198,6 +198,11 @@ public actor BlockchainService: Sendable {
         bestHeader.status == .active
     }
 
+    /// Whether the best header is younger than 24 hours.
+    public var hasRecentHeader: Bool {
+        bestHeader.header.time > .now.addingTimeInterval(-60 * 60 * 24)
+    }
+
     /// The time of the best block.
     public var time: Date {
         activeTip.header.time
