@@ -52,8 +52,6 @@ extension TransactionOutput: BinaryCodable {
 
 // Binary parsing
 
-#if canImport(BinaryParsing) // Restore once BinaryParsing supports iOS ( >= 0.0.2)
-
 import BinaryParsing
 
 extension TransactionOutput {
@@ -62,5 +60,3 @@ extension TransactionOutput {
         script = .init([])
     }
 }
-
-#endif

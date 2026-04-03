@@ -260,8 +260,6 @@ extension Script: BinaryCodable {
 
 // Binary parsing
 
-#if canImport(BinaryParsing) // Restore once BinaryParsing supports iOS ( >= 0.0.2)
-
 import BinaryParsing
 
 extension Script {
@@ -284,5 +282,3 @@ extension Script {
         try input.seek(toAbsoluteOffset: range.upperBound)
     }
 }
-
-#endif

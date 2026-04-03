@@ -524,8 +524,6 @@ extension Script.Operation: BinaryCodable {
 
 // Binary parsing
 
-#if canImport(BinaryParsing) // Restore once BinaryParsing supports iOS ( >= 0.0.2)
-
 import BinaryParsing
 
 extension Script.Operation {
@@ -694,5 +692,3 @@ extension Script.Operation {
         // decoder.clearCheckpoint()
     }
 }
-
-#endif
