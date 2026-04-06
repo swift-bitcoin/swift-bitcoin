@@ -10,36 +10,27 @@ import Logging
 
 actor P2PClient: Service {
 
-    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int, onConnect: (@Sendable (UUID) async -> ())? = nil, onDisconnect: (@Sendable (UUID) async -> ())? = nil) async {
+    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) async {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.logger = logger
         remoteHost = host
         remotePort = port
-        self.onConnect = onConnect
-        self.onDisconnect = onDisconnect
         peerID = await node.addPeer(host: remoteHost, port: remotePort, incoming: false)
     }
 
-    let id = UUID()
     private let eventLoopGroup: EventLoopGroup
     private let node: NodeService
     private let logger: Logger
     let remoteHost: String
     let remotePort: Int
-    private var onConnect: (@Sendable (UUID) async -> ())?
-    private var onDisconnect: (@Sendable (UUID) async -> ())?
-    let peerID: Int
+    let peerID: PeerID
 
     // Status
     private(set) var connected = false
     private(set) var localPort = Int?.none
 
     private var clientChannel: NIOAsyncChannel<NetworkMessage, NetworkMessage>?
-
-    var status: StatusRPC.Result.P2PClient {
-        .init(peerID: peerID, connected: connected, remoteHost: remoteHost, remotePort: remotePort, localPort: localPort)
-    }
 
     /// Runs the stand-by client service but does not attempt to initiate a peer-to-peer connection.
     func run() async throws {
@@ -48,11 +39,6 @@ actor P2PClient: Service {
         } onGracefulShutdown: { [logger] in
             logger.info("P2P client shutting down gracefully…")
         }
-    }
-
-    func setConnectHandler(_ onConnect: (@escaping @Sendable (UUID) async -> ()), onDisconnect: (@escaping @Sendable (UUID) async -> ())) {
-        self.onConnect = onConnect
-        self.onDisconnect = onDisconnect
     }
 
     func disconnect() async throws {
@@ -81,7 +67,6 @@ actor P2PClient: Service {
             logger.warning("Could not connect to \(remoteHost):\(remotePort)")
             logger.warning("\(error)")
             await node.removePeer(peerID)
-            await onDisconnect?(id)
             return
         }
 
@@ -89,7 +74,6 @@ actor P2PClient: Service {
         connected = true
         localPort = clientChannel.channel.localAddress?.port
         logger.info("P2P client @\(localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
-        await onConnect?(id)
 
         try await clientChannel.executeThenClose { @Sendable [logger] inbound, outbound in
 
@@ -142,6 +126,5 @@ actor P2PClient: Service {
         clientChannel = nil
         connected = false
         localPort = nil
-        await onDisconnect?(id)
     }
 }

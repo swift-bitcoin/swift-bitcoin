@@ -8,6 +8,8 @@ public struct PeerState: Sendable {
     /// For incoming peers, the local IP address. For outgoing peers, the remote IP address.
     public let address: IPv6Address
 
+    public let host: String
+
     /// For incoming peers, the local TCP port. For outgoing peers, the remote TCP port.
     public let port: Int
 
