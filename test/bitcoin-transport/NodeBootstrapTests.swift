@@ -546,7 +546,7 @@ private func cleanup(_ services: [NodeService]) async {
 }
 
 private func makePeerState(_ incoming: Bool = false, highBandwidth: Bool = true) -> PeerState {
-    var ps = PeerState(address: IPv6Address.unspecified, port: 0, incoming: incoming)
+    var ps = PeerState(address: IPv6Address.unspecified, host: "", port: 0, incoming: incoming)
     ps.version = .init()
     ps.witnessRelayPreferenceReceived = true
     ps.v2AddressPreferenceReceived = true
