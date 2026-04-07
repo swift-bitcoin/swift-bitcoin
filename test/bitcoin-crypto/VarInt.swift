@@ -1,10 +1,7 @@
 import Foundation
 import Testing
-@testable import BitcoinCrypto
-
-#if canImport(BinaryParsing) // Restore once BinaryParsing supports iOS ( >= 0.0.2)
-
 import BinaryParsing
+@testable import BitcoinCrypto
 
 @Test(arguments: [
     (0, 1),
@@ -26,5 +23,3 @@ import BinaryParsing
     let varInt3 = try VarInt(parsing: &input)
     #expect(varInt == varInt3)
 }
-
-#endif

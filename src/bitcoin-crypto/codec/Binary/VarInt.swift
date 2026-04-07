@@ -63,8 +63,6 @@ public struct VarInt: Equatable, Sendable, BinaryCodable, CustomBinaryCodable {
 
 // Binary parsing
 
-#if canImport(BinaryParsing) // Restore once BinaryParsing supports iOS ( >= 0.0.2)
-
 import BinaryParsing
 
 extension VarInt {
@@ -83,5 +81,3 @@ extension VarInt {
         }
     }
 }
-
-#endif

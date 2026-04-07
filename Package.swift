@@ -74,12 +74,12 @@ let package = Package(
         .target(name: "BitcoinMiniscript", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-miniscript"),
         .target(name: "BitcoinBase", dependencies: [
             "BitcoinCrypto",
-            .product(name: "BinaryParsing", package: "swift-binary-parsing", condition: .when(platforms: [.macOS, .linux]))
+            .product(name: "BinaryParsing", package: "swift-binary-parsing")
         ], path: "src/bitcoin-base"),
         .target(name: "BitcoinCrypto", dependencies: ["ECCHelper",
                 .product(name: "LibSECP256k1", package: "secp256k1"),
                 .product(name: "Crypto", package: "swift-crypto"),
-                .product(name: "BinaryParsing", package: "swift-binary-parsing", condition: .when(platforms: [.macOS, .linux]))
+                .product(name: "BinaryParsing", package: "swift-binary-parsing")
         ], path: "src/bitcoin-crypto",
                 swiftSettings: [/*.strictMemorySafety(),*/
                    .enableExperimentalFeature("SafeInteropWrappers")]),

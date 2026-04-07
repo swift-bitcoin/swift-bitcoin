@@ -329,6 +329,8 @@ public actor BlockchainService: Sendable {
         let nextChildren = nextRefs.filter { $0.header.previous == activeTip.header.id }
 
         precondition(!nextChildren.isEmpty)
+        // TODO: Failing with multiple connections
+
         let nextRef: BlockRef
         if nextChildren.count == 1 {
             nextRef = nextChildren[0]

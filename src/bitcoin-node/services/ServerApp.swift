@@ -123,20 +123,6 @@ actor ServerApp {
             services.append(.init(service: p2pService, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup))
         }
 
-        if config.autoConnect && config.connect.isEmpty {
-            pendingConnect = network.autoconnectPeers.shuffled()
-        } else {
-            pendingConnect = config.connect.map {
-                ($0.host, $0.port ?? network.defaultP2PPort)
-            }
-        }
-
-        if let (host, port) = pendingConnect.first {
-            let p2pClient = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: host, port: port)
-            p2pClients[p2pClient.id] = p2pClient
-            services.append(.init(service: p2pClient, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup))
-        }
-
         services.append(.init(service: rpcService, successTerminationBehavior: .gracefullyShutdownGroup, failureTerminationBehavior: .cancelGroup))
 
         serviceGroup = ServiceGroup(configuration: .init(
@@ -146,19 +132,19 @@ actor ServerApp {
             logger: logger
         ))
 
-        // All instance variables initialized, time to set some call backs
-
-        await rpcService.setServerApp(self)
-
-        if let client = p2pClients.values.first {
-            await client.setConnectHandler { id in
-                // TODO: Support multiple connections (see also inside `connectNext()`)
-                // await self.connectNext(id)
-                await self.cancelPendingPeers(id)
-            } onDisconnect: { id in
-                await self.connectNext(id, previousFailed: true)
+        let autoConnectAddresses = if config.autoConnect && config.connect.isEmpty {
+            network.autoconnectPeers.shuffled()
+        } else {
+            config.connect.map {
+                ($0.host, $0.port ?? network.defaultP2PPort)
             }
         }
+
+        let autoConnectService = AutoConnectService(addresses: autoConnectAddresses, services: serviceGroup, eventLoopGroup: eventLoopGroup, node: node, logger: logger)
+        await serviceGroup.addServiceUnlessShutdown(.init(service: autoConnectService, successTerminationBehavior: .ignore, failureTerminationBehavior: .cancelGroup))
+
+        // All instance variables initialized, time to set some call backs
+        await rpcService.setServerApp(self)
 
         // After the following line the app will suspend indefinitely
         try await serviceGroup.run()
@@ -183,9 +169,6 @@ actor ServerApp {
     private let node: NodeService
     private let rpcService: RPCService
     private var p2pService: P2PService? = nil
-    private var p2pClients = [UUID: P2PClient]()
-
-    private var pendingConnect: [(String, Int)] // Address / port
 
     private let eventLoopGroup: EventLoopGroup
     private let serviceGroup: ServiceGroup
@@ -200,8 +183,13 @@ actor ServerApp {
 
         let status = await rpcService.status
 
+        let p2pClientStatus = await node.outgoingPeers.map {
+            StatusRPC.Result.P2PClient(peerID: $0.id, connected: true, remoteHost: $0.host, remotePort: $0.port, localPort: -1)
+        }
+
         // Collect P2P Client Services' statuses in order
-        let p2pClientStatus = await withTaskGroup(of: (Int, StatusRPC.Result.P2PClient).self, returning: [StatusRPC.Result.P2PClient].self) { group in
+        /*
+        let p2pClientStatus = await withTaskGroup(of: (PeerID, StatusRPC.Result.P2PClient).self, returning: [StatusRPC.Result.P2PClient].self) { group in
             for client in p2pClients.values {
                 group.addTask {
                     let status = await client.status
@@ -209,13 +197,14 @@ actor ServerApp {
                 }
             }
             // Let's sort clients by their ID
-            var items = [(Int, StatusRPC.Result.P2PClient)]()
+            var items = [(PeerID, StatusRPC.Result.P2PClient)]()
             for await result in group {
                 // result.1.peerID = result.0 // Set the peerID inside the struct
                 items.append(result)
             }
             return items.sorted(by: { $0.0 < $1.0 }).map(\.1) // Get rid of the tuple index
         }
+         */
 
         let p2pStatus = await p2pService?.status ?? .init(listening: false, host: nil, port: nil, overallConnections: -1, sessionConnections: -1, activeConnections: -1)
 
@@ -237,10 +226,7 @@ actor ServerApp {
     /// - Returns: The new peer’s numeric ID (PeerID) on success.
     /// - Throws: JSONRPCResponse.Error if the connection cannot be started.
     func rpcConnect(_ params: ConnectRPC.Params) async throws(JSONRPCResponse.Error) -> ConnectRPC.Result {
-        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port) { _ in } onDisconnect: { id in
-            await self.clearPeer(id)
-        }
-        p2pClients[service.id] = service
+        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port)
         let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup) // TODO: Maybe do not shut down when we timeout on an outgoing peer?
         await serviceGroup.addServiceUnlessShutdown(config)
         return service.peerID
@@ -277,65 +263,6 @@ actor ServerApp {
         }
         await node.removeAllPeers(incomingOnly: true)
         self.p2pService = nil
-    }
-
-    private func cancelPendingPeers(_ id: UUID) async {
-        guard let client = p2pClients[id] else {
-            logger.error("Missing client from pending auto-connect list, clearing remainder of list")
-            pendingConnect = []
-            return
-        }
-        // Replace the handler
-        await client.setConnectHandler { _ in } onDisconnect: { id in await self.clearPeer(id) }
-    }
-
-    /// Internal helper that advances through the configured auto-connect peer list.
-    ///
-    /// When a client connects successfully, the next pending address is attempted.
-    /// When a client disconnects or fails, the same advancement occurs, and the failed
-    /// client is removed from the tracking map.
-    ///
-    /// - Parameters:
-    ///   - id: The UUID of the client that just connected or disconnected.
-    ///   - previousFailed: Pass true to indicate the previous client failed and should be cleared.
-    private func connectNext(_ id: UUID, previousFailed: Bool = false) async {
-        guard let client = p2pClients[id] else {
-            logger.error("Missing client from pending auto-connect list, clearing remainder of list")
-            pendingConnect = []
-            return
-        }
-        if previousFailed {
-            clearPeer(id)
-        } else {
-            // Replace the handler
-            await client.setConnectHandler { _ in } onDisconnect: { id in await self.clearPeer(id) }
-        }
-        guard let (host, port) = pendingConnect.first, host == client.remoteHost, port == client.remotePort else {
-            // Should never happen, if it does consider keeping a separate list for "in progress" client auto connections different from the pending auto-connections
-            logger.error("Client mismatch in pending auto-connect list, clearing remainder of list")
-            pendingConnect = []
-            return
-        }
-        pendingConnect.removeFirst()
-        guard let (host, port) = pendingConnect.first else { return } // No more auto connections
-
-        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: host, port: port) { id in
-            // TODO: Support multiple connections (see also inside `init()`)
-            // await self.connectNext(id)
-            await self.cancelPendingPeers(id)
-        } onDisconnect: { id in
-            await self.connectNext(id, previousFailed: true)
-        }
-        p2pClients[service.id] = service
-        let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore)
-        await serviceGroup.addServiceUnlessShutdown(config)
-    }
-
-    /// Removes a client from the managed P2P client map.
-    ///
-    /// - Parameter id: The UUID of the client to remove.
-    private func clearPeer(_ id: UUID) {
-        p2pClients[id] = nil
     }
 }
 

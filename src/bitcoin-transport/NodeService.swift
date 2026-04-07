@@ -14,6 +14,19 @@ public actor NodeService: Sendable {
         case idle, starting, running, stopping, stopped
     }
 
+    public struct PeerSummary: Sendable {
+
+        init(_ peer: PeerState, id: PeerID) {
+            self.id = id
+            host = peer.host
+            port = peer.port
+        }
+
+        public var id: PeerID
+        public var host: String
+        public var port: Int
+    }
+
     ///  Creates an instance of a bitcoin node service.
     /// - Parameters:
     ///   - blockchain: The bitcoin service actor instance backing this node.
@@ -43,6 +56,25 @@ public actor NodeService: Sendable {
     package let logger: Logger
 
     public private(set) var state: NodeState
+
+    private var connectionChannels: [AsyncChannel<PeerID>] = []
+    private var disconnectionChannels: [AsyncChannel<PeerID>] = []
+
+    public func subscribeToConnections() -> AsyncChannel<PeerID> {
+        connectionChannels.append(.init())
+        return connectionChannels.last!
+    }
+
+    public func subscribeToDisconnections() -> AsyncChannel<PeerID> {
+        disconnectionChannels.append(.init())
+        return disconnectionChannels.last!
+    }
+
+    public func unsubscribe(_ channel: AsyncChannel<PeerID>) {
+        channel.finish()
+        connectionChannels.removeAll(where: { $0 === channel })
+        disconnectionChannels.removeAll(where: { $0 === channel })
+    }
 
     /// Subscription to the bitcoin service's blocks channel.
     private var blocks = AsyncChannel<BlockUpdate>?.none
@@ -100,6 +132,12 @@ public actor NodeService: Sendable {
         for blockChannel in blockChannels {
             unsubscribe(blockChannel)
         }
+        for channel in connectionChannels {
+            unsubscribe(channel)
+        }
+        for channel in disconnectionChannels {
+            unsubscribe(channel)
+        }
         await withDiscardingTaskGroup { group in
             if let blocks {
                 group.addTask {
@@ -155,23 +193,40 @@ public actor NodeService: Sendable {
     public func addPeer(host: String = IPv4Address.empty.description, port: Int = 0, incoming: Bool = true) -> PeerID {
         let id = maxPeerID
         maxPeerID += 1
-        state.peers[id] = PeerState(address: IPv6Address.fromHost(host), port: port, incoming: incoming)
+        state.peers[id] = PeerState(address: IPv6Address.fromHost(host), host: host, port: port, incoming: incoming)
         peerOuts[id] = .init()
         return id
     }
 
     /// Deregisters all peers.
-    public func removeAllPeers(incomingOnly: Bool = false) {
+    public func removeAllPeers(incomingOnly: Bool = false) async {
         for id in state.peers.keys {
             if incomingOnly, !state.peers[id]!.incoming {
                 continue
             }
-            removePeer(id)
+            await removePeer(id)
+        }
+    }
+
+    public var outgoingPeers: [PeerSummary] {
+        state.peers.filter(\.value.outgoing).map {
+            .init($0.value, id: $0.key)
+        }.sorted {
+            $0.id < $1.id
         }
     }
 
     /// Deregisters a peer and cleans up outbound channels.
-    @discardableResult public func removePeer(_ id: PeerID) -> Bool {
+    @discardableResult public func removePeer(_ id: PeerID) async -> Bool {
+        // Notify subscriber that peer was disconnected
+        await withDiscardingTaskGroup { g in
+            for channel in disconnectionChannels {
+                g.addTask {
+                    await channel.send(id)
+                }
+            }
+        }
+
         guard let _ = state.peers[id] else { return false }
         if headersSyncPeerID == id {
             headersSyncPeerID = nil
@@ -561,6 +616,14 @@ public actor NodeService: Sendable {
         state.peers[id]?.versionAckReceived = true
 
         if state.peers[id]!.handshakeComplete {
+            // Notify subscriber that this connection has become stable
+            await withDiscardingTaskGroup { g in
+                for channel in connectionChannels {
+                    g.addTask {
+                        await channel.send(id)
+                    }
+                }
+            }
             logger.info("Handshake successful.")
         }
 
