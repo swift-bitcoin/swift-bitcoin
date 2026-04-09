@@ -800,18 +800,25 @@ public actor NodeService: Sendable {
         state.peers[id]!.registerKnownBlocks([block.id])
         state.peers[id]?.inTransitBlocks -= 1
 
-        try await blockchain.processBlock(block, immediate: false)
+        let height = try await blockchain.processBlock(block, immediate: false) ?? -1 // Using -1 for now to make all peers have a higher height
+        // TODO: Height won't be necessary once we track the peer's chainwork and last common block instead: https://github.com/swift-bitcoin/swift-bitcoin/issues/531
+        /*
+         // Code for only requesting blocks from the same peer
         if state.peers[id]!.inTransitBlocks == 0 {
             await requestNextMissingBlocks(id)
         }
-        /*
-        // Code for requesting blocks from multiple blocks
-        var minInTransitBlocks = config.maxInTransitBlocks
+         */
+
+        // Code for requesting blocks from multiple peers
+        var lowestInTransitBlocks = config.maxInTransitBlocks
         var selectedPeerID = PeerID?.none
+        // Looking for the peer which has the least amount of in transit blocks
         for (id, peer) in state.peers {
             let inTransitBlocks = peer.inTransitBlocks
-            if peer.height > height, inTransitBlocks < minInTransitBlocks {
-                minInTransitBlocks = inTransitBlocks
+
+            // TODO: temporarilly only use peers with 0 blocks in transit https://github.com/swift-bitcoin/swift-bitcoin/issues/530 and https://github.com/swift-bitcoin/swift-bitcoin/issues/531
+            if peer.height > height, inTransitBlocks < lowestInTransitBlocks, inTransitBlocks == 0 {
+                lowestInTransitBlocks = inTransitBlocks
                 selectedPeerID = id
             }
         }
@@ -820,7 +827,6 @@ public actor NodeService: Sendable {
         } else {
             logger.debug("All peers have reached their maximum in transit blocks")
         }
-        */
     }
 
     private func processGetData(_ message: NetworkMessage, from id: PeerID) async throws {
