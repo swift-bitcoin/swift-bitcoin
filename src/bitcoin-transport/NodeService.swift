@@ -816,7 +816,7 @@ public actor NodeService: Sendable {
         for (id, peer) in state.peers {
             let inTransitBlocks = peer.inTransitBlocks
 
-            // TODO: temporarilly only use peers with 0 blocks in transit https://github.com/swift-bitcoin/swift-bitcoin/issues/530 and https://github.com/swift-bitcoin/swift-bitcoin/issues/531
+            // TODO: temporarilly only use peers with 0 blocks in transit (other wise breaks BlockSyncTests) - also related https://github.com/swift-bitcoin/swift-bitcoin/issues/530 and https://github.com/swift-bitcoin/swift-bitcoin/issues/531
             if peer.height > height, inTransitBlocks < lowestInTransitBlocks, inTransitBlocks == 0 {
                 lowestInTransitBlocks = inTransitBlocks
                 selectedPeerID = id
