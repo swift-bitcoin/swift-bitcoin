@@ -279,11 +279,11 @@ public actor BlockchainService: Sendable {
     /// Processes a block by checking its header and transaction merkle root and then storing it.
     ///
     /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
-    public func processBlock(_ block: Block, immediate: Bool = true) async throws(Error) {
+    @discardableResult public func processBlock(_ block: Block, immediate: Bool = true) async throws(Error) -> Int? {
         try await processBlock(block, immediate: immediate, locator: nil)
     }
 
-    private func processBlock(_ block: Block, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) {
+    @discardableResult private func processBlock(_ block: Block, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> Int? {
 
         Metrics.seenBlocksCounter.increment()
 
@@ -293,7 +293,7 @@ public actor BlockchainService: Sendable {
         } else {
             guard let prev = await checkConnectivity(block, locator: locator) else {
                 // block was saved for later processing
-                return
+                return nil
             }
             headerRef = try await processHeader(block.header, previousHeader: prev)
         }
@@ -301,11 +301,11 @@ public actor BlockchainService: Sendable {
         switch headerRef.status {
         case .header: try await checkBlock(block, ref: headerRef, locator: locator)
         case .merkle: break
-        case .active, .stale: return
+        case .active, .stale: return headerRef.height
         case .invalid: throw .invalidBlockAlreadyExists
         }
 
-        guard currentlyValidating == nil else { return }
+        guard currentlyValidating == nil else { return headerRef.height }
         validationTask = Task {
             try await validateBlocks()
         }
@@ -316,6 +316,7 @@ public actor BlockchainService: Sendable {
                 throw error as! Error // TODO: Remove once `Swift.Task` supports typed throws
             }
         }
+        return headerRef.height
     }
 
     private func nextBlockToValidate() async -> BlockRef? {

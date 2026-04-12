@@ -364,7 +364,7 @@ struct BlockSyncTests {
         try await alice.processMessage(mBA13_block, from: peerB)
         _ = try #require(await task.value)
         #expect(await aliceChain.height == 3)
-
+        let h = await aliceChain.height
         // No Response
         #expect(await alice.popMessage(peerB) == nil)
     }

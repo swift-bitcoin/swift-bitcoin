@@ -49,16 +49,14 @@ actor AutoConnectService: Service {
     }
 
     private func connectNext() async {
-        print("brr connecting next; \(connections) current connections")
         guard connections < Self.maxConnections else {
-            print("brr max connections reached")
+
             return
         }
         guard let (host, port) = addresses.popLast() else {
             return
         }
         connections += 1
-        print("brr now \(connections) current connections")
 
         let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: host, port: port)
         let config = ServiceGroupConfiguration.ServiceConfiguration(
