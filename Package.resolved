@@ -1,5 +1,5 @@
 {
-  "originHash" : "cfd3ed2fd582465116f6363ae03ac16256ffe983d3ffc99a1a63bcadb61cc673",
+  "originHash" : "f15b5ee3d7d434b3af03ff221e21bb09b7bf94bbf2421f1db666bc98d3db4963",
   "pins" : [
     {
       "identity" : "secp256k1",
@@ -141,8 +141,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swift-bitcoin/swift-lmdb",
       "state" : {
-        "revision" : "adfc036d41476dce03425e0182f7c96cd9f5d022",
-        "version" : "6.2.1"
+        "revision" : "977ba43212bc484ceb78efda3dade03c136e7dd7",
+        "version" : "6.3.0"
       }
     },
     {
@@ -159,8 +159,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-metrics.git",
       "state" : {
-        "revision" : "f17c111cec972c2a4922cef38cf64f76f7e87886",
-        "version" : "2.8.0"
+        "revision" : "59a494d2ad97b0796db5119ef19fe1d48618d12b",
+        "version" : "2.9.0"
       }
     },
     {
