@@ -2,7 +2,7 @@ import Foundation
 import BitcoinCrypto
 
 /// A block of transactions.
-struct BlockRef: Equatable, Sendable {
+public struct BlockRef: Equatable, Hashable, Sendable {
 
     // MARK: - Initializers
 
@@ -22,7 +22,7 @@ struct BlockRef: Equatable, Sendable {
     public let chainwork: DifficultyTarget
     public internal(set) var chainTxCount: Int
     public internal(set) var status: ValidationStatus
-    public internal(set) var locator: BlockStorageLocator?
+    var locator: BlockStorageLocator?
 
     var skip: Block.ID? = nil
 
@@ -35,11 +35,15 @@ struct BlockRef: Equatable, Sendable {
 
     // MARK: - Instance Methods
 
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(header.id)
+    }
+
     // MARK: - Type Properties
 
     // MARK: - Type Methods
 
-    static func == (lhs: Self, rhs: Self) -> Bool {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.header == rhs.header &&
         lhs.height == rhs.height &&
         lhs.chainwork == rhs.chainwork &&
@@ -68,7 +72,7 @@ extension ValidationStatus: BinaryCodable {
 }
 
 extension BlockRef: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder) throws {
         header = try decoder.decode()
         height = try decoder.decode()
         chainwork = try decoder.decode()
@@ -78,7 +82,7 @@ extension BlockRef: BinaryCodable {
         self.locator = locator == .placeholder ? nil : locator
     }
 
-    func encode(to encoder: inout BinaryEncoder) {
+    public func encode(to encoder: inout BinaryEncoder) {
         encoder.encode(header)
         encoder.encode(height)
         encoder.encode(chainwork)
@@ -91,7 +95,7 @@ extension BlockRef: BinaryCodable {
         }
     }
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
         counter.count(header)
         counter.count(height)
         counter.count(chainwork)
@@ -101,7 +105,7 @@ extension BlockRef: BinaryCodable {
     }
 }
 
-public enum ValidationStatus: UInt8, CustomStringConvertible, Sendable {
+public enum ValidationStatus: UInt8, CustomStringConvertible, Equatable, Hashable, Sendable {
     case header, merkle, active, invalid, stale
 
     var score: Int {

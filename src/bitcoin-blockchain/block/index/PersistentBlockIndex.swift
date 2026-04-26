@@ -8,6 +8,11 @@ import Collections
 /// Database block index service implementation.
 actor PersistentBlockIndex: BlockIndex {
 
+    // TODO: Get rid of the entire PersistentBlockIndex implementation as it was superseeded by the HybridBlockIndex which is persistent but also has an in-memory cache.
+    func lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef) async -> BlockRef {
+        fatalError("Not implemented")
+    }
+
     init(path: FilePath, logger: Logger) {
         self.path = path.appending("block-index")
         self.logger = logger
@@ -88,7 +93,7 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<Block.ID>) -> [Block.ID] {
         precondition(max >= 0)
 
         // TODO: Test this out:
@@ -99,7 +104,7 @@ actor PersistentBlockIndex: BlockIndex {
             var blocks = Deque<Block.ID>(minimumCapacity: max)
             // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
             while current.height > stop.height /* current.header.id != stop.header.id */ {
-                if current.status == .header {
+                if current.status == .header, !exclude.contains(current.header.id) {
                     if blocks.count == max {
                         _ = blocks.popLast()
                     }

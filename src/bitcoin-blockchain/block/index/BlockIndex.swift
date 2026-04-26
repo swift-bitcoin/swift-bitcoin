@@ -15,7 +15,9 @@ protocol BlockIndex: Sendable {
     /// Most recent fully validated block which is an ancestor to the specified header.
     func bestAncestor(of header: BlockRef) async -> BlockRef
 
-    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) async -> [Block.ID]
+    func lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef) async -> BlockRef
+
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<Block.ID>) async -> [Block.ID]
 
     mutating func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) async throws(BlockIndexError) -> BlockRef
 

@@ -103,7 +103,11 @@ actor HybridBlockIndex: BlockIndex {
         return candidate
     }
 
-    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
+    func lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef) -> BlockRef {
+        _lastCommonAncestor(blockA, blockB, refs: cache)
+    }
+
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<Block.ID>) -> [Block.ID] {
         precondition(max >= 0)
 
         // TODO: Test this out:
@@ -113,7 +117,7 @@ actor HybridBlockIndex: BlockIndex {
         var blocks = Deque<Block.ID>(minimumCapacity: max)
         // TODO: It has occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
         while current.height > stop.height /* current.header.id != stop.header.id */ {
-            if current.status == .header {
+            if current.status == .header, !exclude.contains(current.header.id) {
                 if blocks.count == max {
                     _ = blocks.popLast()
                 }
@@ -507,4 +511,40 @@ private func _ancestor(of tip: BlockRef, at height: Int, refs: [Block.ID : Block
         }
     }
     return indexWalk
+}
+
+/// Find the last common ancestor two blocks have.
+private func _lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef, refs: [Block.ID : BlockRef]) -> BlockRef {
+    var pa: BlockRef
+    var pb: BlockRef
+    // First rewind to the last common height (the forking point cannot be past one of the two).
+    if blockA.height > blockB.height {
+        pb = blockB
+        pa = _ancestor(of: blockA, at: blockB.height, refs: refs)
+    } else if blockB.height > blockA.height {
+        pa = blockA
+        pb = _ancestor(of: blockB, at: blockA.height, refs: refs)
+    } else {
+        pa = blockA
+        pb = blockB
+    }
+    while pa.header.id != pb.header.id {
+        // Jump back until pa and pb have a common "skip" ancestor.
+        assert(pa.skip != nil && pb.skip != nil)
+        while pa.skip != pb.skip { // TODO: check what happens when skip is null for one of them
+            // This logic relies on the property that equal-height blocks have equal-height skip
+            // pointers.
+            assert(pa.height == pb.height)
+            //assert(pa->pskip->nHeight == pb->pskip->nHeight); // check moved down 2 lines
+            pa = refs[pa.skip!]!
+            pb = refs[pb.skip!]!
+            assert(pa.height == pb.height)
+            assert(pa.skip != nil && pb.skip != nil)
+        }
+        // At this point, pa and pb are different, but have equal pskip. The forking point lies in
+        // between pa/pb on the one end, and pa->pskip/pb->pskip on the other end.
+        pa = refs[pa.header.previous]!
+        pb = refs[pb.header.previous]!
+    }
+    return pa
 }

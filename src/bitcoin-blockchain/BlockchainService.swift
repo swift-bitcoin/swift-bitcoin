@@ -237,6 +237,10 @@ public actor BlockchainService: Sendable {
         Data(activeTip.chainwork.data.reversed())
     }
 
+    public var currentChainwork: DifficultyTarget {
+        activeTip.chainwork
+    }
+
     /// Size of blocks on disk, including undo data.
     ///
     /// This excludes any related block indices or anything outside the blocks data directory.
@@ -279,33 +283,28 @@ public actor BlockchainService: Sendable {
     /// Processes a block by checking its header and transaction merkle root and then storing it.
     ///
     /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
-    @discardableResult public func processBlock(_ block: Block, immediate: Bool = true) async throws(Error) -> Int? {
+    @discardableResult public func processBlock(_ block: Block, immediate: Bool = true) async throws(Error) -> HeaderProcessingResult {
         try await processBlock(block, immediate: immediate, locator: nil)
     }
 
-    @discardableResult private func processBlock(_ block: Block, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> Int? {
+    /// The locator parameter is used in calls from the re-indexing process.
+    @discardableResult private func processBlock(_ block: Block, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> HeaderProcessingResult {
 
         Metrics.seenBlocksCounter.increment()
 
-        let headerRef: BlockRef
-        if let ref = await blockIndex.get(block.id) {
-            headerRef = ref
-        } else {
-            guard let prev = await checkConnectivity(block, locator: locator) else {
-                // block was saved for later processing
-                return nil
-            }
-            headerRef = try await processHeader(block.header, previousHeader: prev)
+        let headerProcessingResult = try await processHeader(block.header, locator: locator)
+        guard let headerRef = headerProcessingResult.headerRefs.first else {
+            return headerProcessingResult
         }
 
         switch headerRef.status {
         case .header: try await checkBlock(block, ref: headerRef, locator: locator)
         case .merkle: break
-        case .active, .stale: return headerRef.height
+        case .active, .stale: return headerProcessingResult
         case .invalid: throw .invalidBlockAlreadyExists
         }
 
-        guard currentlyValidating == nil else { return headerRef.height }
+        guard currentlyValidating == nil else { return headerProcessingResult }
         validationTask = Task {
             try await validateBlocks()
         }
@@ -316,7 +315,7 @@ public actor BlockchainService: Sendable {
                 throw error as! Error // TODO: Remove once `Swift.Task` supports typed throws
             }
         }
-        return headerRef.height
+        return headerProcessingResult
     }
 
     private func nextBlockToValidate() async -> BlockRef? {
@@ -539,13 +538,24 @@ public actor BlockchainService: Sendable {
     }
 
     /// Processes a block header without its transactions.
-    public func processHeader(_ header: Block) async throws(Error) {
+    ///
+    /// Returns: a reference to the added header plus a list of held headers which ended up being connected.
+    private func processHeader(_ header: Block, locator: BlockStorageLocator? = nil) async throws(Error) -> HeaderProcessingResult {
+        // Header already exist
+        if let headerRef = await blockIndex.get(header.id) {
+            // Compact block might send us a known header again
+            return .init(headerRefs: [headerRef], connectedHeaders: [], heldHeaders: [])
+        }
+
         Metrics.headersCounter.increment()
 
-        guard let prev = await checkConnectivity(header) else {
-            return
+        // Header is not connected to the existing header chain
+        guard let prev = await checkConnectivity(header, locator: locator) else {
+            return .init(headerRefs: [], connectedHeaders: [], heldHeaders: [header.id])
         }
-        _ = try await processHeader(header, previousHeader: prev)
+
+        let (headerRef, connectedHeaders) = try await processHeader(header, previousHeader: prev)
+        return .init(headerRefs: [headerRef], connectedHeaders: connectedHeaders, heldHeaders: [])
     }
 
     private func checkConnectivity(_ block: Block, locator: BlockStorageLocator? = nil) async -> BlockRef? {
@@ -560,7 +570,7 @@ public actor BlockchainService: Sendable {
     /// Validates the block header.
     ///
     /// This function contains similar logic to `ContextualCheckBlockHeader()` in Bitcoin Core's `validation.cpp`.
-    private func processHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) -> BlockRef {
+    private func processHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) -> (BlockRef, Set<BlockRef>) {
         precondition(header.txs.isEmpty)
 
         // Check header
@@ -658,34 +668,40 @@ public actor BlockchainService: Sendable {
         }
 
         // Look for pending headers to process
+        var otherHeaders = Set<BlockRef>()
         for (h, loc) in heldBlocks.values.filter({ $0.0.previous == header.id }) {
-            let ref = try await processHeader(h.header, previousHeader: newHeader)
+            let (ref, otherOtherHeaders) = try await processHeader(h.header, previousHeader: newHeader)
+            otherHeaders.insert(ref)
+            otherHeaders.formUnion(otherOtherHeaders)
             if !h.txs.isEmpty {
                 try await checkBlock(h, ref: ref, locator: loc)
             }
+
             heldBlocks[h.id] = nil
         }
-
-        return newHeader
+        return (newHeader, otherHeaders)
     }
 
     /// Processes a list of block headers without transactions.
     ///
     /// There may be preexisting headers in the blockchain.
-    public func processHeaders(_ headers: [Block]) async throws(Error) {
+    public func processHeaders(_ headers: [Block]) async throws(Error) -> HeaderProcessingResult {
+        var headerRefs = Set<BlockRef>()
+        var connectedHeaders = Set<BlockRef>()
+        var heldHeaders = Set<Block.ID>()
         for header in headers {
-            guard await blockIndex.get(header.id) == nil else {
-                // Compact block might send us a known header again
-                continue
-            }
-            try await processHeader(header)
+            let result = try await processHeader(header)
+            headerRefs.formUnion(result.headerRefs)
+            connectedHeaders.formUnion(result.connectedHeaders)
+            heldHeaders.formUnion(result.heldHeaders)
         }
+        return .init(headerRefs: headerRefs, connectedHeaders: connectedHeaders, heldHeaders: heldHeaders)
     }
 
     /// Returns the IDs of the headers missing transactions up to a maximum defined by the function argument.
-    public func nextMissingBlocks(max numberOfBlocks: Int) async -> [Block.ID] {
-        precondition(numberOfBlocks > 0 && numberOfBlocks <= 1024) // TODO: Get the number of blocks limit from somewhere
-        return await blockIndex.missingBlocks(tip: bestHeader, stop: activeTip, max: numberOfBlocks)
+    public func nextMissingBlocks(max numberOfBlocks: Int, exclude: Set<Block.ID> = []) async -> [Block.ID] {
+        precondition(numberOfBlocks > 0 && numberOfBlocks <= Self.blockDownloadWindow)
+        return await blockIndex.missingBlocks(tip: bestHeader, stop: activeTip, max: numberOfBlocks, exclude: exclude)
     }
 
     /// Returns multiple fully validated blocks matching the provided IDs.
@@ -1023,6 +1039,152 @@ public actor BlockchainService: Sendable {
         }
     }
 
+    /// Logic for calculating which blocks to download from a given peer, given our current tip.
+    public func findNextBlocksToDownload(bestKnownBlock: BlockRef?, lastCommonBlock: BlockRef?, count: Int, exclude: Set<Block.ID>) async -> (blocksToDownload: [Block.ID], updatedLastCommonBlock: BlockRef?) {
+
+        if count == 0 {
+            return ([], lastCommonBlock)
+        }
+
+        // Make sure pindexBestKnownBlock is up to date, we'll need it.
+        //ProcessBlockAvailability(peer.m_id);
+
+        guard let bestKnownBlock = bestKnownBlock else {
+            return ([], lastCommonBlock)
+        }
+
+        if bestKnownBlock.chainwork < activeTip.chainwork || bestKnownBlock.chainwork < params.minChainwork {
+            // This peer has nothing interesting.
+            return ([], lastCommonBlock)
+        }
+
+        // When syncing with AssumeUtxo and the snapshot has not yet been validated,
+        // abort downloading blocks from peers that don't have the snapshot block in their best chain.
+        // We can't reorg to this chain due to missing undo data until validation completes,
+        // so downloading blocks from it would be futile.
+        /*const CBlockIndex* snap_base{m_chainman.CurrentChainstate().SnapshotBase()};
+        if (snap_base && m_chainman.CurrentChainstate().m_assumeutxo == Assumeutxo::UNVALIDATED &&
+            state->pindexBestKnownBlock->GetAncestor(snap_base->nHeight) != snap_base) {
+            LogDebug(BCLog::NET, "Not downloading blocks from peer=%d, which doesn't have the snapshot block in its best chain.\n", peer.m_id);
+            return;
+        }*/
+
+        // Determine the forking point between the peer's chain and our chain:
+        // pindexLastCommonBlock is required to be an ancestor of pindexBestKnownBlock, and will be used as a starting point.
+        // It is being set to the fork point between the peer's best known block and the current tip, unless it is already set to an ancestor with more work than the fork point.
+        let forkPoint = await blockIndex.lastCommonAncestor(bestKnownBlock, activeTip)
+        let lastCommonBlock: BlockRef = lastCommonBlock ?? forkPoint
+        var updatedLastCommonBlock = lastCommonBlock
+        if forkPoint.chainwork > lastCommonBlock.chainwork {
+            updatedLastCommonBlock = forkPoint
+        }
+        let ancestor = await blockIndex.ancestor(of: bestKnownBlock, at: lastCommonBlock.height)
+        if ancestor != lastCommonBlock {
+            updatedLastCommonBlock = forkPoint
+        }
+
+        if updatedLastCommonBlock.header.id == bestKnownBlock.header.id {
+            return ([], updatedLastCommonBlock)
+        }
+
+        let walk = updatedLastCommonBlock
+        // Never fetch further than the best block we know the peer has, or more than BLOCK_DOWNLOAD_WINDOW + 1 beyond the last
+        // linked block we have in common with this peer. The +1 is so we can detect stalling, namely if we would be able to
+        // download that next block if the window were 1 larger.
+        let windowEnd = updatedLastCommonBlock.height + Self.blockDownloadWindow
+
+        let nextBlocks = await findNextBlocks(bestKnownBlock: bestKnownBlock, lastCommonBlock: &updatedLastCommonBlock , walk: walk, count: count, windowEnd: windowEnd, exclude: exclude)//, &m_chainman.ActiveChain(), &nodeStaller);
+        return (nextBlocks, updatedLastCommonBlock)
+    }
+
+    private func findNextBlocks(bestKnownBlock: BlockRef, lastCommonBlock: inout BlockRef, walk: BlockRef, count: Int, windowEnd: Int, exclude: Set<Block.ID>) async -> [Block.ID] {
+        var blocks = [Block.ID]()
+        var walk = walk
+        
+        var toFetch: [BlockRef?]
+        let maxHeight = min(bestKnownBlock.height, windowEnd + 1)
+        // let isLimitedPeer = peer.isLimitedPeer
+        // var waitingfor = Block.ID?.none
+        while walk.height < maxHeight {
+            // Read up to 128 (or more, if more blocks than that are needed) successors of pindexWalk (towards
+            // pindexBestKnownBlock) into vToFetch. We fetch 128, because CBlockIndex::GetAncestor may be as expensive
+            // as iterating over ~100 CBlockIndex* entries anyway.
+            let numberToFetch = min(maxHeight - walk.height, max(count - blocks.count, 128))
+            toFetch = .init(repeating: nil, count: numberToFetch)
+            walk = await blockIndex.ancestor(of: bestKnownBlock, at: walk.height + numberToFetch)
+            toFetch[numberToFetch - 1] = walk
+            if numberToFetch > 1 {
+                for i in (1...numberToFetch - 1).reversed() {
+                    toFetch[i - 1] = await blockIndex.get(toFetch[i]!.header.previous)!
+                }
+            }
+
+            // Get rid of the optional
+            let toFetch = toFetch.compactMap(\.self)
+
+            // Iterate over those blocks in toFetch (in forward direction), adding the ones that are not yet downloaded and not in flight to vBlocks. In the meantime, update pindexLastCommonBlock as long as all ancestors are already downloaded, or if it's already part of our chain (and therefore don't need it even if pruned).
+            for blockRef in toFetch {
+
+                // if (!pindex->IsValid(BLOCK_VALID_TREE)) { … }
+                guard [.header, .active, .merkle].contains(blockRef.status) else {
+                    // We consider the chain that this peer is on invalid.
+                    return blocks
+                }
+
+                /*if (!CanServeWitnesses(peer) && DeploymentActiveAt(*pindex, m_chainman, Consensus::DEPLOYMENT_SEGWIT)) {
+                 // We wouldn't download this block or its descendants from this peer.
+                 return;
+                 }*/
+
+                // TODO: Check that block is part of best header chain and that the block reference has the total for all accumulated transactions
+                if blockRef.status == .merkle || blockRef.status == .active {
+                    lastCommonBlock = blockRef
+                    continue
+                }
+                /*if (pindex->nStatus & BLOCK_HAVE_DATA || (activeChain && activeChain->Contains(pindex))) {
+                    if (activeChain && pindex->HaveNumChainTxs()) {
+                        state->pindexLastCommonBlock = pindex;
+                    }
+                    continue
+                }*/
+
+                // Is block in-flight or being processed?
+                if exclude.contains(blockRef.header.id) {
+                    continue
+                }
+                /*
+                if (IsBlockRequested(pindex->GetBlockHash())) {
+                    if (waitingfor == -1) {
+                        // This is the first already-in-flight block.
+                        waitingfor = mapBlocksInFlight.lower_bound(pindex->GetBlockHash())->second.first;
+                    }
+                    continue;
+                }*/
+
+                // The block is not already downloaded, and not yet in flight.
+                if blockRef.height > windowEnd {
+                    // We reached the end of the window.
+                    if blocks.count == 0 /*&& waitingfor != peer.m_id)*/ {
+                        // We aren't able to fetch anything, but we would be if the download window was one larger.
+                        // if (nodeStaller) *nodeStaller = waitingfor;
+                    }
+                    return blocks
+                }
+
+                // Don't request blocks that go further than what limited peers can provide
+                /* if is_limited_peer && (state->pindexBestKnownBlock->nHeight - pindex->nHeight >= static_cast<int>(NODE_NETWORK_LIMITED_MIN_BLOCKS) - 2 /* two blocks buffer for possible races */)) {
+                    continue;
+                }*/
+
+                blocks.append(blockRef.header.id)
+                if blocks.count == count {
+                    return blocks
+                }
+            }
+        }
+        return blocks
+    }
+
     /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``check()``
     private func checkTransactionInputs(_ tx: Transaction, exclude: [Outpoint], auxCoins: [Outpoint : UnspentOutput]) async throws(Transaction.ValidationError) {
         precondition(!tx.isCoinbase)
@@ -1262,7 +1424,7 @@ public actor BlockchainService: Sendable {
                     scriptCheckReason = blockRef.height > assumeValidRef.height ? "block height above assumevalid height" : "block not in assumevalid chain"
                 } else if await blockIndex.ancestor(of: bestHeader, at: blockRef.height).header.id != blockRef.header.id {
                     scriptCheckReason = "block not in best header chain"
-                } else if try! DifficultyTarget(Data(params.minChainwork.reversed())) > bestHeader.chainwork {
+                } else if params.minChainwork > bestHeader.chainwork {
                     scriptCheckReason = "best header chainwork below minimumchainwork"
                 } else if blockProofEquivalentTime(to: bestHeader, from: blockRef, tip: bestHeader) <= 60 * 60 * 24 * 7 * 2 {
                     scriptCheckReason = "block too recent relative to best header";
@@ -1557,16 +1719,22 @@ public actor BlockchainService: Sendable {
     private func checkInitialBlockDownload() -> Bool {
 
         // Optimization: pre-test latch before taking the lock.
-        if finishedIDB.load(ordering: .relaxed) { return false }
+        if finishedIDB.load(ordering: .relaxed) {
+            return false
+        }
 
         // Currently this function is never called before the blockchain service has started which includes the initialization of the block storage. The process could become more async in the future so leaving the below line commented out for now.
         // if await blockStorage.status == .starting { return true }
 
-        if try! DifficultyTarget(params.minChainwork.reversed()) > activeTip.chainwork { return true }
+        if params.minChainwork > activeTip.chainwork {
+            return true
+        }
 
         let maxTipAge = TimeInterval(24 * 60 * 60) // 24 hours
         let maxTipTime = Date(timeIntervalSince1970: nowSeconds() - maxTipAge)
-        if (activeTip.header.time < maxTipTime ) { return true }
+        if (activeTip.header.time < maxTipTime ) {
+            return true
+        }
 
         logger.info("Leaving InitialBlockDownload (latching to false)")
         finishedIDB.store(true, ordering: .relaxed)
@@ -1789,6 +1957,16 @@ public actor BlockchainService: Sendable {
         // We need to compute 2**256 / (bnTarget+1), but we can't represent 2**256 as it's too large for an arith_uint256. However, as 2**256 is at least as large as bnTarget+1, it is equal to ((2**256 - bnTarget - 1) / (bnTarget+1)) + 1, or ~bnTarget / (bnTarget+1) + 1.
         return (~target / (target + 1)) + 1
     }
+
+    /// Size of the "block download window": how far ahead of our current height do we fetch?
+    /// Larger windows tolerate larger download speed differences between peer, but increase the potential degree of disordering of blocks on disk (which make reindexing and pruning harder). We'll probably want to make this a per-peer adaptive value at some point.
+    public static let blockDownloadWindow = 1024
+}
+
+public struct HeaderProcessingResult: Sendable {
+    public let headerRefs: Set<BlockRef>
+    public let connectedHeaders: Set<BlockRef>
+    public let heldHeaders: Set<Block.ID>
 }
 
 private func nowSeconds() -> TimeInterval {

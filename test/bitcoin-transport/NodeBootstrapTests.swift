@@ -452,15 +452,22 @@ struct NodeBootstrapTests {
         #expect(await bob.blockchain.headers == 2)
         #expect(await bob.blockchain.height == 1)
 
-        // Bob --(getdata)->> …
-        let messageBA0_getdata = try #require(await bob.popMessage(peerA))
-        #expect(messageBA0_getdata.command == .getdata)
+        // Bob --(sendheaders)->> …
+        let messageBA0_sendheaders = try #require(await bob.popMessage(peerA))
+        #expect(messageBA0_sendheaders.command == .sendheaders)
 
-        let getData = try #require(GetDataMessage(messageBA0_getdata.payload))
+        // … --(sendheaders)->> Alice
+        try await alice.processMessage(messageBA0_sendheaders, from: peerB)
+
+        // Bob --(getdata)->> …
+        let messageBA1_getdata = try #require(await bob.popMessage(peerA))
+        #expect(messageBA1_getdata.command == .getdata)
+
+        let getData = try #require(GetDataMessage(messageBA1_getdata.payload))
         #expect(getData.items == [.init(type: .compactBlock, hash: aliceBlock2.id)])
 
         // … --(getdata)->> Alice
-        try await alice.processMessage(messageBA0_getdata, from: peerB)
+        try await alice.processMessage(messageBA1_getdata, from: peerB)
 
         // Alice --(cmpctblock)->> …
         let messageAB1_cmpctblock = try #require(await alice.popMessage(peerB))
@@ -484,15 +491,22 @@ struct NodeBootstrapTests {
         // … --(headers)->> Carol
         try await carol.processMessage(messageBC0_headers, from: carolPeerB)
 
-        // Carol --(getdata)->> …
-        let messageCB0_getdata = try #require(await carol.popMessage(carolPeerB))
-        #expect(messageCB0_getdata.command == .getdata)
+        // Carol --(sendheaders)->> …
+        let messageCB0_sendheaders = try #require(await carol.popMessage(carolPeerB))
+        #expect(messageCB0_sendheaders.command == .sendheaders)
 
-        let getData2 = try #require(GetDataMessage(messageCB0_getdata.payload))
+        // … --(sendheaders)->> Bob
+        try await bob.processMessage(messageCB0_sendheaders, from: peerC)
+
+        // Carol --(getdata)->> …
+        let messageCB1_getdata = try #require(await carol.popMessage(carolPeerB))
+        #expect(messageCB1_getdata.command == .getdata)
+
+        let getData2 = try #require(GetDataMessage(messageCB1_getdata.payload))
         #expect(getData2.items == [.init(type: .compactBlock, hash: aliceBlock2.id)])
 
         // … --(getdata)->> Bob
-        try await bob.processMessage(messageCB0_getdata, from: peerC)
+        try await bob.processMessage(messageCB1_getdata, from: peerC)
 
         // Bob --(cmpctblock)->> …
         let messageBC0_cmpctblock = try #require(await bob.popMessage(peerC))
@@ -556,6 +570,6 @@ private func makePeerState(_ incoming: Bool = false, highBandwidth: Bool = true)
     ps.compactBlocksVersionLocked = true
     ps.highBandwidthCompactBlocks = highBandwidth
     ps.prefersHeaders = true
-    ps.sendHeadersSent = true
+    ps.allHeadersDownloaded = true
     return ps
 }

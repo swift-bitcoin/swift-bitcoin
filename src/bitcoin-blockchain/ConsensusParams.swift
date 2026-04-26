@@ -62,7 +62,7 @@ public struct ConsensusParams: Sendable {
         self.genesisBlockNonce = genesisBlockNonce
         self.genesisBlockTarget = genesisBlockTarget
         self.assumeValid = if let assumeValid { .init(assumeValid) } else { nil }
-        self.minChainwork = minChainwork
+        self.minChainwork = try! DifficultyTarget(Data(minChainwork.reversed()))
         self.chainData = chainData
         self.subsidyHalvingInterval = subsidyHalvingInterval
         self.coinbaseMaturity = coinbaseMaturity
@@ -104,7 +104,7 @@ public struct ConsensusParams: Sendable {
     public let assumeValid: Block.ID? // TODO: Change to UInt256 or InlineArray<UInt8, 256>
 
     /// Big endian, 32 bytes (256 bit) number.
-    public var minChainwork: [UInt8] // TODO: Change to UInt256 or InlineArray<UInt8, 256>
+    public var minChainwork: DifficultyTarget // [UInt8] // TODO: Change to UInt256 or InlineArray<UInt8, 256>
     let chainData: ChainData
 
     /// The number of blocks needed to be mined until a coinbase output may be spent. Defaults to 100.
