@@ -105,6 +105,9 @@ public actor NodeService: Sendable {
 
     private var maxPeerID = 0
 
+    // Blocks downloaded and being processed
+    private var processingBlocks = Set<Block.ID>()
+
     public func start() async {
         status = .starting
         let blocks = await blockchain.subscribeToBlocks()
@@ -407,14 +410,43 @@ public actor NodeService: Sendable {
     private func requestNextMissingBlocks(_ id: PeerID) async {
         guard let peer = state.peers[id] else { preconditionFailure() }
 
-        let numberOfBlocksToRequest = config.maxInTransitBlocks - peer.inTransitBlocks
+        let numberOfBlocksToRequest = config.maxInTransitBlocks - peer.inTransitBlocks.count
         guard numberOfBlocksToRequest > 0 else { return }
 
-        let blockIDs = await blockchain.nextMissingBlocks(max: numberOfBlocksToRequest)
+        let allInTransitBlocks = state.peers.values.reduce(Set<Block.ID>()) {
+            $0.union($1.inTransitBlocks)
+        }
+
+        let (blockIDs, updatedLastCommonBlock) = await blockchain.findNextBlocksToDownload(bestKnownBlock: peer.bestKnownHeader, lastCommonBlock: peer.lastCommonBlock, count: numberOfBlocksToRequest, exclude: allInTransitBlocks.union(processingBlocks))
+
+        state.peers[id]?.lastCommonBlock = updatedLastCommonBlock
 
         guard !blockIDs.isEmpty else { return }
 
-        state.peers[id]?.inTransitBlocks += blockIDs.count
+        state.peers[id]?.inTransitBlocks.formUnion(blockIDs)
+
+        let ibd = await blockchain.isInitialBlockDownload
+        let getData = GetDataMessage(
+            items: blockIDs.map { .init(type: ibd ? .witnessBlock : .compactBlock, hash: $0) }
+        )
+        enqueue(.getdata, payload: getData.data, to: id)
+    }
+
+    private func _requestNextMissingBlocks(_ id: PeerID) async {
+        guard let peer = state.peers[id] else { preconditionFailure() }
+
+        let numberOfBlocksToRequest = config.maxInTransitBlocks - peer.inTransitBlocks.count
+        guard numberOfBlocksToRequest > 0 else { return }
+
+        let allInTransitBlocks = state.peers.values.reduce(Set<Block.ID>()) {
+            $0.union($1.inTransitBlocks)
+        }
+
+        let blockIDs = await blockchain.nextMissingBlocks(max: numberOfBlocksToRequest, exclude: allInTransitBlocks)
+
+        guard !blockIDs.isEmpty else { return }
+
+        state.peers[id]?.inTransitBlocks.formUnion(blockIDs)
 
         let ibd = await blockchain.isInitialBlockDownload
         let getData = GetDataMessage(
@@ -424,7 +456,13 @@ public actor NodeService: Sendable {
     }
 
     private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
+
+        // The following line causes `findNextBlocksToDownload()` to request the same block twice
+        // if status == .merkle { processingBlocks.remove(block.id) }
+
         if status == .active {
+            processingBlocks.remove(block.id)
+
             let ibd = await blockchain.isInitialBlockDownload
             if !ibd {
                 await handleBlockRelay(block, height: height)
@@ -437,12 +475,6 @@ public actor NodeService: Sendable {
                             await channel.send(block)
                         }
                     }
-                }
-            }
-        } else if status == .header {
-            for (id, peer) in state.peers {
-                if peer.knownBlocks.contains(block.id) {
-                    state.peers[id]!.height = max(peer.height, height)
                 }
             }
         }
@@ -546,7 +578,7 @@ public actor NodeService: Sendable {
 
         state.peers[id]?.version = peerVersion
         state.peers[id]?.timeDiff = Int(ourTime.timeIntervalSince1970) - Int(peerVersion.timestamp.timeIntervalSince1970)
-        state.peers[id]?.height = peerVersion.startHeight
+        state.peers[id]?.reportedHeight = peerVersion.startHeight
 
         // Outbound connection. Version message is a response to our version.
         if peer.outgoing && peerVersion.protocolVersion > config.version {
@@ -731,11 +763,15 @@ public actor NodeService: Sendable {
 
         state.peers[id]!.registerKnownBlocks(headersMessage.items.map(\.id))
 
+        let headerProcessingResult: HeaderProcessingResult
         do {
-            try await blockchain.processHeaders(headersMessage.items)
+            headerProcessingResult = try await blockchain.processHeaders(headersMessage.items)
         } catch {
-            state.peers[id]?.height = await blockchain.height
+            logger.error("Issue processing headers from peer \(id):\n\(error)")
+            // state.peers[id]?.height = await blockchain.height
+            return
         }
+        updatePeer(id, with: headerProcessingResult)
 
         // If we are close to the tip (24 hours) we allow parallel
         if await blockchain.hasRecentHeader {
@@ -753,34 +789,61 @@ public actor NodeService: Sendable {
             let headers = await blockchain.headers // Just the total
             logger.info("All headers downloaded from peer \(id): \(headers).")
 
-            if headersSyncPeerID == id {
-                headersSyncPeerID = nil
-
-                // BIP130 delay `sendheaders` until we don't need more headers. Do this for all peers except this one.
-                await withTaskGroup { group in
-                    for peerID in state.peers.keys {
-                        guard peerID != id else { continue }
-                        if !state.peers[peerID]!.sendHeadersSent {
-                            group.addTask {
-                                await self.sendSendHeaders(peerID)
-                            }
-                        }
-                    }
-                }
-            }
-
             // BIP130 delaying `sendheaders` until we don't need more headers. Do this for this particular peer.
-            if !state.peers[id]!.sendHeadersSent {
-                enqueue(.sendheaders, to: id)
-                state.peers[id]!.sendHeadersSent = true
+            enqueue(.sendheaders, to: id)
+            state.peers[id]!.allHeadersDownloaded = true
+
+            var doneSyncingHeaders = true
+            for peerID in state.peers.keys {
+                guard peerID != id, !state.peers[peerID]!.allHeadersDownloaded else {
+                    continue
+                }
+                doneSyncingHeaders = false
+                await requestHeaders(peerID)
+                break
             }
-            await requestNextMissingBlocks(id)
+            if doneSyncingHeaders {
+                logger.info("All headers downloaded from all peers.")
+                await requestNextMissingBlocks(id)
+            }
         }
     }
 
-    private func sendSendHeaders(_ id: PeerID) async {
-        await self.send(.sendheaders, to: id)
-        self.state.peers[id]!.sendHeadersSent = true
+    private func updatePeer(_ id: PeerID, with headerProcessingResult: HeaderProcessingResult) {
+
+        // Update peer's held headers (non-connecting)
+        state.peers[id]!.heldHeaders.formUnion(headerProcessingResult.heldHeaders)
+
+        // Update bestKnownHeader for peer
+        let maxChainworkRef = headerProcessingResult.headerRefs.max(by: { $0.chainwork < $1.chainwork })
+
+        if let maxChainworkRef {
+            if let bestKnownHeader = state.peers[id]!.bestKnownHeader {
+                if maxChainworkRef.chainwork > bestKnownHeader.chainwork {
+                    state.peers[id]!.bestKnownHeader = maxChainworkRef
+                }
+            } else {
+                state.peers[id]!.bestKnownHeader = maxChainworkRef
+            }
+        }
+
+        // Remove connected headers from peers' held list and update best known header for each peer
+        for connectedHeader in headerProcessingResult.connectedHeaders {
+            let connectedHeaderID = connectedHeader.header.id
+            for (peerID, peer) in state.peers {
+                if !peer.heldHeaders.contains(connectedHeaderID) {
+                    continue
+                }
+                state.peers[peerID]!.heldHeaders.remove(connectedHeaderID)
+                if let bestKnownHeader = peer.bestKnownHeader {
+                    if connectedHeader.chainwork > bestKnownHeader.chainwork {
+                        state.peers[id]!.bestKnownHeader = connectedHeader
+                    }
+                } else {
+                    state.peers[id]!.bestKnownHeader = connectedHeader
+                }
+            }
+        }
     }
 
     private func processSendHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
@@ -798,10 +861,14 @@ public actor NodeService: Sendable {
         logger.debug("Received block \(block.idHex)")
 
         state.peers[id]!.registerKnownBlocks([block.id])
-        state.peers[id]?.inTransitBlocks -= 1
+        state.peers[id]?.inTransitBlocks.remove(block.id)
 
-        let height = try await blockchain.processBlock(block, immediate: false) ?? -1 // Using -1 for now to make all peers have a higher height
-        // TODO: Height won't be necessary once we track the peer's chainwork and last common block instead: https://github.com/swift-bitcoin/swift-bitcoin/issues/531
+        processingBlocks.insert(block.id)
+        let headerProcessingResult = try await blockchain.processBlock(block, immediate: false)
+
+        updatePeer(id, with: headerProcessingResult)
+
+        // TODO: Clean up commented out single-peer block download code
         /*
          // Code for only requesting blocks from the same peer
         if state.peers[id]!.inTransitBlocks == 0 {
@@ -810,14 +877,18 @@ public actor NodeService: Sendable {
          */
 
         // Code for requesting blocks from multiple peers
+        let currentChainwork = await blockchain.currentChainwork
         var lowestInTransitBlocks = config.maxInTransitBlocks
         var selectedPeerID = PeerID?.none
         // Looking for the peer which has the least amount of in transit blocks
         for (id, peer) in state.peers {
-            let inTransitBlocks = peer.inTransitBlocks
+            let inTransitBlocks = peer.inTransitBlocks.count
 
+            guard let bestKnownHeader = peer.bestKnownHeader, bestKnownHeader.chainwork > currentChainwork else {
+                continue
+            }
             // TODO: temporarilly only use peers with 0 blocks in transit (other wise breaks BlockSyncTests) - also related https://github.com/swift-bitcoin/swift-bitcoin/issues/530 and https://github.com/swift-bitcoin/swift-bitcoin/issues/531
-            if peer.height > height, inTransitBlocks < lowestInTransitBlocks, inTransitBlocks == 0 {
+            if inTransitBlocks < lowestInTransitBlocks, inTransitBlocks == 0 {
                 lowestInTransitBlocks = inTransitBlocks
                 selectedPeerID = id
             }
@@ -949,17 +1020,20 @@ public actor NodeService: Sendable {
             if tx == nil { i } else { nil }
         }
 
+        let headerProcessingResult: HeaderProcessingResult
         if missingTxIndices.isEmpty {
             var block = compactBlockMessage.header
             block.txs = txs.compactMap { $0 }
             precondition(block.txs.count == txs.count)
-            try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
+            headerProcessingResult = try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
         } else {
-            try await blockchain.processHeaders([header])
+             headerProcessingResult = try await blockchain.processHeaders([header])
+
             pendingBlockTxs[header.id] = txs
             let getBlockTxs = GetBlockTransactionsMessage(blockHash: compactBlockMessage.header.id, txIndices: missingTxIndices)
             enqueue(.getblocktxn, payload: getBlockTxs.data, to: id)
         }
+        updatePeer(id, with: headerProcessingResult)
     }
 
     private func processGetBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
@@ -1000,13 +1074,16 @@ public actor NodeService: Sendable {
             throw .blockNotFound
         }
         block.txs = pendingBlockTxs.compactMap { $0 }
+        let headerProcessingResult: HeaderProcessingResult
         do {
-            try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
+            headerProcessingResult = try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
         } catch {
             throw .invalidBlock
         }
+        updatePeer(id, with: headerProcessingResult)
     }
 
     static let minCompactBlocksVersion = 2
     static let maxCompactBlocksVersion = 2
 }
+

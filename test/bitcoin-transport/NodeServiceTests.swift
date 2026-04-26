@@ -373,7 +373,7 @@ struct NodeServiceTests: ~Copyable {
         #expect(halBlocksAfter == 2)
 
         // No Response
-        #expect(await hal.popMessage(satoshiPeer) == nil)
+        #expect(await hal.popMessage(satoshiPeer) == nil) // Oftern failing by hal sending a getData message to satoshi.. for a block it already has. This is after recent changes that started using BlockchainService.findNextBlocksToDownload() from the NodeService when receiving blocks
     }
 
     /// Extended handshake.

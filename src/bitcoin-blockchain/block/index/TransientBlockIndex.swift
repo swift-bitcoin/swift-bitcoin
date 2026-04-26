@@ -47,7 +47,11 @@ struct TransientBlockIndex: BlockIndex {
         return nil
     }
 
-    func ancestor(of tip: BlockRef, at height: Int) -> BlockRef {
+
+    /// Finds the ancestor of block at a given height.
+    ///
+    /// Naive implementation with no skip list
+    func ancestorNaive(of tip: BlockRef, at height: Int) -> BlockRef {
         precondition(height <= tip.height)
         var candidate = tip
         while candidate.height > height {
@@ -55,6 +59,14 @@ struct TransientBlockIndex: BlockIndex {
         }
         return candidate
     }
+
+    /// Finds the ancestor of block at a given height.
+    ///
+    /// Uses skip list for performance.
+    func ancestor(of tip: BlockRef, at height: Int) -> BlockRef {
+        _ancestor(of: tip, at: height, refs: byID)
+    }
+
 
     func bestAncestor(of header: BlockRef) -> BlockRef {
         var candidate = header
@@ -64,7 +76,11 @@ struct TransientBlockIndex: BlockIndex {
         return candidate
     }
 
-    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int) -> [Block.ID] {
+    func lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef) -> BlockRef {
+        _lastCommonAncestor(blockA, blockB, refs: byID)
+    }
+
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<Block.ID>) -> [Block.ID] {
         precondition(max >= 0)
 
         // TODO: Test this out:
@@ -74,7 +90,7 @@ struct TransientBlockIndex: BlockIndex {
         var blocks = Deque<Block.ID>(minimumCapacity: max)
         // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
         while current.height > stop.height /* current.header.id != stop.header.id */ {
-            if current.status == .header {
+            if current.status == .header, !exclude.contains(current.header.id) {
                 if blocks.count == max {
                     _ = blocks.popLast()
                 }
@@ -120,16 +136,17 @@ struct TransientBlockIndex: BlockIndex {
         }
         let height = if let previous { previous.height + 1 } else { 0 }
         let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
-        let blockRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
-        byID[blockRef.header.id] = blockRef
+        var newRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
+        newRef.skip = ancestor(of: newRef, at: skipHeight(from: height)).header.id
+        byID[newRef.header.id] = newRef
 
         // We might have some previous forks at this height
         if byHeight[height] != nil {
-            byHeight[height]!.append(blockRef.header.id)
+            byHeight[height]!.append(newRef.header.id)
         } else {
-            byHeight[height] = [blockRef.header.id]
+            byHeight[height] = [newRef.header.id]
         }
-        return blockRef
+        return newRef
     }
 
     mutating func updateBlock(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
@@ -319,4 +336,73 @@ struct TransientBlockIndex: BlockIndex {
         }
         return nil
     }
+}
+
+/// Turns the lowest `1` bit in the binary representation of a number into a `0`.
+private func invertLowestOne(_ n: Int) -> Int { n & (n - 1) }
+
+/// Compute what height to jump back to with the `BlockRef.previous` pointer.
+private func skipHeight(from height: Int) -> Int {
+    if height < 2 { return 0 }
+
+    // Determine which height to jump back to. Any number strictly lower than height is acceptable, but the following expression seems to perform well in simulations (max 110 steps to go back up to 2**18 blocks).
+    return height & 1 != 0 ? invertLowestOne(invertLowestOne(height - 1)) + 1 : invertLowestOne(height)
+}
+
+private func _ancestor(of tip: BlockRef, at height: Int, refs: [Block.ID : BlockRef]) -> BlockRef {
+    precondition(height <= tip.height)
+    var indexWalk = tip // const CBlockIndex* pindexWalk = this;
+    var heightWalk = tip.height
+    while (heightWalk > height) {
+        let heightSkip = skipHeight(from: heightWalk)
+        let heightSkipPrev = skipHeight(from: heightWalk - 1)
+        if let skip = indexWalk.skip, heightSkip == height || (
+            heightSkip > height && !(
+                heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height))
+        {
+            // Only follow skip if previous->skip isn't better than skip->previous.
+            indexWalk = refs[skip]!
+            heightWalk = heightSkip
+        } else {
+            indexWalk = refs[indexWalk.header.previous]!
+            heightWalk -= 1
+        }
+    }
+    return indexWalk
+}
+
+/// Find the last common ancestor two blocks have.
+private func _lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef, refs: [Block.ID : BlockRef]) -> BlockRef {
+    var pa: BlockRef
+    var pb: BlockRef
+    // First rewind to the last common height (the forking point cannot be past one of the two).
+    if blockA.height > blockB.height {
+        pb = blockB
+        pa = _ancestor(of: blockA, at: blockB.height, refs: refs)
+    } else if blockB.height > blockA.height {
+        pa = blockA
+        pb = _ancestor(of: blockB, at: blockA.height, refs: refs)
+    } else {
+        pa = blockA
+        pb = blockB
+    }
+    while pa.header.id != pb.header.id {
+        // Jump back until pa and pb have a common "skip" ancestor.
+        assert(pa.skip != nil && pb.skip != nil)
+        while pa.skip != pb.skip { // TODO: check what happens when skip is null for one of them
+            // This logic relies on the property that equal-height blocks have equal-height skip
+            // pointers.
+            assert(pa.height == pb.height)
+            //assert(pa->pskip->nHeight == pb->pskip->nHeight); // check moved down 2 lines
+            pa = refs[pa.skip!]!
+            pb = refs[pb.skip!]!
+            assert(pa.height == pb.height)
+            assert(pa.skip != nil && pb.skip != nil)
+        }
+        // At this point, pa and pb are different, but have equal pskip. The forking point lies in
+        // between pa/pb on the one end, and pa->pskip/pb->pskip on the other end.
+        pa = refs[pa.header.previous]!
+        pb = refs[pb.header.previous]!
+    }
+    return pa
 }

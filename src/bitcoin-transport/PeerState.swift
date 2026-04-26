@@ -31,7 +31,7 @@ public struct PeerState: Sendable {
 
     /// Whether we have sent this peer a `sendheaders` message.
     /// BIP130
-    var sendHeadersSent = false
+    var allHeadersDownloaded = false
 
     /// BIP339
     var witnessRelayPreferenceSent = false
@@ -67,11 +67,16 @@ public struct PeerState: Sendable {
     /// Difference between the time reported by the peer and our time at the time we receive the version message.
     var timeDiff = 0
 
-    var inTransitBlocks = 0
+    var inTransitBlocks: Set<Block.ID> = []
+
+    /// Headers that could not yet connect to our header chain because its parent was not yet processed.
+    var heldHeaders: Set<Block.ID> = []
 
     // MARK: - Status
 
-    public internal(set) var height = 0
+    public internal(set) var bestKnownHeader = BlockRef?.none
+    public internal(set) var lastCommonBlock = BlockRef?.none
+    public internal(set) var reportedHeight = 0
     public internal(set) var lastPingNonce = UInt64?.none
     public private(set) var knownBlocks = [Block.ID]()
     public private(set) var knownTxs = [Transaction.ID]()
