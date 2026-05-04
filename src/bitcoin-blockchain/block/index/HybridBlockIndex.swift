@@ -255,7 +255,13 @@ actor HybridBlockIndex: BlockIndex {
     func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
         var missing = [Block.ID]()
         for id in ids {
-            if cache[id] == nil { missing.append(id) }
+            guard let ref = cache[id] else {
+                missing.append(id)
+                continue
+            }
+            if ref.status == .header {
+                missing.append(id)
+            }
         }
         return missing
     }

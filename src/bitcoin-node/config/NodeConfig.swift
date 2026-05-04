@@ -10,7 +10,7 @@ struct NodeConfig: Codable {
         autoConnect: Bool = true,
         logLevel: LogLevel = .info,
         feeRate: Int = 100,
-        metrics: StatsdMetrics? = nil,
+        metrics: OTelMetrics? = nil,
         enableProfiling: Bool = false
     ) {
         self.dataLocation = dataLocation
@@ -31,7 +31,7 @@ struct NodeConfig: Codable {
     let autoConnect: Bool
     let logLevel: LogLevel
     let feeRate: Int
-    let metrics: StatsdMetrics?
+    let metrics: OTelMetrics?
     let enableProfiling: Bool
 
     static let `default` = Self()
@@ -46,7 +46,7 @@ struct NodeConfig: Codable {
         self.autoConnect = try container.decodeIfPresent(Bool.self, forKey: .autoConnect) ?? defaults.autoConnect
         self.logLevel = try container.decodeIfPresent(LogLevel.self, forKey: .logLevel) ?? defaults.logLevel
         self.feeRate = try container.decodeIfPresent(Int.self, forKey: .feeRate) ?? defaults.feeRate
-        self.metrics = try container.decodeIfPresent(NodeConfig.StatsdMetrics.self, forKey: .metrics) ?? defaults.metrics
+        self.metrics = try container.decodeIfPresent(NodeConfig.OTelMetrics.self, forKey: .metrics) ?? defaults.metrics
         self.enableProfiling = try container.decodeIfPresent(Bool.self, forKey: .enableProfiling) ?? defaults.enableProfiling
     }
 }
@@ -71,14 +71,12 @@ extension NodeConfig {
 
 extension NodeConfig {
 
-    struct StatsdMetrics: Codable {
-        init(host: String = "localhost", port: Int = 8125) {
-            self.host = host
-            self.port = port
+    struct OTelMetrics: Codable {
+        init(endpoint: String = "http://localhost:4317") {
+            self.endpoint = endpoint
         }
 
-        let host: String
-        let port: Int
+        let endpoint: String
     }
 }
 

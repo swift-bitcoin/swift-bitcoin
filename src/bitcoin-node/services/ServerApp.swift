@@ -4,7 +4,6 @@ import BitcoinBlockchain
 import BitcoinTransport
 import Logging
 import Metrics
-import StatsdClient
 import ProfileRecorderServer
 import ServiceLifecycle
 import NIOCore
@@ -83,14 +82,19 @@ actor ServerApp {
             async let _ = ProfileRecorderServer(configuration: .parseFromEnvironment()).runIgnoringFailures(logger: logger)
         }
 
-        let statsdClient: StatsdClient?
-        if let statsd = config.metrics {
-            logger.info("Metrics enabled as per statsd configuration: UDP+statsd://\(statsd.host):\(statsd.port)")
-            let client = try StatsdClient(host: statsd.host, port: statsd.port)
-            MetricsSystem.bootstrap(client)
-            statsdClient = client
+        let telemetryService: ServiceGroup?
+        let metricsFactory: (any MetricsFactory)?
+        if let metricsConfig = config.metrics {
+            logger.info("Metrics enabled as per OTel configuration with endpoint \(metricsConfig.endpoint)")
+            // Initialize all telemetry services
+            (telemetryService, metricsFactory) = try makeTelemetryService(
+                logger: logger,
+                serviceName: "swift-bitcoin",
+                endpoint: metricsConfig.endpoint
+            )
         } else {
-            statsdClient = nil
+            telemetryService = nil
+            metricsFactory = nil
         }
 
         let params: ConsensusParams = switch network {
@@ -101,6 +105,7 @@ actor ServerApp {
         case .regtest:
                 .regtest
         }
+
         let blockchain = try await BlockchainService(
             params: params,
             config: .init(dataLocation: dataLocation),
@@ -114,6 +119,10 @@ actor ServerApp {
         rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, logger: logger)
 
         var services: [ServiceGroupConfiguration.ServiceConfiguration] = []
+
+        if let telemetryService {
+            services.append(.init(service: telemetryService))
+        }
 
         services.append(.init(service: node, successTerminationBehavior: .gracefullyShutdownGroup, failureTerminationBehavior: .cancelGroup))
 
@@ -146,23 +155,20 @@ actor ServerApp {
         // All instance variables initialized, time to set some call backs
         await rpcService.setServerApp(self)
 
-        // After the following line the app will suspend indefinitely
-        try await serviceGroup.run()
+        if let metricsFactory {
+            // Use withMetricsFactory to make the OTel factory available as a task-local
+            // for any Metric objects created during the service group's run
+            try await withMetricsFactory(metricsFactory) {
+                try await serviceGroup.run()
+            }
+        } else {
+            // After the following line the app will suspend indefinitely
+            try await serviceGroup.run()
+        }
 
         // Execution will only continue here after service group shuts down
 
         await blockchain.shutdown()
-
-        if let statsdClient {
-            logger.info("Shutting down statsd client…")
-            statsdClient.shutdown { [logger] error in
-                if let error {
-                    logger.error("\(error.localizedDescription)")
-                    return
-                }
-                logger.info("Statsd client shut down")
-            }
-        }
     }
 
     private let logger: Logger
@@ -189,21 +195,21 @@ actor ServerApp {
 
         // Collect P2P Client Services' statuses in order
         /*
-        let p2pClientStatus = await withTaskGroup(of: (PeerID, StatusRPC.Result.P2PClient).self, returning: [StatusRPC.Result.P2PClient].self) { group in
-            for client in p2pClients.values {
-                group.addTask {
-                    let status = await client.status
-                    return (status.peerID, status)
-                }
-            }
-            // Let's sort clients by their ID
-            var items = [(PeerID, StatusRPC.Result.P2PClient)]()
-            for await result in group {
-                // result.1.peerID = result.0 // Set the peerID inside the struct
-                items.append(result)
-            }
-            return items.sorted(by: { $0.0 < $1.0 }).map(\.1) // Get rid of the tuple index
-        }
+         let p2pClientStatus = await withTaskGroup(of: (PeerID, StatusRPC.Result.P2PClient).self, returning: [StatusRPC.Result.P2PClient].self) { group in
+         for client in p2pClients.values {
+         group.addTask {
+         let status = await client.status
+         return (status.peerID, status)
+         }
+         }
+         // Let's sort clients by their ID
+         var items = [(PeerID, StatusRPC.Result.P2PClient)]()
+         for await result in group {
+         // result.1.peerID = result.0 // Set the peerID inside the struct
+         items.append(result)
+         }
+         return items.sorted(by: { $0.0 < $1.0 }).map(\.1) // Get rid of the tuple index
+         }
          */
 
         let p2pStatus = await p2pService?.status ?? .init(listening: false, host: nil, port: nil, overallConnections: -1, sessionConnections: -1, activeConnections: -1)
@@ -279,4 +285,50 @@ extension BlockchainService.Config.DataLocation {
         case let .custom(path: path): .custom(path: path)
         }
     }
+}
+
+import AsyncAlgorithms
+import Instrumentation
+import Logging
+import Metrics
+import OTel
+import ServiceLifecycle
+import SystemMetrics
+import UnixSignals
+
+func makeTelemetryService(logger: Logger, serviceName: String, endpoint: String) throws -> (service: ServiceGroup, metricsFactory: any MetricsFactory) {
+    var otelConfig = OTel.Configuration.default
+    otelConfig.metrics.otlpExporter.protocol = .grpc
+    otelConfig.metrics.otlpExporter.endpoint = endpoint
+    print("Brr metrics proto \(otelConfig.metrics.otlpExporter.protocol) endpoint \(otelConfig.metrics.otlpExporter.endpoint)")
+    otelConfig.logs.enabled = false
+    otelConfig.metrics.enabled = true
+    otelConfig.traces.enabled = false
+    otelConfig.serviceName = serviceName
+    let otelMetricsBackend = try OTel.makeMetricsBackend(configuration: otelConfig)
+
+    // Configure SystemMetrics monitoring with an explicit metrics factory
+    let systemMetricsMonitor = SystemMetricsMonitor(
+        configuration: .init(pollInterval: .seconds(30)),
+        metricsFactory: otelMetricsBackend.factory,
+        logger: logger
+    )
+
+    // Create a named service group
+    let serviceGroup = ServiceGroup(
+        services: [
+            otelMetricsBackend.service,
+            systemMetricsMonitor,
+        ],
+        logger: logger,
+    )
+    let namedServiceConfiguration = ServiceGroupConfiguration.ServiceConfiguration(
+        service: serviceGroup,
+        serviceName: "Telemetry"
+    )
+    let serviceGroupConfiguration = ServiceGroupConfiguration(
+        services: [namedServiceConfiguration],
+        logger: logger
+    )
+    return (ServiceGroup(configuration: serviceGroupConfiguration), otelMetricsBackend.factory)
 }
