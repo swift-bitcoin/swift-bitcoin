@@ -1,0 +1,14 @@
+services:
+  grafana:
+    image: grafana/otel-lgtm:latest
+    environment:
+      - GF_PATHS_DATA=/data/grafana
+    volumes:
+      - ./dashboards/service-process-metrics-dashboard.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/service-process-metrics-dashboard.yaml
+      - ./dashboards/grafana-dashboard-service-process-metrics.json:/otel-lgtm/grafana-dashboard-service-process-metrics.json
+      - ./dashboards/service-swift-bitcoin-dashboard.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/service-swift-bitcoin-dashboard.yaml
+      - ./dashboards/grafana-dashboard-service-swift-bitcoin.json:/otel-lgtm/grafana-dashboard-service-swift-bitcoin.json
+    ports:
+      - "3000:3000"
+      - "4317:4317"
+      - "4318:4318"

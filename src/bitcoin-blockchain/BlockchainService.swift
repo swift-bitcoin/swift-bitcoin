@@ -15,6 +15,15 @@ public typealias BlockUpdate = (Block, ValidationStatus, Int /* Height */)
 /// The blockchain is also responsible for detecting and handling chain reorganizations in a way that does not break consensus.
 public actor BlockchainService: Sendable {
 
+    private struct Metrics {
+        let transactionsCounter = Counter(label: "transactions")
+        let headersCounter = Counter(label: "headers")
+        let seenBlocksCounter = Counter(label: "blocks_seen")
+        let validBlocksCounter = Counter(label: "blocks_valid")
+        let validTransactionsCounter = Counter(label: "transactions_valid")
+        let blockValidationTimer = Timer(label: "block_validation_time", preferredDisplayUnit: .seconds)
+    }
+
     public init(params: ConsensusParams = .regtest, config: Config = .init(), logger: Logger = .init(label: "blockchain")) async throws(InitError) {
         self.params = params
         self.config = config
@@ -96,6 +105,8 @@ public actor BlockchainService: Sendable {
 
     /// The logger instance for blockchain events.
     public let logger: Logger
+
+    private lazy var metrics = Metrics()
 
     /// Path to the data directory where blocks and indices are stored.
     private let dataDir: FilePath?
@@ -290,7 +301,7 @@ public actor BlockchainService: Sendable {
     /// The locator parameter is used in calls from the re-indexing process.
     @discardableResult private func processBlock(_ block: Block, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> HeaderProcessingResult {
 
-        Metrics.seenBlocksCounter.increment()
+        metrics.seenBlocksCounter.increment()
 
         let headerProcessingResult = try await processHeader(block.header, locator: locator)
         guard let headerRef = headerProcessingResult.headerRefs.first else {
@@ -324,10 +335,14 @@ public actor BlockchainService: Sendable {
         }
         precondition(bestHeader.height > activeTip.height)
 
+        let activeTip = activeTip
         let nextHeight = activeTip.height + 1
         let nextRefs = await blockIndex.getAll(at: nextHeight)
+        // Actor re-entry, at this point the active tip could have already changed
+        guard activeTip == self.activeTip else {
+            return await nextBlockToValidate()
+        }
         let nextChildren = nextRefs.filter { $0.header.previous == activeTip.header.id }
-
         precondition(!nextChildren.isEmpty)
         // TODO: Failing with multiple connections
 
@@ -350,7 +365,7 @@ public actor BlockchainService: Sendable {
     /// Returns silently if transaction is already in the mempool.
     public func addTransaction(_ tx: Transaction) async throws(TransactionValidationError) {
 
-        Metrics.transactionsCounter.increment()
+        metrics.transactionsCounter.increment()
 
         guard !mempool.contains(tx) else {
             logger.warning("Transaction already in mempool: \(tx.idHex)")
@@ -547,7 +562,7 @@ public actor BlockchainService: Sendable {
             return .init(headerRefs: [headerRef], connectedHeaders: [], heldHeaders: [])
         }
 
-        Metrics.headersCounter.increment()
+        metrics.headersCounter.increment()
 
         // Header is not connected to the existing header chain
         guard let prev = await checkConnectivity(header, locator: locator) else {
@@ -1559,9 +1574,9 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        Metrics.validBlocksCounter.increment()
-        Metrics.validTransactionsCounter.increment(by: block.txs.count)
-        Metrics.blockValidationTimer.record(duration: .now - startTime)
+        metrics.validBlocksCounter.increment()
+        metrics.validTransactionsCounter.increment(by: block.txs.count)
+        metrics.blockValidationTimer.record(duration: .now - startTime)
 
         if bestHeader.header.id == activeTip.header.id {
             bestHeader = activeTip
@@ -1977,12 +1992,3 @@ private func nowSeconds() -> TimeInterval {
 
 private typealias LockPoints = (height: Int, time: Int, ancestor: BlockRef)
 private typealias LockPair = (height: Int, time: Int)
-
-private enum Metrics {
-    static let transactionsCounter = Counter(label: "transactions")
-    static let headersCounter = Counter(label: "headers")
-    static let seenBlocksCounter = Counter(label: "seen-blocks")
-    static let validBlocksCounter = Counter(label: "valid-blocks")
-    static let validTransactionsCounter = Counter(label: "valid-transactions")
-    static let blockValidationTimer = Timer(label: "block-validation", preferredDisplayUnit: .seconds)
-}

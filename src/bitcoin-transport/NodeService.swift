@@ -3,6 +3,7 @@ import AsyncAlgorithms
 import BitcoinBase
 import BitcoinBlockchain
 import Logging
+import Metrics
 
 /// A peer's unique identifier.
 public typealias PeerID = Int
@@ -25,6 +26,11 @@ public actor NodeService: Sendable {
         public var id: PeerID
         public var host: String
         public var port: Int
+    }
+
+    private struct Metrics {
+        let messagesReceived = Counter(label: "messages_received")
+        let messagesSent = Counter(label: "messages_sent")
     }
 
     ///  Creates an instance of a bitcoin node service.
@@ -57,6 +63,7 @@ public actor NodeService: Sendable {
 
     public private(set) var state: NodeState
 
+    private lazy var metrics = Metrics()
     private var connectionChannels: [AsyncChannel<PeerID>] = []
     private var disconnectionChannels: [AsyncChannel<PeerID>] = []
 
@@ -305,6 +312,7 @@ public actor NodeService: Sendable {
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
     public func processMessage(_ message: NetworkMessage, from id: PeerID) async throws {
         logger.info("Received \(message.command) (\(message.size)) from \(id)")
+        metrics.messagesReceived.increment()
         // Postpone the next ping
         state.peers[id]?.nextPingTask?.cancel()
         if let keepAliveFrequency = config.keepAliveFrequency {
@@ -526,12 +534,14 @@ public actor NodeService: Sendable {
     /// Sends a message.
     private func send(_ command: MessageCommand, payload: Data = .init(), to id: PeerID) async {
         logger.info("Sending \(command) (\(payload.count)) to \(id)")
+        metrics.messagesSent.increment()
         await peerOuts[id]?.send(.init(command, payload: payload, network: config.network))
     }
 
     /// Queues a message.
     private func enqueue(_ command: MessageCommand, payload: Data = .init(), to id: PeerID) {
         logger.info("Queueing \(command) (\(payload.count)) to \(id)")
+        metrics.messagesSent.increment()
         state.peers[id]?.outbox.append(.init(command, payload: payload, network: config.network))
     }
 
@@ -947,11 +957,13 @@ public actor NodeService: Sendable {
         var blockIDs = [Block.ID]()
         var txIDs = [Transaction.ID]()
         for item in inventoryMessage.items {
-            if item.type == .witnessBlock {
+            switch item.type {
+            case .witnessBlock, .block:
                 blockIDs.append(item.hash)
-            }
-            if item.type == .witnessTx {
+            case .witnessTx, .transaction, .legacyWitnessTx:
                 txIDs.append(item.hash)
+            default:
+                preconditionFailure("Received unknown inventory type \(item.type)")
             }
         }
         var items = [InventoryItem]()
@@ -963,6 +975,7 @@ public actor NodeService: Sendable {
         for blockID in await blockchain.missingBlocks(matching: blockIDs) {
             items.append(.init(type: .witnessBlock, hash: blockID))
         }
+        guard !items.isEmpty else { return }
         let getData = GetDataMessage(items: items)
         enqueue(.getdata, payload: getData.data, to: id)
     }
