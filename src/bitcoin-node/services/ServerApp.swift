@@ -85,7 +85,7 @@ actor ServerApp {
         let telemetryService: ServiceGroup?
         let metricsFactory: (any MetricsFactory)?
         if let metricsConfig = config.metrics {
-            logger.info("Metrics enabled as per OTel configuration with endpoint \(metricsConfig.endpoint)")
+            logger.info("Metrics enabled as per OpenTelemetry (OTLP) configuration with gRPC endpoint \(metricsConfig.endpoint)")
             // Initialize all telemetry services
             (telemetryService, metricsFactory) = try makeTelemetryService(
                 logger: logger,
@@ -300,7 +300,6 @@ func makeTelemetryService(logger: Logger, serviceName: String, endpoint: String)
     var otelConfig = OTel.Configuration.default
     otelConfig.metrics.otlpExporter.protocol = .grpc
     otelConfig.metrics.otlpExporter.endpoint = endpoint
-    print("Brr metrics proto \(otelConfig.metrics.otlpExporter.protocol) endpoint \(otelConfig.metrics.otlpExporter.endpoint)")
     otelConfig.logs.enabled = false
     otelConfig.metrics.enabled = true
     otelConfig.traces.enabled = false

@@ -90,21 +90,28 @@ let config = NodeConfig(…
 
 ### Metrics
 
-We use [Swift Metrics](https://github.com/apple/swift-metrics) with [Statsd Client](https://github.com/apple/swift-statsd-client) backend.
+Swift Bitcoin uses [Swift Metrics](https://github.com/apple/swift-metrics) with the corresponding OpenTelemetry back-end provided by [Swift OTel](https://github.com/swift-otel/swift-otel). Hardware diagnostics are provided by the [System Metrics](https://github.com/apple/swift-system-metrics) package.
 
 To configure use:
 
 ```swift
 let config = NodeConfig( …
-    metrics: .init(host: "localhost", port: 8125), …
+    metrics: .init(), …
 )
 ```
 
-To start the [Graphite](https://graphiteapp.org) Docker container:
+Which will use the default gRPC endpoint `http://localhost:4317`. Alternatively you can specify a custom endpoint using the `NodeConfig.OTelMetrics` initializer.
+
+To visualize metrics you can start the [Grafana](https://grafana.com/oss/grafana/) container from included the Docker Compose definition:
 
 ```bash
-docker run --rm -it --name graphite -p 8008:80 -p 8125:8125/udp graphiteapp/graphite-statsd
+cd tools/grafana
+docker compose up
 ```
+
+The configuration already includes a dashboard dedicated to Bitcoin protocol metrics as well as a separate dashboard for system metrics.
+
+Point your browser to http://localhost:3000 to explore metrics in real time.
 
 ### Profiler
 

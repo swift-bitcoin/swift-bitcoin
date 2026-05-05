@@ -31,6 +31,8 @@ struct NodeConfig: Codable {
     let autoConnect: Bool
     let logLevel: LogLevel
     let feeRate: Int
+
+    /// Whether to report OpenTelemetry metrics, including system metrics.
     let metrics: OTelMetrics?
     let enableProfiling: Bool
 
@@ -71,11 +73,13 @@ extension NodeConfig {
 
 extension NodeConfig {
 
+    /// OpenTelemetry metrics settings.
     struct OTelMetrics: Codable {
         init(endpoint: String = "http://localhost:4317") {
             self.endpoint = endpoint
         }
 
+        /// The gRPC endpoint, e.g. `http://localhost:4317`.
         let endpoint: String
     }
 }
