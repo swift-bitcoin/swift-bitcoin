@@ -2,6 +2,7 @@ import Testing
 import BitcoinCrypto
 import Foundation
 import AsyncAlgorithms
+import BitcoinBase
 import BitcoinBlockchain
 @testable import BitcoinTransport
 

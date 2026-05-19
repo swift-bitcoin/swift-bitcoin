@@ -114,7 +114,7 @@ extension Transaction {
             } else if witnessVersion == 1 && witnessProgram.count == PublicKey.xOnlyLength && !isPayToScriptHash {
                 // BIP341
                 try verifyTaproot(&runtime, witnessVersion: witnessVersion, witnessProgram: witnessProgram)
-            } else if witnessVersion == 1 && witnessProgram == .init([0x4e, 0x73]) {
+            } else if witnessVersion == 1 && witnessProgram == Script.anchorProgram {
                 // Pay-to-Anchor - Skip
             } else if config.contains(.discourageUpgradableWitnessProgram) {
                 throw ScriptError.disallowedWitnessVersion
@@ -126,7 +126,7 @@ extension Transaction {
     private func verifyWitness(_ runtime: inout ScriptRuntime, witnessVersion: Int, witnessProgram: Data) throws {
         let input = runtime.input
 
-        var stack = ins[input].witness.elements
+        var stack = ins[input].witness.stack
 
         if witnessProgram.count == Hash160.Digest.byteCount /* 20 */ {
             // If the version byte is 0, and the witness program is 20 bytes: It is interpreted as a pay-to-witness-public-key-hash (P2WPKH) program.
@@ -185,7 +185,7 @@ extension Transaction {
         let witness = ins[input].witness
         guard config.contains(.taproot) else { return }
 
-        var stack = witness.elements
+        var stack = witness.stack
         // Fail if the witness stack has 0 elements.
         if stack.count == 0 { throw ScriptError.missingTaprootWitness }
 
@@ -229,7 +229,7 @@ extension Transaction {
         guard let internalKey = PublicKey(xOnly: internalKeyData), internalKey.check(useXOnly: true) else { throw ScriptError.invalidTaprootPublicKey }
 
         // Let v = c[0] & 0xfe and call it the leaf version
-        let leafVersion = control[0] & 0xfe
+        let leafVersion = control[0] & Witness.taprootLeafMask
 
         // Let k0 = hashTapLeaf(v || compact_size(size of s) || s); also call it the tapleaf hash.
         let tapLeafHash = Data(SHA256.hash(data: [leafVersion] + VarInt(tapscriptData.count).data + tapscriptData, tag: "TapLeaf"))
@@ -249,7 +249,7 @@ extension Transaction {
 
         // BIP 342 Tapscript - https://github.com/bitcoin/bips/blob/master/bip-0342.mediawiki
         // The leaf version is 0xc0 (i.e. the first byte of the last witness element after removing the optional annex is 0xc0 or 0xc1), marking it as a tapscript spend.
-        guard leafVersion == 0xc0 else {
+        guard leafVersion == Witness.taprootLeafTapscript else {
             if config.contains(.discourageUpgradableTaprootVersion) {
                 throw ScriptError.disallowedTaprootVersion
             }

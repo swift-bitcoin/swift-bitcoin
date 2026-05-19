@@ -1,3 +1,4 @@
+import BitcoinBase
 import Logging
 
 /// Block storage service protocol.

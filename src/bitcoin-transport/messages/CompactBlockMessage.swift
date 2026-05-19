@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinBase
 import BitcoinBlockchain
 
 /// A `HeaderAndShortIDs` (i.e. ``CompactBlockMessage``)  structure is used to relay a block header, the short transactions IDs used for matching already-available transactions, and a select few transactions which we expect a peer may be missing.

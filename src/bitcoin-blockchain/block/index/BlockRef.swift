@@ -1,5 +1,6 @@
 import Foundation
 import BitcoinCrypto
+import BitcoinBase
 
 /// A block of transactions.
 public struct BlockRef: Equatable, Hashable, Sendable {

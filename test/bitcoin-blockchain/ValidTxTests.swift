@@ -1,6 +1,7 @@
 import Testing
 import Foundation
-@testable import BitcoinBase
+import BitcoinBase
+@testable import BitcoinBlockchain
 
 struct ValidTxTests {
 

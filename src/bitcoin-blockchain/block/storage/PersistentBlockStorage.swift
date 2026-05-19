@@ -1,3 +1,4 @@
+import BitcoinBase
 import Foundation
 import Collections
 import Logging

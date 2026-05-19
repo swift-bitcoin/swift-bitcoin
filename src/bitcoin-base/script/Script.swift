@@ -35,6 +35,18 @@ public struct Script: Equatable, Sendable {
         ops.isEmpty && unparsable.isEmpty
     }
 
+    // BIP62
+    public var isPushOnly: Bool {
+        ops.allSatisfy(\.isPush) && unparsable.isEmpty
+    }
+
+    /// Whether the script is guaranteed to fail at execution, regardless of the initial stack. This allows outputs to be pruned instantly when entering the UTXO set.
+    public var isUnspendable: Bool {
+        let size = dataSize
+        return size > 0 && ops[0] == .return || size > Script.maxScriptSize
+        //(size() > 0 && *begin() == OP_RETURN) || (size() > MAX_SCRIPT_SIZE);
+    }
+
     // BIP16
     public var isPayToScriptHash: Bool {
         if dataSize == RIPEMD160.Digest.byteCount + 3,
@@ -54,6 +66,13 @@ public struct Script: Equatable, Sendable {
         } else {
             false
         }
+    }
+
+    public var witnessVersionProgram: (Int, Data)? {
+        guard isSegwit else {
+            return nil
+        }
+        return (witnessVersion, witnessProgram)
     }
 
     public var isPayToWitnessScriptHash: Bool {
@@ -79,7 +98,7 @@ public struct Script: Equatable, Sendable {
 
     // BIP62
     func checkPushOnly() throws {
-        guard ops.allSatisfy(\.isPush), unparsable.isEmpty else {
+        guard isPushOnly else {
             throw ScriptError.nonPushOnlyScript
         }
     }
@@ -186,6 +205,81 @@ public struct Script: Equatable, Sendable {
             .return,
             .encodeMinimally(messageData)
         ]
+    }
+}
+
+extension Script {
+    // BIP433 Anchor program pattern: witness v1 with 2-byte program 0x4e 0x73
+    public static let anchorProgram: Data = Data([0x4e, 0x73])
+
+    // Returns true if this script is a segwit v1 program with the anchor payload
+    public var isPayToAnchor: Bool {
+        guard isSegwit, witnessVersion == 1 else { return false }
+        return witnessProgram == Script.anchorProgram
+    }
+}
+
+extension Script {
+
+    /// GetSigOpCount(bool fAccurate) from Bitcoin Core, adapted to Swift.
+    /// Counts the number of signature operations in this script.
+    /// - Parameter accurate: If true, count multisig ops accurately when preceded by OP_1..OP_16; otherwise assume MAX_PUBKEYS_PER_MULTISIG.
+    /// - Returns: Number of signature operations.
+    public func sigOpCount(accurate: Bool) -> Int {
+        var n = 0
+        var lastOpcode: Script.Operation? = nil
+        for op in ops {
+            switch op {
+            case .checkSig, .checkSigVerify:
+                n += 1
+            case .checkMultiSig, .checkMultiSigVerify:
+                if accurate, let lastOpcode {
+                    if case let .constant(v) = lastOpcode, (1...16).contains(Int(v)) {
+                        n += Int(v)
+                    } else {
+                        n += Script.maxMultiSigPubkeys
+                    }
+                } else {
+                    n += Script.maxMultiSigPubkeys
+                }
+            default:
+                break
+            }
+            lastOpcode = op
+        }
+        return n
+    }
+
+    /// GetSigOpCount(const CScript& scriptSig) from Bitcoin Core, adapted to Swift.
+    /// If this is not P2SH, returns sigOpCount(true). Otherwise, extracts the redeemScript from scriptSig's last push and returns its sigop count.
+    public func sigOpCount(inputScript scriptSig: Script) -> Int {
+        guard isPayToScriptHash else {
+            return sigOpCount(accurate: true)
+        }
+
+        // This is a pay-to-script-hash scriptPubKey;
+        // get the last item that the scriptSig pushes onto the stack:
+        var lastPush = Data?.none // Scan scriptSig.ops and remember the last pushBytes data
+        guard !scriptSig.ops.isEmpty else {
+            preconditionFailure()
+        }
+        for op in scriptSig.ops {
+            switch op {
+            case .pushBytes(let data), .pushData1(let data), .pushData2(let data), .pushData4(let data):
+                lastPush = data
+            case .constant(let value):
+                // Minimal integers are pushes too; encode minimally to bytes as in script.
+                lastPush = Data([value])
+            default:
+                // Any non-push opcode means we cannot extract a redeemScript here; return 0 like Core.
+                return 0
+            }
+        }
+        // …and return its opcount:
+        if let lastPush, let subScript = try? Script(lastPush) {
+            return subScript.sigOpCount(accurate: true)
+        }
+        fatalError()
     }
 }
 

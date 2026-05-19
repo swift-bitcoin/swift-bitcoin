@@ -31,7 +31,12 @@ extension Transaction {
         /// BIP68 - Transaction version 2.
         public static let v2 = Self(2)
 
+        /// BIP431 - Transaction version 3 (TRUC).
+        public static let v3 = Self(3)
+
         public static let current = Self.v2
+        public static let minStandard = Self.v1
+        public static let maxStandard = Self.v3
     }
 }
 

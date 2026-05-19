@@ -13,14 +13,14 @@ extension Transaction {
         /// The numeric lock time value.
         public let locktimeValue: Int
 
-        var blockHeight: Int? {
+        public var blockHeight: Int? {
             guard locktimeValue <= Self.maxBlock.locktimeValue else {
                 return nil
             }
             return locktimeValue
         }
 
-        var secondsSince1970: Int? {
+        public var secondsSince1970: Int? {
             guard locktimeValue >= Self.minClock.locktimeValue else {
                 return nil
             }

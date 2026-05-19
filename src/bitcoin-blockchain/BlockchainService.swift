@@ -52,7 +52,7 @@ public actor BlockchainService: Sendable {
         blockIndex = if let dataDir { HybridBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
         coinIndex = if let dataDir { HybridCoinIndex(path: dataDir, logger: logger) } else { TransientCoinIndex() }
 
-        let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: ConsensusParams.maxBlockSerializedSized)
+        let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: Block.maxSerializedSize)
         do {
             blockStorage = if dataDir == nil {
                 try TransientBlockStorage(config: config, logger: logger)
@@ -309,7 +309,7 @@ public actor BlockchainService: Sendable {
         }
 
         switch headerRef.status {
-        case .header: try await checkBlock(block, ref: headerRef, locator: locator)
+        case .header: try await acceptBlock(block, ref: headerRef, locator: locator)
         case .merkle: break
         case .active, .stale: return headerProcessingResult
         case .invalid: throw .invalidBlockAlreadyExists
@@ -372,18 +372,21 @@ public actor BlockchainService: Sendable {
             return
         }
 
+        var coins = [UnspentOutput]()
         for txIn in tx.ins {
             // TODO: Have the coins index return transaction's inputs' previous coins/heights all at once (when coins not from the mempool coins array)
-            guard let _ = try! await coinIndex.get(txIn.outpoint) ?? mempoolCoins[txIn.outpoint], !mempoolExclude.contains(txIn.outpoint) else {
+            guard let coin = try! await coinIndex.get(txIn.outpoint) ?? mempoolCoins[txIn.outpoint], !mempoolExclude.contains(txIn.outpoint) else {
                 logger.warning("Missing UTXO in tx \(tx.idHex)")
                 return
             }
+            coins.append(coin)
         }
+        let prevouts = coins.map(\.out)
 
         do {
-            try await mempoolAcceptPreChecks(tx)
+            try await mempoolAcceptPreChecks(tx, coins: coins)
         } catch {
-            logger.warning("Mempool precheck failed for tx \(tx.idHex)")
+            logger.warning("Mempool precheck failed for tx \(tx.idHex)\n\(error)")
             throw error
         }
 
@@ -396,11 +399,16 @@ public actor BlockchainService: Sendable {
         // TODO:  There's at least 3 occurrences of this "hack" where we create a fake future block only to pass the height
         let nextBlockPlaceholder = BlockRef(.init(previous: activeTip.header.id, merkleRoot: .init(), time: Date.distantPast, target: 0), height: activeTip.height + 1, chainwork: .init(), chainTxCount: -1)
         do {
-            try await checkTx(tx, block: nextBlockPlaceholder, previous: activeTip, checkingMempoolAcceptance: true)
+            try await policyScriptChecks(tx, block: nextBlockPlaceholder, previous: activeTip, prevouts: prevouts)
+
+            // TODO: Should pass it some kind of validation cache from the policy script checks
+            try await consensusScriptChecks(tx, block: nextBlockPlaceholder, previous: activeTip, prevouts: prevouts)
+
         } catch {
             logger.error("Failed transaction check\n\n\(error)")
             return
         }
+
         mempool.append(tx)
 
         // Notify other nodes of new tx
@@ -689,7 +697,7 @@ public actor BlockchainService: Sendable {
             otherHeaders.insert(ref)
             otherHeaders.formUnion(otherOtherHeaders)
             if !h.txs.isEmpty {
-                try await checkBlock(h, ref: ref, locator: loc)
+                try await acceptBlock(h, ref: ref, locator: loc)
             }
 
             heldBlocks[h.id] = nil
@@ -1044,8 +1052,8 @@ public actor BlockchainService: Sendable {
 
     /// Checks mempool for missing transactions.
     public func mempoolTransactions(shortIDs: [UInt64], header: Block, nonce: UInt64) -> [Transaction?] {
-        let (first, second) = header.makeShortIDParams(nonce: nonce)
-        let mempoolShortIDs = mempool.map { tx in tx.makeShortTxID(nonce: nonce, first: first, second: second)}
+        let (first, second) = header.shortTransactionIDParams(nonce: nonce)
+        let mempoolShortIDs = mempool.map { tx in tx.shortID(nonce: nonce, first: first, second: second)}
         return shortIDs.map { id in
             guard let i = mempoolShortIDs.firstIndex(of: id) else {
                 return nil
@@ -1200,47 +1208,6 @@ public actor BlockchainService: Sendable {
         return blocks
     }
 
-    /// This function is called when validating a transaction and it's consensus critical. Needs to be called after ``check()``
-    private func checkTransactionInputs(_ tx: Transaction, exclude: [Outpoint], auxCoins: [Outpoint : UnspentOutput]) async throws(Transaction.ValidationError) {
-        precondition(!tx.isCoinbase)
-
-        let valueIn: Amount
-        let nextHeight = activeTip.height + 1
-
-        var valueInAcc = Amount(0)
-        for input in tx.ins {
-            let outpoint = input.outpoint
-
-            // are the actual inputs available?
-            guard let coin = try! await coinIndex.get(outpoint) ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
-                throw .inputMissingOrSpent
-            }
-            guard !coin.isCoinbase || nextHeight - coin.height >= params.coinbaseMaturity else {
-                throw .prematureCoinbaseSpend
-            }
-            valueInAcc += coin.out.value
-            guard coin.out.value >= 0 && coin.out.value <= Transaction.maxMoney else {
-                throw .inputValueOutOfRange
-            }
-            guard valueInAcc >= 0 && valueInAcc <= Transaction.maxMoney else {
-                throw .inputValueOutOfRange
-            }
-        }
-        valueIn = valueInAcc
-
-        // This is guaranteed by calling Transaction.check() before this function.
-        precondition(tx.valueOut >= 0 && tx.valueOut <= Transaction.maxMoney)
-
-        guard valueIn >= tx.valueOut else {
-            throw .inputsValueBelowOutput
-        }
-
-        let fee = valueIn - tx.valueOut
-        guard fee >= 0 && fee <= Transaction.maxMoney else {
-            throw .feeOutOfRange
-        }
-    }
-
     private func calculateFees(_ tx: Transaction, auxCoins: [Outpoint : UnspentOutput]) async -> Amount {
         precondition(!tx.isCoinbase)
         var valueIn = Amount(0)
@@ -1255,53 +1222,98 @@ public actor BlockchainService: Sendable {
         return valueIn - tx.valueOut
     }
 
-    private func checkTx(_ tx: Transaction, block: BlockRef, previous: BlockRef, checkingMempoolAcceptance: Bool = false, checkScripts: Bool = true, exclude: [Outpoint]? = nil, auxCoins: [Outpoint : UnspentOutput]? = nil) async throws(TransactionValidationError) {
-        let exclude = exclude ?? mempoolExclude
-        let auxCoins = auxCoins ?? mempoolCoins
+    /// Checks if a given block is valid.
+    ///
+    /// Analog to Bitcoin Core's `checkBlock()`.ContextualCheckBlock()
+    private func checkBlock(_ block: Block) async throws(TransactionValidationError) {
+        // bool checkBlock(const CBlock& block, const node::BlockCheckOptions& options, std::string& reason, std::string& debug)
 
-        // Check tx
-        do {
-            try tx.check(weightLimit: ConsensusParams.maxBlockWeight)
-            if !tx.isCoinbase {
-                try await checkTransactionInputs(tx, exclude: exclude, auxCoins: auxCoins)
+        var tmpExclude = [Outpoint]()
+        var tmpCoins = [Outpoint: UnspentOutput]()
+        for tx in block.txs {
+            guard !tx.isCoinbase else {
+                continue
             }
-        } catch {
-            logger.error("Failed transaction check:\n\n\(error)")
-            throw .transactionCheckError(error)
+            var coins = [UnspentOutput]()
+            for txIn in tx.ins {
+                guard let coin = try! await coinIndex.get(txIn.outpoint) ?? tmpCoins[txIn.outpoint], !tmpExclude.contains(txIn.outpoint) else {
+                    logger.warning("Missing UTXO in tx \(tx.idHex)")
+                    throw .transactionCheckError(.inputMissingOrSpent) // TODO: Simplify and eliminate nesting
+                }
+                coins.append(coin)
+            }
+
+            // Check tx
+            do {
+                try tx.check()
+                if !tx.isCoinbase {
+                    try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
+                }
+            } catch {
+                logger.error("Failed transaction check:\n\n\(error)")
+                throw .transactionCheckError(error)
+            }
+
+            // Remove coins
+            tmpExclude += tx.ins.map(\.outpoint)
+            // Add coins
+            let txid = tx.id
+            for (i, out) in tx.outs.enumerated() {
+                tmpCoins[.init(tx: txid, out: i)] = .init(out, isCoinbase: tx.isCoinbase)
+            }
+        }
+    }
+
+    /// Contextual block checks.
+    ///
+    /// This function is called when accepting the block but while connecting the block.
+    ///
+    /// Analog to Bitcoin Core's `ContextualCheckBlock()`.
+    private func contextualCheckBlock(_ block: Block, ref: BlockRef, previous: BlockRef) async throws(TransactionValidationError) {
+        // Enforce BIP113 (Median Time Past)
+        let enforceLocktimeMedianTimePast = ref.height >= params.csvHeight
+        let lockTimeCutoff = if enforceLocktimeMedianTimePast {
+            Int(await medianTimePast(for: previous).timeIntervalSince1970)
+        } else {
+            Int(ref.header.time.timeIntervalSince1970)
         }
 
-        // The block passed is the block in which the transaction exists
-        // let blockHeight = block.height + 1
-
-        // Enforce BIP113 (Median Time Past) for block validation only (not mempool acceptance)
-        if !checkingMempoolAcceptance {
-            let enforceLocktimeMedianTimePast = block.height >= params.csvHeight
-            let lockTimeCutoff = if enforceLocktimeMedianTimePast {
-                Int(await medianTimePast(for: previous).timeIntervalSince1970)
-            } else {
-                Int(block.header.time.timeIntervalSince1970)
-            }
-
+        for tx in block.txs {
             // Check that all transactions are finalized
-            guard tx.isFinal(blockHeight: block.height, blockTime: lockTimeCutoff) else {
+            guard tx.isFinal(blockHeight: ref.height, blockTime: lockTimeCutoff) else {
                 logger.error("Tx not final: \(tx.idHex)")
                 throw .nonFinalTransaction
             }
         }
+    }
 
-        if !tx.isCoinbase {
-            var prevouts = [TransactionOutput]()
-            for input in tx.ins {
-                guard let coin = try! await coinIndex.get(input.outpoint) ?? auxCoins[input.outpoint] /*, !exclude.contains(input.outpoint) */ else {
-                    preconditionFailure() // Already checked in checkTransactionInputs
-                }
-                prevouts.append(coin.out)
-            }
-            guard checkScripts else { return }
-            if !tx.verifyScripts(prevouts: prevouts, config: checkingMempoolAcceptance ? .standard : .mandatory) {
-                logger.error("Failed script validation")
-                throw .scriptError
-            }
+    private func scriptChecks(_ tx: Transaction, block: BlockRef, previous: BlockRef, prevouts: [TransactionOutput], config: ScriptConfig) async throws(TransactionValidationError) {
+        precondition(!tx.isCoinbase)
+
+        if !tx.verifyScripts(prevouts: prevouts, config: config) {
+            logger.error("Failed script validation")
+            throw .scriptError
+        }
+    }
+
+    private func policyScriptChecks(_ tx: Transaction, block: BlockRef, previous: BlockRef, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
+        try await scriptChecks(tx, block: block, previous: previous, prevouts: prevouts, config: .standard)
+    }
+
+    private func consensusScriptChecks(_ tx: Transaction, block: BlockRef, previous: BlockRef, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
+        try await scriptChecks(tx, block: block, previous: previous, prevouts: prevouts, config: .mandatory)
+    }
+
+    private func checkInputScripts(_ tx: Transaction, block: BlockRef, previous: BlockRef, checkScripts: Bool = true, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
+        guard checkScripts else {
+            return
+        }
+        guard !tx.isCoinbase else {
+            return
+        }
+        if !tx.verifyScripts(prevouts: prevouts, config: .mandatory) {
+            logger.error("Failed script validation")
+            throw .scriptError
         }
     }
 
@@ -1323,7 +1335,7 @@ public actor BlockchainService: Sendable {
     /// If it is the first time we see this block, its header will be processed first.
     /// If the block builds on the acvite chain tip, it will be connected thus validating its transactions.
     /// Otherwise the index will be updated to reflect that the merkle root has been verified.
-    @discardableResult private func checkBlock(_ block: Block, ref blockRef: BlockRef, locator: BlockStorageLocator? = nil) async throws(Error) -> BlockRef {
+    @discardableResult private func acceptBlock(_ block: Block, ref blockRef: BlockRef, locator: BlockStorageLocator? = nil) async throws(Error) -> BlockRef {
         logger.debug("Processing block \(block.idHex)")
 
         // Check block
@@ -1347,6 +1359,13 @@ public actor BlockchainService: Sendable {
             logger.warning("Block \(block.idHex) already exists with status \(blockRef.status)")
             // throw .blockAlreadyExists
             return blockRef
+        }
+
+        do {
+            try await contextualCheckBlock(block, ref: blockRef, previous: activeTip)
+        } catch {
+            logger.error("Issue while contextually checking block: \(error)")
+            throw .invalidTransactionInBlock(error)
         }
 
         logger.debug("Block \(block.idHex) merkle status validated")
@@ -1432,6 +1451,13 @@ public actor BlockchainService: Sendable {
 
         let startTime = ContinuousClock.Instant.now
 
+        do {
+            try await checkBlock(block)
+        } catch {
+            logger.error("Issue checking block: \(error)")
+            throw .invalidTransactionInBlock(error)
+        }
+
         let scriptCheckReason: String?
         if let assumeValid = params.assumeValid {
             if let assumeValidRef = await blockIndex.get(assumeValid) {
@@ -1465,11 +1491,24 @@ public actor BlockchainService: Sendable {
         var fees = Amount(0)
         var tmpExclude = [Outpoint]()
         var tmpCoins = [Outpoint: UnspentOutput]()
-        for txIndex in block.txs.indices {
+        for (txIndex, tx) in block.txs.enumerated() {
             guard !Task.isCancelled else { return }
-            let tx = block.txs[txIndex]
+
+            var coins = [UnspentOutput]()
+            for txIn in tx.ins {
+                guard !tx.isCoinbase else {
+                    continue
+                }
+                guard let coin = try! await coinIndex.get(txIn.outpoint) ?? tmpCoins[txIn.outpoint], !tmpExclude.contains(txIn.outpoint) else {
+                    logger.warning("Missing UTXO in tx \(tx.idHex)")
+                    throw .invalidTransactionInBlock(.transactionCheckError(.inputMissingOrSpent)) // TODO: Simplify and eliminate nesting
+                }
+                coins.append(coin)
+            }
+            let prevouts = coins.map(\.out)
+
             do {
-                try await checkTx(tx, block: blockRef, previous: activeTip, checkScripts: scriptCheckReason != nil, exclude: tmpExclude, auxCoins: tmpCoins)
+                try await checkInputScripts(tx, block: blockRef, previous: activeTip, prevouts: prevouts)
             } catch {
 
                 // TODO: Invalidate all descendants (blocks that build upon this block)
@@ -1484,6 +1523,7 @@ public actor BlockchainService: Sendable {
                 var previousHeights = await calculatePrevHeights(tx, tip: activeTip, excludeCoins: tmpExclude, auxCoins: tmpCoins)
                 try await sequenceLocks(tx, block: blockRef, previous: activeTip, verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights)
             }
+
             // Remove coins
             tmpExclude += tx.ins.map(\.outpoint)
             // Add coins
@@ -1694,7 +1734,6 @@ public actor BlockchainService: Sendable {
         return median[median.count / 2]
     }
 
-
     /// Verification progress of the best block known so far.
     ///
     /// This function could be adapted to return the verification progress for any arbitrary block.
@@ -1830,7 +1869,38 @@ public actor BlockchainService: Sendable {
 
     /// Run the policy checks on a given transaction, excluding any script checks.
     /// Looks up inputs, calculates feerate, considers replacement, evaluates package limits, etc. As this function can be invoked for "free" by a peer, only tests that are fast should be done here (to avoid CPU DoS).
-    private func mempoolAcceptPreChecks(_ tx: Transaction) async throws(TransactionValidationError) {
+    private func mempoolAcceptPreChecks(_ tx: Transaction, coins: [UnspentOutput]) async throws(TransactionValidationError) {
+
+        do {
+            try tx.check()
+        } catch {
+            logger.warning("Error checking transaction: \(error)")
+            throw .transactionCheckError(error)
+        }
+
+        // Coinbase is only valid in a block, not as a loose transaction
+        guard !tx.isCoinbase else {
+            throw .coinbaseTransaction
+            // return state.Invalid(TxValidationResult::TX_CONSENSUS, "coinbase");
+        }
+
+        // Rather not work on nonstandard transactions (unless -testnet/-regtest)
+        /*
+        std::string reason;
+        if (m_pool.m_opts.require_standard && !IsStandardTx(tx, m_pool.m_opts.max_datacarrier_bytes, m_pool.m_opts.permit_bare_multisig, m_pool.m_opts.dust_relay_feerate, reason)) {
+            //return state.Invalid(TxValidationResult::TX_NOT_STANDARD, reason);
+         */
+        do {
+            try tx.isStandard()
+        } catch {
+            logger.warning("Non-standard transaction: \(error)")
+            throw .nonStandardTransaction(error)
+        }
+
+        // Transactions smaller than 65 non-witness bytes are not relayed to mitigate CVE-2017-12842.
+        guard tx.dataSize(encoding: .noWitness) >= Transaction.minStandardNonWitnessSize else {
+            throw .smallTransactionSize
+        }
 
         // Only accept nLockTime-using transactions that can be mined in the next
         // block; we don't want our mempool filled up with transactions that can't
@@ -1851,7 +1921,38 @@ public actor BlockchainService: Sendable {
         } catch {
             logger.error("Invalid transaction \(tx.idHex): Premature spend, BIP68 non-final")
             throw .nonFinalTransaction
-         }
+        }
+
+        // The mempool holds txs for the next block, so pass height+1 to CheckTxInputs
+
+        /* if (!Consensus::CheckTxInputs(tx, state, m_view, m_active_chainstate.m_chain.Height() + 1, ws.m_base_fees)) { … } */
+        do {
+            try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
+        } catch {
+            throw .transactionCheckError(error)
+        }
+
+        let prevouts = coins.map(\.out)
+        /* if (m_pool.m_opts.require_standard) { … } */
+        do {
+            try tx.validateInputsStandardness(prevouts: prevouts)
+        } catch {
+            logger.warning("\(error)")
+            throw .nonStandardPrevouts(error)
+        }
+
+        // Check for non-standard witnesses.
+
+        /* if (tx.HasWitness() && m_pool.m_opts.require_standard && !IsWitnessStandard(tx, m_view)) { … } */
+        if tx.hasWitness {
+            do {
+                try tx.isWitnessStandard(prevouts: prevouts)
+            } catch {
+                // state.Invalid(TxValidationResult::TX_WITNESS_MUTATED, "bad-witness-nonstandard")
+                logger.warning("\(error)")
+                throw .nonStandardWitness(error)
+            }
+        }
     }
 
     /// Checks if the transaction will be final in the next block to be created on top of the new chain.

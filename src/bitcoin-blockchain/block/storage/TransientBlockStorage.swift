@@ -1,6 +1,7 @@
 import Foundation
 import Logging
 import Collections
+import BitcoinBase
 
 /// Block storage service.
 actor TransientBlockStorage: BlockStorage {

@@ -1,3 +1,5 @@
+import BitcoinBase
+
 /// Block index service protocol.
 protocol BlockIndex: Sendable {
 

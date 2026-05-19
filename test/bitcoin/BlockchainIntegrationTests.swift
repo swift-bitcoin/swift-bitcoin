@@ -51,9 +51,9 @@ struct BlockchainIntegrationTests {
         var t_a3 = Transaction(
             ins: [.init(outpoint: coinbaseTx.outpoint(0))],
             outs: [
-                .init(value: 10, script: .payToPubkeyHash(bobPK)),
-                .init(value: 15, script: .payToPubkeyHash(carolPK)),
-                .init(value: 20, script: .payToPubkeyHash(derekPK))
+                .init(value: 1000, script: .payToPubkeyHash(bobPK)),
+                .init(value: 1500, script: .payToPubkeyHash(carolPK)),
+                .init(value: 2000, script: .payToPubkeyHash(derekPK))
             ])
 
         var signer = TransactionSigner(tx: t_a3, prevouts: [coinbaseTx.outs[0]])
@@ -79,8 +79,8 @@ struct BlockchainIntegrationTests {
         var tA1_b2 = Transaction(
             ins: [.init(outpoint: t_a3.outpoint(1))],
             outs: [
-                .init(value: 10, script: .payToPubkeyHash(derekPK)),
-                .init(value: 5, script: .payToPubkeyHash(errolPK))
+                .init(value: 1000, script: .payToPubkeyHash(derekPK)),
+                .init(value: 500, script: .payToPubkeyHash(errolPK))
             ])
         signer = TransactionSigner(tx: tA1_b2, prevouts: [t_a3.outs[1]])
         signer.sign(input: 0, with: carolKey)
@@ -92,8 +92,8 @@ struct BlockchainIntegrationTests {
                 .init(outpoint: t_a3.outpoint(2))
             ],
             outs: [
-                .init(value: 15, script: .payToPubkeyHash(fionaPK)),
-                .init(value: 15, script: .payToPubkeyHash(gabrielPK))
+                .init(value: 1500, script: .payToPubkeyHash(fionaPK)),
+                .init(value: 1500, script: .payToPubkeyHash(gabrielPK))
             ])
         signer = TransactionSigner(tx: tA0_A2_c2, prevouts: [t_a3.outs[0], t_a3.outs[2]])
         signer.sign(input: 0, with: bobKey)
@@ -319,8 +319,8 @@ struct BlockchainIntegrationTests {
         var tx1 = Transaction(
             ins: [.init(outpoint: coinbaseTxA.outpoint(0))],
             outs: [
-                .init(value: 9, script: .payToPubkeyHash(aliceID)),
-                .init(value: 1, script: .payToPubkeyHash(bobID))
+                .init(value: 9000, script: .payToPubkeyHash(aliceID)),
+                .init(value: 1000, script: .payToPubkeyHash(bobID))
         ])
 
         var signer1 = TransactionSigner(tx: tx1, prevouts: [coinbaseTxA.outs[0]])
@@ -348,8 +348,8 @@ struct BlockchainIntegrationTests {
         var tx11 = Transaction(
             ins: [.init(outpoint: coinbaseTxA.outpoint(0))],
             outs: [
-                .init(value: 2, script: .payToPubkeyHash(aliceID)),
-                .init(value: 8, script: .payToPubkeyHash(bobID))
+                .init(value: 2000, script: .payToPubkeyHash(aliceID)),
+                .init(value: 8000, script: .payToPubkeyHash(bobID))
         ])
 
         var signer11 = TransactionSigner(tx: tx11, prevouts: [coinbaseTxA.outs[0]])
@@ -373,8 +373,8 @@ struct BlockchainIntegrationTests {
         var tx2 = Transaction(
             ins: [.init(outpoint: tx1.outpoint(0))],
             outs: [
-                .init(value: 6, script: .payToPubkeyHash(aliceID)),
-                .init(value: 3, script: .payToPubkeyHash(bobID))
+                .init(value: 6000, script: .payToPubkeyHash(aliceID)),
+                .init(value: 3000, script: .payToPubkeyHash(bobID))
         ])
 
         var signer2 = TransactionSigner(tx: tx2, prevouts: [tx1.outs[0]])
@@ -390,8 +390,8 @@ struct BlockchainIntegrationTests {
         var tx22 = Transaction(
             ins: [.init(outpoint: tx11.outpoint(1))],
             outs: [
-                .init(value: 5, script: .payToPubkeyHash(bobID)),
-                .init(value: 3, script: .payToPubkeyHash(aliceID))
+                .init(value: 5000, script: .payToPubkeyHash(bobID)),
+                .init(value: 3000, script: .payToPubkeyHash(aliceID))
         ])
 
         var signer22 = TransactionSigner(tx: tx22, prevouts: [tx11.outs[1]])
