@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinBase
 
 /// Additional information about a block in the blockchain.
 public struct BlockInfo: Sendable {

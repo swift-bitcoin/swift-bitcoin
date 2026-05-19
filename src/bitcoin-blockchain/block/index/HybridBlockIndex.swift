@@ -1,3 +1,4 @@
+import BitcoinBase
 import LMDB
 import _NIOFileSystem
 import struct SystemPackage.FilePath

@@ -44,7 +44,7 @@ public struct Transaction: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var id: Data { Data(Hash256.hash(data: data(encoding: .nonWitness))) }
+    public var id: Data { Data(Hash256.hash(data: data(encoding: .noWitness))) }
 
     public var idHex: String { id.reversed().hex }
 
@@ -55,7 +55,7 @@ public struct Transaction: Equatable, Sendable {
     public var witnessIDHex: String { witnessID.reversed().hex }
 
     /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
-    public var weight: Int { dataSize(encoding: .nonWitness) * 3 + dataSize }
+    public var weight: Int { dataSize(encoding: .noWitness) * 3 + dataSize }
 
     ///  BIP141: Virtual transaction size is defined as Transaction weight / 4 (rounded up to the next integer).
     public var virtualSize: Int { Int((Double(weight) / 4).rounded(.up)) }
@@ -69,7 +69,7 @@ public struct Transaction: Equatable, Sendable {
     }
 
     /// BIP141
-    var hasWitness: Bool { ins.contains { $0.witness != [] } }
+    public var hasWitness: Bool { ins.contains { $0.witness != [] } }
 
     // MARK: - Instance Methods
 
@@ -158,7 +158,7 @@ extension Transaction {
 extension Transaction: CustomBinaryCodable {
 
     public enum Encoding: Equatable, Sendable {
-        case nonWitness
+        case noWitness
     }
 
     //public typealias DecodingError = BinaryDecodingError
@@ -175,7 +175,7 @@ extension Transaction: CustomBinaryCodable {
             isSegwit = false
         }
 
-        if isSegwit && encoding == .nonWitness {
+        if isSegwit && encoding == .noWitness {
             throw DecodingError.witnessEncoded
         }
 
@@ -195,13 +195,13 @@ extension Transaction: CustomBinaryCodable {
     public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
         encoder.encode(version)
         // BIP144
-        if encoding != .nonWitness, hasWitness {
+        if encoding != .noWitness, hasWitness {
             encoder.encode(Transaction.segwitMarkerAndFlag)
         }
         encoder.encode(ins)
         encoder.encode(outs)
         // BIP144
-        if encoding != .nonWitness, hasWitness {
+        if encoding != .noWitness, hasWitness {
             for witness in ins.map(\.witness) {
                 encoder.encode(witness)
             }
@@ -212,13 +212,13 @@ extension Transaction: CustomBinaryCodable {
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
         counter.count(version)
         // BIP144
-        if encoding != .nonWitness, hasWitness {
+        if encoding != .noWitness, hasWitness {
             counter.count(Transaction.segwitMarkerAndFlag)
         }
         counter.count(ins)
         counter.count(outs)
         // BIP144
-        if encoding != .nonWitness, hasWitness {
+        if encoding != .noWitness, hasWitness {
             for witness in ins.compactMap({ $0.witness }) {
                 counter.count(witness)
             }

@@ -383,7 +383,7 @@ public actor NodeService: Sendable {
     private func sendBlock(_ block: Block, to id: PeerID, useQueue: Bool = false) async {
         guard let _ = state.peers[id] else { return }
         let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
-        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, txIDs: block.makeShortTxIDs(nonce: nonce, dropIndices: [0]), txs: [.init(index: 0, tx: block.txs[0])])
+        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, txIDs: block.shortTransactionIDs(nonce: nonce, dropIndices: [0]), txs: [.init(index: 0, tx: block.txs[0])])
         if useQueue {
             enqueue(.cmpctblock, payload: compactBlockMesssage.data, to: id)
         } else {
@@ -440,6 +440,7 @@ public actor NodeService: Sendable {
         enqueue(.getdata, payload: getData.data, to: id)
     }
 
+    /*
     private func _requestNextMissingBlocks(_ id: PeerID) async {
         guard let peer = state.peers[id] else { preconditionFailure() }
 
@@ -462,6 +463,7 @@ public actor NodeService: Sendable {
         )
         enqueue(.getdata, payload: getData.data, to: id)
     }
+     */
 
     private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
 

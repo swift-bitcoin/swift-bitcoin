@@ -37,7 +37,7 @@ public struct ConsensusParams: Sendable {
         minChainwork: [UInt8] = /*.init(repeating: 0, count: 32), */ [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0xe1, 0x86, 0xb7, 0x0e, 0x08, 0x62, 0xc1, 0x93, 0xec, 0x44, 0xd6],
         /// Data from RPC: getchaintxstats 4096 000000000000000000011c5890365bdbe5d25b97ce0057589acaef4f1a57263f
         chainData: ChainData = .init(time: 1723649144, txCount: 1059312821, txRate: 6.721086701157182),
-        coinbaseMaturity: Int = Self.defaultCoinbaseMaturity,
+        coinbaseMaturity: Int = Block.coinbaseMaturity,
         subsidyHalvingInterval: Int = 210_000,
         heightInCoinbaseHeight: Int = 227931,
         cltvHeight: Int = 388381,
@@ -220,29 +220,6 @@ public struct ConsensusParams: Sendable {
 
     // TODO: Define testnet params with magicBytes 0x0709110b
     // TODO: Define signet params with magicBytes 0x40cf030a
-
-    // MARK: - Flags from `consensus.h` in Bitcoin Core.
-
-    /// The maximum allowed size for a serialized block, in bytes (only for buffer size limits)
-    /// Unused as of Jan 8 2025
-    public static let maxBlockSerializedSized = 4_000_000
-
-    /// The maximum allowed weight for a block, see BIP141 (network rule)
-    public static let maxBlockWeight = 4_000_000
-
-    /// The maximum allowed number of signature check operations in a block (network rule)
-    private static let maxBlockSigopsCost = 80_000
-
-    /// Coinbase transaction outputs can only be spent after this number of new blocks (network rule)
-    public static let defaultCoinbaseMaturity = 100
-
-    private static let witnessScaleFactor = 4
-
-    /// `MIN_TRANSACTION_WEIGHT` in Bitcoin Core.
-    private static let minTransactionWeight = witnessScaleFactor * 60 // 60 is the lower bound for the size of a valid serialized CTransaction
-
-    /// `MIN_SERIALIZABLE_TRANSACTION_WEIGHT` in Bitcoin Core.
-    private static let minSerializableTransactionWeight = witnessScaleFactor * 10 // 10 is the lower bound for the size of a serialized CTransaction
 
     // MARK: - Flags for nSequence and nLockTime locks
 

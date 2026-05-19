@@ -1,4 +1,5 @@
 import Foundation
+import BitcoinBase
 
 /// A summary of a chain tip – i.e. fork
 public struct ChainTipSummary: Equatable, Sendable {

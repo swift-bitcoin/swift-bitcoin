@@ -1,3 +1,4 @@
+import BitcoinBase
 import Collections
 
 /// In-memory block index service implementation.

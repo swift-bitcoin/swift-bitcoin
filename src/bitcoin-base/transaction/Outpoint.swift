@@ -20,9 +20,10 @@ public struct Outpoint: Equatable, Hashable, Sendable {
     /// The index of an output in the referenced transaction.
     public let out: Int
 
+    /// The outpoint meant for the single coinbase transaction input. Also known as _null_ outpoint or _null prevout_.
     public static let coinbase = Self(
-        tx: .init(count: Transaction.idLength),
-        out: 0xffffffff
+        tx: .init(count: Transaction.idLength), // All zeroes
+        out: 0xffffffff // or `UInt32.max`
     )
 }
 

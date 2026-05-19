@@ -484,7 +484,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         let ins = if let ins { ins } else { [In](repeating: In(), count: tx.ins.count) }
         let outs = if let outs { outs } else { [Out](repeating: Out(), count: tx.outs.count) }
         // TODO: Maybe extract signatures from signed transaction?
-        precondition(tx.ins.allSatisfy { $0.witness.elements.isEmpty })
+        precondition(tx.ins.allSatisfy { $0.witness.stack.isEmpty })
         precondition(tx.ins.allSatisfy { $0.script == .empty })
         precondition(ins.count == tx.ins.count)
         precondition(outs.count == tx.outs.count)
@@ -538,7 +538,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     throw .invalidUnsignedTransactionKey
                 }
                 do {
-                    tx = try Transaction(v, encoding: .nonWitness)
+                    tx = try Transaction(v, encoding: .noWitness)
                 } catch {
                     throw .invalidUnsignedTransaction
                 }
@@ -575,7 +575,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         guard tx.ins.allSatisfy({ $0.script == .empty }) else {
             throw .unlockScriptNonEmpty
         }
-        guard tx.ins.allSatisfy({ $0.witness.elements.isEmpty }) else {
+        guard tx.ins.allSatisfy({ $0.witness.stack.isEmpty }) else {
             throw .witnessNonEmpty
         }
 
