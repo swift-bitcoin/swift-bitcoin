@@ -28,13 +28,13 @@ extension ScriptRuntime {
     }
 
     /// Compares the first signature against each public key until it finds an ECDSA match. Starting with the subsequent public key, it compares the second signature against each remaining public key until it finds an ECDSA match. The process is repeated until all signatures have been checked or not enough public keys remain to produce a successful result. All signatures need to match a public key. Because public keys are not checked again if they fail any signature comparison, signatures must be placed in the `scriptSig` using the same order as their corresponding public keys were placed in the `scriptPubKey` or `redeemScript`. If all signatures are valid, `1` is returned, `0` otherwise. Due to a bug, one extra unused value is removed from the stack.
-    mutating func opCheckMultiSig() throws {
-        let (n, pubkeys, m, sigs) = try getCheckMultiSigParams()
+    mutating func opCheckMultisig() throws {
+        let (n, pubkeys, m, sigs) = try getCheckMultisigParams()
         precondition(m <= n)
         precondition(pubkeys.count == n)
         precondition(sigs.count == m)
 
-        guard n <= Script.maxMultiSigPubkeys else {
+        guard n <= Script.maxMultisigPubkeys else {
             throw ScriptError.maxPublicKeysExceeded
         }
 
@@ -71,8 +71,8 @@ extension ScriptRuntime {
     }
 
     /// Same as `OP_CHECKMULTISIG`' but `OP_VERIFY` is executed afterward.
-    mutating func opCheckMultiSigVerify() throws {
-        try opCheckMultiSig()
+    mutating func opCheckMultisigVerify() throws {
+        try opCheckMultisig()
         try opVerify()
     }
 
@@ -133,9 +133,9 @@ extension ScriptRuntime {
         stack.append(Data(SHA256.hash(data: first)))
     }
 
-    private mutating func getCheckMultiSigParams() throws -> (Int, [Data], Int, [Data]) {
+    private mutating func getCheckMultisigParams() throws -> (Int, [Data], Int, [Data]) {
         guard stack.count > 4 else {
-            throw ScriptError.missingMultiSigArgument
+            throw ScriptError.missingMultisigArgument
         }
         let n = try ScriptNumber(stack.removeLast(), minimal: config.contains(.minimalData)).value
         let pubkeys = Array(stack.suffix(n).reversed())

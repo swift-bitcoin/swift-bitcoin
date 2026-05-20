@@ -73,7 +73,7 @@ struct BaseDocumentationExamples {
 
         let fund = Transaction(ins: [.init(outpoint: .coinbase)], outs: [
             // Multisig 2-out-of-3
-            .init(value: 100, script: .payToMultiSignature(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)),
+            .init(value: 100, script: .payToMultisig(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)),
         ])
 
         var spend = Transaction(ins: [.init(outpoint: fund.outpoint(0))], outs: [
@@ -104,7 +104,7 @@ struct BaseDocumentationExamples {
     @Test func signScriptHashMultisig() async throws {
         let sk1 = SecretKey(); let sk2 = SecretKey(); let sk3 = SecretKey()
 
-        let redeemScript = Script.payToMultiSignature(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)
+        let redeemScript = Script.payToMultisig(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)
 
         let fund = Transaction(ins: [.init(outpoint: .coinbase)], outs: [
             .init(value: 100, script: .payToScriptHash(redeemScript)),
@@ -134,7 +134,7 @@ struct BaseDocumentationExamples {
 
     @Test func signWitnessScriptHashMultisig() async throws {
         let sk1 = SecretKey(); let sk2 = SecretKey(); let sk3 = SecretKey()
-        let redeemScript = Script.payToMultiSignature(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)
+        let redeemScript = Script.payToMultisig(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)
 
         let fund = Transaction(ins: [
             .init(outpoint: .coinbase)
@@ -206,7 +206,7 @@ struct BaseDocumentationExamples {
     @Test func signScriptHashWitnessScript() async throws {
         let sk1 = SecretKey(); let sk2 = SecretKey(); let sk3 = SecretKey()
 
-        let witnessScript = Script.payToMultiSignature(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)
+        let witnessScript = Script.payToMultisig(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)
         let redeemScript = Script.payToWitnessScriptHash(witnessScript)
 
         let fund = Transaction(ins: [.init(outpoint: .coinbase)], outs: [

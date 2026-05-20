@@ -332,8 +332,8 @@ extension Transaction {
                 guard let subsSript = try? Script(last) else {
                     throw .prevoutInvalidRedeemScript
                 }
-                let sigOps = subsSript.sigOpCount(accurate: true)
-                if (sigOps > Script.maxP2SHSigOps) {
+                let sigops = subsSript.sigopCount(accurate: true)
+                if (sigops > Script.maxP2SHSigops) {
                     // "bad-txns-nonstandard-inputs", strprintf("p2sh redeemscript sigops exceed limit (input %u: %u > %u)", i, sigop_count, MAX_P2SH_SIGOPS)
                     throw .prevoutRedeemScriptSigopsExceeded
                 }
@@ -480,17 +480,14 @@ extension Transaction {
         for (i, txIn) in ins.enumerated() {
             let prev = prevouts[i]
 
-            // Unlike the existing block wide sigop limit which counts sigops present in the block
-            // itself (including the scriptPubKey which is not executed until spending later), BIP54
-            // counts sigops in the block where they are potentially executed (only).
+            // Unlike the existing block wide sigop limit which counts sigops present in the block itself (including the scriptPubKey which is not executed until spending later), BIP54 counts sigops in the block where they are potentially executed (only).
             // This means sigops in the spent scriptPubKey count toward the limit.
-            // `fAccurate` means correctly accounting sigops for CHECKMULTISIGs(VERIFY) with 16 pubkeys
-            // or fewer. This method of accounting was introduced by BIP16, and BIP54 reuses it.
-            // The GetSigOpCount call on the previous scriptPubKey counts both bare and P2SH sigops.
-            sigops += txIn.script.sigOpCount(accurate: true)
-            sigops += prev.script.sigOpCount(inputScript: txIn.script)
+            // `accurate` means correctly accounting sigops for CHECKMULTISIGs(VERIFY) with 16 pubkeys or fewer. This method of accounting was introduced by BIP16, and BIP54 reuses it.
+            // The sigopCount() call on the previous scriptPubKey counts both bare and P2SH sigops.
+            sigops += txIn.script.sigopCount(accurate: true)
+            sigops += prev.script.sigopCount(inputScript: txIn.script)
 
-            guard sigops <= Script.maxTransactionLegacySigOps else {
+            guard sigops <= Script.maxTransactionLegacySigops else {
                 return false
             }
         }

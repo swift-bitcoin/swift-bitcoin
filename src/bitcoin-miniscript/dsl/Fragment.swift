@@ -456,7 +456,7 @@ public struct Multi: ExpB, ModN, ModD, ModU {
                 return keyData
             }
             .map { Script.Operation.pushBytes($0) }
-        return [.constant(k)] + keysPushBytes + [.constant(n), .checkMultiSig]
+        return [.constant(k)] + keysPushBytes + [.constant(n), .checkMultisig]
     }
 
     public var description: String {

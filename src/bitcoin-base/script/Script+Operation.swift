@@ -4,7 +4,7 @@ import BitcoinCrypto
 extension Script {
     /// A script operation.
     public enum Operation: Equatable, Sendable {
-        case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, /* reserved(UInt8), */ success(UInt8), constant(UInt8), noOp, /* ver, */ `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultiSig, checkMultiSigVerify, noOp1, checkLockTimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, checkSigAdd, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
+        case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, /* reserved(UInt8), */ success(UInt8), constant(UInt8), noOp, /* ver, */ `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultisig, checkMultisigVerify, noOp1, checkLockTimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, checkSigAdd, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
     }
 }
 
@@ -123,8 +123,8 @@ extension Script.Operation {
         case .codeSeparator: 0xab
         case .checkSig: 0xac
         case .checkSigVerify: 0xad
-        case .checkMultiSig: 0xae
-        case .checkMultiSigVerify: 0xaf
+        case .checkMultisig: 0xae
+        case .checkMultisigVerify: 0xaf
         case .noOp1: 0xb0
         case .checkLockTimeVerify: 0xb1
         case .checkSequenceVerify: 0xb2
@@ -243,8 +243,8 @@ extension Script.Operation {
         case .codeSeparator: "OP_CODESEPARATOR"
         case .checkSig: "OP_CHECKSIG"
         case .checkSigVerify: "OP_CHECKSIGVERIFY"
-        case .checkMultiSig: "OP_CHECKMULTISIG"
-        case .checkMultiSigVerify: "OP_CHECKMULTISIGVERIFY"
+        case .checkMultisig: "OP_CHECKMULTISIG"
+        case .checkMultisigVerify: "OP_CHECKMULTISIGVERIFY"
         case .noOp1: "OP_NOP1"
         case .checkLockTimeVerify: "OP_CHECKLOCKTIMEVERIFY"
         case .checkSequenceVerify: "OP_CHECKSEQUENCEVERIFY"
@@ -463,8 +463,8 @@ extension Script.Operation: BinaryCodable {
         case Self.codeSeparator.opCode: self = .codeSeparator
         case Self.checkSig.opCode: self = .checkSig
         case Self.checkSigVerify.opCode: self = .checkSigVerify
-        case Self.checkMultiSig.opCode: self = .checkMultiSig
-        case Self.checkMultiSigVerify.opCode: self = .checkMultiSigVerify
+        case Self.checkMultisig.opCode: self = .checkMultisig
+        case Self.checkMultisigVerify.opCode: self = .checkMultisigVerify
         case Self.noOp1.opCode: self = .noOp1
         case Self.checkLockTimeVerify.opCode: self = .checkLockTimeVerify
         case Self.checkSequenceVerify.opCode: self = .checkSequenceVerify
@@ -670,8 +670,8 @@ extension Script.Operation {
         case Self.codeSeparator.opCode: self = .codeSeparator
         case Self.checkSig.opCode: self = .checkSig
         case Self.checkSigVerify.opCode: self = .checkSigVerify
-        case Self.checkMultiSig.opCode: self = .checkMultiSig
-        case Self.checkMultiSigVerify.opCode: self = .checkMultiSigVerify
+        case Self.checkMultisig.opCode: self = .checkMultisig
+        case Self.checkMultisigVerify.opCode: self = .checkMultisigVerify
         case Self.noOp1.opCode: self = .noOp1
         case Self.checkLockTimeVerify.opCode: self = .checkLockTimeVerify
         case Self.checkSequenceVerify.opCode: self = .checkSequenceVerify

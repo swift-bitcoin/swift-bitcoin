@@ -23,11 +23,11 @@ private enum PolicyConstants {
     /// See ``BitcoinBase/Script/maxOpReturnRelay``.
     static let maxOpReturnRelay = maxStandardWeight / witnessScaleFactor
 
-    /// See ``BitcoinBase/Script/maxP2SHSigOps``.
-    static let maxP2SHSigOps = 15
+    /// See ``BitcoinBase/Script/maxP2SHSigops``.
+    static let maxP2SHSigops = 15
 
-    /// See ``BitcoinBase/Script/maxTransactionLegacySigOps``.
-    static let maxTransactionLegacySigOps = 2_500
+    /// See ``BitcoinBase/Script/maxTransactionLegacySigops``.
+    static let maxTransactionLegacySigops = 2_500
 
     // MARK: - P2WSH limits (witness standardness)
 
@@ -75,10 +75,10 @@ public extension Script {
     static let maxOpReturnRelay = PolicyConstants.maxOpReturnRelay
 
     /// Maximum number of signature check operations in standard P2SH script.
-    static let maxP2SHSigOps = PolicyConstants.maxP2SHSigOps
+    static let maxP2SHSigops = PolicyConstants.maxP2SHSigops
 
     /// The maximum number of potentially executed legacy signature operations in a single standard tx.
-    static let maxTransactionLegacySigOps = PolicyConstants.maxTransactionLegacySigOps
+    static let maxTransactionLegacySigops = PolicyConstants.maxTransactionLegacySigops
 }
 
 /// Policy.

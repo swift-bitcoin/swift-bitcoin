@@ -152,8 +152,8 @@ public struct V_<X: ExpB>: ExpV {
             switch lastOp {
             case .checkSig:
                 return xCompiled + [.checkSigVerify]
-            case .checkMultiSig:
-                return xCompiled + [.checkMultiSigVerify]
+            case .checkMultisig:
+                return xCompiled + [.checkMultisigVerify]
             case .equal:
                 return xCompiled + [.equalVerify]
             case .numEqual:

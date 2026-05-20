@@ -154,7 +154,7 @@ struct BIP174Tests {
         let redeemScript = try #require(psbt.ins[0].redeemScript)
         #expect(redeemScript.isSegwit) // TODO: Verify P2WPSH
         let witnessScript = try #require(psbt.ins[0].witnessScript)
-        #expect(witnessScript.ops[0] == .constant(2) && witnessScript.ops[3] == .constant(2) && witnessScript.ops[4] == .checkMultiSig) // TODO: Verify 2 of 2 multisig
+        #expect(witnessScript.ops[0] == .constant(2) && witnessScript.ops[3] == .constant(2) && witnessScript.ops[4] == .checkMultisig) // TODO: Verify 2 of 2 multisig
         guard case let .pushBytes(keyData0) = witnessScript.ops[1], let pubkey0 = PublicKey(keyData0) else {
             Issue.record(); return
         }
@@ -197,7 +197,7 @@ struct BIP174Tests {
         let witnessPrevout = try #require(psbt.ins[0].witnessPrevout)
         #expect(witnessPrevout.script.isSegwit) // TODO: Verify P2WPSH
         let witnessScript = try #require(psbt.ins[0].witnessScript)
-        #expect(witnessScript.ops[0] == .constant(2) && witnessScript.ops[3] == .constant(2) && witnessScript.ops[4] == .checkMultiSig) // TODO: Verify 2 of 2 multisig
+        #expect(witnessScript.ops[0] == .constant(2) && witnessScript.ops[3] == .constant(2) && witnessScript.ops[4] == .checkMultisig) // TODO: Verify 2 of 2 multisig
         guard case let .pushBytes(keyData0) = witnessScript.ops[1], let pubkey0 = PublicKey(keyData0) else {
             Issue.record(); return
         }

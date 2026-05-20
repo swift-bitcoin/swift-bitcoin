@@ -319,12 +319,12 @@ public struct ScriptRuntime {
         case .codeSeparator: try opCodeSeparator()
         case .checkSig: try opCheckSig()
         case .checkSigVerify: try opCheckSigVerify()
-        case .checkMultiSig:
-            guard sigVersion == .base || sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
-            try opCheckMultiSig()
-        case .checkMultiSigVerify:
-            guard sigVersion == .base || sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultiSigDisabled }
-            try opCheckMultiSigVerify()
+        case .checkMultisig:
+            guard sigVersion == .base || sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultisigDisabled }
+            try opCheckMultisig()
+        case .checkMultisigVerify:
+            guard sigVersion == .base || sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultisigDisabled }
+            try opCheckMultisigVerify()
         case .noOp1: if config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
         case .checkLockTimeVerify:
             guard config.contains(.checkLockTimeVerify) else { break }
