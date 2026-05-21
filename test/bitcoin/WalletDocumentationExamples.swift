@@ -90,7 +90,7 @@ struct WalletDocumentationExamples {
         let sk1 = SecretKey(); let sk2 = SecretKey(); let sk3 = SecretKey()
 
         // Multisig 2-out-of-3
-        let multisigScript = Script.payToMultiSignature(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)
+        let multisigScript = Script.payToMultisig(2, of: sk1.pubkey, sk2.pubkey, sk3.pubkey)
 
         // Some different types of addresses
         let p2sh = LegacyAddress(multisigScript)

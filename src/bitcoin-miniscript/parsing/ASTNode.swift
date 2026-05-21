@@ -374,7 +374,7 @@ indirect enum ASTNode {
                 }
                 return switch lastOp {
                 case .checkSig: x + [.checkSigVerify]
-                case .checkMultiSig: x + [.checkMultiSigVerify]
+                case .checkMultisig: x + [.checkMultisigVerify]
                 case .equal: x + [.equalVerify]
                 case .numEqual: x + [.numEqualVerify]
                 default: x + [lastOp, .verify]
@@ -475,7 +475,7 @@ indirect enum ASTNode {
                     guard  case let .arg(val) = arg, let data = Data(hex: val), let key = PublicKey(compressed: data), let keyData = key.compressedData else { throw .invalidArgumentValue }
                     return keyData
                 }.map { Script.Operation.pushBytes($0) }
-                return [.constant(k)] + keysPushBytes + [.constant(n), .checkMultiSig]
+                return [.constant(k)] + keysPushBytes + [.constant(n), .checkMultisig]
             case "multi_a":
                 guard case let .arg(val) = args[0], let k = UInt8(val) else {
                     throw .invalidArgumentValue

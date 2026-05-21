@@ -361,30 +361,13 @@ public actor BlockchainService: Sendable {
     }
 
     /// Adds a transaction to the mempool.
-    ///
-    /// Returns silently if transaction is already in the mempool.
     public func addTransaction(_ tx: Transaction) async throws(TransactionValidationError) {
 
         metrics.transactionsCounter.increment()
 
-        guard !mempool.contains(tx) else {
-            logger.warning("Transaction already in mempool: \(tx.idHex)")
-            return
-        }
-
-        var coins = [UnspentOutput]()
-        for txIn in tx.ins {
-            // TODO: Have the coins index return transaction's inputs' previous coins/heights all at once (when coins not from the mempool coins array)
-            guard let coin = try! await coinIndex.get(txIn.outpoint) ?? mempoolCoins[txIn.outpoint], !mempoolExclude.contains(txIn.outpoint) else {
-                logger.warning("Missing UTXO in tx \(tx.idHex)")
-                return
-            }
-            coins.append(coin)
-        }
-        let prevouts = coins.map(\.out)
-
+        let prevouts: [TransactionOutput]
         do {
-            try await mempoolAcceptPreChecks(tx, coins: coins)
+            prevouts = try await mempoolAcceptPreChecks(tx)
         } catch {
             logger.warning("Mempool precheck failed for tx \(tx.idHex)\n\(error)")
             throw error
@@ -1869,7 +1852,7 @@ public actor BlockchainService: Sendable {
 
     /// Run the policy checks on a given transaction, excluding any script checks.
     /// Looks up inputs, calculates feerate, considers replacement, evaluates package limits, etc. As this function can be invoked for "free" by a peer, only tests that are fast should be done here (to avoid CPU DoS).
-    private func mempoolAcceptPreChecks(_ tx: Transaction, coins: [UnspentOutput]) async throws(TransactionValidationError) {
+    private func mempoolAcceptPreChecks(_ tx: Transaction) async throws(TransactionValidationError) -> [TransactionOutput] {
 
         do {
             try tx.check()
@@ -1910,6 +1893,33 @@ public actor BlockchainService: Sendable {
             throw .nonFinalTransaction
         }
 
+        if mempool.map(\.witnessID).contains(tx.witnessID) {
+            // Exact transaction already exists in the mempool.
+            throw .transactionAlreadyInMempool
+        } else if mempool.map(\.id).contains(tx.id) {
+            // Transaction with the same non-witness data but different witness (same txid, different wtxid) already exists in the mempool.
+            throw .transactionSameNonWitnessDataInMempool
+        }
+
+        // do all inputs exist?
+        var coins = [UnspentOutput]()
+        for txIn in tx.ins {
+            // TODO: As an optimization, have the coin index return coins all at once (when coins not from the mempool coins array)
+            guard let coin = try! await coinIndex.get(txIn.outpoint) ?? mempoolCoins[txIn.outpoint], !mempoolExclude.contains(txIn.outpoint) else {
+                // Are inputs missing because we already have the tx?
+                for out in tx.outs.indices {
+                    // Optimistically just do efficient check of cache for outputs
+                    guard let _ = try! await coinIndex.get(Outpoint(tx: tx.id, out: out)) else {
+                        throw .transactionAlreadyKnown
+                    }
+                }
+                // Otherwise assume this might be an orphan tx for which we just haven't seen parents yet
+                throw .inputsMissingOrSpent
+            }
+            coins.append(coin)
+        }
+        let prevouts = coins.map(\.out) // To return
+
         // Only accept BIP68 sequence locked transactions that can be mined in the next
         // block; we don't want our mempool filled up with transactions that can't
         // be mined yet.
@@ -1932,7 +1942,6 @@ public actor BlockchainService: Sendable {
             throw .transactionCheckError(error)
         }
 
-        let prevouts = coins.map(\.out)
         /* if (m_pool.m_opts.require_standard) { … } */
         do {
             try tx.validateInputsStandardness(prevouts: prevouts)
@@ -1953,6 +1962,8 @@ public actor BlockchainService: Sendable {
                 throw .nonStandardWitness(error)
             }
         }
+
+        return prevouts
     }
 
     /// Checks if the transaction will be final in the next block to be created on top of the new chain.

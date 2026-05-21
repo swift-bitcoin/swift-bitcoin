@@ -88,7 +88,7 @@ extension TxInfo {
                      pubkey = "pubkey",
                      pubkeyHash = "pubkeyhash",
                      scriptHash = "scripthash",
-                     multiSig = "multisig",
+                     multisig = "multisig",
                      nullData = "nulldata",
                      witnessV0KeyHash = "witness_v0_keyhash",
                      witnessV0ScriptHash = "witness_v0_scripthash",

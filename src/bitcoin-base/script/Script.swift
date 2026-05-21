@@ -115,7 +115,7 @@ public struct Script: Equatable, Sendable {
     public static let empty: Self = []
 
     /// Maximum number of public keys per multisig.
-    static let maxMultiSigPubkeys = 20
+    static let maxMultisigPubkeys = 20
 
     /// Maximum number of non-push operations per script.
     static let maxOps = 201
@@ -151,7 +151,7 @@ public struct Script: Equatable, Sendable {
         return [.dup, .hash160, .pushBytes(hash), .equalVerify, .checkSig]
     }
 
-    public static func payToMultiSignature(_ threshold: Int, of keys: PublicKey...) -> Self {
+    public static func payToMultisig(_ threshold: Int, of keys: PublicKey...) -> Self {
         precondition(keys.count <= 20 && threshold >= 0 && threshold <= keys.count)
         let keyOps = keys.map { key in
             Script.Operation.pushBytes(key.data)
@@ -159,7 +159,7 @@ public struct Script: Equatable, Sendable {
         return .init(
             [.encodeMinimally(threshold)] +
             keyOps +
-            [.encodeMinimally(keys.count), .checkMultiSig]
+            [.encodeMinimally(keys.count), .checkMultisig]
         )
     }
 
@@ -221,26 +221,28 @@ extension Script {
 
 extension Script {
 
-    /// GetSigOpCount(bool fAccurate) from Bitcoin Core, adapted to Swift.
     /// Counts the number of signature operations in this script.
+    ///
+    /// Analog to Bitcoin Core's `GetSigOpCount(bool fAccurate)`.
+    ///
     /// - Parameter accurate: If true, count multisig ops accurately when preceded by OP_1..OP_16; otherwise assume MAX_PUBKEYS_PER_MULTISIG.
     /// - Returns: Number of signature operations.
-    public func sigOpCount(accurate: Bool) -> Int {
+    public func sigopCount(accurate: Bool) -> Int {
         var n = 0
         var lastOpcode: Script.Operation? = nil
         for op in ops {
             switch op {
             case .checkSig, .checkSigVerify:
                 n += 1
-            case .checkMultiSig, .checkMultiSigVerify:
+            case .checkMultisig, .checkMultisigVerify:
                 if accurate, let lastOpcode {
                     if case let .constant(v) = lastOpcode, (1...16).contains(Int(v)) {
                         n += Int(v)
                     } else {
-                        n += Script.maxMultiSigPubkeys
+                        n += Script.maxMultisigPubkeys
                     }
                 } else {
-                    n += Script.maxMultiSigPubkeys
+                    n += Script.maxMultisigPubkeys
                 }
             default:
                 break
@@ -250,11 +252,11 @@ extension Script {
         return n
     }
 
-    /// GetSigOpCount(const CScript& scriptSig) from Bitcoin Core, adapted to Swift.
-    /// If this is not P2SH, returns sigOpCount(true). Otherwise, extracts the redeemScript from scriptSig's last push and returns its sigop count.
-    public func sigOpCount(inputScript scriptSig: Script) -> Int {
+    /// GetSigopCount(const CScript& scriptSig) from Bitcoin Core, adapted to Swift.
+    /// If this is not P2SH, returns sigopCount(true). Otherwise, extracts the redeemScript from scriptSig's last push and returns its sigop count.
+    public func sigopCount(inputScript scriptSig: Script) -> Int {
         guard isPayToScriptHash else {
-            return sigOpCount(accurate: true)
+            return sigopCount(accurate: true)
         }
 
         // This is a pay-to-script-hash scriptPubKey;
@@ -277,7 +279,7 @@ extension Script {
         }
         // …and return its opcount:
         if let lastPush, let subScript = try? Script(lastPush) {
-            return subScript.sigOpCount(accurate: true)
+            return subScript.sigopCount(accurate: true)
         }
         fatalError()
     }

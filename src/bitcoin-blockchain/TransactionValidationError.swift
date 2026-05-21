@@ -14,8 +14,14 @@ public enum TransactionValidationError: Error {
     /// Transaction sanity check failure.
     case transactionCheckError(Transaction.ValidationError)
 
+    case transactionAlreadyKnown
+    case inputsMissingOrSpent
+
     /// Transaction is non-final.
     case nonFinalTransaction
+
+    case transactionAlreadyInMempool
+    case transactionSameNonWitnessDataInMempool
 
     /// Script verification error.
     case scriptError

@@ -26,7 +26,7 @@ extension Script {
             case .constant(let m) = ops[0],
             case .constant(let n) = ops[ops.count - 2],
             m <= n,
-            ops[ops.count - 1] == .checkMultiSig,
+            ops[ops.count - 1] == .checkMultisig,
             ops.count == 3 + n
         else { return false }
         return ops[1 ..< (ops.count - 2)].allSatisfy {
