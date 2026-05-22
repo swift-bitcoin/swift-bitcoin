@@ -99,7 +99,7 @@ public struct After: ExpB, ModZ {
     let n: Int
 
     public var compiled: [Script.Operation] {
-        [.encodeMinimally(n), .checkLockTimeVerify]
+        [.encodeMinimally(n), .checkLocktimeVerify]
     }
 
     public var description: String {

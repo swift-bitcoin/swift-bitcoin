@@ -32,7 +32,7 @@ struct InvalidTxTests {
             if includeFlags.contains("NULLDUMMY") { config.insert(.nullDummy) }
             if includeFlags.contains("STRICTENC") { config.insert(.strictEncoding) }
             if includeFlags.contains("P2SH") { config.insert(.payToScriptHash) }
-            if includeFlags.contains("CHECKLOCKTIMEVERIFY") { config.insert(.checkLockTimeVerify) }
+            if includeFlags.contains("CHECKLOCKTIMEVERIFY") { config.insert(.checkLocktimeVerify) }
             if includeFlags.contains("CHECKSEQUENCEVERIFY") { config.insert(.checkSequenceVerify) }
             if includeFlags.contains("CONST_SCRIPTCODE") { config.insert(.constantScriptCode) }
             if includeFlags.contains("WITNESS") { config.insert(.witness) }
@@ -570,7 +570,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .constant(1),
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -586,7 +586,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x64, 0xff]).reversed())), // 499_999_999
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -603,7 +603,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x65, 0x01]).reversed())), // 500_000_001
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -619,7 +619,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -635,7 +635,7 @@ fileprivate let testVectors: [TestVector] = [
                 outIndex: 0,
                 amount: 0,
                 ops: [
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             )
@@ -668,7 +668,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .oneNegate,
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -685,7 +685,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .oneNegate,
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -717,7 +717,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .zero,
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             )
@@ -750,7 +750,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .zero,
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             ),
@@ -777,7 +777,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .zero,
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             )
@@ -809,7 +809,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x64, 0xff]).reversed())), // 499_999_999
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                 ]
             )
         ],
@@ -825,7 +825,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x65, 0x00]).reversed())), // 500_000_000
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -841,7 +841,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x65, 0x00]).reversed())), // 500_000_000
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -858,7 +858,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x10, 0x00, 0x00, 0x00, 0x00]).reversed())),
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -875,7 +875,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x00, 0x80, 0x00, 0x00, 0x00]).reversed())), // 2_147_483_648
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -892,7 +892,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init([0x00, 0x00, 0x00, 0x00, 0x00, 0x00])),
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             )

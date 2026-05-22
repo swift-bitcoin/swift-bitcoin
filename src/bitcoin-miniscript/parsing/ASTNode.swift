@@ -406,7 +406,7 @@ indirect enum ASTNode {
                 guard case let .arg(val) = args[0], let n = Int(val) else {
                     throw .invalidArgumentValue
                 }
-                return [.encodeMinimally(n), .checkLockTimeVerify]
+                return [.encodeMinimally(n), .checkLocktimeVerify]
             case "sha256":
                 guard case let .arg(v) = args[0], let h = Data(hex: v), h.count == BitcoinCrypto.SHA256.Digest.byteCount else {
                     throw .invalidArgumentValue

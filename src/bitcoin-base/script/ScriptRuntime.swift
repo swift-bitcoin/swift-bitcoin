@@ -326,9 +326,9 @@ public struct ScriptRuntime {
             guard sigVersion == .base || sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultisigDisabled }
             try opCheckMultisigVerify()
         case .noOp1: if config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
-        case .checkLockTimeVerify:
-            guard config.contains(.checkLockTimeVerify) else { break }
-            try opCheckLockTimeVerify()
+        case .checkLocktimeVerify:
+            guard config.contains(.checkLocktimeVerify) else { break }
+            try opCheckLocktimeVerify()
         case .checkSequenceVerify:
             guard config.contains(.checkSequenceVerify) else { break }
             try opCheckSequenceVerify()

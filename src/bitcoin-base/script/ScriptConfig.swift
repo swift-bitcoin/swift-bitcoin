@@ -44,7 +44,7 @@ public struct ScriptConfig: OptionSet, Sendable {
     public static let payToScriptHash = Self(rawValue: 1 << 7)
 
     /// BIP65: Evaluate `OP_CHECKLOCKTIMEVERIFY`.
-    public static let checkLockTimeVerify = Self(rawValue: 1 << 8)
+    public static let checkLocktimeVerify = Self(rawValue: 1 << 8)
 
     /// BIP112: Evaluate `OP_CHECKSEQUENCEVERIFY`.
     public static let checkSequenceVerify = Self(rawValue: 1 << 9)
@@ -88,7 +88,7 @@ public struct ScriptConfig: OptionSet, Sendable {
     public static let discourageUpgradablePubkeyType = Self(rawValue: 1 << 20)
 
     /// Standard script verification flags that standard transactions will comply with. However we do not ban/disconnect nodes that forward txs violating the additional (non-mandatory) rules here, to improve forwards and backwards compatability.
-    public static let standard: Self = [.strictDER, .pushOnly, .minimalData, .lowS, .cleanStack, .nullDummy, .strictEncoding, .payToScriptHash, .checkLockTimeVerify, .checkSequenceVerify, .discourageUpgradableNoOps, .constantScriptCode, .witness, .witnessCompressedPubkey, .minimalIf, .nullFail, .discourageUpgradableWitnessProgram, .taproot, .discourageUpgradableTaprootVersion, .discourageOpSuccess, .discourageUpgradablePubkeyType]
+    public static let standard: Self = [.strictDER, .pushOnly, .minimalData, .lowS, .cleanStack, .nullDummy, .strictEncoding, .payToScriptHash, .checkLocktimeVerify, .checkSequenceVerify, .discourageUpgradableNoOps, .constantScriptCode, .witness, .witnessCompressedPubkey, .minimalIf, .nullFail, .discourageUpgradableWitnessProgram, .taproot, .discourageUpgradableTaprootVersion, .discourageOpSuccess, .discourageUpgradablePubkeyType]
 
     /// Mandatory script verification flags that all new transactions must comply with for them to be valid under latest consensus rules. Failing one of these tests may trigger a DoS ban. See `CheckInputScripts()` on Bitcoin Core  for details.
     /// Note that this does not affect consensus validity. See `GetBlockScriptFlags()` for that.
@@ -96,7 +96,7 @@ public struct ScriptConfig: OptionSet, Sendable {
         .strictDER, // After DEPLOYMENT_DERSIG (BIP66) buried deployment block (1st)
         .nullDummy, // After DEPLOYMENT_SEGWIT (BIP147) buried deployment block (3rd)
         .payToScriptHash, // From chain start with 1 block excepted on mainnet
-        .checkLockTimeVerify, // After DEPLOYMENT_CLTV (BIP65) buried deployment block (2st)
+        .checkLocktimeVerify, // After DEPLOYMENT_CLTV (BIP65) buried deployment block (2st)
         .checkSequenceVerify, // After DEPLOYMENT_CSV (BIP112) buried deployment block (3rd)
         .witness, // From chain start with 0 blocks excepted
         .taproot // From chain start with 1 block excepted on mainnet

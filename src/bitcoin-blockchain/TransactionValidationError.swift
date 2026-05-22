@@ -25,4 +25,7 @@ public enum TransactionValidationError: Error {
 
     /// Script verification error.
     case scriptError
+
+    case tooManySigops
+    case feeTooLow
 }

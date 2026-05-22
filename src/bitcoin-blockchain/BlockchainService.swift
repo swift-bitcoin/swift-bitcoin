@@ -365,9 +365,10 @@ public actor BlockchainService: Sendable {
 
         metrics.transactionsCounter.increment()
 
+        let requireStandard = true // Overrideable by parameter (for test/regtest networks only) in Bitcoin Core
         let prevouts: [TransactionOutput]
         do {
-            prevouts = try await mempoolAcceptPreChecks(tx)
+            prevouts = try await mempoolAcceptPreChecks(tx, requireStandard: requireStandard)
         } catch {
             logger.warning("Mempool precheck failed for tx \(tx.idHex)\n\(error)")
             throw error
@@ -614,7 +615,7 @@ public actor BlockchainService: Sendable {
         if params.preventBlockStorms {
             // Check timestamp for the first block of each difficulty adjustment interval, except the genesis block.
             if (headers + 1) % params.difficultyAdjustmentInterval == 0 {
-                guard header.time.timeIntervalSince1970 >= bestHeader.header.time.timeIntervalSince1970  - ConsensusParams.maxTimewarp else {
+                guard header.time.timeIntervalSince1970 >= bestHeader.header.time.timeIntervalSince1970  - Block.maxTimewarp else {
                     logger.error("Header \(header.idHex) - potential timewarp attack")
                     throw .timewarpAttack
                 }
@@ -1469,7 +1470,7 @@ public actor BlockchainService: Sendable {
         }
 
         // Enforce BIP68 (sequence locks)
-        let verifyLockTimeSequence = blockRef.height >= params.csvHeight
+        let verifyLocktimeSequence = blockRef.height >= params.csvHeight
 
         var fees = Amount(0)
         var tmpExclude = [Outpoint]()
@@ -1504,7 +1505,7 @@ public actor BlockchainService: Sendable {
                 // Check that transaction is BIP68 final
                 // BIP68 lock checks (as opposed to nLockTime checks) must be in ConnectBlock because they require the UTXO set
                 var previousHeights = await calculatePrevHeights(tx, tip: activeTip, excludeCoins: tmpExclude, auxCoins: tmpCoins)
-                try await sequenceLocks(tx, block: blockRef, previous: activeTip, verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights)
+                try await sequenceLocks(tx, block: blockRef, previous: activeTip, verifyLocktimeSequence: verifyLocktimeSequence, previousHeights: &previousHeights)
             }
 
             // Remove coins
@@ -1816,7 +1817,7 @@ public actor BlockchainService: Sendable {
         // of the block *being* evaluated is what is used.
         // Thus if we want to know if a transaction can be part of the
         // *next* block, we need to use one more than active_chainstate.m_chain.Height()
-        let (minHeight, minTime) = await calculateSequenceLocks(tx, block: nextTip, verifyLockTimeSequence: true /* STANDARD_LOCKTIME_VERIFY_FLAGS */, previousHeights: &prevHeights)
+        let (minHeight, minTime) = await calculateSequenceLocks(tx, block: nextTip, verifyLocktimeSequence: Transaction.Input.standardLocktimeVerifyOption /* STANDARD_LOCKTIME_VERIFY_FLAGS */, previousHeights: &prevHeights)
 
         // Also store the hash of the block with the highest height of all the blocks which have sequence locked prevouts.
         // This hash needs to still be on the chain for these LockPoint calculations to be valid
@@ -1852,7 +1853,7 @@ public actor BlockchainService: Sendable {
 
     /// Run the policy checks on a given transaction, excluding any script checks.
     /// Looks up inputs, calculates feerate, considers replacement, evaluates package limits, etc. As this function can be invoked for "free" by a peer, only tests that are fast should be done here (to avoid CPU DoS).
-    private func mempoolAcceptPreChecks(_ tx: Transaction) async throws(TransactionValidationError) -> [TransactionOutput] {
+    private func mempoolAcceptPreChecks(_ tx: Transaction, requireStandard: Bool) async throws(TransactionValidationError) -> [TransactionOutput] {
 
         do {
             try tx.check()
@@ -1864,20 +1865,20 @@ public actor BlockchainService: Sendable {
         // Coinbase is only valid in a block, not as a loose transaction
         guard !tx.isCoinbase else {
             throw .coinbaseTransaction
-            // return state.Invalid(TxValidationResult::TX_CONSENSUS, "coinbase");
         }
 
         // Rather not work on nonstandard transactions (unless -testnet/-regtest)
-        /*
-        std::string reason;
-        if (m_pool.m_opts.require_standard && !IsStandardTx(tx, m_pool.m_opts.max_datacarrier_bytes, m_pool.m_opts.permit_bare_multisig, m_pool.m_opts.dust_relay_feerate, reason)) {
-            //return state.Invalid(TxValidationResult::TX_NOT_STANDARD, reason);
-         */
-        do {
-            try tx.isStandard()
-        } catch {
-            logger.warning("Non-standard transaction: \(error)")
-            throw .nonStandardTransaction(error)
+        if requireStandard {
+            // The following are overridable runtime options in Bitcoin Core
+            let maxDatacarrierBytes = Script.defaultAcceptDatacarrier ? Script.maxOpReturnRelay : 0
+            let permitBareMultisig = Script.defaultPermitBareMultisig
+            let dustRelayFeerate = Transaction.dustRelayFee
+            do {
+                try tx.isStandard(maxDatacarrierBytes: maxDatacarrierBytes, permitBareMultisig: permitBareMultisig, dustRelayFeerate: dustRelayFeerate)
+            } catch {
+                logger.warning("Non-standard transaction: \(error)")
+                throw .nonStandardTransaction(error)
+            }
         }
 
         // Transactions smaller than 65 non-witness bytes are not relayed to mitigate CVE-2017-12842.
@@ -1920,11 +1921,8 @@ public actor BlockchainService: Sendable {
         }
         let prevouts = coins.map(\.out) // To return
 
-        // Only accept BIP68 sequence locked transactions that can be mined in the next
-        // block; we don't want our mempool filled up with transactions that can't
-        // be mined yet.
-        // Pass in m_view which has all of the relevant inputs cached. Note that, since m_view's
-        // backend was removed, it no longer pulls coins from the mempool.
+        // Only accept BIP68 sequence locked transactions that can be mined in the next  block; we don't want our mempool filled up with transactions that can't be mined yet.
+        // Pass in m_view which has all of the relevant inputs cached. Note that, since m_view's backend was removed, it no longer pulls coins from the mempool.
         let lockPoints = await calculateLockPointsAtTip(tx, tip: activeTip)
         do {
             try await checkSequenceLocksAtTip(activeTip, lockPoints: lockPoints)
@@ -1934,36 +1932,50 @@ public actor BlockchainService: Sendable {
         }
 
         // The mempool holds txs for the next block, so pass height+1 to CheckTxInputs
-
-        /* if (!Consensus::CheckTxInputs(tx, state, m_view, m_active_chainstate.m_chain.Height() + 1, ws.m_base_fees)) { … } */
         do {
             try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
+            // Consensus::CheckTxInputs(tx, state, m_view, m_active_chainstate.m_chain.Height() + 1, ws.m_base_fees))
         } catch {
             throw .transactionCheckError(error)
         }
 
-        /* if (m_pool.m_opts.require_standard) { … } */
-        do {
-            try tx.validateInputsStandardness(prevouts: prevouts)
-        } catch {
-            logger.warning("\(error)")
-            throw .nonStandardPrevouts(error)
+        if requireStandard {
+            do {
+                try tx.validateInputsStandardness(prevouts: prevouts)
+            } catch {
+                logger.warning("\(error)")
+                throw .nonStandardPrevouts(error)
+            }
         }
 
         // Check for non-standard witnesses.
-
-        /* if (tx.HasWitness() && m_pool.m_opts.require_standard && !IsWitnessStandard(tx, m_view)) { … } */
-        if tx.hasWitness {
+        if tx.hasWitness, requireStandard {
             do {
                 try tx.isWitnessStandard(prevouts: prevouts)
             } catch {
-                // state.Invalid(TxValidationResult::TX_WITNESS_MUTATED, "bad-witness-nonstandard")
                 logger.warning("\(error)")
                 throw .nonStandardWitness(error)
             }
         }
 
+        let sigopsCost = tx.sigopCost(prevouts: prevouts, options: .standard)
+
+        guard sigopsCost <= Transaction.maxStandardSigopsCost else {
+            throw .tooManySigops
+        }
+
+        // No individual transactions are allowed below the mempool min feerate except from disconnected blocks and transactions in a package. Package transactions will be checked using package feerate later.
+        /* if !bypass_limits { */
+        guard checkFeeRate(/*modifiedFees*/) else {
+            throw .feeTooLow
+        }
+
         return prevouts
+    }
+
+    private func checkFeeRate() -> Bool {
+        // TODO: Tie this to the node service state for minimum feeRate
+        return true
     }
 
     /// Checks if the transaction will be final in the next block to be created on top of the new chain.
@@ -1986,8 +1998,8 @@ public actor BlockchainService: Sendable {
     /// Called by `BlockchainService.connectBlock()`.
     ///
     /// BIP68
-    private func sequenceLocks(_ tx: Transaction, block: BlockRef, previous: BlockRef, verifyLockTimeSequence: Bool, previousHeights: inout [Int]) async throws(Error) {
-        try await evaluateSequenceLocks(block, previous: previous, lockPair: await calculateSequenceLocks(tx, block: block, verifyLockTimeSequence: verifyLockTimeSequence, previousHeights: &previousHeights))
+    private func sequenceLocks(_ tx: Transaction, block: BlockRef, previous: BlockRef, verifyLocktimeSequence: Bool, previousHeights: inout [Int]) async throws(Error) {
+        try await evaluateSequenceLocks(block, previous: previous, lockPair: await calculateSequenceLocks(tx, block: block, verifyLocktimeSequence: verifyLocktimeSequence, previousHeights: &previousHeights))
     }
 
     /// Calculates the block height and previous block's median time past at which the transaction will be considered final in the context of BIP 68.
@@ -1999,7 +2011,7 @@ public actor BlockchainService: Sendable {
     /// Called from `sequenceLocks()`.
     ///
     /// BIP68
-    private func calculateSequenceLocks(_ tx: Transaction, block: BlockRef, verifyLockTimeSequence: Bool, previousHeights: inout [Int]) async -> LockPair {
+    private func calculateSequenceLocks(_ tx: Transaction, block: BlockRef, verifyLocktimeSequence: Bool, previousHeights: inout [Int]) async -> LockPair {
 
         precondition(previousHeights.count == tx.ins.count);
 
@@ -2012,7 +2024,7 @@ public actor BlockchainService: Sendable {
         var minTime = -1;
 
         // tx.nVersion is signed integer so requires cast to unsigned otherwise we would be doing a signed comparison and half the range of nVersion wouldn't support BIP68.
-        let enforceBIP68 = tx.version >= .v2 && verifyLockTimeSequence
+        let enforceBIP68 = tx.version >= .v2 && verifyLocktimeSequence
 
         // Do not enforce sequence numbers as a relative lock time unless we have been instructed to
         guard enforceBIP68 else { return (minHeight, minTime) }
@@ -2053,7 +2065,7 @@ public actor BlockchainService: Sendable {
         let blockTime = Int(blockTimeDate.timeIntervalSince1970)
         if lockPair.height >= block.height || lockPair.time >= blockTime {
             logger.error("Non final transaction at block height \(block.height) (future lock time). BIP68 non-final transaction")
-            throw .futureLockTime
+            throw .futureLocktime
         }
     }
 
