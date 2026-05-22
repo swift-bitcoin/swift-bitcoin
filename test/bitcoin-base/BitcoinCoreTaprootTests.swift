@@ -20,7 +20,7 @@ struct BitcoinCoreTaprootTests {
             if !includeFlags.contains("NULLDUMMY") { config.remove(.nullDummy) }
             if !includeFlags.contains("STRICTENC") { config.remove(.strictEncoding) }
             if !includeFlags.contains("P2SH") { config.remove(.payToScriptHash) }
-            if !includeFlags.contains("CHECKLOCKTIMEVERIFY") { config.remove(.checkLockTimeVerify) }
+            if !includeFlags.contains("CHECKLOCKTIMEVERIFY") { config.remove(.checkLocktimeVerify) }
             if !includeFlags.contains("CHECKSEQUENCEVERIFY") { config.remove(.checkSequenceVerify) }
             if !includeFlags.contains("CONST_SCRIPTCODE") { config.remove(.constantScriptCode) }
             if !includeFlags.contains("WITNESS") { config.remove(.witness) }

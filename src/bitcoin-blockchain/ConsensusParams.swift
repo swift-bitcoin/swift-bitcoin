@@ -220,12 +220,4 @@ public struct ConsensusParams: Sendable {
 
     // TODO: Define testnet params with magicBytes 0x0709110b
     // TODO: Define signet params with magicBytes 0x40cf030a
-
-    // MARK: - Flags for nSequence and nLockTime locks
-
-    /// Interpret sequence numbers as relative lock-time constraints.
-    private static let locktimeVerifySequence = 1 << 0
-
-    /// Maximum number of seconds that the timestamp of the first block of a difficulty adjustment period is allowed to be earlier than the last block of the previous period (BIP94).
-    package static let maxTimewarp = TimeInterval(600)
 }

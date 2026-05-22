@@ -3,7 +3,7 @@ import Foundation
 extension ScriptRuntime {
 
     /// [BIP65](https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki)
-    mutating func opCheckLockTimeVerify() throws {
+    mutating func opCheckLocktimeVerify() throws {
         let first = try getUnaryParam(keep: true)
         let locktime64 = try ScriptNumber(first, extendedLength: true, minimal: config.contains(.minimalData)).value
 
@@ -11,7 +11,7 @@ extension ScriptRuntime {
             first.count < 6,
             locktime64 >= 0,
             locktime64 <= UInt32.max
-        else { throw ScriptError.invalidLockTimeArgument }
+        else { throw ScriptError.invalidLocktimeArgument }
 
         let locktime = Transaction.Locktime(locktime64)
 
@@ -24,7 +24,7 @@ extension ScriptRuntime {
                 throw ScriptError.lockTimeSecondsEarly
             }
         } else {
-            throw ScriptError.invalidLockTime
+            throw ScriptError.invalidLocktime
         }
 
         if tx.ins[input].sequence == .final { throw ScriptError.inputSequenceFinal }
@@ -47,7 +47,7 @@ extension ScriptRuntime {
         if tx.version == .v1 { throw ScriptError.minimumTxVersionRequired }
 
         let txSequence = tx.ins[input].sequence
-        if txSequence.isLocktimeDisabled { throw ScriptError.sequenceLockTimeDisabled }
+        if txSequence.isLocktimeDisabled { throw ScriptError.sequenceLocktimeDisabled }
 
         if let locktimeBlocks = sequence.locktimeBlocks, let txLocktimeBlocks = txSequence.locktimeBlocks {
             if locktimeBlocks > txLocktimeBlocks {

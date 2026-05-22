@@ -24,10 +24,10 @@ enum ScriptError: Error {
          undefinedSighashType,
          missingDummyValue,
          dummyValueNotNull,
-         invalidLockTimeArgument,
+         invalidLocktimeArgument,
          lockTimeHeightEarly,
          lockTimeSecondsEarly,
-         invalidLockTime,
+         invalidLocktime,
          invalidSequenceArgument,
          sequenceHeightEarly,
          sequenceSecondsEarly,
@@ -66,5 +66,5 @@ enum ScriptError: Error {
          disallowedNoOp,
          invalidCheckSigAddArgument,
          minimumTxVersionRequired,
-         sequenceLockTimeDisabled
+         sequenceLocktimeDisabled
 }

@@ -6,6 +6,8 @@ struct ScriptNumberTests {
 
     let zeroData = Data()
     let oneData = Data([1])
+    let sixteenData = Data([16])
+    let seventeenData = Data([17])
     let minusOneData = Data([0b10000001])
     let oneByteMinData = Data([0xff]) // -127
     let oneByteMaxData = Data([127])
@@ -84,6 +86,75 @@ struct ScriptNumberTests {
         let fiveByteMinNum = try ScriptNumber(fiveByteMinData, extendedLength: true)
         let fiveByteMinDataBack = fiveByteMinNum.data
         #expect(fiveByteMinDataBack == fiveByteMinData)
+    }
+
+    @Test("Encode minimally and pushed data roundtrips")
+    func encodeMinimallyRoundtrips() throws {
+        // Zero (0)
+        var num = try ScriptNumber(zeroData)
+        #expect(num.value == 0)
+        var op = Script.Operation.encodeMinimally(num.value)
+        #expect(op.isPush)
+        var numData = num.data
+        var op2 = Script.Operation.encodeMinimally(numData)
+        #expect(op == op2)
+        #expect(op == .zero)
+        var pushedData = try #require(op.pushedData)
+        #expect(pushedData == zeroData)
+        #expect(pushedData == numData)
+
+        // One (1)
+        num = try ScriptNumber(oneData)
+        #expect(num.value == 1)
+        op = Script.Operation.encodeMinimally(num.value)
+        #expect(op.isPush)
+        numData = num.data
+        op2 = Script.Operation.encodeMinimally(numData)
+        #expect(op == op2)
+        #expect(op == .constant(1))
+        pushedData = try #require(op.pushedData)
+        #expect(pushedData == oneData)
+        #expect(pushedData == numData)
+
+        // Minus one (-1)
+        num = try ScriptNumber(minusOneData)
+        #expect(num.value == -1)
+        op = Script.Operation.encodeMinimally(num.value)
+        #expect(op.isPush)
+        numData = num.data
+        op2 = Script.Operation.encodeMinimally(numData)
+        #expect(op == op2)
+        #expect(op == .oneNegate)
+        pushedData = try #require(op.pushedData)
+        #expect(pushedData == minusOneData)
+        #expect(pushedData == numData)
+
+        // Sixteen (16)
+        num = try ScriptNumber(sixteenData)
+        #expect(num.value == 16)
+        op = Script.Operation.encodeMinimally(num.value)
+        #expect(op.isPush)
+        numData = num.data
+        op2 = Script.Operation.encodeMinimally(numData)
+        #expect(op == op2)
+        #expect(op == .constant(16))
+        pushedData = try #require(op.pushedData)
+        #expect(pushedData == sixteenData)
+        #expect(pushedData == numData)
+
+        // Seventeen (17)
+        num = try ScriptNumber(seventeenData)
+        #expect(num.value == 17)
+        op = Script.Operation.encodeMinimally(num.value)
+        #expect(op.isPush)
+        numData = num.data
+        op2 = Script.Operation.encodeMinimally(numData)
+        #expect(op == op2)
+        #expect(op == .pushBytes(seventeenData))
+        pushedData = try #require(op.pushedData)
+        #expect(pushedData == seventeenData)
+        #expect(pushedData == numData)
+
     }
 
     @Test("Adding")

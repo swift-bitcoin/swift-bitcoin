@@ -116,8 +116,7 @@ extension Transaction {
     ///
     ///
     /// Analog to Bitcoin Core's `IsStandardTx()`.
-    func isStandard() throws(PolicyViolation) {
-        let permitBareMultisig = true // TODO: This is a startup option in Bitcoin Core.
+    func isStandard(maxDatacarrierBytes: Int, permitBareMultisig: Bool, dustRelayFeerate: Amount) throws(PolicyViolation) {
         // TODO: Implement analog to Bitcoin Core's `isStandardTx()`
         // bool IsStandardTx(const CTransaction& tx, const std::optional<unsigned>& max_datacarrier_bytes, bool permit_bare_multisig, const CFeeRate& dust_relay_fee, std::string& reason)
         guard version >= Transaction.Version.minStandard && version <= Transaction.Version.maxStandard else {
@@ -132,7 +131,7 @@ extension Transaction {
 
         for txIn in ins {
             // Biggest 'standard' txin involving only keys is a 15-of-15 P2SH multisig with compressed keys (remember the MAX_SCRIPT_ELEMENT_SIZE byte limit on redeemScript size). That works out to a (15*(33+1))+3=513 byte redeemScript, 513+1+15*(73+1)+3=1627 bytes of scriptSig, which we round off to 1650(MAX_STANDARD_SCRIPTSIG_SIZE) bytes for some minor future-proofing. That's also enough to spend a 20-of-20 CHECKMULTISIG scriptPubKey, though such a scriptPubKey is not considered standard.
-            guard txIn.script.dataSize <= Script.maxStandardSize else {
+            guard txIn.script.dataSize <= Script.maxStandardInputScriptSize else {
                 throw .inputScriptSize
             }
             guard txIn.script.isPushOnly else {
@@ -142,7 +141,6 @@ extension Transaction {
 
         var datacarrierBytesLeft = Script.maxOpReturnRelay
 
-        //var whichType = OutputType?.none
         for out in outs {
             guard let whichType = out.script.isStandard() else {
                 throw .outputScriptNotStandard
@@ -487,11 +485,60 @@ extension Transaction {
             sigops += txIn.script.sigopCount(accurate: true)
             sigops += prev.script.sigopCount(inputScript: txIn.script)
 
-            guard sigops <= Script.maxTransactionLegacySigops else {
+            guard sigops <= Transaction.maxLegacySigops else {
                 return false
             }
         }
         return true
+    }
+
+    func legacySigopCount() -> Int {
+        // unsigned int GetLegacySigOpCount(const CTransaction& tx)
+        var sigops = 0
+        for txIn in ins {
+            sigops += txIn.script.sigopCount(accurate: false)
+        }
+        for out in outs {
+            sigops += out.script.sigopCount(accurate: false)
+        }
+        return sigops
+    }
+
+    func p2shSigopCount(prevouts: [TransactionOutput]) -> Int {
+        //unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& inputs)
+        guard !isCoinbase else {
+            return 0
+        }
+
+        var sigops = 0
+        for (i, txIn) in ins.enumerated() {
+            // assert(!coin.IsSpent());
+            let prevout = prevouts[i]
+            if prevout.script.isPayToScriptHash {
+                sigops += prevout.script.sigopCount(inputScript: txIn.script)
+            }
+        }
+        return sigops
+    }
+
+    func sigopCost(prevouts: [TransactionOutput], options: ScriptConfig) -> Int {
+    // int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& inputs, script_verify_flags flags)
+        var sigops = legacySigopCount() * Self.witnessScaleFactor
+
+        guard !isCoinbase else {
+            return sigops
+        }
+
+        if options.contains(.payToScriptHash) {
+            sigops += p2shSigopCount(prevouts: prevouts) * Self.witnessScaleFactor
+        }
+
+        for (i, txIn) in ins.enumerated() {
+            // assert(!coin.IsSpent());
+            let prevout = prevouts[i]
+            sigops += countWitnessSigops(inputScript: txIn.script, outputScript: prevout.script, witnessStack: txIn.witness.stack /*tx.vin[i].scriptWitness*/, options: options)
+        }
+        return sigops
     }
 }
 
@@ -531,4 +578,42 @@ public enum PolicyViolation: Swift.Error {
     case prevoutMissingRedeemScript
     case prevoutInvalidRedeemScript
     case prevoutRedeemScriptSigopsExceeded
+}
+
+
+private func witnessSigops(witnessVersion: Int, witnessProgram: Data, witnessStack: [Data]) -> Int {
+    // size_t static WitnessSigOps(int witversion, const std::vector<unsigned char>& witprogram, const CScriptWitness& witness)
+    if witnessVersion == 0 {
+        if witnessProgram.count == SHA256.Digest.byteCount /* WITNESS_V0_KEYHASH_SIZE */ {
+            return 1
+        }
+        if witnessProgram.count == Hash160.Digest.byteCount /* WITNESS_V0_SCRIPTHASH_SIZE */, let lastStackElement = witnessStack.last, let subScript = try? Script(lastStackElement) {
+            return subScript.sigopCount(accurate: true)
+        }
+        return 0
+    }
+
+    // Future flags may be implemented here.
+    return 0
+}
+
+private func countWitnessSigops(inputScript: Script, outputScript: Script, witnessStack: [Data], options: ScriptConfig) -> Int {
+    // size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness& witness, script_verify_flags flags)
+    guard options.contains(.witness) else {
+        return 0
+    }
+    precondition(options.contains(.payToScriptHash))
+    if let (witnessVersion, witnessProgram) = outputScript.witnessVersionProgram {
+        return witnessSigops(witnessVersion: witnessVersion, witnessProgram: witnessProgram, witnessStack: witnessStack)
+    }
+
+    if outputScript.isPayToScriptHash,
+       inputScript.isPushOnly,
+       let lastOp = inputScript.ops.last,
+       let lastPush = lastOp.pushedData,
+       let subScript = try? Script(lastPush),
+       let (witnessVersion, witnessProgram) = subScript.witnessVersionProgram {
+        return witnessSigops(witnessVersion: witnessVersion, witnessProgram: witnessProgram, witnessStack: witnessStack)
+    }
+    return 0
 }

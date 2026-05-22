@@ -26,7 +26,7 @@ struct ValidTxTests {
             if excludeFlags.contains("NULLDUMMY") { config.remove(.nullDummy) }
             if excludeFlags.contains("STRICTENC") { config.remove(.strictEncoding) }
             if excludeFlags.contains("P2SH") { config.remove(.payToScriptHash) }
-            if excludeFlags.contains("CHECKLOCKTIMEVERIFY") { config.remove(.checkLockTimeVerify) }
+            if excludeFlags.contains("CHECKLOCKTIMEVERIFY") { config.remove(.checkLocktimeVerify) }
             if excludeFlags.contains("CHECKSEQUENCEVERIFY") { config.remove(.checkSequenceVerify) }
             if excludeFlags.contains("CONST_SCRIPTCODE") { config.remove(.constantScriptCode) }
             if excludeFlags.contains("WITNESS") { config.remove(.witness) }
@@ -973,7 +973,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .zero,
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             )
@@ -990,7 +990,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x64, 0xff]).reversed())), // 499_999_999
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -1006,7 +1006,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .zero,
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             )
@@ -1024,7 +1024,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x65, 0x00]).reversed())), // 500_000_000
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                 ]
             )
         ],
@@ -1040,7 +1040,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x00, 0xff, 0xff, 0xff, 0xff]).reversed())), // 4_294_967_295
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -1056,7 +1056,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x65, 0x00]).reversed())), // 500_000_000
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -1073,7 +1073,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .zero,
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             )
@@ -1092,7 +1092,7 @@ fileprivate let testVectors: [TestVector] = [
                 ops: [
                     .pushBytes(.init(Data([0x1d, 0xcd, 0x64, 0xff]).reversed())), // 499_999_999
                     .oneAdd,
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -1111,7 +1111,7 @@ fileprivate let testVectors: [TestVector] = [
                     .pushBytes(.init(Data([0x7f, 0xff, 0xff, 0xff]).reversed())), // 2_147_483_647
                     .pushBytes(.init(Data([0x7f, 0xff, 0xff, 0xff]).reversed())), // 2_147_483_647
                     .add,
-                    .checkLockTimeVerify
+                    .checkLocktimeVerify
                 ]
             )
         ],
@@ -1128,7 +1128,7 @@ fileprivate let testVectors: [TestVector] = [
                 amount: 0,
                 ops: [
                     .pushBytes(.init([0x00, 0x00, 0x00, 0x00, 0x00])),
-                    .checkLockTimeVerify,
+                    .checkLocktimeVerify,
                     .constant(1)
                 ]
             )

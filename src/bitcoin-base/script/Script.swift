@@ -252,8 +252,9 @@ extension Script {
         return n
     }
 
-    /// GetSigopCount(const CScript& scriptSig) from Bitcoin Core, adapted to Swift.
     /// If this is not P2SH, returns sigopCount(true). Otherwise, extracts the redeemScript from scriptSig's last push and returns its sigop count.
+    ///
+    /// `GetSigopCount(const CScript& scriptSig)` from Bitcoin Core, adapted to Swift.
     public func sigopCount(inputScript scriptSig: Script) -> Int {
         guard isPayToScriptHash else {
             return sigopCount(accurate: true)
@@ -261,26 +262,10 @@ extension Script {
 
         // This is a pay-to-script-hash scriptPubKey;
         // get the last item that the scriptSig pushes onto the stack:
-        var lastPush = Data?.none // Scan scriptSig.ops and remember the last pushBytes data
-        guard !scriptSig.ops.isEmpty else {
-            preconditionFailure()
-        }
-        for op in scriptSig.ops {
-            switch op {
-            case .pushBytes(let data), .pushData1(let data), .pushData2(let data), .pushData4(let data):
-                lastPush = data
-            case .constant(let value):
-                // Minimal integers are pushes too; encode minimally to bytes as in script.
-                lastPush = Data([value])
-            default:
-                // Any non-push opcode means we cannot extract a redeemScript here; return 0 like Core.
-                return 0
-            }
-        }
-        // …and return its opcount:
-        if let lastPush, let subScript = try? Script(lastPush) {
+        if let lastOp = scriptSig.ops.last, let lastPush = lastOp.pushedData, let subScript = try? Script(lastPush) {
             return subScript.sigopCount(accurate: true)
         }
+        // TODO: Return 0? check Bitcoin Core
         fatalError()
     }
 }

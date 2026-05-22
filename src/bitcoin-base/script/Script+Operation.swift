@@ -4,11 +4,22 @@ import BitcoinCrypto
 extension Script {
     /// A script operation.
     public enum Operation: Equatable, Sendable {
-        case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, /* reserved(UInt8), */ success(UInt8), constant(UInt8), noOp, /* ver, */ `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultisig, checkMultisigVerify, noOp1, checkLockTimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, checkSigAdd, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
+        case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, /* reserved(UInt8), */ success(UInt8), constant(UInt8), noOp, /* ver, */ `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultisig, checkMultisigVerify, noOp1, checkLocktimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, checkSigAdd, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
     }
 }
 
 extension Script.Operation {
+
+    public var pushedData: Data? {
+        switch self {
+        case .zero: Data()
+        case .oneNegate: try! ScriptNumber(-1).data
+        case let .constant(k): ScriptNumber(k).data
+        case let .pushBytes(d), let .pushData1(d), let .pushData2(d), let .pushData4(d): d
+        default: nil
+        }
+    }
+
     public var isPush: Bool {
         switch self {
         case .zero, .oneNegate, .constant(_), .pushBytes(_), .pushData1(_), .pushData2(_), .pushData4(_): true
@@ -126,7 +137,7 @@ extension Script.Operation {
         case .checkMultisig: 0xae
         case .checkMultisigVerify: 0xaf
         case .noOp1: 0xb0
-        case .checkLockTimeVerify: 0xb1
+        case .checkLocktimeVerify: 0xb1
         case .checkSequenceVerify: 0xb2
         case .noOp4: 0xb3
         case .noOp5: 0xb4
@@ -246,7 +257,7 @@ extension Script.Operation {
         case .checkMultisig: "OP_CHECKMULTISIG"
         case .checkMultisigVerify: "OP_CHECKMULTISIGVERIFY"
         case .noOp1: "OP_NOP1"
-        case .checkLockTimeVerify: "OP_CHECKLOCKTIMEVERIFY"
+        case .checkLocktimeVerify: "OP_CHECKLOCKTIMEVERIFY"
         case .checkSequenceVerify: "OP_CHECKSEQUENCEVERIFY"
         case .noOp4: "OP_NOP4"
         case .noOp5: "OP_NOP5"
@@ -319,7 +330,16 @@ extension Script.Operation {
     public static func encodeMinimally(_ data: Data) -> Script.Operation {
         switch data.count {
         case 0: .zero
-        case 1...75: .pushBytes(data)
+        case 1:
+            // TODO: Test this logic
+            if data == ScriptNumber.negativeOne.data {
+                encodeMinimally(-1)
+            } else if data[0] >= 1 && data[0] <= 16 {
+                encodeMinimally(Int(data[0]))
+            } else {
+                .pushBytes(data)
+            }
+        case 2...75: .pushBytes(data)
         case 76...Int(UInt8.max): .pushData1(data)
         case (Int(UInt8.max) + 1)...Int(UInt16.max): .pushData2(data)
         case (Int(UInt16.max) + 1)...Int(UInt32.max): .pushData4(data)
@@ -466,7 +486,7 @@ extension Script.Operation: BinaryCodable {
         case Self.checkMultisig.opCode: self = .checkMultisig
         case Self.checkMultisigVerify.opCode: self = .checkMultisigVerify
         case Self.noOp1.opCode: self = .noOp1
-        case Self.checkLockTimeVerify.opCode: self = .checkLockTimeVerify
+        case Self.checkLocktimeVerify.opCode: self = .checkLocktimeVerify
         case Self.checkSequenceVerify.opCode: self = .checkSequenceVerify
         case Self.noOp4.opCode: self = .noOp4
         case Self.noOp5.opCode: self = .noOp5
@@ -673,7 +693,7 @@ extension Script.Operation {
         case Self.checkMultisig.opCode: self = .checkMultisig
         case Self.checkMultisigVerify.opCode: self = .checkMultisigVerify
         case Self.noOp1.opCode: self = .noOp1
-        case Self.checkLockTimeVerify.opCode: self = .checkLockTimeVerify
+        case Self.checkLocktimeVerify.opCode: self = .checkLocktimeVerify
         case Self.checkSequenceVerify.opCode: self = .checkSequenceVerify
         case Self.noOp4.opCode: self = .noOp4
         case Self.noOp5.opCode: self = .noOp5
