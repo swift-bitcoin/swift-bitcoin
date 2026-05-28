@@ -28,4 +28,9 @@ public enum TransactionValidationError: Error {
 
     case tooManySigops
     case feeTooLow
+
+    // Contextual Block Check
+    case badHeightInCoinbase, badBlockWeight
+
+
 }

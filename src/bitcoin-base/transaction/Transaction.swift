@@ -105,28 +105,19 @@ public struct Transaction: Equatable, Sendable {
     }
 
     public static func coinbase(version: Version? = nil, blockHeight: Int, out: TransactionOutput, witnessMerkleRoot: Data, tag: String? = nil) -> Self {
-        // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
-        let witnessReservedValue = Data(count: 32)
-
-        let witnessCommitmentHeader = Data([0xaa, 0x21, 0xa9, 0xed])
-        let witnessRootHash = witnessMerkleRoot
-        let witnessCommitmentHash = Data(Hash256.hash(data: witnessRootHash + witnessReservedValue))
-
-        let witnessCommitmentScript = Script([
-            .return,
-            .pushBytes(witnessCommitmentHeader + witnessCommitmentHash),
-        ])
 
         var ops = [Script.Operation.encodeMinimally(blockHeight), .zero]
         if let tag, let utf8Data = tag.data(using: .utf8) {
             ops.append(.encodeMinimally(utf8Data))
         }
         let version = version ?? Transaction.Version.current
+
+        let witnessReservedValue = Data(count: 32)
         let coinbaseTx = Transaction(version: version, ins: [
             .init(outpoint: .coinbase, script: .init(ops), witness: .init([witnessReservedValue]))
         ], outs: [
             out,
-            .init(value: 0, script: witnessCommitmentScript)
+            .init(value: 0, script: Script.witnessCommitment(witnessMerkleRoot: witnessMerkleRoot, witnessReservedValue: witnessReservedValue))
         ])
         return coinbaseTx
     }

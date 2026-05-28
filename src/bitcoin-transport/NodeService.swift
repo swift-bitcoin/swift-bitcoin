@@ -873,10 +873,10 @@ public actor NodeService: Sendable {
         logger.debug("Received block \(block.idHex)")
 
         state.peers[id]!.registerKnownBlocks([block.id])
-        state.peers[id]?.inTransitBlocks.remove(block.id)
+        let removed = state.peers[id]?.inTransitBlocks.remove(block.id)
 
         processingBlocks.insert(block.id)
-        let headerProcessingResult = try await blockchain.processBlock(block, immediate: false)
+        let headerProcessingResult = try await blockchain.processBlock(block, isRequested: removed != nil, immediate: false)
 
         updatePeer(id, with: headerProcessingResult)
 
@@ -1040,7 +1040,7 @@ public actor NodeService: Sendable {
             var block = compactBlockMessage.header
             block.txs = txs.compactMap { $0 }
             precondition(block.txs.count == txs.count)
-            headerProcessingResult = try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
+            headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true) // TODO: Immediate = false to not block
         } else {
              headerProcessingResult = try await blockchain.processHeaders([header])
 
@@ -1091,7 +1091,7 @@ public actor NodeService: Sendable {
         block.txs = pendingBlockTxs.compactMap { $0 }
         let headerProcessingResult: HeaderProcessingResult
         do {
-            headerProcessingResult = try await blockchain.processBlock(block, immediate: true) // TODO: Immediate = false to not block
+            headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true) // TODO: Immediate = false to not block
         } catch {
             throw .invalidBlock
         }

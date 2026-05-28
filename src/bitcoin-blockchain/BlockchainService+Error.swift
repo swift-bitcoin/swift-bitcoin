@@ -1,3 +1,5 @@
+import BitcoinBase
+
 /// Error types extension.
 extension BlockchainService {
 
@@ -15,8 +17,12 @@ extension BlockchainService {
 
         /// A transaction in the block could not be validated.
         case invalidTransactionInBlock(TransactionValidationError)
+        case failedTransactionCheck(Transaction.ValidationError)
+        case feesOutOfRange
 
-        case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insuficientProofOfWork, headerTooOld, headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, coinbaseTransactionOverspends, wrongMerkleRoot, invalidBlockAlreadyExists, futureLocktime
+        case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insuficientProofOfWork, headerTooOld, headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, missingInput, badBlockSize, multipleCoinbaseTransactions, badBlockSigops, coinbaseTransactionOverspends, wrongMerkleRoot, invalidBlockAlreadyExists, futureLocktime
+
+        case badWitnessNonceSize, badWitnessMerkleMatch, unexpectedWitness
 
         case dataDirIssue, blockFileIssue
 

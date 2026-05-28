@@ -35,7 +35,9 @@ enum ConsensusConstants {
 
     /// `MIN_TRANSACTION_WEIGHT` in Bitcoin Core.
     ///
-    /// Unused as of May 18, 2026
+    /// Typically used in `verifytxoutproof() -> CPartialMerkleTree::ExtractMatches()` in Bitcoin Core.
+    ///
+    /// Unused in Swift Bitcoin as of May 18, 2026
     static let minTransactionWeight = Transaction.witnessScaleFactor * 60 // 60 is the lower bound for the size of a valid serialized CTransaction
 
     /// `MIN_SERIALIZABLE_TRANSACTION_WEIGHT` in Bitcoin Core.

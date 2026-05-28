@@ -206,6 +206,27 @@ public struct Script: Equatable, Sendable {
             .encodeMinimally(messageData)
         ]
     }
+
+    /// BIP141 witness commitment header tag
+    static let witnessCommitmentTag = Data([0xaa, 0x21, 0xa9, 0xed])
+
+    /// BIP141 witness commitment script
+    public static func witnessCommitment(witnessMerkleRoot: Data, witnessReservedValue: Data) -> Script {
+        precondition(witnessReservedValue.count == 32)
+        // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
+        let witnessCommitmentHash = Data(Hash256.hash(data: witnessMerkleRoot + witnessReservedValue))
+
+        return Script([
+            .return,
+            .pushBytes(witnessCommitmentTag + witnessCommitmentHash),
+        ])
+    }
+
+    /// Is this a BIP141 witness commitment script
+    public var isWitnessCommitment: Bool {
+        guard ops.count == 2, ops[0] == .return, case let .pushBytes(data) = ops[1], data.count == Self.witnessCommitmentTag.count + Hash256.Digest.byteCount, data.starts(with: Self.witnessCommitmentTag) else { return false }
+        return true
+    }
 }
 
 extension Script {

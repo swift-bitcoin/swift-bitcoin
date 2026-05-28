@@ -78,7 +78,7 @@ extension Transaction {
     /// This does not modify the UTXO set. This does not check scripts and sigs.
     ///
     /// Precondition: must not be called on a coinbase transaction.
-    func checkInputs(spendHeight: Int, coinbaseMaturity: Int, coins: [UnspentOutput]) async throws(ValidationError) {
+    func checkInputs(spendHeight: Int, coinbaseMaturity: Int, coins: [UnspentOutput]) async throws(ValidationError) -> Amount {
         // bool Consensus::CheckTxInputs(const CTransaction& tx, TxValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight, CAmount& txfee)
 
         precondition(!isCoinbase)
@@ -111,6 +111,8 @@ extension Transaction {
         guard fee >= 0 && fee <= Transaction.maxMoney else {
             throw .feeOutOfRange
         }
+
+        return fee
     }
 
     ///
