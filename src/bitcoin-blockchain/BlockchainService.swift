@@ -294,12 +294,12 @@ public actor BlockchainService: Sendable {
     /// Processes a block by checking its header and transaction merkle root and then storing it.
     ///
     /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
-    @discardableResult public func processBlock(_ block: Block, immediate: Bool = true) async throws(Error) -> HeaderProcessingResult {
-        try await processBlock(block, immediate: immediate, locator: nil)
+    @discardableResult public func processBlock(_ block: Block, isRequested: Bool = true, immediate: Bool = true) async throws(Error) -> HeaderProcessingResult {
+        try await processBlock(block, isRequested: isRequested, immediate: immediate, locator: nil)
     }
 
     /// The locator parameter is used in calls from the re-indexing process.
-    @discardableResult private func processBlock(_ block: Block, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> HeaderProcessingResult {
+    @discardableResult private func processBlock(_ block: Block, isRequested: Bool, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> HeaderProcessingResult {
 
         metrics.seenBlocksCounter.increment()
 
@@ -309,7 +309,7 @@ public actor BlockchainService: Sendable {
         }
 
         switch headerRef.status {
-        case .header: try await acceptBlock(block, ref: headerRef, locator: locator)
+        case .header: try await acceptBlock(block, ref: headerRef, isRequested: isRequested, locator: locator)
         case .merkle: break
         case .active, .stale: return headerProcessingResult
         case .invalid: throw .invalidBlockAlreadyExists
@@ -380,13 +380,11 @@ public actor BlockchainService: Sendable {
             return
         }
 
-        // TODO:  There's at least 3 occurrences of this "hack" where we create a fake future block only to pass the height
-        let nextBlockPlaceholder = BlockRef(.init(previous: activeTip.header.id, merkleRoot: .init(), time: Date.distantPast, target: 0), height: activeTip.height + 1, chainwork: .init(), chainTxCount: -1)
         do {
-            try await policyScriptChecks(tx, block: nextBlockPlaceholder, previous: activeTip, prevouts: prevouts)
+            try await policyScriptChecks(tx, prevouts: prevouts)
 
             // TODO: Should pass it some kind of validation cache from the policy script checks
-            try await consensusScriptChecks(tx, block: nextBlockPlaceholder, previous: activeTip, prevouts: prevouts)
+            try await consensusScriptChecks(tx, prevouts: prevouts)
 
         } catch {
             logger.error("Failed transaction check\n\n\(error)")
@@ -574,14 +572,7 @@ public actor BlockchainService: Sendable {
         return previousHeader
     }
 
-    /// Validates the block header.
-    ///
-    /// This function contains similar logic to `ContextualCheckBlockHeader()` in Bitcoin Core's `validation.cpp`.
-    private func processHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) -> (BlockRef, Set<BlockRef>) {
-        precondition(header.txs.isEmpty)
-
-        // Check header
-
+    private func checkHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) {
         guard previousHeader.status != .invalid else {
             logger.error("Header \(header.idHex) - part of invalid chain")
             throw .headerPartOfInvalidChain
@@ -623,12 +614,21 @@ public actor BlockchainService: Sendable {
         }
 
         // Reject blocks with outdated version
-        if header.version < 2 && headers >= params.heightInCoinbaseHeight ||
-            (header.version < 3 && headers >= params.strictDERSignatureHeight) ||
-            (header.version < 4 && headers >= params.cltvHeight) {
+        if header.version < 2 && previousHeader.height >= params.heightInCoinbaseHeight ||
+            (header.version < 3 && previousHeader.height >= params.strictDERSignatureHeight) ||
+            (header.version < 4 && previousHeader.height >= params.cltvHeight) {
             logger.error("Header \(header.idHex) - unsupported block version \(header.version)")
             throw .unsupportedBlockVersion
         }
+    }
+
+    /// Validates the block header.
+    ///
+    /// This function contains similar logic to `ContextualCheckBlockHeader()` in Bitcoin Core's `validation.cpp`.
+    private func processHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) -> (BlockRef, Set<BlockRef>) {
+        precondition(header.txs.isEmpty)
+
+        try await checkHeader(header, previousHeader: previousHeader)
 
         // We can use `try!` because we already checked that the parent exists
         let newHeader = try! await blockIndex.addHeader(header)
@@ -681,7 +681,8 @@ public actor BlockchainService: Sendable {
             otherHeaders.insert(ref)
             otherHeaders.formUnion(otherOtherHeaders)
             if !h.txs.isEmpty {
-                try await acceptBlock(h, ref: ref, locator: loc)
+                // TODO: Save original `isRequested` value on `heldBlocks`
+                try await acceptBlock(h, ref: ref, isRequested: false, locator: loc)
             }
 
             heldBlocks[h.id] = nil
@@ -858,7 +859,7 @@ public actor BlockchainService: Sendable {
         block.txs = txs
 
         // Process the header and block normally
-        try! await processBlock(block, immediate: true)
+        try! await processBlock(block, isRequested: true, immediate: true)
 
         // Reset mempool
         mempool = []
@@ -958,7 +959,7 @@ public actor BlockchainService: Sendable {
                 if headersOnly, let prev = await checkConnectivity(it.block.header, locator: it.locator) {
                     _ = try! await processHeader(it.block.header, previousHeader: prev)
                 } else if !headersOnly {
-                    try! await processBlock(it.block, immediate: true, locator: it.locator)
+                    try! await processBlock(it.block, isRequested: true, immediate: true, locator: it.locator)
                 }
             }
 
@@ -1206,11 +1207,81 @@ public actor BlockchainService: Sendable {
         return valueIn - tx.valueOut
     }
 
-    /// Checks if a given block is valid.
+    /// Context-independent validity checks.
     ///
-    /// Analog to Bitcoin Core's `checkBlock()`.ContextualCheckBlock()
-    private func checkBlock(_ block: Block) async throws(TransactionValidationError) {
-        // bool checkBlock(const CBlock& block, const node::BlockCheckOptions& options, std::string& reason, std::string& debug)
+    /// Analog to Bitcoin Core's `checkBlock()`
+    private func checkBlock(_ block: Block, previousRef: BlockRef) async throws(Error) {
+
+        // Check that the header is valid (particularly PoW).  This is mostly redundant with the call in AcceptBlockHeader.
+        try await checkHeader(block.header, previousHeader: previousRef)
+
+        // Signet only: check block solution
+        // TODO: Check signet solution BIP325
+        // if params.signetBlocks && checkPOW && checkSignetBlockSolution(block) {
+            // logger.error("signet block signature validation failure")
+            // throw .badSignetBlockSignature
+        // }
+
+        // Verify merkle root
+        let expectedMerkleRoot = calculateMerkleRoot(block.txs)
+        guard block.merkleRoot == expectedMerkleRoot else {
+            logger.error("Wrong merkle root")
+            throw .wrongMerkleRoot
+        }
+
+        // All potential-corruption validation must be done before we do any
+        // transaction validation, as otherwise we may mark the header as invalid
+        // because we receive the wrong transactions for it.
+        // Note that witness malleability is checked in ContextualCheckBlock, so no
+        // checks that use witness data may be performed here.
+
+        // Size limits
+        guard let firstTx = block.txs.first, block.txs.count * Transaction.witnessScaleFactor <= Block.maxWeight, block.dataSize(encoding: .noWitness) * Transaction.witnessScaleFactor <= Block.maxWeight else {
+            // size limits failed
+            throw .badBlockSize
+        }
+
+        // Verify coinbase
+        guard firstTx.isCoinbase else {
+            // first tx is not coinbase
+            logger.error("Missing/mispositioned coinbase transaction")
+            throw .missingCoinbaseTransaction
+        }
+        for tx in block.txs.dropFirst() {
+            guard !tx.isCoinbase else {
+                // ore than one coinbase
+                logger.error("Multiple coinbase transactions")
+                throw .multipleCoinbaseTransactions
+            }
+        }
+
+        // Check transactions
+        // Must check for duplicate inputs (see CVE-2018-17144)
+        for tx in block.txs {
+            do {
+                try tx.check()
+            } catch {
+                // CheckBlock() does context-free validation checks. The only possible failures are consensus failures.
+                logger.error("Transaction check failed (tx ID:\(tx.idHex)):\n\(error)")
+                throw .failedTransactionCheck(error)
+            }
+        }
+
+        // This underestimates the number of sigops, because unlike ConnectBlock it does not count witness and p2sh sigops.
+        var sigops = 0
+        for tx in block.txs {
+            sigops += tx.legacySigopCount()
+        }
+        guard sigops * Transaction.witnessScaleFactor <= Block.maxSigopsCost else {
+            // out-of-bounds SigOpCount
+            throw .badBlockSigops
+        }
+    }
+
+    /// Check transaction inputs.
+    ///
+    /// Called from `connectBlock()`.
+    private func checkTransactionInputs(_ block: Block) async throws(Error) {
 
         var tmpExclude = [Outpoint]()
         var tmpCoins = [Outpoint: UnspentOutput]()
@@ -1218,25 +1289,16 @@ public actor BlockchainService: Sendable {
             guard !tx.isCoinbase else {
                 continue
             }
+
             var coins = [UnspentOutput]()
             for txIn in tx.ins {
                 guard let coin = try! await coinIndex.get(txIn.outpoint) ?? tmpCoins[txIn.outpoint], !tmpExclude.contains(txIn.outpoint) else {
                     logger.warning("Missing UTXO in tx \(tx.idHex)")
-                    throw .transactionCheckError(.inputMissingOrSpent) // TODO: Simplify and eliminate nesting
+                    throw .missingInput
                 }
                 coins.append(coin)
             }
 
-            // Check tx
-            do {
-                try tx.check()
-                if !tx.isCoinbase {
-                    try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
-                }
-            } catch {
-                logger.error("Failed transaction check:\n\n\(error)")
-                throw .transactionCheckError(error)
-            }
 
             // Remove coins
             tmpExclude += tx.ins.map(\.outpoint)
@@ -1248,12 +1310,68 @@ public actor BlockchainService: Sendable {
         }
     }
 
+    /// CheckWitnessMalleation performs checks for block malleation with regard to its witnesses.
+    ///
+    /// > Note: If the witness commitment is expected (i.e. `expect_witness_commitment = true`), then the block is required to have at least one transaction and the first transaction needs to have at least one input.
+    private func checkWitnessMalleation(_ block: Block, expectWitnessCommitment: Bool) throws(Error) {
+        // Block must have at least one transaction and the first transaction must have at least one input.
+        guard let coinbase = block.txs.first, !coinbase.ins.isEmpty else {
+            preconditionFailure()
+        }
+
+        // If the commitment is expected, validate the coinbase witness and commitment.
+        if expectWitnessCommitment, let commitIndex = witnessCommitmentOutputIndex(in: coinbase) {
+            // Locate the witness commitment output index in the coinbase transaction, if present.
+            // BIP141: The witness commitment is an OP_RETURN starting with 0x6a24aa21a9ed || 32-byte commitment.
+
+            // The reserved value must be exactly one 32-byte element in the coinbase's first input witness stack.
+            let witnessStack = coinbase.ins[0].witness.stack
+            guard witnessStack.count == 1, witnessStack[0].count == 32 else {
+                // invalid witness reserved value size
+                throw .badWitnessNonceSize
+            }
+            let reservedValue = witnessStack[0]
+
+            // The malleation check is ignored; as the transaction tree itself already does not permit it, it is impossible to trigger in the witness tree.
+
+            // Compute the witness merkle root and compare to the commitment in the OP_RETURN.
+            let wmr = calculateWitnessMerkleRoot(block.txs)
+
+            let commitmentScript = coinbase.outs[commitIndex].script
+            // OP_RETURN (0x6a) PUSHDATA(36) (0x24) tag(0xaa21a9ed) then 32-byte commitment
+
+            guard commitmentScript == Script.witnessCommitment(witnessMerkleRoot: wmr, witnessReservedValue: reservedValue) else {
+                // witness merkle commitment mismatch
+                throw .badWitnessMerkleMatch
+            }
+            return
+        }
+
+        // No witness data is allowed in blocks that don't commit to witness data, as this would otherwise leave room for spam
+        for tx in block.txs {
+            if tx.hasWitness {
+                throw .unexpectedWitness
+            }
+        }
+    }
+
+    // Helper to find the witness commitment output index in a coinbase transaction per BIP141.
+    private func witnessCommitmentOutputIndex(in coinbase: Transaction) -> Int? {
+        for (i, out) in coinbase.outs.enumerated() {
+            if out.script.isWitnessCommitment {
+                return i
+            }
+        }
+        return nil
+    }
+
     /// Contextual block checks.
     ///
     /// This function is called when accepting the block but while connecting the block.
     ///
     /// Analog to Bitcoin Core's `ContextualCheckBlock()`.
     private func contextualCheckBlock(_ block: Block, ref: BlockRef, previous: BlockRef) async throws(TransactionValidationError) {
+
         // Enforce BIP113 (Median Time Past)
         let enforceLocktimeMedianTimePast = ref.height >= params.csvHeight
         let lockTimeCutoff = if enforceLocktimeMedianTimePast {
@@ -1269,9 +1387,24 @@ public actor BlockchainService: Sendable {
                 throw .nonFinalTransaction
             }
         }
+
+        // Enforce rule that the coinbase starts with serialized block height
+        if ref.height >= params.heightInCoinbaseHeight {
+            let expect = Script([.encodeMinimally(ref.height)])
+            guard block.txs[0].ins[0].script.data.starts(with: expect.data) else {
+                // block height mismatch in coinbase
+                throw .badHeightInCoinbase
+            }
+        }
+
+        // After the coinbase witness reserved value and commitment are verified, we can check if the block weight passes (before we've checked the coinbase witness, it would be possible for the weight to be too large by filling up the coinbase witness, which doesn't change the block hash, so we couldn't mark the block as permanently failed).
+        guard block.weight <= Block.maxWeight else {
+            // weight limit failed
+            throw .badBlockWeight
+        }
     }
 
-    private func scriptChecks(_ tx: Transaction, block: BlockRef, previous: BlockRef, prevouts: [TransactionOutput], config: ScriptConfig) async throws(TransactionValidationError) {
+    private func scriptChecks(_ tx: Transaction, prevouts: [TransactionOutput], config: ScriptConfig) async throws(TransactionValidationError) {
         precondition(!tx.isCoinbase)
 
         if !tx.verifyScripts(prevouts: prevouts, config: config) {
@@ -1280,25 +1413,12 @@ public actor BlockchainService: Sendable {
         }
     }
 
-    private func policyScriptChecks(_ tx: Transaction, block: BlockRef, previous: BlockRef, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
-        try await scriptChecks(tx, block: block, previous: previous, prevouts: prevouts, config: .standard)
+    private func policyScriptChecks(_ tx: Transaction, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
+        try await scriptChecks(tx, prevouts: prevouts, config: .standard)
     }
 
-    private func consensusScriptChecks(_ tx: Transaction, block: BlockRef, previous: BlockRef, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
-        try await scriptChecks(tx, block: block, previous: previous, prevouts: prevouts, config: .mandatory)
-    }
-
-    private func checkInputScripts(_ tx: Transaction, block: BlockRef, previous: BlockRef, checkScripts: Bool = true, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
-        guard checkScripts else {
-            return
-        }
-        guard !tx.isCoinbase else {
-            return
-        }
-        if !tx.verifyScripts(prevouts: prevouts, config: .mandatory) {
-            logger.error("Failed script validation")
-            throw .scriptError
-        }
+    private func consensusScriptChecks(_ tx: Transaction, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
+        try await scriptChecks(tx, prevouts: prevouts, config: .mandatory)
     }
 
     /// Checks if a mempool transaction still has all it's inputs available.
@@ -1319,31 +1439,51 @@ public actor BlockchainService: Sendable {
     /// If it is the first time we see this block, its header will be processed first.
     /// If the block builds on the acvite chain tip, it will be connected thus validating its transactions.
     /// Otherwise the index will be updated to reflect that the merkle root has been verified.
-    @discardableResult private func acceptBlock(_ block: Block, ref blockRef: BlockRef, locator: BlockStorageLocator? = nil) async throws(Error) -> BlockRef {
+    private func acceptBlock(_ block: Block, ref blockRef: BlockRef, isRequested: Bool, locator: BlockStorageLocator? = nil) async throws(Error) {
         logger.debug("Processing block \(block.idHex)")
 
-        // Check block
-
-        // Verify coinbase
-        guard let coinbaseTx = block.txs.first, coinbaseTx.isCoinbase else {
-            logger.error("Empty transactions or missing/mispositioned coinbase transaction")
-            throw .missingCoinbaseTransaction
+        // Check all requested blocks that we do not already have for validity and save them to disk. Skip processing of unrequested blocks as an anti-DoS measure, unless the blocks have more work than the active chain tip, and aren't too far ahead of it, so are likely to be attached soon.
+        guard blockRef.status == .header else {
+            logger.warning("Block \(block.idHex) already exists with status \(blockRef.status)")
+            // throw .blockAlreadyExists
+            return
         }
 
-        // Verify merkle root
-        let expectedMerkleRoot = calculateMerkleRoot(block.txs)
-        guard block.merkleRoot == expectedMerkleRoot else {
-            logger.error("Wrong merkle root")
-            throw .wrongMerkleRoot
+        if !isRequested {  // If we didn't ask for it:
+            if block.txs.count != 0 {
+                // This is a previously-processed block that was pruned
+                logger.warning("Skipping block \(block.idHex): previously-processed block that was pruned")
+                // TODO: For pruning keep transaction count on index
+                return
+            }
+            let hasMoreOrSameWork = blockRef.chainwork >= activeTip.chainwork
+
+            // Blocks tha pruning, because pruning will not delete block files that contain any blocks which are too close in height to the tip.  Apply this test regardless of whether pruning is enabled; it should generally be safe to not process unrequested blocks.
+            let isTooFarAhead = blockRef.height > activeTip.height + minBlocksToKeep
+            if !hasMoreOrSameWork {
+                // Don't process less-work chains
+                logger.warning("Skipping block \(block.idHex): don't process less-work chains")
+                return
+            }
+            if isTooFarAhead {
+                // Block height is too high
+                logger.warning("Skipping block \(block.idHex): Block height is too high")
+                return
+            }
+
+            // Protect against DoS attacks from low-work chains.
+            // If our tip is behind, a peer could try to send us
+            // low-work blocks on a fake chain that we would never
+            // request; don't process these.
+            if blockRef.chainwork < params.minChainwork {
+                throw .badBlockSigops
+            }
         }
 
         logger.debug("Processing block txs \(block.idHex)")
 
-        guard blockRef.status == .header else {
-            logger.warning("Block \(block.idHex) already exists with status \(blockRef.status)")
-            // throw .blockAlreadyExists
-            return blockRef
-        }
+        let prev = await blockIndex.get(blockRef.header.previous)!
+        try await checkBlock(block, previousRef: prev)
 
         do {
             try await contextualCheckBlock(block, ref: blockRef, previous: activeTip)
@@ -1383,8 +1523,6 @@ public actor BlockchainService: Sendable {
                 }
             }
         }
-
-        return updatedRef
     }
 
     private func validateBlocks() async throws(Error) {
@@ -1402,45 +1540,38 @@ public actor BlockchainService: Sendable {
 
     /// If we have a header in our index it updates it's validation. If not it adds the block to the index. Adds the block to storage along with undo information and updates coins (chainstate).
     private func connectBlock(_ blockRef: BlockRef) async throws(Error) {
-        // precondition(cachedBlock != nil || blockRef != nil)
-        //let blockID = cachedBlock?.id ?? blockRef!.header.id
-        let blockID = blockRef.header.id
 
-        /*
-        let blockRef = if let blockRef {
-            blockRef
-        } else {
-            await blockIndex.get(blockID)!
-        }*/
+        // Can't be genesis block
+        precondition(blockRef.header.previous != Block.nullParent)
 
-        precondition(blockRef.header.previous != Block.nullParent) // Can't be genesis block
-        precondition(blockRef.header.id == blockID && blockRef.status == .merkle)
+        // Always connect to the active chain
+        precondition(blockRef.header.previous == activeTip.header.id)
+
+        // Have transactions for block but was never connected
+        precondition(blockRef.status == .merkle)
+
+        // Block has no undo data
         guard let blockOnlyLocator = blockRef.locator else {
             preconditionFailure()
         }
         precondition(blockOnlyLocator.undoOffset == -1)
 
         let block: Block
-        /*if let cachedBlock {
-            block = cachedBlock
-        } else {*/
-            do {
-                (block, _) = try await blockStorage.retrieve(blockOnlyLocator)
-            } catch {
-                throw .blockFileIssue
-            }
-        /*}*/
+        do {
+            (block, _) = try await blockStorage.retrieve(blockOnlyLocator)
+        } catch {
+            throw .blockFileIssue
+        }
 
         logger.debug("Connecting block \(block.idHex)")
 
         let startTime = ContinuousClock.Instant.now
 
-        do {
-            try await checkBlock(block)
-        } catch {
-            logger.error("Issue checking block: \(error)")
-            throw .invalidTransactionInBlock(error)
-        }
+        // Check it again in case a previous version let a bad block in
+        // NOTE: We don't currently (re-)invoke ContextualCheckBlock() or ContextualCheckBlockHeader() here. This means that if we add a new  consensus rule that is enforced in one of those two functions, then we  may have let in a block that violates the rule prior to updating the  software, and we would NOT be enforcing the rule here. Fully solving upgrade from one software version to the next after a consensus rule  change is potentially tricky and issue-specific (see NeedsRedownload() for one approach that was used for BIP 141 deployment).
+        // Also, currently the rule against blocks more than 2 hours in the future is enforced in ContextualCheckBlockHeader(); we wouldn't want to re-enforce that rule here (at least until we make it impossible for the clock to go backward).
+        let prev = await blockIndex.get(blockRef.header.previous)!
+        try await checkBlock(block, previousRef: prev)
 
         let scriptCheckReason: String?
         if let assumeValid = params.assumeValid {
@@ -1472,7 +1603,12 @@ public actor BlockchainService: Sendable {
         // Enforce BIP68 (sequence locks)
         let verifyLocktimeSequence = blockRef.height >= params.csvHeight
 
+        // Get the script flags for this block
+        let scriptConfig = ScriptConfig.mandatory
+        // TODO: Set the correct options (flags) depending on the height and activation status of each feature #547
+
         var fees = Amount(0)
+        var sigopsCost = 0
         var tmpExclude = [Outpoint]()
         var tmpCoins = [Outpoint: UnspentOutput]()
         for (txIndex, tx) in block.txs.enumerated() {
@@ -1485,27 +1621,44 @@ public actor BlockchainService: Sendable {
                 }
                 guard let coin = try! await coinIndex.get(txIn.outpoint) ?? tmpCoins[txIn.outpoint], !tmpExclude.contains(txIn.outpoint) else {
                     logger.warning("Missing UTXO in tx \(tx.idHex)")
-                    throw .invalidTransactionInBlock(.transactionCheckError(.inputMissingOrSpent)) // TODO: Simplify and eliminate nesting
+                    throw .missingInput
                 }
                 coins.append(coin)
             }
             let prevouts = coins.map(\.out)
 
-            do {
-                try await checkInputScripts(tx, block: blockRef, previous: activeTip, prevouts: prevouts)
-            } catch {
-
-                // TODO: Invalidate all descendants (blocks that build upon this block)
-                logger.error("Invalid transaction #\(txIndex) in block \(block.idHex)\n\n\(error)")
-                throw .invalidTransactionInBlock(error)
-            }
             if !tx.isCoinbase {
-                fees += await calculateFees(tx, auxCoins: tmpCoins)
+                do {
+                    fees += try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
+                } catch {
+                    logger.error("Failed transaction check:\n\n\(error)")
+                    throw .failedTransactionCheck(error)
+                }
+                guard fees >= 0 && fees <= Transaction.maxMoney else {
+                    throw .feesOutOfRange
+                }
 
                 // Check that transaction is BIP68 final
                 // BIP68 lock checks (as opposed to nLockTime checks) must be in ConnectBlock because they require the UTXO set
                 var previousHeights = await calculatePrevHeights(tx, tip: activeTip, excludeCoins: tmpExclude, auxCoins: tmpCoins)
                 try await sequenceLocks(tx, block: blockRef, previous: activeTip, verifyLocktimeSequence: verifyLocktimeSequence, previousHeights: &previousHeights)
+            }
+
+            // GetTransactionSigOpCost counts 3 types of sigops:
+            // * legacy (always)
+            // * p2sh (when P2SH enabled in flags and excludes coinbase)
+            // * witness (when witness enabled in flags and excludes coinbase)
+            sigopsCost += tx.sigopCost(prevouts: prevouts, options: scriptConfig)
+            guard sigopsCost <= Block.maxSigopsCost else {
+                logger.error("Block \(block.idHex) exceeds maximum sigops \(sigopsCost) > \(Block.maxSigopsCost)")
+                throw .badBlockSigops
+            }
+
+            if !tx.isCoinbase, scriptCheckReason != nil {
+                guard tx.verifyScripts(prevouts: prevouts, config: scriptConfig) else {
+                    logger.error("Invalid script in transaction #\(txIndex), block \(block.idHex)")
+                    throw .invalidTransactionInBlock(.scriptError)
+                }
             }
 
             // Remove coins
@@ -1853,6 +2006,8 @@ public actor BlockchainService: Sendable {
 
     /// Run the policy checks on a given transaction, excluding any script checks.
     /// Looks up inputs, calculates feerate, considers replacement, evaluates package limits, etc. As this function can be invoked for "free" by a peer, only tests that are fast should be done here (to avoid CPU DoS).
+    ///
+    /// Analog to Bitcoin Core's `MemPoolAccept::PreChecks()`.
     private func mempoolAcceptPreChecks(_ tx: Transaction, requireStandard: Bool) async throws(TransactionValidationError) -> [TransactionOutput] {
 
         do {
@@ -1933,7 +2088,8 @@ public actor BlockchainService: Sendable {
 
         // The mempool holds txs for the next block, so pass height+1 to CheckTxInputs
         do {
-            try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
+            // TODO: We need to do something with the fees returned (look into
+            _ = try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
             // Consensus::CheckTxInputs(tx, state, m_view, m_active_chainstate.m_chain.Height() + 1, ws.m_base_fees))
         } catch {
             throw .transactionCheckError(error)
@@ -2116,3 +2272,7 @@ private func nowSeconds() -> TimeInterval {
 
 private typealias LockPoints = (height: Int, time: Int, ancestor: BlockRef)
 private typealias LockPair = (height: Int, time: Int)
+
+/// Block files containing a block-height within MIN_BLOCKS_TO_KEEP of ActiveChain().Tip() will not be pruned.
+private let minBlocksToKeep = 288
+

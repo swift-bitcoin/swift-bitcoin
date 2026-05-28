@@ -36,7 +36,7 @@ extension GetBlockRPC {
             transactionCount: txs.count,
             previous: block.previous.reversed().hex,
             nextBlock: info.next?.reversed().hex,
-            strippedsize: block.dataSize(encoding: .nonWitness),
+            strippedsize: block.dataSize(encoding: .noWitness),
             size: block.dataSize,
             weight: block.weight,
             txs: txs

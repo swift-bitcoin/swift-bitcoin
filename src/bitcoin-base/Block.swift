@@ -55,7 +55,7 @@ public struct Block: Equatable, Sendable {
     }
 
     public var weight: Int {
-        dataSize(encoding: .nonWitness) * 3 + dataSize
+        dataSize(encoding: .noWitness) * 3 + dataSize
     }
 
     // MARK: - Instance Methods
@@ -80,12 +80,12 @@ package extension Block {
 extension Block: CustomBinaryCodable {
 
     public enum Encoding: Equatable, Sendable {
-        case headerOnly, nonWitness, file(magicBytes: Int)
+        case headerOnly, noWitness, file(magicBytes: Int)
     }
 
     public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws {
         switch encoding {
-        case nil, .headerOnly, .nonWitness:
+        case nil, .headerOnly, .noWitness:
             let version = Int(try decoder.decode() as Int32)
             let previous = try decoder.decode(Block.idLength)
             let merkleRoot = try decoder.decode(Block.idLength)
@@ -95,7 +95,7 @@ extension Block: CustomBinaryCodable {
             let txs: [Transaction] = if encoding == .headerOnly {
                 []
             } else {
-                try decoder.decode(encoding: encoding == .nonWitness ? .noWitness : nil)
+                try decoder.decode(encoding: encoding == .noWitness ? .noWitness : nil)
             }
             self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
         case .file(let magicBytes):
@@ -112,7 +112,7 @@ extension Block: CustomBinaryCodable {
 
     public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
         switch encoding {
-        case nil, .headerOnly, .nonWitness:
+        case nil, .headerOnly, .noWitness:
             encoder.encode(Int32(version))
             encoder.encode(previous)
             encoder.encode(merkleRoot)
@@ -120,7 +120,7 @@ extension Block: CustomBinaryCodable {
             encoder.encode(UInt32(target))
             encoder.encode(UInt32(nonce))
             if encoding != .headerOnly {
-                encoder.encode(txs, encoding: encoding == .nonWitness ? .noWitness : nil)
+                encoder.encode(txs, encoding: encoding == .noWitness ? .noWitness : nil)
             }
         case .file(let magicBytes):
             encoder.encode(UInt32(magicBytes))
@@ -131,7 +131,7 @@ extension Block: CustomBinaryCodable {
 
     public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
         switch encoding {
-        case nil, .headerOnly, .nonWitness:
+        case nil, .headerOnly, .noWitness:
             counter.count(Int32(version))
             counter.count(previous)
             counter.count(merkleRoot)
@@ -139,7 +139,7 @@ extension Block: CustomBinaryCodable {
             counter.count(UInt32(target))
             counter.count(UInt32(nonce))
             if encoding != .headerOnly {
-                counter.count(txs, encoding: encoding == .nonWitness ? .noWitness : nil)
+                counter.count(txs, encoding: encoding == .noWitness ? .noWitness : nil)
             }
         case .file(_):
             counter.count(UInt32.self)
