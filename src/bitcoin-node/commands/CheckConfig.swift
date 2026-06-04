@@ -1,7 +1,5 @@
-import ArgumentParser
 import Foundation
-import NIOCore
-import _NIOFileSystem
+import ArgumentParser
 
 struct CheckConfig: AsyncParsableCommand {
 
@@ -9,34 +7,14 @@ struct CheckConfig: AsyncParsableCommand {
         abstract: "Verifies the configuration file."
     )
 
-    @Argument(help: "The absolute path to either the folder containing Swift Bitcoin's configuration file or the configuration file itself, e.g. \"/some/folder/myConfig.json\".")
-    var location = NodeConfig.defaultLocation
+    @OptionGroup var configOptions: ConfigOptions
 
     mutating func run() async throws(ValidationError) {
-        let config: NodeConfig
-        do {
-            try config = await NodeConfig.parse(location, strict: true)
-        } catch {
-            throw ValidationError(error)
-        }
-        // Success, display the result of the check
-
-        // Additional round trip verification
+        let nodeConfig = try await NodeConfig.loadConfiguration(configOptions)
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        guard let roundtrip = try? encoder.encode(config) else {
-            throw ValidationError("Issue verifying decoding-encoding round trip.")
-        }
-
-        print("Configuration file verification passed with following parameters:\n")
-        print(String(data: roundtrip, encoding: .utf8)!)
-    }
-}
-
-private func getInfo(_ path: FilePath) async -> FileInfo? {
-    do {
-        return try await FileSystem.shared.info(forFileAt: path)
-    } catch {
-        fatalError()
+        let data = try! encoder.encode(nodeConfig)
+        print(String(data: data, encoding: .utf8)!)
+        // debugPrint(nodeConfig)
     }
 }

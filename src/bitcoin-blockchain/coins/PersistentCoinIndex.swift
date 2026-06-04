@@ -119,7 +119,7 @@ actor PersistentCoinIndex: CoinIndex {
     func clear() async {
         env = nil // closes env
 
-        // Removes folder
+        // Removes directory
         let fs = FileSystem.shared
         do {
             try await fs.removeItem(at: path)

@@ -34,6 +34,11 @@ let package = Package(
         .package(url: "https://github.com/swift-bitcoin/swift-lmdb", from: "6.2.1"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(
+            url: "https://github.com/apple/swift-configuration",
+            from: "1.0.0",
+            traits: [.defaults, "CommandLineArguments"]
+        ),
         .package(url: "https://github.com/apple/swift-binary-parsing", .upToNextMinor(from: "0.0.1")),
         .package(url: "https://github.com/apple/swift-system.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"),
@@ -155,6 +160,7 @@ let package = Package(
                 .product(name: "ProfileRecorderServer", package: "swift-profile-recorder"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "Configuration", package: "swift-configuration"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),

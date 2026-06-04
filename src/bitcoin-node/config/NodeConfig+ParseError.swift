@@ -3,11 +3,12 @@ import ArgumentParser
 extension NodeConfig {
 
     enum ParseError: Error {
-        case locateFolder(String)
-        case readFolder(String)
+        case locateDirectory(String)
+        case readDirectory(String)
         case missingFile(String)
         case invalidExtension
-        case notFileOrFolder(String)
+        case notDirectory(String)
+        case notFileOrDirectory(String)
         case maximumSizeExceeded(size: Int, max: Int)
         case unknownOpenReadIssue
         case decodingError
@@ -15,23 +16,25 @@ extension NodeConfig {
         case missingInternalResource
         case internalResourceUnavailable
         case swiftScriptFailure
-        case unableToCreateFolder
+        case unableToCreateDirectory
     }
 }
 
 extension ValidationError {
     init(_ error: NodeConfig.ParseError) {
         self = switch error {
-        case .locateFolder(let location):
-            ValidationError("Could not locate folder/file at \"\(location)\"")
-        case .readFolder(let location):
-            ValidationError("Issue retrieving folder/file information at \"\(location)\"")
+        case .locateDirectory(let location):
+            ValidationError("Could not locate directory/file at \"\(location)\"")
+        case .readDirectory(let location):
+            ValidationError("Issue retrieving directory/file information at \"\(location)\"")
         case .missingFile(let location):
             ValidationError("Could not find either config.swift or config.json in \"\(location)\".")
         case .invalidExtension:
             ValidationError("Only \".swift\" or \".json\" file extensions are accepted.")
-        case .notFileOrFolder(let location):
-            ValidationError("Could not find folder or regular file at \"\(location)\".")
+        case .notDirectory(let location):
+            ValidationError("Found regular file instead of directory at \"\(location)\".")
+        case .notFileOrDirectory(let location):
+            ValidationError("Could not find directory or regular file at \"\(location)\".")
         case let .maximumSizeExceeded(size, max):
             ValidationError("Maximum file size allowes is \(max) bytes (current file is \(size) bytes.")
         case .unknownOpenReadIssue:
@@ -46,8 +49,8 @@ extension ValidationError {
             ValidationError("Unable to read internal resource file contents.")
         case .swiftScriptFailure:
             ValidationError("Issue while converting Swift configuration.")
-        case .unableToCreateFolder:
-            ValidationError("Unable to create default folder.")
+        case .unableToCreateDirectory:
+            ValidationError("Unable to create default directory.")
         }
     }
 }

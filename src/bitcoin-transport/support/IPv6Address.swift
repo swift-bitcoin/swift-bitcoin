@@ -129,7 +129,7 @@ public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomD
 
 extension IPv6Address {
     public static func parse(_ address: String) -> (host: String, port: Int?)? {
-        let regex = /\[([\d\:A-Fa-f]+)\](\:(\d{1,5}))?/
+        let regex = /(\[[\d\:A-Fa-f]+\])(\:(\d{1,5}))?/
         guard let _ = address.wholeMatch(of: regex) else {
             return nil
         }
