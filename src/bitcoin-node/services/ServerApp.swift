@@ -61,10 +61,10 @@ import NIOPosix
 ///   - StatusRPC, ConnectRPC, StartP2PRPC for RPC command interfaces
 actor ServerApp {
 
-    init(_ config: NodeConfig, host: String, port: Int?) async throws {
+    init(_ config: NodeConfig) async throws {
         let network = NodeNetwork(config.network)
         let dataLocation = BlockchainService.Config.DataLocation(config.dataLocation)
-        let port = port ?? network.defaultRPCPort
+        let port = config.rpc.port // ?? network.defaultRPCPort
 
         var logger = Logger(label: "bcnode")
         logger.logLevel = .init(config.logLevel)
@@ -116,7 +116,7 @@ actor ServerApp {
 
         eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
-        rpcService = RPCService(host: host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, logger: logger)
+        rpcService = RPCService(host: config.rpc.host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, logger: logger)
 
         var services: [ServiceGroupConfiguration.ServiceConfiguration] = []
 

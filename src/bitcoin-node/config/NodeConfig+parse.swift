@@ -28,11 +28,11 @@ extension NodeConfig {
         let filePath: FilePath
         let fileInfo: FileInfo
 
-        // Do we already have a path to the configuration file or just its containing folder?
+        // Do we already have a path to the configuration file or just its containing directory?
         do {
             directoryOrFileInfo = try await fs.info(forFileAt: directoryOrFilePath)
         } catch {
-            throw .locateFolder(location)
+            throw .locateDirectory(location)
         }
         guard let directoryOrFileInfo else {
             if isDefault && !strict {
@@ -45,7 +45,7 @@ extension NodeConfig {
                 }
                 return .default
             }
-            throw .readFolder(location)
+            throw .readDirectory(location)
         }
         if directoryOrFileInfo.type == .directory {
             // We have a directory, let's find out if it contains a valid configuration file
@@ -77,9 +77,9 @@ extension NodeConfig {
             filePath = directoryOrFilePath
             fileInfo = directoryOrFileInfo
         } else {
-            // We only support folders or regular files
+            // We only support directories or regular files
             // TODO: Allow symlinks
-            throw .notFileOrFolder(directoryOrFilePath.string)
+            throw .notFileOrDirectory(directoryOrFilePath.string)
         }
 
         // Limit the file's size
