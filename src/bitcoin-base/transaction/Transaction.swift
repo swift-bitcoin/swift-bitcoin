@@ -50,7 +50,15 @@ public struct Transaction: Equatable, Sendable {
 
     /// BIP141
     /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
-    public var witnessID: Data { Data(Hash256.hash(data: data)) }
+    public var witnessID: Data {
+        guard hasWitness else {
+            return id
+        }
+        if isCoinbase {
+            return Self.coinbaseWitnessID
+        }
+        return Data(Hash256.hash(data: data))
+    }
 
     public var witnessIDHex: String { witnessID.reversed().hex }
 

@@ -11,7 +11,7 @@ extension GetTransactionRPC {
             throw .init(.invalidParams, "Transaction ID hex encoding or length is invalid.")
         }
         let txID = Data(txIDByteSwapped.reversed())
-        guard let tx = await blockchain.transaction(for: txID) else {
+        guard let tx = await blockchain.transaction(identifiedBy: txID) else {
             throw .init(.invalidParams, "Transaction not found.")
         }
 

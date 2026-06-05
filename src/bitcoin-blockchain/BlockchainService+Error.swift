@@ -20,9 +20,7 @@ extension BlockchainService {
         case failedTransactionCheck(Transaction.ValidationError)
         case feesOutOfRange
 
-        case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insuficientProofOfWork, headerTooOld, headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, missingInput, badBlockSize, multipleCoinbaseTransactions, badBlockSigops, coinbaseTransactionOverspends, wrongMerkleRoot, invalidBlockAlreadyExists, futureLocktime
-
-        case badWitnessNonceSize, badWitnessMerkleMatch, unexpectedWitness
+        case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insuficientProofOfWork, headerTooOld, headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, missingInput, badBlockSize, multipleCoinbaseTransactions, badBlockSigops, coinbaseTransactionOverspends, wrongMerkleRoot, invalidBlockAlreadyExists, futureLocktime, lowWorkChain
 
         case dataDirIssue, blockFileIssue
 

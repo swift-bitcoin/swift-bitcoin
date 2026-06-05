@@ -291,44 +291,6 @@ public actor BlockchainService: Sendable {
         }
     }
 
-    /// Processes a block by checking its header and transaction merkle root and then storing it.
-    ///
-    /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
-    @discardableResult public func processBlock(_ block: Block, isRequested: Bool = true, immediate: Bool = true) async throws(Error) -> HeaderProcessingResult {
-        try await processBlock(block, isRequested: isRequested, immediate: immediate, locator: nil)
-    }
-
-    /// The locator parameter is used in calls from the re-indexing process.
-    @discardableResult private func processBlock(_ block: Block, isRequested: Bool, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> HeaderProcessingResult {
-
-        metrics.seenBlocksCounter.increment()
-
-        let headerProcessingResult = try await processHeader(block.header, locator: locator)
-        guard let headerRef = headerProcessingResult.headerRefs.first else {
-            return headerProcessingResult
-        }
-
-        switch headerRef.status {
-        case .header: try await acceptBlock(block, ref: headerRef, isRequested: isRequested, locator: locator)
-        case .merkle: break
-        case .active, .stale: return headerProcessingResult
-        case .invalid: throw .invalidBlockAlreadyExists
-        }
-
-        guard currentlyValidating == nil else { return headerProcessingResult }
-        validationTask = Task {
-            try await validateBlocks()
-        }
-        if immediate {
-            do {
-                try await validationTask?.value
-            } catch {
-                throw error as! Error // TODO: Remove once `Swift.Task` supports typed throws
-            }
-        }
-        return headerProcessingResult
-    }
-
     private func nextBlockToValidate() async -> BlockRef? {
         if bestHeader.status == .active {
             return nil
@@ -358,59 +320,6 @@ public actor BlockchainService: Sendable {
             return nextRef
         }
         return nil
-    }
-
-    /// Adds a transaction to the mempool.
-    public func addTransaction(_ tx: Transaction) async throws(TransactionValidationError) {
-
-        metrics.transactionsCounter.increment()
-
-        let requireStandard = true // Overrideable by parameter (for test/regtest networks only) in Bitcoin Core
-        let prevouts: [TransactionOutput]
-        do {
-            prevouts = try await mempoolAcceptPreChecks(tx, requireStandard: requireStandard)
-        } catch {
-            logger.warning("Mempool precheck failed for tx \(tx.idHex)\n\(error)")
-            throw error
-        }
-
-        // Check that we have at leat one non-genesis block
-        guard activeTip.header.previous != Block.nullParent else {
-            logger.warning("Only genesis block exists")
-            return
-        }
-
-        do {
-            try await policyScriptChecks(tx, prevouts: prevouts)
-
-            // TODO: Should pass it some kind of validation cache from the policy script checks
-            try await consensusScriptChecks(tx, prevouts: prevouts)
-
-        } catch {
-            logger.error("Failed transaction check\n\n\(error)")
-            return
-        }
-
-        mempool.append(tx)
-
-        // Notify other nodes of new tx
-        Task {
-            await withDiscardingTaskGroup {
-                for channel in txChannels {
-                    $0.addTask {
-                        await channel.send(tx)
-                    }
-                }
-            }
-        }
-
-        // Remove coins
-        mempoolExclude += tx.ins.map(\.outpoint)
-        // Add coins
-        let txid = tx.id
-        for (i, out) in tx.outs.enumerated() {
-            mempoolCoins[.init(tx: txid, out: i)] = .init(out)
-        }
     }
 
     /// Gets a fully validated block by height complete with transactions.
@@ -542,170 +451,6 @@ public actor BlockchainService: Sendable {
         return headers
     }
 
-    /// Processes a block header without its transactions.
-    ///
-    /// Returns: a reference to the added header plus a list of held headers which ended up being connected.
-    private func processHeader(_ header: Block, locator: BlockStorageLocator? = nil) async throws(Error) -> HeaderProcessingResult {
-        // Header already exist
-        if let headerRef = await blockIndex.get(header.id) {
-            // Compact block might send us a known header again
-            return .init(headerRefs: [headerRef], connectedHeaders: [], heldHeaders: [])
-        }
-
-        metrics.headersCounter.increment()
-
-        // Header is not connected to the existing header chain
-        guard let prev = await checkConnectivity(header, locator: locator) else {
-            return .init(headerRefs: [], connectedHeaders: [], heldHeaders: [header.id])
-        }
-
-        let (headerRef, connectedHeaders) = try await processHeader(header, previousHeader: prev)
-        return .init(headerRefs: [headerRef], connectedHeaders: connectedHeaders, heldHeaders: [])
-    }
-
-    private func checkConnectivity(_ block: Block, locator: BlockStorageLocator? = nil) async -> BlockRef? {
-        guard let previousHeader = await blockIndex.get(block.previous) else {
-            heldBlocks[block.id] = (block, locator) // Save header/block for later
-            logger.debug("Header \(block.idHex); Previous header not found (holding) \(block.previous.reversed().hex); Held blocks: \(heldBlocks.count)")
-            return nil
-        }
-        return previousHeader
-    }
-
-    private func checkHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) {
-        guard previousHeader.status != .invalid else {
-            logger.error("Header \(header.idHex) - part of invalid chain")
-            throw .headerPartOfInvalidChain
-        }
-
-        // TODO: this really should be `header.time > getMedianTimePast()` (strict comparison) but with only seconds resolution it makes tests generating blocks too fast simply fail. Solution should be to submit new blocks slightly in the future incrementing time by a second each
-        guard await header.time >= medianTimePast(for: previousHeader) else {
-            logger.error("Header \(header.idHex) - timestamp too old \(header.time)")
-            throw .headerTooOld
-        }
-
-        var calendar = Calendar(identifier: .iso8601)
-        calendar.timeZone = .gmt
-        guard header.time <= calendar.date(byAdding: .hour, value: 2, to: .now)! else {
-            logger.error("Header \(header.idHex) - timestamp too new \(header.time)")
-            throw .headerTooNew
-        }
-
-        let target = await getNextWorkRequired(lastHeader: previousHeader, newBlockTime: header.time, params: params)
-        guard header.target == target else {
-            logger.error("Header \(header.idHex) - invalid difficulty target \(header.target)")
-            throw .invalidDifficultyTarget
-        }
-
-        guard try! DifficultyTarget(header.id) <= DifficultyTarget(compact: header.target) else {
-            logger.error("Header \(header.idHex) - insufficient proof of work \(header.target)")
-            throw .insuficientProofOfWork
-        }
-
-        // Testnet4 and regtest only: Check timestamp against prev for difficulty-adjustment blocks to prevent timewarp attacks (see https://github.com/bitcoin/bitcoin/pull/15482).
-        if params.preventBlockStorms {
-            // Check timestamp for the first block of each difficulty adjustment interval, except the genesis block.
-            if (headers + 1) % params.difficultyAdjustmentInterval == 0 {
-                guard header.time.timeIntervalSince1970 >= bestHeader.header.time.timeIntervalSince1970  - Block.maxTimewarp else {
-                    logger.error("Header \(header.idHex) - potential timewarp attack")
-                    throw .timewarpAttack
-                }
-            }
-        }
-
-        // Reject blocks with outdated version
-        if header.version < 2 && previousHeader.height >= params.heightInCoinbaseHeight ||
-            (header.version < 3 && previousHeader.height >= params.strictDERSignatureHeight) ||
-            (header.version < 4 && previousHeader.height >= params.cltvHeight) {
-            logger.error("Header \(header.idHex) - unsupported block version \(header.version)")
-            throw .unsupportedBlockVersion
-        }
-    }
-
-    /// Validates the block header.
-    ///
-    /// This function contains similar logic to `ContextualCheckBlockHeader()` in Bitcoin Core's `validation.cpp`.
-    private func processHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) -> (BlockRef, Set<BlockRef>) {
-        precondition(header.txs.isEmpty)
-
-        try await checkHeader(header, previousHeader: previousHeader)
-
-        // We can use `try!` because we already checked that the parent exists
-        let newHeader = try! await blockIndex.addHeader(header)
-
-        // Apply reorg
-
-        if newHeader.chainwork > bestHeader.chainwork {
-            let previousBest = bestHeader
-            bestHeader = newHeader
-            if newHeader.header.previous != previousBest.header.id {
-                // Headers fork, may imply a block reorg
-                let bestAncestor = await blockIndex.bestAncestor(of: bestHeader)
-                if bestAncestor.header.id != activeTip.header.id {
-                    logger.debug("Reorg detected. Switching the active chain…")
-                    // Re-org detected
-
-                    // Cancel current validation task
-                    if currentlyValidating != nil {
-                        validationTask?.cancel()
-                        do {
-                            try await validationTask?.value
-                        } catch {
-                            throw error as! Error // TODO: Remove once `Swift.Task` supports typed throws
-                        }
-                        // NOTE: At this point the active chain may have been extended but the "best ancestor" (highest active block in best header ancestry) should not change
-                        precondition(currentlyValidating == nil)
-                    }
-
-                    // Deactivate current chain
-                    let undoneRefs = await blockIndex.undo(from: activeTip, backTo: bestAncestor)
-                    for ref in undoneRefs {
-                        try! await undoCoins(ref)
-                    }
-
-                    // Reactivate new chain (if previously active)
-                    let reactivatedRefs = await blockIndex.reactivate(from: bestHeader, backTo: bestAncestor)
-                    for ref in reactivatedRefs {
-                        precondition(ref.status == .active)
-                        try! await redoCoins(ref)
-                    }
-                    activeTip = reactivatedRefs.last ?? bestAncestor
-                }
-            }
-        }
-
-        // Look for pending headers to process
-        var otherHeaders = Set<BlockRef>()
-        for (h, loc) in heldBlocks.values.filter({ $0.0.previous == header.id }) {
-            let (ref, otherOtherHeaders) = try await processHeader(h.header, previousHeader: newHeader)
-            otherHeaders.insert(ref)
-            otherHeaders.formUnion(otherOtherHeaders)
-            if !h.txs.isEmpty {
-                // TODO: Save original `isRequested` value on `heldBlocks`
-                try await acceptBlock(h, ref: ref, isRequested: false, locator: loc)
-            }
-
-            heldBlocks[h.id] = nil
-        }
-        return (newHeader, otherHeaders)
-    }
-
-    /// Processes a list of block headers without transactions.
-    ///
-    /// There may be preexisting headers in the blockchain.
-    public func processHeaders(_ headers: [Block]) async throws(Error) -> HeaderProcessingResult {
-        var headerRefs = Set<BlockRef>()
-        var connectedHeaders = Set<BlockRef>()
-        var heldHeaders = Set<Block.ID>()
-        for header in headers {
-            let result = try await processHeader(header)
-            headerRefs.formUnion(result.headerRefs)
-            connectedHeaders.formUnion(result.connectedHeaders)
-            heldHeaders.formUnion(result.heldHeaders)
-        }
-        return .init(headerRefs: headerRefs, connectedHeaders: connectedHeaders, heldHeaders: heldHeaders)
-    }
-
     /// Returns the IDs of the headers missing transactions up to a maximum defined by the function argument.
     public func nextMissingBlocks(max numberOfBlocks: Int, exclude: Set<Block.ID> = []) async -> [Block.ID] {
         precondition(numberOfBlocks > 0 && numberOfBlocks <= Self.blockDownloadWindow)
@@ -789,84 +534,6 @@ public actor BlockchainService: Sendable {
             }
         }
         try! await coinIndex.update(remove: outpointsToRemove, add: newCoins)
-    }
-
-    /// Generates a number of new blocks with the coinbase transaction going to the specified script.
-    @discardableResult public func generateToScript(_ script: Script, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = nil) async -> [Block.ID] {
-        var ids = [Block.ID]()
-        for _ in 0 ..< blocks {
-            if let block = await generateTo(script, maxTries: maxTries, blockTime: blockTime ?? .now) {
-                ids.append(block.id)
-            }
-        }
-        return ids
-    }
-
-    /// Generates a number of new blocks with the coinbase transaction going to the specified public key using standard pay-to-public-key-hash output.
-    @discardableResult public func generateTo(_ pubkey: PublicKey, blockTime: Date = .now) async -> Block? {
-        logger.info("Generating blocks with coinbase reward going to public key.")
-        return await generateTo(Script.payToPubkeyHash(pubkey), blockTime: blockTime)
-    }
-
-    /// Generates a block using the mempool transactions and locks the coinbase reward output to the provided public key hash.
-    ///
-    /// This function essentially mines a block in current thread so it has the potential to completely block. Future versions of this method will provide asynchronous control via detached background task.
-    @discardableResult public func generateTo(_ script: Script, initialNonce: Int = 0, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now, tag: String? = nil, txVersion: Transaction.Version? = nil) async -> Block? {
-        logger.info("Generating blocks with coinbase reward going to public key hash.")
-
-        guard isSynchronized else {
-            // Waiting for pending block transactions for known headers
-            preconditionFailure("Chain cannot contain unvalidated blocks.")
-        }
-        let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool)
-
-        let mempoolTxs = mempool
-
-        // Calculate fees
-        var totalFees = Amount(0)
-        for tx in mempoolTxs {
-            totalFees += await calculateFees(tx, auxCoins: mempoolCoins)
-        }
-
-        let blockReward = params.blockSubsidy + totalFees
-        let coinbaseTx = Transaction.coinbase(version: txVersion, blockHeight: activeTip.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot, tag: tag)
-
-        let previousBlockHash = activeTip.header.id
-        let txs = [coinbaseTx] + mempoolTxs
-        let merkleRoot = calculateMerkleRoot(txs)
-
-        let target = await getNextWorkRequired(lastHeader: activeTip, newBlockTime: blockTime, params: params)
-
-        var nonce = initialNonce
-        var tries = maxTries
-        var block: Block
-        repeat {
-            block = .init(
-                previous: previousBlockHash,
-                merkleRoot: merkleRoot,
-                time: blockTime,
-                target: target,
-                nonce: nonce
-            )
-            nonce += 1
-            tries -= 1
-        } while tries > 0 && (try! DifficultyTarget(block.id) > DifficultyTarget(compact: target))
-
-        guard try! DifficultyTarget(block.id) <= DifficultyTarget(compact: target) else {
-            return nil
-        }
-
-        block.txs = txs
-
-        // Process the header and block normally
-        try! await processBlock(block, isRequested: true, immediate: true)
-
-        // Reset mempool
-        mempool = []
-        mempoolExclude = []
-        mempoolCoins = [:]
-
-        return block
     }
 
     public func startReindex() async {
@@ -1005,7 +672,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Gets a transaction by ID looking into mempool and blocks.
-    public func transaction(for id: Transaction.ID) async -> Transaction? {
+    public func transaction(identifiedBy id: Transaction.ID) async -> Transaction? {
         for tx in mempool {
             if id == tx.id {
                 return tx
@@ -1193,23 +860,827 @@ public actor BlockchainService: Sendable {
         return blocks
     }
 
-    private func calculateFees(_ tx: Transaction, auxCoins: [Outpoint : UnspentOutput]) async -> Amount {
-        precondition(!tx.isCoinbase)
-        var valueIn = Amount(0)
-        for input in tx.ins {
-            let outpoint = input.outpoint
+    /// Median time past. The median of the last 11 blocks.
+    ///
+    /// BIP113
+    private func medianTimePast(for header: BlockRef) async -> Date {
+        let blockRefs = await blockIndex.get(from: header, count: 11)
+        let median = blockRefs.map(\.header.time).sorted()
+        precondition(median.startIndex == 0)
+        return median[median.count / 2]
+    }
 
-            guard let coin = try! await coinIndex.get(outpoint) ?? auxCoins[outpoint] else {
-                preconditionFailure()
-            }
-            valueIn += coin.out.value
+    /// Verification progress of the best block known so far.
+    ///
+    /// This function could be adapted to return the verification progress for any arbitrary block.
+    private func guessVerificationProgress(_ block: BlockRef) -> Double {
+
+        let data = params.chainData
+
+        if block.chainTxCount == -1 {
+            logger.debug("Block \(block.header.idHex) has unset m_chain_tx_count. Unable to estimate verification progress.")
+            return 0
         }
-        return valueIn - tx.valueOut
+
+        let now = nowSeconds()
+
+        let blockTime = if abs(now - block.header.time.timeIntervalSince1970) <= 2 * 60 * 60 && bestHeader.height >= block.height {
+            // When the header is known to be recent, switch to a height-based approach. This ensures the returned value is quantized when close to "1.0", because some users expect it to be. This also  avoids relying too much on the exact miner-set timestamp, which may be off.
+            now - Double(bestHeader.height - block.height) * Double(params.powTargetSpacing)
+        } else {
+            block.header.time.timeIntervalSince1970
+        }
+
+        let chainDataTime = TimeInterval(data.time)
+
+        let txTotal = if block.chainTxCount <= data.txCount {
+            Double(data.txCount) + (now - chainDataTime) * data.txRate
+        } else {
+            Double(block.chainTxCount)  + (now - blockTime) * data.txRate
+        }
+        return min(Double(block.chainTxCount) / txTotal, 1.0)
+    }
+
+    /// Whether we are in Initial Block Download (IBD) mode.
+    ///
+    /// Note that though this function is non-mutating, we may end up modifying `finishedIDB`, which is a performance-related implementation detail.
+    ///
+    /// This function is similar to `ChainstateManager::IsInitialBlockDownload()` in Bitcoin Core (`validation.cpp`).
+    private func checkInitialBlockDownload() -> Bool {
+
+        // Optimization: pre-test latch before taking the lock.
+        if finishedIDB.load(ordering: .relaxed) {
+            return false
+        }
+
+        // Currently this function is never called before the blockchain service has started which includes the initialization of the block storage. The process could become more async in the future so leaving the below line commented out for now.
+        // if await blockStorage.status == .starting { return true }
+
+        if params.minChainwork > activeTip.chainwork {
+            return true
+        }
+
+        let maxTipAge = TimeInterval(24 * 60 * 60) // 24 hours
+        let maxTipTime = Date(timeIntervalSince1970: nowSeconds() - maxTipAge)
+        if (activeTip.header.time < maxTipTime ) {
+            return true
+        }
+
+        logger.info("Leaving InitialBlockDownload (latching to false)")
+        finishedIDB.store(true, ordering: .relaxed)
+        return false
+    }
+
+    private func checkFeeRate() -> Bool {
+        // TODO: Tie this to the node service state for minimum feeRate
+        return true
+    }
+
+    /// Size of the "block download window": how far ahead of our current height do we fetch?
+    /// Larger windows tolerate larger download speed differences between peer, but increase the potential degree of disordering of blocks on disk (which make reindexing and pruning harder). We'll probably want to make this a per-peer adaptive value at some point.
+    public static let blockDownloadWindow = 1024
+}
+
+// MARK: - Add transaction (policy)
+
+/// Add transaction.
+extension BlockchainService {
+
+    /// Adds a transaction to the mempool.
+    public func addTransaction(_ tx: Transaction) async throws(TransactionValidationError) {
+
+        metrics.transactionsCounter.increment()
+
+        let requireStandard = true // Overrideable by parameter (for test/regtest networks only) in Bitcoin Core
+        let prevouts: [TransactionOutput]
+        do {
+            prevouts = try await mempoolAcceptPreChecks(tx, requireStandard: requireStandard)
+        } catch {
+            logger.warning("Mempool precheck failed for tx \(tx.idHex)\n\(error)")
+            throw error
+        }
+
+        // Check that we have at leat one non-genesis block
+        guard activeTip.header.previous != Block.nullParent else {
+            logger.warning("Only genesis block exists")
+            return
+        }
+
+        do {
+            if !tx.verifyScripts(prevouts: prevouts, config: .standard) {
+                logger.error("Failed script validation")
+                throw TransactionValidationError.scriptError
+            }
+
+            // TODO: Should pass it some kind of validation cache from the policy script checks
+            if !tx.verifyScripts(prevouts: prevouts, config: .mandatory) {
+                logger.error("Failed script validation")
+                throw TransactionValidationError.scriptError
+            }
+
+        } catch {
+            logger.error("Failed transaction check\n\n\(error)")
+            return
+        }
+
+        mempool.append(tx)
+
+        // Notify other nodes of new tx
+        Task {
+            await withDiscardingTaskGroup {
+                for channel in txChannels {
+                    $0.addTask {
+                        await channel.send(tx)
+                    }
+                }
+            }
+        }
+
+        // Remove coins
+        mempoolExclude += tx.ins.map(\.outpoint)
+        // Add coins
+        let txid = tx.id
+        for (i, out) in tx.outs.enumerated() {
+            mempoolCoins[.init(tx: txid, out: i)] = .init(out)
+        }
+    }
+
+    /// Run the policy checks on a given transaction, excluding any script checks.
+    /// Looks up inputs, calculates feerate, considers replacement, evaluates package limits, etc. As this function can be invoked for "free" by a peer, only tests that are fast should be done here (to avoid CPU DoS).
+    ///
+    /// Analog to Bitcoin Core's `MemPoolAccept::PreChecks()`.
+    private func mempoolAcceptPreChecks(_ tx: Transaction, requireStandard: Bool) async throws(TransactionValidationError) -> [TransactionOutput] {
+
+        do {
+            try tx.check()
+        } catch {
+            logger.warning("Error checking transaction: \(error)")
+            throw .transactionCheckError(error)
+        }
+
+        // Coinbase is only valid in a block, not as a loose transaction
+        guard !tx.isCoinbase else {
+            throw .coinbaseTransaction
+        }
+
+        // Rather not work on nonstandard transactions (unless -testnet/-regtest)
+        if requireStandard {
+            // The following are overridable runtime options in Bitcoin Core
+            let maxDatacarrierBytes = Script.defaultAcceptDatacarrier ? Script.maxOpReturnRelay : 0
+            let permitBareMultisig = Script.defaultPermitBareMultisig
+            let dustRelayFeerate = Transaction.dustRelayFee
+            do {
+                try tx.isStandard(maxDatacarrierBytes: maxDatacarrierBytes, permitBareMultisig: permitBareMultisig, dustRelayFeerate: dustRelayFeerate)
+            } catch {
+                logger.warning("Non-standard transaction: \(error)")
+                throw .nonStandardTransaction(error)
+            }
+        }
+
+        // Transactions smaller than 65 non-witness bytes are not relayed to mitigate CVE-2017-12842.
+        guard tx.dataSize(encoding: .noWitness) >= Transaction.minStandardNonWitnessSize else {
+            throw .smallTransactionSize
+        }
+
+        // Only accept nLockTime-using transactions that can be mined in the next
+        // block; we don't want our mempool filled up with transactions that can't
+        // be mined yet.
+        guard await checkFinalTxAtTip(tx, activeChainTip: activeTip) else {
+            logger.error("Invalid transaction \(tx.idHex): Premature spend, non-final")
+            throw .nonFinalTransaction
+        }
+
+        if mempool.map(\.witnessID).contains(tx.witnessID) {
+            // Exact transaction already exists in the mempool.
+            throw .transactionAlreadyInMempool
+        } else if mempool.map(\.id).contains(tx.id) {
+            // Transaction with the same non-witness data but different witness (same txid, different wtxid) already exists in the mempool.
+            throw .transactionSameNonWitnessDataInMempool
+        }
+
+        // do all inputs exist?
+        var coins = [UnspentOutput]()
+        for txIn in tx.ins {
+            // TODO: As an optimization, have the coin index return coins all at once (when coins not from the mempool coins array)
+            guard let coin = try! await coinIndex.get(txIn.outpoint) ?? mempoolCoins[txIn.outpoint], !mempoolExclude.contains(txIn.outpoint) else {
+                // Are inputs missing because we already have the tx?
+                for out in tx.outs.indices {
+                    // Optimistically just do efficient check of cache for outputs
+                    guard let _ = try! await coinIndex.get(Outpoint(tx: tx.id, out: out)) else {
+                        throw .transactionAlreadyKnown
+                    }
+                }
+                // Otherwise assume this might be an orphan tx for which we just haven't seen parents yet
+                throw .inputsMissingOrSpent
+            }
+            coins.append(coin)
+        }
+        let prevouts = coins.map(\.out) // To return
+
+        // Only accept BIP68 sequence locked transactions that can be mined in the next  block; we don't want our mempool filled up with transactions that can't be mined yet.
+        // Pass in m_view which has all of the relevant inputs cached. Note that, since m_view's backend was removed, it no longer pulls coins from the mempool.
+        let lockPoints = await calculateLockPointsAtTip(tx, tip: activeTip)
+        do {
+            try await checkSequenceLocksAtTip(activeTip, lockPoints: lockPoints)
+        } catch {
+            logger.error("Invalid transaction \(tx.idHex): Premature spend, BIP68 non-final")
+            throw .nonFinalTransaction
+        }
+
+        // The mempool holds txs for the next block, so pass height+1 to CheckTxInputs
+        do {
+            // TODO: We need to do something with the fees returned (look into
+            _ = try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
+            // Consensus::CheckTxInputs(tx, state, m_view, m_active_chainstate.m_chain.Height() + 1, ws.m_base_fees))
+        } catch {
+            throw .transactionCheckError(error)
+        }
+
+        if requireStandard {
+            do {
+                try tx.validateInputsStandardness(prevouts: prevouts)
+            } catch {
+                logger.warning("\(error)")
+                throw .nonStandardPrevouts(error)
+            }
+        }
+
+        // Check for non-standard witnesses.
+        if tx.hasWitness, requireStandard {
+            do {
+                try tx.isWitnessStandard(prevouts: prevouts)
+            } catch {
+                logger.warning("\(error)")
+                throw .nonStandardWitness(error)
+            }
+        }
+
+        let sigopsCost = tx.sigopCost(prevouts: prevouts, options: .standard)
+
+        guard sigopsCost <= Transaction.maxStandardSigopsCost else {
+            throw .tooManySigops
+        }
+
+        // No individual transactions are allowed below the mempool min feerate except from disconnected blocks and transactions in a package. Package transactions will be checked using package feerate later.
+        /* if !bypass_limits { */
+        guard checkFeeRate(/*modifiedFees*/) else {
+            throw .feeTooLow
+        }
+
+        return prevouts
+    }
+
+    /// This function is equivalent to `CheckFinalTxAtTip()` in Bitcoin Core (`validation.h`) which is itself called by `MemPoolAccept::PreChecks()`
+    ///
+    /// BIP113
+    private func checkFinalTxAtTip(_ tx: Transaction, activeChainTip: BlockRef) async -> Bool {
+
+        // CheckFinalTxAtTip() uses active_chain_tip.Height() + 1 to evaluate nLockTime because when IsFinalTx() is called within AcceptBlock(), the height of the block *being* evaluated is what is used. Thus if we want to know if a transaction can be part of the *next* block, we need to call IsFinalTx() with one more than active_chain_tip.Height().
+        let blockHeight = activeChainTip.height + 1
+
+        // BIP113 requires that time-locked transactions have nLockTime set to less than the median time of the previous block they're contained in.
+        // When the next block is created its previous block will be the current chain tip, so we use that to calculate the median time passed to IsFinalTx().
+        let blockTimeDate = await medianTimePast(for: activeChainTip)
+        let blockTime = Int(blockTimeDate.timeIntervalSince1970)
+
+        return tx.isFinal(blockHeight: blockHeight, blockTime: blockTime)
+    }
+
+    /// Called from `mempoolAcceptPreChecks()`
+    private func calculateLockPointsAtTip(_ tx: Transaction, tip: BlockRef) async -> LockPoints {
+
+        var prevHeights = await calculatePrevHeights(tx, tip: tip, excludeCoins: mempoolExclude, auxCoins: mempoolCoins)
+
+        /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
+        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
+
+        // When SequenceLocks() is called within ConnectBlock(), the height
+        // of the block *being* evaluated is what is used.
+        // Thus if we want to know if a transaction can be part of the
+        // *next* block, we need to use one more than active_chainstate.m_chain.Height()
+        let (minHeight, minTime) = await calculateSequenceLocks(tx, block: nextTip, verifyLocktimeSequence: Transaction.Input.standardLocktimeVerifyOption /* STANDARD_LOCKTIME_VERIFY_FLAGS */, previousHeights: &prevHeights)
+
+        // Also store the hash of the block with the highest height of all the blocks which have sequence locked prevouts.
+        // This hash needs to still be on the chain for these LockPoint calculations to be valid
+        // Note: It is impossible to correctly calculate a maxInputBlock if any of the sequence locked inputs depend on unconfirmed txs, except in the special case where the relative lock time/height is 0, which is equivalent to no sequence lock. Since we assume input height of tip+1 for mempool txs and test the resulting min_height and min_time from CalculateSequenceLocks against tip+1.
+        var maxInputHeight = 0
+        for height in prevHeights {
+            // Can ignore mempool inputs since we'll fail if they had non-zero locks
+            if height != nextTip.height {
+                maxInputHeight = max(maxInputHeight, height)
+            }
+        }
+
+        // tip->GetAncestor(max_input_height) should never return a nullptr because max_input_height is always less than the tip height. It would, however, be a bad bug to continue execution, since a LockPoints object with the maxInputBlock member set to nullptr signifies no relative lock time.
+        let ancestor = await blockIndex.ancestor(of: tip, at: maxInputHeight)
+        return (minHeight, minTime, ancestor)
+    }
+
+    /// A helper which calculates heights of inputs of a given transaction.
+    ///
+    /// Called from `connectBlock()` and `calculateLockPointsAtTip()`.
+    ///
+    /// - parameter tip The current chain tip. If an input belongs to a mempool
+    ///                   transaction, we assume it will be confirmed in the next block.
+    /// - parameter tx The transaction being evaluated.
+    ///
+    /// - returns A vector of input heights or nil, in case of an error.
+    private func calculatePrevHeights(_ tx: Transaction, tip: BlockRef, excludeCoins: [Outpoint], auxCoins: [Outpoint : UnspentOutput]) async -> [Int] {
+        var prevHeights = [Int]() // tx.ins.count
+        for txIn in tx.ins {
+            // TODO: Have the coins index return transaction's inputs' previous coins/heights all at once (when coins not from the mempool coins array)
+            guard let coin = try! await coinIndex.get(txIn.outpoint) ?? auxCoins[txIn.outpoint], !excludeCoins.contains(txIn.outpoint) else {
+                preconditionFailure() // Missing input in transaction
+            }
+            if coin.isMempool {
+                // Assume all mempool transaction confirm in the next block
+                prevHeights.append(tip.height + 1)
+            } else {
+                prevHeights.append(coin.height)
+            }
+        }
+        return prevHeights
+    }
+
+    /// Calculates the block height and previous block's median time past at which the transaction will be considered final in the context of BIP 68.
+    ///
+    /// Also removes from the vector (sets to 0) of input heights any entries which did not correspond to sequence locked inputs as they do not affect the calculation.
+    ///
+    /// The block reference may be a placeholder reference to a potential new chain tip which will only be used to access ancestors.
+    ///
+    /// Called from `calculateLockPointsAtTip()` and `sequenceLocks()`.
+    ///
+    /// BIP68
+    private func calculateSequenceLocks(_ tx: Transaction, block: BlockRef, verifyLocktimeSequence: Bool, previousHeights: inout [Int]) async -> LockPair {
+
+        precondition(previousHeights.count == tx.ins.count);
+
+        precondition(block.height >= 0 && block.header.time >= Date.distantPast)
+        // Warning: `block` may or may not not be a valid reference from our block index. It could also be a placeholder for the next block with only valid height and previous.
+
+        // Will be set to the equivalent height- and time-based nLockTime values that would be necessary to satisfy all relative lock-time constraints given our view of block chain history.
+        // The semantics of nLockTime are the last invalid height/time, so use -1 to have the effect of any height or time being valid.
+        var minHeight = -1;
+        var minTime = -1;
+
+        // tx.nVersion is signed integer so requires cast to unsigned otherwise we would be doing a signed comparison and half the range of nVersion wouldn't support BIP68.
+        let enforceBIP68 = tx.version >= .v2 && verifyLocktimeSequence
+
+        // Do not enforce sequence numbers as a relative lock time unless we have been instructed to
+        guard enforceBIP68 else { return (minHeight, minTime) }
+
+        for (inIndex, input) in tx.ins.enumerated() {
+
+            // Sequence numbers with the most significant bit set are not treated as relative lock-times, nor are they given any consensus-enforced meaning at this point.
+            if input.sequence.isLocktimeDisabled {
+                // The height of this input is not relevant for sequence locks
+                previousHeights[inIndex] = 0
+                continue
+            }
+
+            let coinHeight = previousHeights[inIndex]
+
+            if let locktimeSeconds = input.sequence.locktimeSeconds {
+
+                // NOTE: Subtract 1 to maintain nLockTime semantics
+                // BIP68 relative lock times have the semantics of calculating the first block or time at which the transaction would be valid. When calculating the effective block time or height for the entire transaction, we switch to using the semantics of nLockTime which is the last invalid block time or height.  Thus we subtract 1 from the calculated time or height.
+                let ancestor = await blockIndex.ancestor(of: block, at: max(coinHeight - 1, 0))
+                let coinTimeDate = await medianTimePast(for: ancestor)
+                let coinTime = Int(coinTimeDate.timeIntervalSince1970)
+
+                // Time-based relative lock-times are measured from the smallest allowed timestamp of the block containing the txout being spent, which is the median time past of the block prior.
+                minTime = max(minTime, coinTime + locktimeSeconds - 1)
+            } else if let locktimeBlocks = input.sequence.locktimeBlocks {
+                minHeight = max(minHeight, coinHeight + locktimeBlocks - 1)
+            } else {
+                preconditionFailure() // `input.sequence.isLocktimeDisabled == false`
+            }
+        }
+        return (minHeight, minTime)
+    }
+
+    /// BIP68
+    ///
+    /// Called by  `checkSequenceLocksAtTip()` and `sequenceLocks()`.
+    private func evaluateSequenceLocks(_ block: BlockRef, previous: BlockRef, lockPair: LockPair) async throws(Error) {
+        let blockTimeDate = await medianTimePast(for: previous)
+        let blockTime = Int(blockTimeDate.timeIntervalSince1970)
+        if lockPair.height >= block.height || lockPair.time >= blockTime {
+            logger.error("Non final transaction at block height \(block.height) (future lock time). BIP68 non-final transaction")
+            throw .futureLocktime
+        }
+    }
+    /// Checks if the transaction will be final in the next block to be created on top of the new chain.
+    ///
+    /// This function is equivalent to `CheckSequenceLocksAtTip()` in Bitcoin Core (`validation.h`) which is itself called by `MemPoolAccept::PreChecks()`.
+    ///
+    ///  Called by `mempoolAcceptPreChecks()`.
+    ///
+    /// BIP68
+    private func checkSequenceLocksAtTip(_ tip: BlockRef, lockPoints: LockPoints) async throws(Error) {
+        // checkSequenceLocksAtTip() uses chainActive.Height()+1 to evaluate height based locks because when SequenceLocks() is called within ConnectBlock(), the height of the block *being* evaluated is what is used.
+        // Thus if we want to know if a transaction can be part of the *next* block, we need to use one more than chainActive.Height()
+
+        /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
+        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
+
+        try await evaluateSequenceLocks(nextBlockPlaceholder, previous: tip, lockPair: (lockPoints.height, lockPoints.time))
+    }
+}
+
+// MARK: - Add block header (consensus)
+
+/// Add block header (consensus).
+extension BlockchainService {
+
+    /// Processes a list of block headers without transactions.
+    ///
+    /// There may be preexisting headers in the blockchain.
+    public func processHeaders(_ headers: [Block]) async throws(Error) -> HeaderProcessingResult {
+        var headerRefs = Set<BlockRef>()
+        var connectedHeaders = Set<BlockRef>()
+        var heldHeaders = Set<Block.ID>()
+        for header in headers {
+            let result = try await processHeader(header)
+            headerRefs.formUnion(result.headerRefs)
+            connectedHeaders.formUnion(result.connectedHeaders)
+            heldHeaders.formUnion(result.heldHeaders)
+        }
+        return .init(headerRefs: headerRefs, connectedHeaders: connectedHeaders, heldHeaders: heldHeaders)
+    }
+
+    /// Processes a block header without its transactions.
+    ///
+    /// Returns: a reference to the added header plus a list of held headers which ended up being connected.
+    private func processHeader(_ header: Block, locator: BlockStorageLocator? = nil) async throws(Error) -> HeaderProcessingResult {
+        // Header already exist
+        if let headerRef = await blockIndex.get(header.id) {
+            // Compact block might send us a known header again
+            return .init(headerRefs: [headerRef], connectedHeaders: [], heldHeaders: [])
+        }
+
+        metrics.headersCounter.increment()
+
+        // Header is not connected to the existing header chain
+        guard let prev = await checkConnectivity(header, locator: locator) else {
+            return .init(headerRefs: [], connectedHeaders: [], heldHeaders: [header.id])
+        }
+
+        let (headerRef, connectedHeaders) = try await processHeader(header, previousHeader: prev)
+        return .init(headerRefs: [headerRef], connectedHeaders: connectedHeaders, heldHeaders: [])
+    }
+
+    private func checkConnectivity(_ block: Block, locator: BlockStorageLocator? = nil) async -> BlockRef? {
+        guard let previousHeader = await blockIndex.get(block.previous) else {
+            heldBlocks[block.id] = (block, locator) // Save header/block for later
+            logger.debug("Header \(block.idHex); Previous header not found (holding) \(block.previous.reversed().hex); Held blocks: \(heldBlocks.count)")
+            return nil
+        }
+        return previousHeader
+    }
+
+    /// Validates the block header.
+    ///
+    /// This function contains similar logic to `ContextualCheckBlockHeader()` in Bitcoin Core's `validation.cpp`.
+    private func processHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) -> (BlockRef, Set<BlockRef>) {
+        precondition(header.txs.isEmpty)
+
+        try await checkHeader(header, previousHeader: previousHeader)
+
+        // We can use `try!` because we already checked that the parent exists
+        let newHeader = try! await blockIndex.addHeader(header)
+
+        // Apply reorg
+
+        if newHeader.chainwork > bestHeader.chainwork {
+            let previousBest = bestHeader
+            bestHeader = newHeader
+            if newHeader.header.previous != previousBest.header.id {
+                // Headers fork, may imply a block reorg
+                let bestAncestor = await blockIndex.bestAncestor(of: bestHeader)
+                if bestAncestor.header.id != activeTip.header.id {
+                    logger.debug("Reorg detected. Switching the active chain…")
+                    // Re-org detected
+
+                    // Cancel current validation task
+                    if currentlyValidating != nil {
+                        validationTask?.cancel()
+                        do {
+                            try await validationTask?.value
+                        } catch {
+                            throw error as! Error // TODO: Remove once `Swift.Task` supports typed throws
+                        }
+                        // NOTE: At this point the active chain may have been extended but the "best ancestor" (highest active block in best header ancestry) should not change
+                        precondition(currentlyValidating == nil)
+                    }
+
+                    // Deactivate current chain
+                    let undoneRefs = await blockIndex.undo(from: activeTip, backTo: bestAncestor)
+                    for ref in undoneRefs {
+                        try! await undoCoins(ref)
+                    }
+
+                    // Reactivate new chain (if previously active)
+                    let reactivatedRefs = await blockIndex.reactivate(from: bestHeader, backTo: bestAncestor)
+                    for ref in reactivatedRefs {
+                        precondition(ref.status == .active)
+                        try! await redoCoins(ref)
+                    }
+                    activeTip = reactivatedRefs.last ?? bestAncestor
+                }
+            }
+        }
+
+        // Look for pending headers to process
+        var otherHeaders = Set<BlockRef>()
+        for (h, loc) in heldBlocks.values.filter({ $0.0.previous == header.id }) {
+            let (ref, otherOtherHeaders) = try await processHeader(h.header, previousHeader: newHeader)
+            otherHeaders.insert(ref)
+            otherHeaders.formUnion(otherOtherHeaders)
+            if !h.txs.isEmpty {
+                // TODO: Save original `isRequested` value on `heldBlocks`
+                try await acceptBlock(h, ref: ref, isRequested: false, locator: loc)
+            }
+
+            heldBlocks[h.id] = nil
+        }
+        return (newHeader, otherHeaders)
+    }
+
+    private func checkHeader(_ header: Block, previousHeader: BlockRef) async throws(Error) {
+        guard previousHeader.status != .invalid else {
+            logger.error("Header \(header.idHex) - part of invalid chain")
+            throw .headerPartOfInvalidChain
+        }
+
+        // TODO: this really should be `header.time > getMedianTimePast()` (strict comparison) but with only seconds resolution it makes tests generating blocks too fast simply fail. Solution should be to submit new blocks slightly in the future incrementing time by a second each
+        guard await header.time >= medianTimePast(for: previousHeader) else {
+            logger.error("Header \(header.idHex) - timestamp too old \(header.time)")
+            throw .headerTooOld
+        }
+
+        var calendar = Calendar(identifier: .iso8601)
+        calendar.timeZone = .gmt
+        guard header.time <= calendar.date(byAdding: .hour, value: 2, to: .now)! else {
+            logger.error("Header \(header.idHex) - timestamp too new \(header.time)")
+            throw .headerTooNew
+        }
+
+        let target = await getNextWorkRequired(lastHeader: previousHeader, newBlockTime: header.time, params: params)
+        guard header.target == target else {
+            logger.error("Header \(header.idHex) - invalid difficulty target \(header.target)")
+            throw .invalidDifficultyTarget
+        }
+
+        guard try! DifficultyTarget(header.id) <= DifficultyTarget(compact: header.target) else {
+            logger.error("Header \(header.idHex) - insufficient proof of work \(header.target)")
+            throw .insuficientProofOfWork
+        }
+
+        // Testnet4 and regtest only: Check timestamp against prev for difficulty-adjustment blocks to prevent timewarp attacks (see https://github.com/bitcoin/bitcoin/pull/15482).
+        if params.preventBlockStorms {
+            // Check timestamp for the first block of each difficulty adjustment interval, except the genesis block.
+            if (headers + 1) % params.difficultyAdjustmentInterval == 0 {
+                guard header.time.timeIntervalSince1970 >= bestHeader.header.time.timeIntervalSince1970  - Block.maxTimewarp else {
+                    logger.error("Header \(header.idHex) - potential timewarp attack")
+                    throw .timewarpAttack
+                }
+            }
+        }
+
+        // Reject blocks with outdated version
+        if header.version < 2 && previousHeader.height >= params.heightInCoinbaseHeight ||
+            (header.version < 3 && previousHeader.height >= params.strictDERSignatureHeight) ||
+            (header.version < 4 && previousHeader.height >= params.cltvHeight) {
+            logger.error("Header \(header.idHex) - unsupported block version \(header.version)")
+            throw .unsupportedBlockVersion
+        }
+    }
+
+    private func getNextWorkRequired(lastHeader: BlockRef, newBlockTime: Date, params: ConsensusParams) async -> Int {
+        let heightLast = lastHeader.height
+        precondition(heightLast >= 0)
+        let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
+        let proofOfWorkLimit = powLimitTarget.toCompact()
+
+        // Only change once per difficulty adjustment interval
+        if (heightLast + 1) % params.difficultyAdjustmentInterval != 0 {
+            if params.powAllowMinDifficultyBlocks {
+                // Special difficulty rule for testnet:
+                // If the new block's timestamp is more than 2 * 10 minutes then allow mining of a min-difficulty block.
+                if Int(newBlockTime.timeIntervalSince1970) > Int(lastHeader.header.time.timeIntervalSince1970) + params.powTargetSpacing * 2 {
+                    return proofOfWorkLimit
+                } else {
+
+                    // TODO: - Traverse back from last header
+                    ///
+                    /// ```cpp
+                    /// const CBlockIndex* pindex = pindexLast;
+                    /// while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
+                    ///     pindex = pindex->pprev;
+                    /// return pindex->nBits;
+                    /// ```
+
+                    // Return the last non-special-min-difficulty-rules-block
+                    var height = heightLast
+                    var header = lastHeader
+                    while height > 0 && height % params.difficultyAdjustmentInterval != 0 && header.header.target == proofOfWorkLimit {
+                        height -= 1
+                        header = await blockIndex.get(at: height)
+                    }
+                    return header.header.target
+                }
+            }
+            return lastHeader.header.target
+        }
+
+        // Go back by what we want to be 14 days worth of blocks
+        let heightFirst = heightLast - (params.difficultyAdjustmentInterval - 1)
+        precondition(heightFirst >= 0)
+        let firstHeader = await blockIndex.ancestor(of: lastHeader, at: heightFirst)
+        return await calculateNextWorkRequired(lastHeader: lastHeader, firstBlockTime: firstHeader.header.time, params: params)
+    }
+
+    private func calculateNextWorkRequired(lastHeader: BlockRef, firstBlockTime: Date, params: ConsensusParams) async -> Int {
+        if params.powNoRetargeting {
+            return lastHeader.header.target
+        }
+
+        // Limit adjustment step
+        var actualTimespan = Int(lastHeader.header.time.timeIntervalSince1970) - Int(firstBlockTime.timeIntervalSince1970)
+        if actualTimespan < params.powTargetTimespan / 4 {
+            actualTimespan = params.powTargetTimespan / 4
+        }
+        if actualTimespan > params.powTargetTimespan * 4 {
+            actualTimespan = params.powTargetTimespan * 4
+        }
+
+        // Retarget
+        let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
+
+        var new: DifficultyTarget
+        if params.preventBlockStorms {
+
+            // TODO: - Use `BlockIndex.ancestor(of:at:)` instead of `get(at:)`
+            ///
+            /// ```cpp
+            /// int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval()-1);
+            /// const CBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
+            /// bnNew.SetCompact(pindexFirst->nBits);
+            /// ```
+
+            // Here we use the first block of the difficulty period. This way the real difficulty is always preserved in the first block as it is not allowed to use the min-difficulty exception.
+            let heightFirst = lastHeader.height - (params.difficultyAdjustmentInterval - 1)
+            let first = await blockIndex.get(at: heightFirst)
+            new = DifficultyTarget(compact: first.header.target)
+        } else {
+            new = DifficultyTarget(compact: lastHeader.header.target)
+        }
+        precondition(!new.isZero)
+        new *= (UInt32(actualTimespan))
+        new /= DifficultyTarget(UInt64(params.powTargetTimespan))
+
+        if new > powLimitTarget { new = powLimitTarget }
+
+        return new.toCompact()
+    }
+}
+
+// MARK: - Add block (consensus)
+
+/// Add block (consensus).
+extension BlockchainService {
+
+    /// Processes a block by checking its header and transaction merkle root and then storing it.
+    ///
+    /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
+    @discardableResult public func processBlock(_ block: Block, isRequested: Bool = true, immediate: Bool = true) async throws(Error) -> HeaderProcessingResult {
+        try await processBlock(block, isRequested: isRequested, immediate: immediate, locator: nil)
+    }
+
+    /// The locator parameter is used in calls from the re-indexing process.
+    @discardableResult private func processBlock(_ block: Block, isRequested: Bool, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> HeaderProcessingResult {
+
+        metrics.seenBlocksCounter.increment()
+
+        let headerProcessingResult = try await processHeader(block.header, locator: locator)
+        guard let headerRef = headerProcessingResult.headerRefs.first else {
+            return headerProcessingResult
+        }
+
+        switch headerRef.status {
+        case .header: try await acceptBlock(block, ref: headerRef, isRequested: isRequested, locator: locator)
+        case .merkle: break
+        case .active, .stale: return headerProcessingResult
+        case .invalid: throw .invalidBlockAlreadyExists
+        }
+
+        guard currentlyValidating == nil else { return headerProcessingResult }
+        validationTask = Task {
+            try await validateBlocks()
+        }
+        if immediate {
+            do {
+                try await validationTask?.value
+            } catch {
+                throw error as! Error // TODO: Remove once `Swift.Task` supports typed throws
+            }
+        }
+        return headerProcessingResult
+    }
+
+    /// Processes a block complete with transactions.
+    ///
+    /// If it is the first time we see this block, its header will be processed first.
+    /// If the block builds on the acvite chain tip, it will be connected thus validating its transactions.
+    /// Otherwise the index will be updated to reflect that the merkle root has been verified.
+    private func acceptBlock(_ block: Block, ref blockRef: BlockRef, isRequested: Bool, locator: BlockStorageLocator? = nil) async throws(Error) {
+        logger.debug("Processing block \(block.idHex)")
+
+        // Check all requested blocks that we do not already have for validity and save them to disk. Skip processing of unrequested blocks as an anti-DoS measure, unless the blocks have more work than the active chain tip, and aren't too far ahead of it, so are likely to be attached soon.
+        guard blockRef.status == .header else {
+            logger.warning("Block \(block.idHex) already exists with status \(blockRef.status)")
+            // throw .blockAlreadyExists
+            return
+        }
+
+        if !isRequested {  // If we didn't ask for it:
+            if block.txs.count != 0 {
+                // This is a previously-processed block that was pruned
+                logger.warning("Skipping block \(block.idHex): previously-processed block that was pruned")
+                // TODO: For pruning keep transaction count on index
+                return
+            }
+            let hasMoreOrSameWork = blockRef.chainwork >= activeTip.chainwork
+
+            // Blocks tha pruning, because pruning will not delete block files that contain any blocks which are too close in height to the tip.  Apply this test regardless of whether pruning is enabled; it should generally be safe to not process unrequested blocks.
+            let isTooFarAhead = blockRef.height > activeTip.height + minBlocksToKeep
+            if !hasMoreOrSameWork {
+                // Don't process less-work chains
+                logger.warning("Skipping block \(block.idHex): don't process less-work chains")
+                return
+            }
+            if isTooFarAhead {
+                // Block height is too high
+                logger.warning("Skipping block \(block.idHex): Block height is too high")
+                return
+            }
+
+            // Protect against DoS attacks from low-work chains.
+            // If our tip is behind, a peer could try to send us low-work blocks on a fake chain that we would never request; don't process these.
+            if blockRef.chainwork < params.minChainwork {
+                throw .lowWorkChain
+            }
+        }
+
+        logger.debug("Processing block txs \(block.idHex)")
+
+        let prev = await blockIndex.get(blockRef.header.previous)!
+        try await checkBlock(block, previousRef: prev)
+
+        do {
+            try await contextualCheckBlock(block, ref: blockRef, previous: activeTip)
+        } catch {
+            logger.error("Issue while contextually checking block: \(error)")
+            throw .invalidTransactionInBlock(error)
+        }
+
+        logger.debug("Block \(block.idHex) merkle status validated")
+
+        // Store block
+
+        let updatedRef: BlockRef
+        do {
+            let locator = if let locator {
+                locator
+            } else {
+                try await blockStorage.store(block)
+            }
+            updatedRef = await blockIndex.updateHeader(blockRef, locator: locator)
+            if updatedRef.header.id == bestHeader.header.id {
+                bestHeader = updatedRef
+            }
+        } catch {
+            logger.error("Could not save block to disk")
+            throw .blockFileIssue
+        }
+        logger.debug("Block \(block.idHex) saved to disk without undo data")
+
+        // Notify other nodes of new validation status
+        Task {
+            await withDiscardingTaskGroup {
+                for channel in blockChannels {
+                    $0.addTask {
+                        await channel.send((block, updatedRef.status, updatedRef.height))
+                    }
+                }
+            }
+        }
     }
 
     /// Context-independent validity checks.
     ///
-    /// Analog to Bitcoin Core's `checkBlock()`
+    /// Analog to Bitcoin Core's `checkBlock()`. Called from both `acceptBlock()` and `connectBlock()`.
     private func checkBlock(_ block: Block, previousRef: BlockRef) async throws(Error) {
 
         // Check that the header is valid (particularly PoW).  This is mostly redundant with the call in AcceptBlockHeader.
@@ -1278,42 +1749,58 @@ public actor BlockchainService: Sendable {
         }
     }
 
-    /// Check transaction inputs.
+    /// Contextual block checks.
     ///
-    /// Called from `connectBlock()`.
-    private func checkTransactionInputs(_ block: Block) async throws(Error) {
+    /// This function is called when accepting the block but while connecting the block.
+    ///
+    /// Analog to Bitcoin Core's `ContextualCheckBlock()`.
+    private func contextualCheckBlock(_ block: Block, ref: BlockRef, previous: BlockRef) async throws(TransactionValidationError) {
 
-        var tmpExclude = [Outpoint]()
-        var tmpCoins = [Outpoint: UnspentOutput]()
+        // Enforce BIP113 (Median Time Past)
+        let enforceLocktimeMedianTimePast = ref.height >= params.csvHeight
+        let lockTimeCutoff = if enforceLocktimeMedianTimePast {
+            Int(await medianTimePast(for: previous).timeIntervalSince1970)
+        } else {
+            Int(ref.header.time.timeIntervalSince1970)
+        }
+
         for tx in block.txs {
-            guard !tx.isCoinbase else {
-                continue
+            // Check that all transactions are finalized
+            guard tx.isFinal(blockHeight: ref.height, blockTime: lockTimeCutoff) else {
+                logger.error("Tx not final: \(tx.idHex)")
+                throw .nonFinalTransaction
             }
+        }
 
-            var coins = [UnspentOutput]()
-            for txIn in tx.ins {
-                guard let coin = try! await coinIndex.get(txIn.outpoint) ?? tmpCoins[txIn.outpoint], !tmpExclude.contains(txIn.outpoint) else {
-                    logger.warning("Missing UTXO in tx \(tx.idHex)")
-                    throw .missingInput
-                }
-                coins.append(coin)
+        // Enforce rule that the coinbase starts with serialized block height
+        if ref.height >= params.heightInCoinbaseHeight {
+            let expect = Script([.encodeMinimally(ref.height)])
+            guard block.txs[0].ins[0].script.data.starts(with: expect.data) else {
+                // block height mismatch in coinbase
+                throw .badHeightInCoinbase
             }
+        }
 
+        // Validation for witness commitments.
+        // * We compute the witness hash (which is the hash including witnesses) of all the block's transactions, except the coinbase (where 0x0000....0000 is used instead).
+        // * The coinbase scriptWitness is a stack of a single 32-byte vector, containing a witness reserved value (unconstrained).
+        // * We build a merkle tree with all those witness hashes as leaves (similar to the hashMerkleRoot in the block header).
+        // * There must be at least one output whose scriptPubKey is a single 36-byte push, the first 4 bytes of which are  {0xaa, 0x21, 0xa9, 0xed}, and the following 32 bytes are SHA256^2(witness root, witness reserved value). In case there are multiple, the last one is used.
+        try checkWitnessMalleation(block, expectWitnessCommitment: ref.height >= params.segwitHeight)
 
-            // Remove coins
-            tmpExclude += tx.ins.map(\.outpoint)
-            // Add coins
-            let txid = tx.id
-            for (i, out) in tx.outs.enumerated() {
-                tmpCoins[.init(tx: txid, out: i)] = .init(out, isCoinbase: tx.isCoinbase)
-            }
+        // After the coinbase witness reserved value and commitment are verified, we can check if the block weight passes (before we've checked the coinbase witness, it would be possible for the weight to be too large by filling up the coinbase witness, which doesn't change the block hash, so we couldn't mark the block as permanently failed).
+        guard block.weight <= Block.maxWeight else {
+            // weight limit failed
+            throw .badBlockWeight
         }
     }
 
     /// CheckWitnessMalleation performs checks for block malleation with regard to its witnesses.
     ///
     /// > Note: If the witness commitment is expected (i.e. `expect_witness_commitment = true`), then the block is required to have at least one transaction and the first transaction needs to have at least one input.
-    private func checkWitnessMalleation(_ block: Block, expectWitnessCommitment: Bool) throws(Error) {
+    ///
+    /// Analog to `CheckWitnessMalleation()` in Bitcoin Core.
+    private func checkWitnessMalleation(_ block: Block, expectWitnessCommitment: Bool) throws(TransactionValidationError) {
         // Block must have at least one transaction and the first transaction must have at least one input.
         guard let coinbase = block.txs.first, !coinbase.ins.isEmpty else {
             preconditionFailure()
@@ -1364,166 +1851,12 @@ public actor BlockchainService: Sendable {
         }
         return nil
     }
+}
 
-    /// Contextual block checks.
-    ///
-    /// This function is called when accepting the block but while connecting the block.
-    ///
-    /// Analog to Bitcoin Core's `ContextualCheckBlock()`.
-    private func contextualCheckBlock(_ block: Block, ref: BlockRef, previous: BlockRef) async throws(TransactionValidationError) {
+// MARK: - Connect block (consensus)
 
-        // Enforce BIP113 (Median Time Past)
-        let enforceLocktimeMedianTimePast = ref.height >= params.csvHeight
-        let lockTimeCutoff = if enforceLocktimeMedianTimePast {
-            Int(await medianTimePast(for: previous).timeIntervalSince1970)
-        } else {
-            Int(ref.header.time.timeIntervalSince1970)
-        }
-
-        for tx in block.txs {
-            // Check that all transactions are finalized
-            guard tx.isFinal(blockHeight: ref.height, blockTime: lockTimeCutoff) else {
-                logger.error("Tx not final: \(tx.idHex)")
-                throw .nonFinalTransaction
-            }
-        }
-
-        // Enforce rule that the coinbase starts with serialized block height
-        if ref.height >= params.heightInCoinbaseHeight {
-            let expect = Script([.encodeMinimally(ref.height)])
-            guard block.txs[0].ins[0].script.data.starts(with: expect.data) else {
-                // block height mismatch in coinbase
-                throw .badHeightInCoinbase
-            }
-        }
-
-        // After the coinbase witness reserved value and commitment are verified, we can check if the block weight passes (before we've checked the coinbase witness, it would be possible for the weight to be too large by filling up the coinbase witness, which doesn't change the block hash, so we couldn't mark the block as permanently failed).
-        guard block.weight <= Block.maxWeight else {
-            // weight limit failed
-            throw .badBlockWeight
-        }
-    }
-
-    private func scriptChecks(_ tx: Transaction, prevouts: [TransactionOutput], config: ScriptConfig) async throws(TransactionValidationError) {
-        precondition(!tx.isCoinbase)
-
-        if !tx.verifyScripts(prevouts: prevouts, config: config) {
-            logger.error("Failed script validation")
-            throw .scriptError
-        }
-    }
-
-    private func policyScriptChecks(_ tx: Transaction, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
-        try await scriptChecks(tx, prevouts: prevouts, config: .standard)
-    }
-
-    private func consensusScriptChecks(_ tx: Transaction, prevouts: [TransactionOutput]) async throws(TransactionValidationError) {
-        try await scriptChecks(tx, prevouts: prevouts, config: .mandatory)
-    }
-
-    /// Checks if a mempool transaction still has all it's inputs available.
-    private func inputsAvailable(_ tx: Transaction, exclude: [Outpoint], auxCoins: [Outpoint : UnspentOutput]) async -> Bool {
-        precondition(!tx.isCoinbase)
-        for input in tx.ins {
-            let outpoint = input.outpoint
-            // are the actual inputs available?
-            guard let _ = try! await coinIndex.get(outpoint) ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
-                return false
-            }
-        }
-        return true
-    }
-
-    /// Processes a block complete with transactions.
-    ///
-    /// If it is the first time we see this block, its header will be processed first.
-    /// If the block builds on the acvite chain tip, it will be connected thus validating its transactions.
-    /// Otherwise the index will be updated to reflect that the merkle root has been verified.
-    private func acceptBlock(_ block: Block, ref blockRef: BlockRef, isRequested: Bool, locator: BlockStorageLocator? = nil) async throws(Error) {
-        logger.debug("Processing block \(block.idHex)")
-
-        // Check all requested blocks that we do not already have for validity and save them to disk. Skip processing of unrequested blocks as an anti-DoS measure, unless the blocks have more work than the active chain tip, and aren't too far ahead of it, so are likely to be attached soon.
-        guard blockRef.status == .header else {
-            logger.warning("Block \(block.idHex) already exists with status \(blockRef.status)")
-            // throw .blockAlreadyExists
-            return
-        }
-
-        if !isRequested {  // If we didn't ask for it:
-            if block.txs.count != 0 {
-                // This is a previously-processed block that was pruned
-                logger.warning("Skipping block \(block.idHex): previously-processed block that was pruned")
-                // TODO: For pruning keep transaction count on index
-                return
-            }
-            let hasMoreOrSameWork = blockRef.chainwork >= activeTip.chainwork
-
-            // Blocks tha pruning, because pruning will not delete block files that contain any blocks which are too close in height to the tip.  Apply this test regardless of whether pruning is enabled; it should generally be safe to not process unrequested blocks.
-            let isTooFarAhead = blockRef.height > activeTip.height + minBlocksToKeep
-            if !hasMoreOrSameWork {
-                // Don't process less-work chains
-                logger.warning("Skipping block \(block.idHex): don't process less-work chains")
-                return
-            }
-            if isTooFarAhead {
-                // Block height is too high
-                logger.warning("Skipping block \(block.idHex): Block height is too high")
-                return
-            }
-
-            // Protect against DoS attacks from low-work chains.
-            // If our tip is behind, a peer could try to send us
-            // low-work blocks on a fake chain that we would never
-            // request; don't process these.
-            if blockRef.chainwork < params.minChainwork {
-                throw .badBlockSigops
-            }
-        }
-
-        logger.debug("Processing block txs \(block.idHex)")
-
-        let prev = await blockIndex.get(blockRef.header.previous)!
-        try await checkBlock(block, previousRef: prev)
-
-        do {
-            try await contextualCheckBlock(block, ref: blockRef, previous: activeTip)
-        } catch {
-            logger.error("Issue while contextually checking block: \(error)")
-            throw .invalidTransactionInBlock(error)
-        }
-
-        logger.debug("Block \(block.idHex) merkle status validated")
-
-        // Store block
-
-        let updatedRef: BlockRef
-        do {
-            let locator = if let locator {
-                locator
-            } else {
-                try await blockStorage.store(block)
-            }
-            updatedRef = await blockIndex.updateHeader(blockRef, locator: locator)
-            if updatedRef.header.id == bestHeader.header.id {
-                bestHeader = updatedRef
-            }
-        } catch {
-            logger.error("Could not save block to disk")
-            throw .blockFileIssue
-        }
-        logger.debug("Block \(block.idHex) saved to disk without undo data")
-
-        // Notify other nodes of new validation status
-        Task {
-            await withDiscardingTaskGroup {
-                for channel in blockChannels {
-                    $0.addTask {
-                        await channel.send((block, updatedRef.status, updatedRef.height))
-                    }
-                }
-            }
-        }
-    }
+/// Generate.
+extension BlockchainService {
 
     private func validateBlocks() async throws(Error) {
         var maybeNext: BlockRef? = await nextBlockToValidate()
@@ -1760,471 +2093,6 @@ public actor BlockchainService: Sendable {
         }
     }
 
-    private func getNextWorkRequired(lastHeader: BlockRef, newBlockTime: Date, params: ConsensusParams) async -> Int {
-        let heightLast = lastHeader.height
-        precondition(heightLast >= 0)
-        let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
-        let proofOfWorkLimit = powLimitTarget.toCompact()
-
-        // Only change once per difficulty adjustment interval
-        if (heightLast + 1) % params.difficultyAdjustmentInterval != 0 {
-            if params.powAllowMinDifficultyBlocks {
-                // Special difficulty rule for testnet:
-                // If the new block's timestamp is more than 2 * 10 minutes then allow mining of a min-difficulty block.
-                if Int(newBlockTime.timeIntervalSince1970) > Int(lastHeader.header.time.timeIntervalSince1970) + params.powTargetSpacing * 2 {
-                    return proofOfWorkLimit
-                } else {
-
-                    // TODO: - Traverse back from last header
-                    ///
-                    /// ```cpp
-                    /// const CBlockIndex* pindex = pindexLast;
-                    /// while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
-                    ///     pindex = pindex->pprev;
-                    /// return pindex->nBits;
-                    /// ```
-
-                    // Return the last non-special-min-difficulty-rules-block
-                    var height = heightLast
-                    var header = lastHeader
-                    while height > 0 && height % params.difficultyAdjustmentInterval != 0 && header.header.target == proofOfWorkLimit {
-                        height -= 1
-                        header = await blockIndex.get(at: height)
-                    }
-                    return header.header.target
-                }
-            }
-            return lastHeader.header.target
-        }
-
-        // Go back by what we want to be 14 days worth of blocks
-        let heightFirst = heightLast - (params.difficultyAdjustmentInterval - 1)
-        precondition(heightFirst >= 0)
-        let firstHeader = await blockIndex.ancestor(of: lastHeader, at: heightFirst)
-        return await calculateNextWorkRequired(lastHeader: lastHeader, firstBlockTime: firstHeader.header.time, params: params)
-    }
-
-    private func calculateNextWorkRequired(lastHeader: BlockRef, firstBlockTime: Date, params: ConsensusParams) async -> Int {
-        if params.powNoRetargeting {
-            return lastHeader.header.target
-        }
-
-        // Limit adjustment step
-        var actualTimespan = Int(lastHeader.header.time.timeIntervalSince1970) - Int(firstBlockTime.timeIntervalSince1970)
-        if actualTimespan < params.powTargetTimespan / 4 {
-            actualTimespan = params.powTargetTimespan / 4
-        }
-        if actualTimespan > params.powTargetTimespan * 4 {
-            actualTimespan = params.powTargetTimespan * 4
-        }
-
-        // Retarget
-        let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
-
-        var new: DifficultyTarget
-        if params.preventBlockStorms {
-
-            // TODO: - Use `BlockIndex.ancestor(of:at:)` instead of `get(at:)`
-            ///
-            /// ```cpp
-            /// int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval()-1);
-            /// const CBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
-            /// bnNew.SetCompact(pindexFirst->nBits);
-            /// ```
-
-            // Here we use the first block of the difficulty period. This way the real difficulty is always preserved in the first block as it is not allowed to use the min-difficulty exception.
-            let heightFirst = lastHeader.height - (params.difficultyAdjustmentInterval - 1)
-            let first = await blockIndex.get(at: heightFirst)
-            new = DifficultyTarget(compact: first.header.target)
-        } else {
-            new = DifficultyTarget(compact: lastHeader.header.target)
-        }
-        precondition(!new.isZero)
-        new *= (UInt32(actualTimespan))
-        new /= DifficultyTarget(UInt64(params.powTargetTimespan))
-
-        if new > powLimitTarget { new = powLimitTarget }
-
-        return new.toCompact()
-    }
-
-    private func getBlockSubsidy(_ height: Int) -> Amount {
-        let halvings = height / params.subsidyHalvingInterval
-        // Force block reward to zero when right shift is undefined.
-        if halvings >= 64 {
-            return 0
-        }
-
-        var subsidy = params.blockSubsidy
-        // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
-        subsidy >>= halvings
-        return subsidy
-    }
-
-    /// Median time past. The median of the last 11 blocks.
-    ///
-    /// BIP113
-    private func medianTimePast(for header: BlockRef) async -> Date {
-        let blockRefs = await blockIndex.get(from: header, count: 11)
-        let median = blockRefs.map(\.header.time).sorted()
-        precondition(median.startIndex == 0)
-        return median[median.count / 2]
-    }
-
-    /// Verification progress of the best block known so far.
-    ///
-    /// This function could be adapted to return the verification progress for any arbitrary block.
-    private func guessVerificationProgress(_ block: BlockRef) -> Double {
-
-        let data = params.chainData
-
-        if block.chainTxCount == -1 {
-            logger.debug("Block \(block.header.idHex) has unset m_chain_tx_count. Unable to estimate verification progress.")
-            return 0
-        }
-
-        let now = nowSeconds()
-
-        let blockTime = if abs(now - block.header.time.timeIntervalSince1970) <= 2 * 60 * 60 && bestHeader.height >= block.height {
-            // When the header is known to be recent, switch to a height-based approach. This ensures the returned value is quantized when close to "1.0", because some users expect it to be. This also  avoids relying too much on the exact miner-set timestamp, which may be off.
-            now - Double(bestHeader.height - block.height) * Double(params.powTargetSpacing)
-        } else {
-            block.header.time.timeIntervalSince1970
-        }
-
-        let chainDataTime = TimeInterval(data.time)
-
-        let txTotal = if block.chainTxCount <= data.txCount {
-            Double(data.txCount) + (now - chainDataTime) * data.txRate
-        } else {
-            Double(block.chainTxCount)  + (now - blockTime) * data.txRate
-        }
-        return min(Double(block.chainTxCount) / txTotal, 1.0)
-    }
-
-    /// Whether we are in Initial Block Download (IBD) mode.
-    ///
-    /// Note that though this function is non-mutating, we may end up modifying `finishedIDB`, which is a performance-related implementation detail.
-    ///
-    /// This function is similar to `ChainstateManager::IsInitialBlockDownload()` in Bitcoin Core (`validation.cpp`).
-    private func checkInitialBlockDownload() -> Bool {
-
-        // Optimization: pre-test latch before taking the lock.
-        if finishedIDB.load(ordering: .relaxed) {
-            return false
-        }
-
-        // Currently this function is never called before the blockchain service has started which includes the initialization of the block storage. The process could become more async in the future so leaving the below line commented out for now.
-        // if await blockStorage.status == .starting { return true }
-
-        if params.minChainwork > activeTip.chainwork {
-            return true
-        }
-
-        let maxTipAge = TimeInterval(24 * 60 * 60) // 24 hours
-        let maxTipTime = Date(timeIntervalSince1970: nowSeconds() - maxTipAge)
-        if (activeTip.header.time < maxTipTime ) {
-            return true
-        }
-
-        logger.info("Leaving InitialBlockDownload (latching to false)")
-        finishedIDB.store(true, ordering: .relaxed)
-        return false
-    }
-
-    /// A helper which calculates heights of inputs of a given transaction.
-    ///
-    /// Called from `connectBlock()` and `calculateLockPointsAtTip()`.
-    ///
-    /// - parameter tip The current chain tip. If an input belongs to a mempool
-    ///                   transaction, we assume it will be confirmed in the next block.
-    /// - parameter tx The transaction being evaluated.
-    ///
-    /// - returns A vector of input heights or nil, in case of an error.
-    private func calculatePrevHeights(_ tx: Transaction, tip: BlockRef, excludeCoins: [Outpoint], auxCoins: [Outpoint : UnspentOutput]) async -> [Int] {
-        var prevHeights = [Int]() // tx.ins.count
-        for txIn in tx.ins {
-            // TODO: Have the coins index return transaction's inputs' previous coins/heights all at once (when coins not from the mempool coins array)
-            guard let coin = try! await coinIndex.get(txIn.outpoint) ?? auxCoins[txIn.outpoint], !excludeCoins.contains(txIn.outpoint) else {
-                preconditionFailure() // Missing input in transaction
-            }
-            if coin.isMempool {
-                // Assume all mempool transaction confirm in the next block
-                prevHeights.append(tip.height + 1)
-            } else {
-                prevHeights.append(coin.height)
-            }
-        }
-        return prevHeights
-    }
-
-    /// Called from `mempoolAcceptPreChecks()`
-    private func calculateLockPointsAtTip(_ tx: Transaction, tip: BlockRef) async -> LockPoints {
-
-        var prevHeights = await calculatePrevHeights(tx, tip: tip, excludeCoins: mempoolExclude, auxCoins: mempoolCoins)
-
-        /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
-
-        // When SequenceLocks() is called within ConnectBlock(), the height
-        // of the block *being* evaluated is what is used.
-        // Thus if we want to know if a transaction can be part of the
-        // *next* block, we need to use one more than active_chainstate.m_chain.Height()
-        let (minHeight, minTime) = await calculateSequenceLocks(tx, block: nextTip, verifyLocktimeSequence: Transaction.Input.standardLocktimeVerifyOption /* STANDARD_LOCKTIME_VERIFY_FLAGS */, previousHeights: &prevHeights)
-
-        // Also store the hash of the block with the highest height of all the blocks which have sequence locked prevouts.
-        // This hash needs to still be on the chain for these LockPoint calculations to be valid
-        // Note: It is impossible to correctly calculate a maxInputBlock if any of the sequence locked inputs depend on unconfirmed txs, except in the special case where the relative lock time/height is 0, which is equivalent to no sequence lock. Since we assume input height of tip+1 for mempool txs and test the resulting min_height and min_time from CalculateSequenceLocks against tip+1.
-        var maxInputHeight = 0
-        for height in prevHeights {
-            // Can ignore mempool inputs since we'll fail if they had non-zero locks
-            if height != nextTip.height {
-                maxInputHeight = max(maxInputHeight, height)
-            }
-        }
-
-        // tip->GetAncestor(max_input_height) should never return a nullptr because max_input_height is always less than the tip height. It would, however, be a bad bug to continue execution, since a LockPoints object with the maxInputBlock member set to nullptr signifies no relative lock time.
-        let ancestor = await blockIndex.ancestor(of: tip, at: maxInputHeight)
-        return (minHeight, minTime, ancestor)
-    }
-
-    /// This function is equivalent to `CheckFinalTxAtTip()` in Bitcoin Core (`validation.h`) which is itself called by `MemPoolAccept::PreChecks()`
-    ///
-    /// BIP113
-    private func checkFinalTxAtTip(_ tx: Transaction, activeChainTip: BlockRef) async -> Bool {
-
-        // CheckFinalTxAtTip() uses active_chain_tip.Height() + 1 to evaluate nLockTime because when IsFinalTx() is called within AcceptBlock(), the height of the block *being* evaluated is what is used. Thus if we want to know if a transaction can be part of the *next* block, we need to call IsFinalTx() with one more than active_chain_tip.Height().
-        let blockHeight = activeChainTip.height + 1
-
-        // BIP113 requires that time-locked transactions have nLockTime set to less than the median time of the previous block they're contained in.
-        // When the next block is created its previous block will be the current chain tip, so we use that to calculate the median time passed to IsFinalTx().
-        let blockTimeDate = await medianTimePast(for: activeChainTip)
-        let blockTime = Int(blockTimeDate.timeIntervalSince1970)
-
-        return tx.isFinal(blockHeight: blockHeight, blockTime: blockTime)
-    }
-
-    /// Run the policy checks on a given transaction, excluding any script checks.
-    /// Looks up inputs, calculates feerate, considers replacement, evaluates package limits, etc. As this function can be invoked for "free" by a peer, only tests that are fast should be done here (to avoid CPU DoS).
-    ///
-    /// Analog to Bitcoin Core's `MemPoolAccept::PreChecks()`.
-    private func mempoolAcceptPreChecks(_ tx: Transaction, requireStandard: Bool) async throws(TransactionValidationError) -> [TransactionOutput] {
-
-        do {
-            try tx.check()
-        } catch {
-            logger.warning("Error checking transaction: \(error)")
-            throw .transactionCheckError(error)
-        }
-
-        // Coinbase is only valid in a block, not as a loose transaction
-        guard !tx.isCoinbase else {
-            throw .coinbaseTransaction
-        }
-
-        // Rather not work on nonstandard transactions (unless -testnet/-regtest)
-        if requireStandard {
-            // The following are overridable runtime options in Bitcoin Core
-            let maxDatacarrierBytes = Script.defaultAcceptDatacarrier ? Script.maxOpReturnRelay : 0
-            let permitBareMultisig = Script.defaultPermitBareMultisig
-            let dustRelayFeerate = Transaction.dustRelayFee
-            do {
-                try tx.isStandard(maxDatacarrierBytes: maxDatacarrierBytes, permitBareMultisig: permitBareMultisig, dustRelayFeerate: dustRelayFeerate)
-            } catch {
-                logger.warning("Non-standard transaction: \(error)")
-                throw .nonStandardTransaction(error)
-            }
-        }
-
-        // Transactions smaller than 65 non-witness bytes are not relayed to mitigate CVE-2017-12842.
-        guard tx.dataSize(encoding: .noWitness) >= Transaction.minStandardNonWitnessSize else {
-            throw .smallTransactionSize
-        }
-
-        // Only accept nLockTime-using transactions that can be mined in the next
-        // block; we don't want our mempool filled up with transactions that can't
-        // be mined yet.
-        guard await checkFinalTxAtTip(tx, activeChainTip: activeTip) else {
-            logger.error("Invalid transaction \(tx.idHex): Premature spend, non-final")
-            throw .nonFinalTransaction
-        }
-
-        if mempool.map(\.witnessID).contains(tx.witnessID) {
-            // Exact transaction already exists in the mempool.
-            throw .transactionAlreadyInMempool
-        } else if mempool.map(\.id).contains(tx.id) {
-            // Transaction with the same non-witness data but different witness (same txid, different wtxid) already exists in the mempool.
-            throw .transactionSameNonWitnessDataInMempool
-        }
-
-        // do all inputs exist?
-        var coins = [UnspentOutput]()
-        for txIn in tx.ins {
-            // TODO: As an optimization, have the coin index return coins all at once (when coins not from the mempool coins array)
-            guard let coin = try! await coinIndex.get(txIn.outpoint) ?? mempoolCoins[txIn.outpoint], !mempoolExclude.contains(txIn.outpoint) else {
-                // Are inputs missing because we already have the tx?
-                for out in tx.outs.indices {
-                    // Optimistically just do efficient check of cache for outputs
-                    guard let _ = try! await coinIndex.get(Outpoint(tx: tx.id, out: out)) else {
-                        throw .transactionAlreadyKnown
-                    }
-                }
-                // Otherwise assume this might be an orphan tx for which we just haven't seen parents yet
-                throw .inputsMissingOrSpent
-            }
-            coins.append(coin)
-        }
-        let prevouts = coins.map(\.out) // To return
-
-        // Only accept BIP68 sequence locked transactions that can be mined in the next  block; we don't want our mempool filled up with transactions that can't be mined yet.
-        // Pass in m_view which has all of the relevant inputs cached. Note that, since m_view's backend was removed, it no longer pulls coins from the mempool.
-        let lockPoints = await calculateLockPointsAtTip(tx, tip: activeTip)
-        do {
-            try await checkSequenceLocksAtTip(activeTip, lockPoints: lockPoints)
-        } catch {
-            logger.error("Invalid transaction \(tx.idHex): Premature spend, BIP68 non-final")
-            throw .nonFinalTransaction
-        }
-
-        // The mempool holds txs for the next block, so pass height+1 to CheckTxInputs
-        do {
-            // TODO: We need to do something with the fees returned (look into
-            _ = try await tx.checkInputs(spendHeight: activeTip.height + 1, coinbaseMaturity: params.coinbaseMaturity, coins: coins)
-            // Consensus::CheckTxInputs(tx, state, m_view, m_active_chainstate.m_chain.Height() + 1, ws.m_base_fees))
-        } catch {
-            throw .transactionCheckError(error)
-        }
-
-        if requireStandard {
-            do {
-                try tx.validateInputsStandardness(prevouts: prevouts)
-            } catch {
-                logger.warning("\(error)")
-                throw .nonStandardPrevouts(error)
-            }
-        }
-
-        // Check for non-standard witnesses.
-        if tx.hasWitness, requireStandard {
-            do {
-                try tx.isWitnessStandard(prevouts: prevouts)
-            } catch {
-                logger.warning("\(error)")
-                throw .nonStandardWitness(error)
-            }
-        }
-
-        let sigopsCost = tx.sigopCost(prevouts: prevouts, options: .standard)
-
-        guard sigopsCost <= Transaction.maxStandardSigopsCost else {
-            throw .tooManySigops
-        }
-
-        // No individual transactions are allowed below the mempool min feerate except from disconnected blocks and transactions in a package. Package transactions will be checked using package feerate later.
-        /* if !bypass_limits { */
-        guard checkFeeRate(/*modifiedFees*/) else {
-            throw .feeTooLow
-        }
-
-        return prevouts
-    }
-
-    private func checkFeeRate() -> Bool {
-        // TODO: Tie this to the node service state for minimum feeRate
-        return true
-    }
-
-    /// Checks if the transaction will be final in the next block to be created on top of the new chain.
-    ///
-    /// This function is equivalent to `CheckSequenceLocksAtTip()` in Bitcoin Core (`validation.h`) which is itself called by `MemPoolAccept::PreChecks()`.
-    ///
-    ///  Called by `mempoolAcceptPreChecks()`.
-    ///
-    /// BIP68
-    private func checkSequenceLocksAtTip(_ tip: BlockRef, lockPoints: LockPoints) async throws(Error) {
-        // checkSequenceLocksAtTip() uses chainActive.Height()+1 to evaluate height based locks because when SequenceLocks() is called within ConnectBlock(), the height of the block *being* evaluated is what is used.
-        // Thus if we want to know if a transaction can be part of the *next* block, we need to use one more than chainActive.Height()
-
-        /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
-
-        try await evaluateSequenceLocks(nextBlockPlaceholder, previous: tip, lockPair: (lockPoints.height, lockPoints.time))
-    }
-
-    /// Called by `BlockchainService.connectBlock()`.
-    ///
-    /// BIP68
-    private func sequenceLocks(_ tx: Transaction, block: BlockRef, previous: BlockRef, verifyLocktimeSequence: Bool, previousHeights: inout [Int]) async throws(Error) {
-        try await evaluateSequenceLocks(block, previous: previous, lockPair: await calculateSequenceLocks(tx, block: block, verifyLocktimeSequence: verifyLocktimeSequence, previousHeights: &previousHeights))
-    }
-
-    /// Calculates the block height and previous block's median time past at which the transaction will be considered final in the context of BIP 68.
-    ///
-    /// Also removes from the vector (sets to 0) of input heights any entries which did not correspond to sequence locked inputs as they do not affect the calculation.
-    ///
-    /// The block reference may be a placeholder reference to a potential new chain tip which will only be used to access ancestors.
-    ///
-    /// Called from `sequenceLocks()`.
-    ///
-    /// BIP68
-    private func calculateSequenceLocks(_ tx: Transaction, block: BlockRef, verifyLocktimeSequence: Bool, previousHeights: inout [Int]) async -> LockPair {
-
-        precondition(previousHeights.count == tx.ins.count);
-
-        precondition(block.height >= 0 && block.header.time >= Date.distantPast)
-        // Warning: `block` may or may not not be a valid reference from our block index. It could also be a placeholder for the next block with only valid height and previous.
-
-        // Will be set to the equivalent height- and time-based nLockTime values that would be necessary to satisfy all relative lock-time constraints given our view of block chain history.
-        // The semantics of nLockTime are the last invalid height/time, so use -1 to have the effect of any height or time being valid.
-        var minHeight = -1;
-        var minTime = -1;
-
-        // tx.nVersion is signed integer so requires cast to unsigned otherwise we would be doing a signed comparison and half the range of nVersion wouldn't support BIP68.
-        let enforceBIP68 = tx.version >= .v2 && verifyLocktimeSequence
-
-        // Do not enforce sequence numbers as a relative lock time unless we have been instructed to
-        guard enforceBIP68 else { return (minHeight, minTime) }
-
-        for (inIndex, input) in tx.ins.enumerated() {
-
-            // Sequence numbers with the most significant bit set are not treated as relative lock-times, nor are they given any consensus-enforced meaning at this point.
-            if input.sequence.isLocktimeDisabled {
-                // The height of this input is not relevant for sequence locks
-                previousHeights[inIndex] = 0
-                continue
-            }
-
-            let coinHeight = previousHeights[inIndex]
-
-            if let locktimeSeconds = input.sequence.locktimeSeconds {
-
-                // NOTE: Subtract 1 to maintain nLockTime semantics
-                // BIP68 relative lock times have the semantics of calculating the first block or time at which the transaction would be valid. When calculating the effective block time or height for the entire transaction, we switch to using the semantics of nLockTime which is the last invalid block time or height.  Thus we subtract 1 from the calculated time or height.
-                let ancestor = await blockIndex.ancestor(of: block, at: max(coinHeight - 1, 0))
-                let coinTimeDate = await medianTimePast(for: ancestor)
-                let coinTime = Int(coinTimeDate.timeIntervalSince1970)
-
-                // Time-based relative lock-times are measured from the smallest allowed timestamp of the block containing the txout being spent, which is the median time past of the block prior.
-                minTime = max(minTime, coinTime + locktimeSeconds - 1)
-            } else if let locktimeBlocks = input.sequence.locktimeBlocks {
-                minHeight = max(minHeight, coinHeight + locktimeBlocks - 1)
-            } else {
-                preconditionFailure() // `input.sequence.isLocktimeDisabled == false`
-            }
-        }
-        return (minHeight, minTime)
-    }
-
-    /// BIP68 - Untested. Called by  `checkSequenceLocksAtTip()` and `sequenceLocks()`.
-    private func evaluateSequenceLocks(_ block: BlockRef, previous: BlockRef, lockPair: LockPair) async throws(Error) {
-        let blockTimeDate = await medianTimePast(for: previous)
-        let blockTime = Int(blockTimeDate.timeIntervalSince1970)
-        if lockPair.height >= block.height || lockPair.time >= blockTime {
-            logger.error("Non final transaction at block height \(block.height) (future lock time). BIP68 non-final transaction")
-            throw .futureLocktime
-        }
-    }
-
     private func blockProofEquivalentTime(to: BlockRef, from: BlockRef, tip: BlockRef) -> Int {
         var r: DifficultyTarget
         let sign: Int
@@ -2253,9 +2121,138 @@ public actor BlockchainService: Sendable {
         return (~target / (target + 1)) + 1
     }
 
-    /// Size of the "block download window": how far ahead of our current height do we fetch?
-    /// Larger windows tolerate larger download speed differences between peer, but increase the potential degree of disordering of blocks on disk (which make reindexing and pruning harder). We'll probably want to make this a per-peer adaptive value at some point.
-    public static let blockDownloadWindow = 1024
+    /// Called by `BlockchainService.connectBlock()`.
+    ///
+    /// BIP68
+    private func sequenceLocks(_ tx: Transaction, block: BlockRef, previous: BlockRef, verifyLocktimeSequence: Bool, previousHeights: inout [Int]) async throws(Error) {
+        try await evaluateSequenceLocks(block, previous: previous, lockPair: await calculateSequenceLocks(tx, block: block, verifyLocktimeSequence: verifyLocktimeSequence, previousHeights: &previousHeights))
+    }
+
+    private func getBlockSubsidy(_ height: Int) -> Amount {
+        let halvings = height / params.subsidyHalvingInterval
+        // Force block reward to zero when right shift is undefined.
+        if halvings >= 64 {
+            return 0
+        }
+
+        var subsidy = params.blockSubsidy
+        // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
+        subsidy >>= halvings
+        return subsidy
+    }
+
+    /// Checks if a mempool transaction still has all it's inputs available.
+    private func inputsAvailable(_ tx: Transaction, exclude: [Outpoint], auxCoins: [Outpoint : UnspentOutput]) async -> Bool {
+        precondition(!tx.isCoinbase)
+        for input in tx.ins {
+            let outpoint = input.outpoint
+            // are the actual inputs available?
+            guard let _ = try! await coinIndex.get(outpoint) ?? auxCoins[outpoint], !exclude.contains(outpoint) else {
+                return false
+            }
+        }
+        return true
+    }
+
+}
+
+// MARK: - Generate block.
+
+/// Generate.
+extension BlockchainService {
+
+    /// Generates a number of new blocks with the coinbase transaction going to the specified script.
+    @discardableResult public func generateToScript(_ script: Script, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = nil) async -> [Block.ID] {
+        var ids = [Block.ID]()
+        for _ in 0 ..< blocks {
+            if let block = await generateTo(script, maxTries: maxTries, blockTime: blockTime ?? .now) {
+                ids.append(block.id)
+            }
+        }
+        return ids
+    }
+
+    /// Generates a number of new blocks with the coinbase transaction going to the specified public key using standard pay-to-public-key-hash output.
+    @discardableResult public func generateTo(_ pubkey: PublicKey, blockTime: Date = .now) async -> Block? {
+        logger.info("Generating blocks with coinbase reward going to public key.")
+        return await generateTo(Script.payToPubkeyHash(pubkey), blockTime: blockTime)
+    }
+
+    /// Generates a block using the mempool transactions and locks the coinbase reward output to the provided public key hash.
+    ///
+    /// This function essentially mines a block in current thread so it has the potential to completely block. Future versions of this method will provide asynchronous control via detached background task.
+    @discardableResult public func generateTo(_ script: Script, initialNonce: Int = 0, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now, tag: String? = nil, txVersion: Transaction.Version? = nil) async -> Block? {
+        logger.info("Generating blocks with coinbase reward going to public key hash.")
+
+        guard isSynchronized else {
+            // Waiting for pending block transactions for known headers
+            preconditionFailure("Chain cannot contain unvalidated blocks.")
+        }
+        let witnessMerkleRoot = calculateWitnessMerkleRoot(mempool, addCoinbaseID: true)
+
+        let mempoolTxs = mempool
+
+        // Calculate fees
+        var totalFees = Amount(0)
+        for tx in mempoolTxs {
+            totalFees += await calculateFees(tx, auxCoins: mempoolCoins)
+        }
+
+        let blockReward = params.blockSubsidy + totalFees
+        let coinbaseTx = Transaction.coinbase(version: txVersion, blockHeight: activeTip.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot, tag: tag)
+
+        let previousBlockHash = activeTip.header.id
+        let txs = [coinbaseTx] + mempoolTxs
+        let merkleRoot = calculateMerkleRoot(txs)
+
+        let target = await getNextWorkRequired(lastHeader: activeTip, newBlockTime: blockTime, params: params)
+
+        var nonce = initialNonce
+        var tries = maxTries
+        var block: Block
+        repeat {
+            block = .init(
+                previous: previousBlockHash,
+                merkleRoot: merkleRoot,
+                time: blockTime,
+                target: target,
+                nonce: nonce
+            )
+            nonce += 1
+            tries -= 1
+        } while tries > 0 && (try! DifficultyTarget(block.id) > DifficultyTarget(compact: target))
+
+        guard try! DifficultyTarget(block.id) <= DifficultyTarget(compact: target) else {
+            return nil
+        }
+
+        block.txs = txs
+
+        // Process the header and block normally
+        try! await processBlock(block, isRequested: true, immediate: true)
+
+        // Reset mempool
+        mempool = []
+        mempoolExclude = []
+        mempoolCoins = [:]
+
+        return block
+    }
+
+    private func calculateFees(_ tx: Transaction, auxCoins: [Outpoint : UnspentOutput]) async -> Amount {
+        // Used by `generateTo()`
+        precondition(!tx.isCoinbase)
+        var valueIn = Amount(0)
+        for input in tx.ins {
+            let outpoint = input.outpoint
+
+            guard let coin = try! await coinIndex.get(outpoint) ?? auxCoins[outpoint] else {
+                preconditionFailure()
+            }
+            valueIn += coin.out.value
+        }
+        return valueIn - tx.valueOut
+    }
 }
 
 public struct HeaderProcessingResult: Sendable {

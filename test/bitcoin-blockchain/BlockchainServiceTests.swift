@@ -186,7 +186,8 @@ struct BlockchainServiceTests {
             genesisBlockTime: 1296688602,
             genesisBlockNonce: 2,
             genesisBlockTarget: 0x207fffff,
-            assumeValid: nil
+            assumeValid: nil,
+            segwitHeight: 0
         )
         let blockchain = try await BlockchainService(params: consensusParams)
         let genesisBlock = await blockchain.genesisBlock
