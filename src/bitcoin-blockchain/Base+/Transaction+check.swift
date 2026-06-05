@@ -1,6 +1,7 @@
 import Foundation
 import BitcoinCrypto
 import BitcoinBase
+
 /// Transaction checking.
 extension Transaction {
 

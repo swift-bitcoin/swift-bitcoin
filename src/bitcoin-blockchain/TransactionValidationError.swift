@@ -32,5 +32,5 @@ public enum TransactionValidationError: Error {
     // Contextual Block Check
     case badHeightInCoinbase, badBlockWeight
 
-
+    case badWitnessNonceSize, badWitnessMerkleMatch, unexpectedWitness
 }
