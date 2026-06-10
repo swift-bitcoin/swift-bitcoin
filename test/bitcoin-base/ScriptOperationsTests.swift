@@ -102,7 +102,7 @@ struct ScriptOperationsTests {
         ([1, 2, 3, 4, 5, 6], [.twoRot], [3, 4, 5, 6, 1, 2]),
         // twoSwap
         ([1, 2, 3, 4], [.twoSwap], [3, 4, 1, 2]),
-    ])
+    ] as [([Int], [Script.Operation], [Int])])
     func stackOps(initialStack: [Int], ops: [Script.Operation], finalStack: [Int]) throws {
         var stack = [Data].withConstants(initialStack)
         try Script(ops).run(&stack)
@@ -189,7 +189,7 @@ struct ScriptOperationsTests {
         ([0, 1], [.equal, .constant(1)], [0, 1]),
         ([-1, 1], [.equal, .constant(1)], [0, 1]),
         ([1, -1], [.equal, .constant(1)], [0, 1]),
-    ])
+    ] as [([Int], [Script.Operation], [Int])])
     func arithmeticOps(initialStack: [Int], ops: [Script.Operation], finalStack: [Int]) throws {
         var stack = [Data].withConstants(initialStack)
         try Script(ops).run(&stack)

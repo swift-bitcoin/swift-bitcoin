@@ -57,6 +57,13 @@ import BinaryParsing
 extension TransactionOutput {
     public init(parsing input: inout ParserSpan) throws {
         value = try Int(parsing: &input, storedAsLittleEndian: UInt64.self)
-        script = .init([])
+        script = try .init(parsing: &input)
+    }
+}
+
+extension TransactionOutput {
+    public func encode(to output: inout OutputRawSpan) throws {
+        output.append(UInt64(value).littleEndian, as: UInt64.self)
+        try script.encode(to: &output)
     }
 }
