@@ -377,10 +377,18 @@ extension Script {
             ops.append(op)
         }
         self.ops = ops
-        //unparsable = try decoder.decode()
         unparsable = .init([UInt8](parsingRemainingBytes: &input))
 
         // decoder.resetLimit()
         try input.seek(toAbsoluteOffset: range.upperBound)
+    }
+}
+
+extension Script {
+    public func encode(to output: inout OutputRawSpan) throws {
+        for op in ops {
+            try op.encode(to: &output)
+        }
+        output.append(contentsOf: unparsable)
     }
 }
