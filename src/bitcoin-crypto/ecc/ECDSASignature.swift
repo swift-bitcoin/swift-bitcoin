@@ -323,10 +323,17 @@ private func verifyECDSA(sigData: Data, hash: Data, pubkey: PublicKey) -> Bool {
 
     var sig = secp256k1_ecdsa_signature()
 
-
+// Swift Static Linux SDK crashes with `sigData.span`. See #552
+#if canImport(Musl)
+    let sigBytes = [UInt8](sigData)
+    guard ECCHelper.ecdsa_signature_parse_der_lax(&sig, sigBytes, sigBytes.count) != 0 else {
+        preconditionFailure()
+    }
+#else
     guard unsafe ecdsa_signature_parse_der_lax(&sig, sigData.span) != 0 else {
         preconditionFailure()
     }
+#endif
 
     var sigNormalized = secp256k1_ecdsa_signature()
     secp256k1_ecdsa_signature_normalize(secp256k1_context_static, &sigNormalized, &sig)
@@ -364,9 +371,17 @@ private func internalIsLowS(compactSignatureData: Data) -> Bool {
 private func internalIsLowS(laxSignatureData: Data) -> Bool {
     var sig = secp256k1_ecdsa_signature()
 
+#if canImport(Musl)
+    let sigBytes = [UInt8](laxSignatureData)
+    guard ecdsa_signature_parse_der_lax(&sig, sigBytes, sigBytes.count) != 0 else {
+        preconditionFailure()
+    }
+#else
     guard unsafe ecdsa_signature_parse_der_lax(&sig, laxSignatureData.span) != 0 else {
         preconditionFailure()
     }
+#endif
+
     let normalizationOccurred = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, nil, &sig)
     return normalizationOccurred == 0
 }
