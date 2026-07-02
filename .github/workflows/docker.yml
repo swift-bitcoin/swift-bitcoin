@@ -65,6 +65,7 @@ jobs:
         with:
           files: |
             ./tools/docker-bake.hcl
+            ${{ steps.meta.outputs.bake-file }}
           targets: artifacts
 
       - name: Collect binaries
