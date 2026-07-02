@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
     steps:
       -
         name: Checkout
@@ -56,3 +59,50 @@ jobs:
             ./tools/docker-bake.hcl
             ${{ steps.meta.outputs.bake-file }}
           push: true
+
+      - name: Export build artifacts (both arches)
+        uses: docker/bake-action@v5
+        with:
+          files: |
+            ./tools/docker-bake.hcl
+          targets: artifacts
+
+      - name: Collect binaries
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # From amd64 export
+          cp dist-amd64/opt/swift-bitcoin/.build/swift-linux-musl/release/bcnode dist/bcnode-linux-amd64
+          cp dist-amd64/opt/swift-bitcoin/.build/swift-linux-musl/release/bcutil dist/bcutil-linux-amd64
+          # From arm64 export
+          cp dist-arm64/opt/swift-bitcoin/.build/swift-linux-musl/release/bcnode dist/bcnode-linux-arm64
+          cp dist-arm64/opt/swift-bitcoin/.build/swift-linux-musl/release/bcutil dist/bcutil-linux-arm64
+          chmod +x dist/*
+
+      - name: Append tag to filenames
+        run: |
+          set -euo pipefail
+          for f in dist/*-linux-*; do
+            base=$(basename "$f")
+            mv "$f" "dist/${base}-${TAG}"
+          done
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          shasum -a 256 * > SHA256SUMS.txt
+
+      - name: Create or update GitHub Release (draft)
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelase: true
+          files: |
+            dist/bcnode-linux-amd64-${{ env.TAG }}
+            dist/bcnode-linux-arm64-${{ env.TAG }}
+            dist/bcutil-linux-amd64-${{ env.TAG }}
+            dist/bcutil-linux-arm64-${{ env.TAG }}
+            dist/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
