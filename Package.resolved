@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/grpc/grpc-swift-2.git",
       "state" : {
-        "revision" : "21fe69ab7ce0e87ac089534733c52f037e74a3eb",
-        "version" : "2.4.1"
+        "revision" : "28cdd63ef88583ddc67d7bb179eab46fab465ce9",
+        "version" : "2.4.2"
       }
     },
     {
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/grpc/grpc-swift-nio-transport.git",
       "state" : {
-        "revision" : "f62a09000685b5b86ee383b63e042f286b1a5422",
-        "version" : "2.7.0"
+        "revision" : "2ca31f06658ed288a2560e23ad649acbb3d6b3a3",
+        "version" : "2.9.0"
       }
     },
     {
@@ -78,8 +78,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-async-algorithms",
       "state" : {
-        "revision" : "d0b4a06d0f173a2f3be27d3ea21b3c3aa18db440",
-        "version" : "1.1.4"
+        "revision" : "3da39bbc4e687d4192af7c9cf4eab805745a0b9c",
+        "version" : "1.1.5"
       }
     },
     {
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-certificates.git",
       "state" : {
-        "revision" : "bde8ca32a096825dfce37467137c903418c1893d",
-        "version" : "1.19.1"
+        "revision" : "89fbc3714264cce8db8e4ec51b64e01c3e28c6c5",
+        "version" : "1.19.3"
       }
     },
     {
@@ -267,8 +267,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swift-otel/swift-otel",
       "state" : {
-        "revision" : "f4757f17bc581c4caca6f0677013a2c6643b622d",
-        "version" : "1.2.1"
+        "revision" : "599309ecc03d27f3331bb096c5bdcb4839b3d187",
+        "version" : "1.4.0"
       }
     },
     {
@@ -276,8 +276,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-profile-recorder.git",
       "state" : {
-        "revision" : "6044877164cd8ce249a120563570bc7207d6202a",
-        "version" : "0.3.17"
+        "revision" : "e110ba85da7d43a47b0e964726e84fddcf720192",
+        "version" : "0.3.18"
       }
     },
     {
@@ -285,8 +285,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-protobuf.git",
       "state" : {
-        "revision" : "f6506eaa86ed2e01cb0ae14a75035b7fdbf0918f",
-        "version" : "1.38.0"
+        "revision" : "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
+        "version" : "1.38.1"
       }
     },
     {
@@ -321,8 +321,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-system.git",
       "state" : {
-        "revision" : "669763cfd5806a67e21972d7e5e2d6b80b1ea985",
-        "version" : "1.6.5"
+        "revision" : "7502b711c92a17741fa625d722b0ccbd595d8ed1",
+        "version" : "1.7.2"
       }
     },
     {
