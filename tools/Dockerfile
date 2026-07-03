@@ -9,7 +9,7 @@ WORKDIR /opt/swift-bitcoin
 RUN \
     swift sdk install https://download.swift.org/swift-6.3.2-release/static-sdk/swift-6.3.2-RELEASE/swift-6.3.2-RELEASE_static-linux-0.1.0.artifactbundle.tar.gz --checksum 3fd798bef6f4408f1ea5a6f94ce4d4052830c4326ab85ebc04f983f01b3da407 && \
     if [  $TARGETARCH = arm64 ]; then export ARCH=aarch64; elif [ $TARGETARCH = amd64 ]; then export ARCH=x86_64; else export ARCH=$TARGETARCH; fi && \
-    swift build -c release --swift-sdk $ARCH-swift-linux-musl -Xswiftc -Osize -Xswiftc -lto=thin -Xlinker --strip-all -Xlinker --gc-sections &&
+    swift build -c release --swift-sdk $ARCH-swift-linux-musl -Xswiftc -Osize -Xswiftc -lto=thin -Xlinker --strip-all -Xlinker --gc-sections && \
     mv /opt/swift-bitcoin/.build/$ARCH-swift-linux-musl /opt/swift-bitcoin/.build/swift-linux-musl
     # && \ swift test
 
