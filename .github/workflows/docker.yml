@@ -73,11 +73,11 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           # From amd64 export
-          cp dist-amd64/opt/swift-bitcoin/.build/swift-linux-musl/release/bcnode dist/bcnode-linux-amd64
-          cp dist-amd64/opt/swift-bitcoin/.build/swift-linux-musl/release/bcutil dist/bcutil-linux-amd64
+          cp dist-amd64/out/bcnode dist/bcnode-linux-amd64
+          cp dist-amd64/out/bcutil dist/bcutil-linux-amd64
           # From arm64 export
-          cp dist-arm64/opt/swift-bitcoin/.build/swift-linux-musl/release/bcnode dist/bcnode-linux-arm64
-          cp dist-arm64/opt/swift-bitcoin/.build/swift-linux-musl/release/bcutil dist/bcutil-linux-arm64
+          cp dist-arm64/out/bcnode dist/bcnode-linux-arm64
+          cp dist-arm64/out/bcutil dist/bcutil-linux-arm64
           chmod +x dist/*
 
       - name: Append tag to filenames

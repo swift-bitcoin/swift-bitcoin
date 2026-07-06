@@ -10,15 +10,19 @@ RUN \
     swift sdk install https://download.swift.org/swift-6.3.3-release/static-sdk/swift-6.3.3-RELEASE/swift-6.3.3-RELEASE_static-linux-0.1.0.artifactbundle.tar.gz --checksum 87c3eaf908e67c0e13a84367119e12273cec1d2cd3d81f7d74bb36722d6b607b && \
     if [  $TARGETARCH = arm64 ]; then export ARCH=aarch64; elif [ $TARGETARCH = amd64 ]; then export ARCH=x86_64; else export ARCH=$TARGETARCH; fi && \
     swift build -c release --swift-sdk $ARCH-swift-linux-musl -Xswiftc -Osize -Xlinker --strip-all -Xlinker --gc-sections && \
-    mv /opt/swift-bitcoin/.build/$ARCH-swift-linux-musl /opt/swift-bitcoin/.build/swift-linux-musl
+    mkdir /out && \
+    mv  .build/$ARCH-swift-linux-musl/release/bcnode .build/$ARCH-swift-linux-musl/release/bcutil /out/
     # && \ swift test
 
+FROM scratch AS artifacts
+COPY --from=builder /out /out
+
 FROM scratch AS bcutil
-COPY --from=builder /opt/swift-bitcoin/.build/swift-linux-musl/release/bcutil /usr/local/bin/
+COPY --from=artifacts /out/bcutil /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/bcutil"]
 
 FROM scratch AS bcnode
-COPY --from=builder /opt/swift-bitcoin/.build/swift-linux-musl/release/bcnode /usr/local/bin/
+COPY --from=artifacts /out/bcnode /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/bcnode"]
 
 # Fully optimized build command:
