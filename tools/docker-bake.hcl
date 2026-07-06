@@ -28,7 +28,7 @@ target "bcutil" {
 target "artifacts-amd64" {
   context = "."
   dockerfile = "tools/Dockerfile"
-  target = "builder" # export from the build stage
+  target = "artifacts"
   platforms = ["linux/amd64"]
   output = ["type=local,dest=./dist-amd64"]
 }
@@ -37,7 +37,7 @@ target "artifacts-amd64" {
 target "artifacts-arm64" {
   context = "."
   dockerfile = "tools/Dockerfile"
-  target = "builder" # export from the build stage
+  target = "artifacts"
   platforms = ["linux/arm64"]
   output = ["type=local,dest=./dist-arm64"]
 }
