@@ -265,12 +265,13 @@ public actor BlockchainService: Sendable {
     } }
 
     /// Use ``shutdown()`` to free blockchain resources asynchronously.
-    deinit {
-        // Intentionally left empty
+    isolated deinit {
+        // Intentionally left empty as we wait `deinit async` to be implemented and released as part of Swift evolution.
     }
 
     /// Cancels concurrent tasks and removes all subscriptions to block and transaction updates.
     public func shutdown() async {
+        // TODO: - Move to async deinit when available in Swift.
 
         // Cancel reindex task and wait for it to fishish
         reindexTask?.cancel()

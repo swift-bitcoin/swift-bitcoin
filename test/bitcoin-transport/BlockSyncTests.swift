@@ -26,10 +26,7 @@ struct BlockSyncTests {
 
         let aliceChain = try await BlockchainService(params: params)
         self.aliceChain = aliceChain
-        let alice = NodeService(blockchain: aliceChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
-        Task {
-            await alice.start()
-        }
+        let alice = await NodeService(blockchain: aliceChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
         self.alice = alice
         let peerB = await alice.addPeer(incoming: false)
         self.peerB = peerB
@@ -42,26 +39,26 @@ struct BlockSyncTests {
         await bobChain.generateTo(pubkey)
 
         self.bobChain = bobChain
-        let bob = NodeService(blockchain: bobChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
+        let bob = await NodeService(blockchain: bobChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
         self.bob = bob
         let peerA = await bob.addPeer()
         self.peerA = peerA
         aliceToBob = await bob.channel(for: peerA).makeAsyncIterator()
     }
 
-    func cleanUp() async throws {
+    mutating func cleanUp() async throws {
         if let peerB, let alice {
             await alice.removePeer(peerB)
         }
         if let alice, let aliceChain {
-            await alice.stop()
+            self.alice = nil
             await aliceChain.shutdown()
         }
         if let peerA, let bob {
             await bob.removePeer(peerA)
         }
         if let bob, let bobChain {
-            await bob.stop()
+            self.bob = nil
             await bobChain.shutdown()
         }
     }
@@ -372,7 +369,7 @@ struct BlockSyncTests {
 
     /// Extended handshake.
     @Test("Initial Block Download")
-    func initialBlockDownload() async throws {
+    mutating func initialBlockDownload() async throws {
         try await handshake()
         try await cleanUp()
     }
