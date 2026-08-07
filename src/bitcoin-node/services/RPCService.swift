@@ -102,6 +102,11 @@ actor RPCService: Service {
         self.app = app
     }
 
+    func unsetServerApp() {
+        precondition(self.app != nil)
+        self.app = nil
+    }
+
     private func serviceUp() {
         listening = true
     }

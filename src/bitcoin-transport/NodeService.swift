@@ -11,8 +11,8 @@ public typealias PeerID = Int
 /// Manages connection with state.peers, process incoming messages and sends responses.
 public actor NodeService: Sendable {
 
-    public enum Status: Sendable {
-        case idle, starting, running, stopping, stopped
+    public struct Stats: Sendable {
+        public let peers: Int
     }
 
     public struct PeerSummary: Sendable {
@@ -40,7 +40,7 @@ public actor NodeService: Sendable {
     ///   - version: Protocol version number.
     ///   - services: Supported services.
     ///   - feeFilterRate: An arbitrary fee rate by which to filter transactions.
-    public init(blockchain: BlockchainService, config: NodeParams, logger: Logger = .init(label: "node"), state: NodeState = .initial) {
+    public init(blockchain: BlockchainService, config: NodeParams, logger: Logger = .init(label: "node"), state: NodeState = .initial) async {
         self.blockchain = blockchain
         self.config = config
         self.logger = logger
@@ -48,10 +48,33 @@ public actor NodeService: Sendable {
         for id in state.peers.keys {
             peerOuts[id] = .init()
         }
+
+        // Subscribe to blocks and transactions from the blockchain
+        let blocks = await blockchain.subscribeToBlocks()
+        let txs = await blockchain.subscribeToTransactions()
+        self.blocks = blocks
+        self.txs = txs
+        subscriptionsTask = Task {
+            await startSubscriptions()
+        }
     }
 
-    /// The service instance's status.
-    public private(set) var status = Status.idle
+    private var continuations: [AsyncStream<Stats>.Continuation] = []
+
+    public func statsStream() -> AsyncStream<Stats> {
+        AsyncStream { continuation in
+            continuations.append(continuation)
+            continuation.yield(stats) // Optionally send current value
+            continuation.onTermination = { [weak self] _ in
+                Task { await self?.removeContinuation(continuation) }
+            }
+        }
+    }
+
+    /// The service instance's stats.
+    public var stats: Stats {
+        .init(peers: state.peers.count)
+    }
 
     /// The bitcoin service actor instance backing this node.
     public let blockchain: BlockchainService
@@ -61,7 +84,13 @@ public actor NodeService: Sendable {
 
     package let logger: Logger
 
-    public private(set) var state: NodeState
+    public private(set) var state: NodeState {
+       didSet {
+           for continuation in continuations {
+               continuation.yield(stats)
+           }
+       }
+    }
 
     private lazy var metrics = Metrics()
     private var connectionChannels: [AsyncChannel<PeerID>] = []
@@ -84,10 +113,12 @@ public actor NodeService: Sendable {
     }
 
     /// Subscription to the bitcoin service's blocks channel.
-    private var blocks = AsyncChannel<BlockUpdate>?.none
+    private var blocks: AsyncChannel<BlockUpdate>
 
     /// Subscription to the bitcoin service's transactions channel.
-    private var txs = AsyncChannel<Transaction>?.none
+    private var txs: AsyncChannel<Transaction>
+
+    private var subscriptionsTask = Task<Void, Never>?.none
 
     /// IP address as string.
     private var address = IPv6Address?.none
@@ -115,52 +146,73 @@ public actor NodeService: Sendable {
     // Blocks downloaded and being processed
     private var processingBlocks = Set<Block.ID>()
 
-    public func start() async {
-        status = .starting
-        let blocks = await blockchain.subscribeToBlocks()
-        let txs = await blockchain.subscribeToTransactions()
-        self.blocks = blocks
-        self.txs = txs
+    private func startSubscriptions() async {
         await withDiscardingTaskGroup { group in
             group.addTask {
-                for await (block, status, height) in blocks/*.cancelOnGracefulShutdown()*/ {
+                for await (block, status, height) in await self.blocks/*.cancelOnGracefulShutdown()*/ {
                     await self.handleBlockUpdate(block, status: status, height: height)
                 }
             }
             group.addTask {
-                for await tx in txs/*.cancelOnGracefulShutdown()*/ {
+                for await tx in await self.txs/*.cancelOnGracefulShutdown()*/ {
                     await self.handleTx(tx)
                 }
             }
         }
-        status = .running
     }
 
-    /// Stop this service instance and unsubscribe from blockchain block/transaction updates.
-    public func stop() async {
-        status = .stopping
+    /// Unsubscribe from blockchain block/transaction updates.
+    private func unsubscribeFromBlockchain() async {
+        await withDiscardingTaskGroup { group in
+            group.addTask {
+                await self.blockchain.unsubscribe(self.blocks)
+            }
+            group.addTask {
+                await self.blockchain.unsubscribe(self.txs)
+            }
+        }
+    }
+
+    /// Clears both outgoing and internal subscriptions so that all concurrent tasks complete.
+    public func shutdown() async {
+        // Channels we are subscribed to
+        await unsubscribeFromBlockchain()
+
+        // Our channels others are subscribed to
         for blockChannel in blockChannels {
-            unsubscribe(blockChannel)
+            blockChannel.finish()
         }
         for channel in connectionChannels {
-            unsubscribe(channel)
+            channel.finish()
         }
         for channel in disconnectionChannels {
-            unsubscribe(channel)
+            channel.finish()
         }
-        await withDiscardingTaskGroup { group in
-            if let blocks {
-                group.addTask {
-                    await self.blockchain.unsubscribe(blocks)
-                }
-            }
-            if let txs {
-                group.addTask {
-                    await self.blockchain.unsubscribe(txs)
-                }
-            }
+        for continuation in continuations {
+            continuation.finish()
         }
-        status = .stopped
+        // continuations.removeAll()
+    }
+
+    deinit {
+        // Channels we are subscribed to
+        blocks.finish()
+        txs.finish()
+
+        // Our channels others are subscribed to
+        for blockChannel in blockChannels {
+            blockChannel.finish()
+        }
+        for channel in connectionChannels {
+            channel.finish()
+        }
+        for channel in disconnectionChannels {
+            channel.finish()
+        }
+        for continuation in continuations {
+            continuation.finish()
+        }
+        // continuations.removeAll()
     }
 
     /// Called when the peer-to-peer service stops listening for incoming connections.
@@ -1100,5 +1152,8 @@ public actor NodeService: Sendable {
 
     static let minCompactBlocksVersion = 2
     static let maxCompactBlocksVersion = 2
-}
 
+    private func removeContinuation(_ continuation: AsyncStream<Stats>.Continuation) {
+        continuations.removeAll { $0 == continuation }
+    }
+}

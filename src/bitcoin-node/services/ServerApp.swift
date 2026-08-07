@@ -112,7 +112,8 @@ actor ServerApp {
             logger: logger
         )
 
-        node = NodeService(blockchain: blockchain, config: .init(network: network), logger: logger)
+        let node = await NodeService(blockchain: blockchain, config: .init(network: network), logger: logger)
+        self.node = node
 
         eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
@@ -124,7 +125,7 @@ actor ServerApp {
             services.append(.init(service: telemetryService))
         }
 
-        services.append(.init(service: node, successTerminationBehavior: .gracefullyShutdownGroup, failureTerminationBehavior: .cancelGroup))
+        // services.append(.init(service: node, successTerminationBehavior: .gracefullyShutdownGroup, failureTerminationBehavior: .cancelGroup))
 
         if let bind = config.bind {
             let p2pService = P2PService(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: bind.host ?? "0.0.0.0", port: bind.port ?? network.defaultP2PPort)
@@ -167,12 +168,14 @@ actor ServerApp {
         }
 
         // Execution will only continue here after service group shuts down
-
+        await rpcService.unsetServerApp()
+        self.node = nil
+        // await node.shutdown()
         await blockchain.shutdown()
     }
 
     private let logger: Logger
-    private let node: NodeService
+    private var node: NodeService?
     private let rpcService: RPCService
     private var p2pService: P2PService? = nil
 
@@ -186,6 +189,7 @@ actor ServerApp {
     ///   - P2P listener state (if running) and connection counters.
     ///   - A sorted list of outbound P2P client statuses by PeerID.
     func rpcStatus() async -> StatusRPC.Result {
+        guard let node else { preconditionFailure() }
 
         let status = await rpcService.status
 
@@ -232,6 +236,9 @@ actor ServerApp {
     /// - Returns: The new peer’s numeric ID (PeerID) on success.
     /// - Throws: JSONRPCResponse.Error if the connection cannot be started.
     func rpcConnect(_ params: ConnectRPC.Params) async throws(JSONRPCResponse.Error) -> ConnectRPC.Result {
+
+        guard let node else { preconditionFailure() }
+
         let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port)
         let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup) // TODO: Maybe do not shut down when we timeout on an outgoing peer?
         await serviceGroup.addServiceUnlessShutdown(config)
@@ -243,6 +250,9 @@ actor ServerApp {
     /// - Parameter params: The bind host and port for the P2P listener (StartP2PRPC.Params).
     /// - Note: If the listener is already running, this call logs a warning and does nothing.
     func rpcStartP2P(_ params: StartP2PRPC.Params) async {
+
+        guard let node else { preconditionFailure() }
+
         guard p2pService == nil else {
             logger.warning("Already listening for incoming peer-to-peer connections")
             return
@@ -258,6 +268,8 @@ actor ServerApp {
     /// - Throws: JSONRPCResponse.Error if the listener cannot be stopped.
     /// - Note: If the listener is already stopped, this call logs a warning and returns.
     func rpcStopP2P() async throws(JSONRPCResponse.Error) {
+        guard let node else { preconditionFailure() }
+
         guard let p2pService else {
             logger.warning("Peer-to-peer service already stopped – ignoring")
             return
