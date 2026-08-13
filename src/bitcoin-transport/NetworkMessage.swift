@@ -5,9 +5,10 @@ import BitcoinBlockchain
 /// Any message sent or received by nodes on the peer-to-peer network.
 public struct NetworkMessage: Equatable, Sendable {
 
-    public init(_ command: MessageCommand, payload: Data = .init(), network: NodeNetwork = .regtest) {
-        // TODO: remove default regtest?
-        self.network = network
+    public init(_ command: MessageCommand, payload: Data = .init(), magicBytes: Int = NodeNetwork.regtest.magicBytes) {
+        // TODO: - Remove the detault regtest magic bytes (or make mainnet the default)
+
+        self.magicBytes = magicBytes
         self.command = command
         self.payloadSize = payload.count
         let payloadHash = Data(Hash256.hash(data: payload))
@@ -17,8 +18,8 @@ public struct NetworkMessage: Equatable, Sendable {
         self.payload = payload
     }
 
-    /// The type of network on which the message is intended to be sent.
-    public let network: NodeNetwork
+    /// Message start sequence (magic bytes) for the network.
+    public let magicBytes: Int
 
     /// The message's command which also determines the type of payload – if any – that the message will carry.
     public let command: MessageCommand
@@ -45,8 +46,11 @@ extension NetworkMessage {
     public init?(_ data: Data) {
         guard data.count >= Self.baseSize else { return nil }
         var data = data
-        guard let network = NodeNetwork(data) else { return nil }
-        self.network = network
+        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
+        let magicBytes = Int(data.withUnsafeBytes {
+            $0.loadUnaligned(as: UInt32.self)
+        })
+        self.magicBytes = magicBytes
         data = data.dropFirst(NodeNetwork.size)
         guard let command = MessageCommand(data) else { return nil }
         self.command = command
@@ -75,7 +79,7 @@ extension NetworkMessage {
 
     public var data: Data {
         var ret = Data(count: size)
-        var offset = ret.addData(network.data)
+        var offset = ret.addData(UInt32(magicBytes).data)
         offset = ret.addData(command.data, at: offset)
         offset = ret.addBytes(UInt32(payloadSize), at: offset)
         offset = ret.addBytes(checksum, at: offset)

@@ -16,14 +16,10 @@ struct Reindex: AsyncParsableCommand {
     @Option var headersOnly = false
 
     mutating func run() async throws {
-        let params: ConsensusParams = switch parent.network {
-        case .mainnet: .mainnet
-        case .testnet: .testnet
-        case .regtest: .regtest
-        }
         var logger = Logger(label: "reindex")
         logger.logLevel = .info
-        let blockchain = try await BlockchainService(params: params, config: .init(dataLocation: .defaultPath), logger: logger)
+        let network = try parent.resolvedNetwork
+        let blockchain = try await BlockchainService(params: network.params, config: .init(dataLocation: .defaultPath), logger: logger)
         await blockchain.reindex(decodeOnly: decodeOnly, headersOnly: headersOnly)
     }
 }

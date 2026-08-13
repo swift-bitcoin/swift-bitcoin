@@ -1,18 +1,13 @@
 import Foundation
+import BitcoinBlockchain
 
-public enum NodeNetwork: String, Sendable, CaseIterable, CustomStringConvertible, Identifiable {
-    case mainnet, testnet /*, signet */, regtest
+public enum NodeNetwork: Sendable {
+    case mainnet, testnet, regtest, signet(challenge: [UInt8]?)
 
     /// Also known as block and message header.
-    public var magicBytes: UInt32 {
-        switch self {
-        case .mainnet: 0xd9b4bef9
-        //case .testnet3: 0709110b
-        case .testnet: 0x283f161c
-        case .regtest: 0xdab5bffa
-        // case .signet: 0x40cf030a
+    public var magicBytes: Int {
         // TODO: Signet Genesis Block and Message Header All signet networks share the same genesis block, but have a different message header. The message header is the 4 first bytes of the sha256d-hash of the block challenge, as a single script push operation. I.e. if the block challenge is 37 bytes, the message start would be sha256d(0x25 || challenge)[0..3]. https://en.bitcoin.it/wiki/Signet#Genesis_Block_and_Message_Header
-        }
+        params.magicBytes
     }
 
     public var defaultRPCPort: Int {
@@ -21,7 +16,7 @@ public enum NodeNetwork: String, Sendable, CaseIterable, CustomStringConvertible
         //case .testnet3: 18332
         case .testnet: 48332
         case .regtest: 18443
-        // case .signet: 38332
+        case .signet: 38332
         }
     }
 
@@ -31,17 +26,18 @@ public enum NodeNetwork: String, Sendable, CaseIterable, CustomStringConvertible
         //case .testnet3: 18333
         case .testnet: 48333
         case .regtest: 18444
-        // case .signet: 38333
+        case .signet: 38333
         }
     }
 
-    public var id: String {
-        rawValue
-    }
-
-    public var description: String {
-        rawValue.capitalized
-    }
+//
+//    public var id: String {
+//        rawValue
+//    }
+//
+//    public var description: String {
+//        rawValue.capitalized
+//    }
 
     public var autoconnectPeers: [(host: String, port: Int)] {
         switch self {
@@ -122,28 +118,38 @@ public enum NodeNetwork: String, Sendable, CaseIterable, CustomStringConvertible
         default: []
         }
     }
+
+    public var params: ConsensusParams {
+        switch self {
+        case .mainnet: .mainnet
+        //case .testnet3: testnet3
+        case .testnet: .testnet
+        case .regtest: .regtest
+        case .signet(let challenge): .signet(options: .init(challenge: challenge))
+        }
+    }
 }
 
 public extension NodeNetwork {
 
-    init?(_ data: Data) {
-        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
-        let magicBytes = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        }
-        switch magicBytes {
-        case Self.mainnet.magicBytes:
-            self = .mainnet
-        case Self.testnet.magicBytes:
-            self = .testnet
-        /*case Self.signet.magicBytes:
-            self = .signet*/
-        case Self.regtest.magicBytes:
-            self = .regtest
-        default:
-            return nil
-        }
-    }
+//    init?(_ data: Data) {
+//        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
+//        let magicBytes = data.withUnsafeBytes {
+//            $0.loadUnaligned(as: UInt32.self)
+//        }
+//        switch magicBytes {
+//        case Self.mainnet.magicBytes:
+//            self = .mainnet
+//        case Self.testnet.magicBytes:
+//            self = .testnet
+//        case Self.signet.magicBytes:
+//            self = .signet
+//        case Self.regtest.magicBytes:
+//            self = .regtest
+//        default:
+//            return nil
+//        }
+//    }
 
     var data: Data {
         Data(value: magicBytes)

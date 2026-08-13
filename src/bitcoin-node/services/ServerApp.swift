@@ -61,8 +61,22 @@ import NIOPosix
 ///   - StatusRPC, ConnectRPC, StartP2PRPC for RPC command interfaces
 actor ServerApp {
 
-    init(_ config: NodeConfig) async throws {
-        let network = NodeNetwork(config.network)
+    init(_ config: NodeConfig) async throws(ServerError) {
+        let challenge: [UInt8]?
+        if let signetChallenge = config.signetChallenge {
+            guard let parsedChallenge = Data(hex: signetChallenge) else {
+                throw .configurationError("signetChallenge - Invalid hex string.")
+            }
+            challenge = [UInt8](parsedChallenge)
+        } else {
+            challenge = nil
+        }
+        let network: NodeNetwork = switch config.network {
+        case .mainnet: .mainnet
+        case .testnet: .testnet
+        case .regtest: .regtest
+        case .signet: .signet(challenge: challenge)
+        }
         let dataLocation = BlockchainService.Config.DataLocation(config.dataLocation)
         let port = config.rpc.port // ?? network.defaultRPCPort
 
@@ -87,30 +101,32 @@ actor ServerApp {
         if let metricsConfig = config.metrics {
             logger.info("Metrics enabled as per OpenTelemetry (OTLP) configuration with gRPC endpoint \(metricsConfig.endpoint)")
             // Initialize all telemetry services
-            (telemetryService, metricsFactory) = try makeTelemetryService(
-                logger: logger,
-                serviceName: "swift-bitcoin",
-                endpoint: metricsConfig.endpoint
-            )
+            do {
+                (telemetryService, metricsFactory) = try makeTelemetryService(
+                    logger: logger,
+                    serviceName: "swift-bitcoin",
+                    endpoint: metricsConfig.endpoint
+                )
+            } catch {
+                logger.error("Telemetry initialization error: \(error)")
+                throw .telemetryInitError(error)
+            }
         } else {
             telemetryService = nil
             metricsFactory = nil
         }
 
-        let params: ConsensusParams = switch network {
-        case .mainnet:
-                .mainnet
-        case .testnet:
-                .testnet
-        case .regtest:
-                .regtest
+        let blockchain: BlockchainService
+        do {
+            blockchain = try await BlockchainService(
+                params: network.params,
+                config: .init(dataLocation: dataLocation),
+                logger: logger
+            )
+        } catch {
+            logger.error("Blockchain initialization error: \(error)")
+            throw .blockchainInitError(error)
         }
-
-        let blockchain = try await BlockchainService(
-            params: params,
-            config: .init(dataLocation: dataLocation),
-            logger: logger
-        )
 
         let node = await NodeService(blockchain: blockchain, config: .init(network: network), logger: logger)
         self.node = node
@@ -156,15 +172,20 @@ actor ServerApp {
         // All instance variables initialized, time to set some call backs
         await rpcService.setServerApp(self)
 
-        if let metricsFactory {
-            // Use withMetricsFactory to make the OTel factory available as a task-local
-            // for any Metric objects created during the service group's run
-            try await withMetricsFactory(metricsFactory) {
+        do {
+            if let metricsFactory {
+                // Use withMetricsFactory to make the OTel factory available as a task-local
+                // for any Metric objects created during the service group's run
+                try await withMetricsFactory(metricsFactory) {
+                    try await serviceGroup.run()
+                }
+            } else {
+                // After the following line the app will suspend indefinitely
                 try await serviceGroup.run()
             }
-        } else {
-            // After the following line the app will suspend indefinitely
-            try await serviceGroup.run()
+        } catch {
+            logger.error("Error running the service group: \(error)")
+            throw .serviceGroupRunError(error)
         }
 
         // Execution will only continue here after service group shuts down
@@ -342,4 +363,11 @@ func makeTelemetryService(logger: Logger, serviceName: String, endpoint: String)
         logger: logger
     )
     return (ServiceGroup(configuration: serviceGroupConfiguration), otelMetricsBackend.factory)
+}
+
+enum ServerError: Error {
+    case configurationError(String)
+    case blockchainInitError(BlockchainService.InitError)
+    case telemetryInitError(Error)
+    case serviceGroupRunError(Error)
 }
