@@ -17,9 +17,10 @@ struct Connect: AsyncParsableCommand {
     var peerPort: Int?
 
     mutating func run() async throws {
+        let network = try parent.resolvedNetwork
         let request = JSONRPCRequest(.connect(.init(
             host: peerHost,
-            port: peerPort ?? parent.network.defaultP2PPort
+            port: peerPort ?? network.defaultP2PPort
         )))
         try await sendRPC(host: parent.host, port: parent.resolvedPort, request: request)
     }

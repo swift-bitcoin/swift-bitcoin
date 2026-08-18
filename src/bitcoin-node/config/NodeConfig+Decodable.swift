@@ -5,6 +5,7 @@ extension NodeConfig: Decodable {
         let defaults = Self.default
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.network = try container.decodeIfPresent(NodeConfig.Network.self, forKey: .network) ?? defaults.network
+        self.signetChallenge = try container.decodeIfPresent(String.self, forKey: .signetChallenge) ?? defaults.signetChallenge
 
         self.rpc = try container.decodeIfPresent(NodeConfig.RPCSettings.self, forKey: .rpc) ?? defaults.rpc
 

@@ -1,4 +1,5 @@
 import ArgumentParser
+import Foundation
 import enum BitcoinTransport.NodeNetwork
 
 struct Node: AsyncParsableCommand {
@@ -35,15 +36,41 @@ struct Node: AsyncParsableCommand {
     )
 
     @Option(name: .shortAndLong, help: "The P2P network to connect to.")
-    var network = NodeNetwork.mainnet
+    var network = Network.mainnet
+
+    @Option(name: .long, help: "The optional signet challenge as hex string.")
+    var signetChallenge: String?
 
     @Option(name: .shortAndLong, help: "The hostname or address of the RPC service to connect to.")
     var host = "0.0.0.0"
 
-    @Option(name: .shortAndLong, help: "The server TCP port to connect to. Default's to network's default port (\(NodeNetwork.mainnet.defaultRPCPort) for \(NodeNetwork.mainnet))")
+    @Option(name: .shortAndLong, help: "The server TCP port to connect to. Defaults to network's default port (\(NodeNetwork.mainnet.defaultRPCPort) for \(NodeNetwork.mainnet))")
     var port: Int?
 
+    var resolvedNetwork: NodeNetwork {
+        get throws(ValidationError) {
+            let challenge: [UInt8]?
+            if let signetChallenge {
+                guard let parsedChallenge = Data(hex: signetChallenge) else {
+                    throw ValidationError("Invalid hexadecimal value: signet-challenge")
+                }
+                challenge = [UInt8](parsedChallenge)
+            } else {
+                challenge = nil
+            }
+            return switch network {
+            case .mainnet: .mainnet
+            case .testnet: .testnet
+            case .regtest: .regtest
+            case .signet: .signet(challenge: challenge)
+            }
+        }
+    }
+
     var resolvedPort: Int {
-        port ?? network.defaultRPCPort
+        get throws(ValidationError) {
+            let resolvedNetwork = try resolvedNetwork
+            return port ?? resolvedNetwork.defaultRPCPort
+        }
     }
 }

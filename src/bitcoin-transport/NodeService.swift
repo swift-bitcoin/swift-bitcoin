@@ -589,14 +589,14 @@ public actor NodeService: Sendable {
     private func send(_ command: MessageCommand, payload: Data = .init(), to id: PeerID) async {
         logger.info("Sending \(command) (\(payload.count)) to \(id)")
         metrics.messagesSent.increment()
-        await peerOuts[id]?.send(.init(command, payload: payload, network: config.network))
+        await peerOuts[id]?.send(.init(command, payload: payload, magicBytes: config.network.magicBytes))
     }
 
     /// Queues a message.
     private func enqueue(_ command: MessageCommand, payload: Data = .init(), to id: PeerID) {
         logger.info("Queueing \(command) (\(payload.count)) to \(id)")
         metrics.messagesSent.increment()
-        state.peers[id]?.outbox.append(.init(command, payload: payload, network: config.network))
+        state.peers[id]?.outbox.append(.init(command, payload: payload, magicBytes: config.network.magicBytes))
     }
 
     /// Processes an incoming version message as part of the handshake.

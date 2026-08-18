@@ -4,6 +4,7 @@ struct NodeConfig: Encodable {
 
     init(
         network: Network = .mainnet,
+        signetChallenge: String? = nil,
         rpc: RPCSettings? = nil,
         dataLocation: DataLocation = .defaultPath,
         bind: BindSettings? = nil,
@@ -15,6 +16,7 @@ struct NodeConfig: Encodable {
         feeRate: Int = 100
     ) {
         self.network = network
+        self.signetChallenge = signetChallenge
         self.rpc = rpc ?? RPCSettings(host: "0.0.0.0", port: network.defaultRPCPort)
         self.dataLocation = dataLocation
         self.bind = bind
@@ -27,6 +29,10 @@ struct NodeConfig: Encodable {
     }
 
     let network: Network
+    let signetChallenge: String? // Hex string
+
+    // TODO: - Consider `[UInt8]` type for the signet challenge (would need to include hex string encoding/decoding in this file for the script to use it).
+
     let rpc: RPCSettings
     let dataLocation: DataLocation
     let bind: BindSettings?
@@ -43,6 +49,7 @@ struct NodeConfig: Encodable {
 
     enum CodingKeys: CodingKey {
         case network
+        case signetChallenge
         case rpc
         case dataLocation
         case bind
@@ -57,6 +64,7 @@ struct NodeConfig: Encodable {
     func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.network, forKey: .network)
+        try container.encodeIfPresent(self.signetChallenge, forKey: .signetChallenge)
         try container.encode(self.rpc, forKey: .rpc)
         try container.encode(self.dataLocation, forKey: .dataLocation)
         try container.encodeIfPresent(self.bind, forKey: .bind)
@@ -71,7 +79,7 @@ struct NodeConfig: Encodable {
 
 extension NodeConfig {
     enum Network: String, Codable {
-        case mainnet, testnet, regtest
+        case mainnet, testnet, regtest, signet
 
         var defaultRPCPort: Int {
             switch self {
@@ -79,7 +87,7 @@ extension NodeConfig {
             //case .testnet3: 18332
             case .testnet: 48332
             case .regtest: 18443
-            // case .signet: 38332
+            case .signet: 38332
             }
         }
     }

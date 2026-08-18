@@ -43,7 +43,8 @@ public struct ConsensusParams: Sendable {
         cltvHeight: Int = 388381,
         strictDERSignatureHeight: Int = 363725,
         csvHeight: Int = 419328,
-        segwitHeight: Int = 481824
+        segwitHeight: Int = 481824,
+        signetChallenge: [UInt8]? = nil
     ) {
         precondition(minChainwork.count == 32)
         self.chain = chain
@@ -71,6 +72,7 @@ public struct ConsensusParams: Sendable {
         self.strictDERSignatureHeight = strictDERSignatureHeight
         self.csvHeight = csvHeight
         self.segwitHeight = segwitHeight
+        self.signetChallenge = signetChallenge
     }
 
     /// The chain identifier: mainnet, testnet, signet, regtest
@@ -128,6 +130,8 @@ public struct ConsensusParams: Sendable {
 
     /// BIP141 Segregated Witness, BIP143, BIP147 `NULLDUMMY`
     public let segwitHeight: Int
+
+    public var signetChallenge: [UInt8]?
 
     public var difficultyAdjustmentInterval: Int {
         powTargetTimespan / powTargetSpacing
@@ -196,6 +200,90 @@ public struct ConsensusParams: Sendable {
         segwitHeight: 0
     )
 
+    public static func signet(options: SignetOptions = .init()) -> Self {
+        let resolvedChallenge: [UInt8]
+        let assumeValid: [UInt8]?
+        let minChainwork: [UInt8]
+        let chainData: ChainData
+
+        if let challenge = options.challenge {
+            resolvedChallenge = challenge
+            assumeValid = nil
+            minChainwork = .init(repeating: 0, count: 32)
+            // m_assumed_blockchain_size = 0;
+            // m_assumed_chain_state_size = 0;
+            chainData = .init()
+        } else {
+            // bin = "512103ad5e0edad18cb1f0fc0d28a3d4f1f3e445640337489abb10404f2d1e086be430210359ef5021964fe22d6f8e05b2463c9540ce96883fe3b278760f048f5189f2e6c452ae"_hex_v_u8;
+            resolvedChallenge = [0x51, 0x21, 0x03, 0xad, 0x5e, 0x0e, 0xda, 0xd1, 0x8c, 0xb1, 0xf0, 0xfc, 0x0d, 0x28, 0xa3, 0xd4, 0xf1, 0xf3, 0xe4, 0x45, 0x64, 0x03, 0x37, 0x48, 0x9a, 0xbb, 0x10, 0x40, 0x4f, 0x2d, 0x1e, 0x08, 0x6b, 0xe4, 0x30, 0x21, 0x03, 0x59, 0xef, 0x50, 0x21, 0x96, 0x4f, 0xe2, 0x2d, 0x6f, 0x8e, 0x05, 0xb2, 0x46, 0x3c, 0x95, 0x40, 0xce, 0x96, 0x88, 0x3f, 0xe3, 0xb2, 0x78, 0x76, 0x0f, 0x04, 0x8f, 0x51, 0x89, 0xf2, 0xe6, 0xc4, 0x52, 0xae]
+
+            // TODO: - Deal with seeds for all default networks
+            // vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_signet), std::end(chainparams_seed_signet));
+            // vSeeds.emplace_back("seed.signet.bitcoin.sprovoost.nl.");
+            // vSeeds.emplace_back("seed.signet.achownodes.xyz."); // Ava Chow, only supports x1, x5, x9, x49, x809, x849, xd, x400, x404, x408, x448, xc08, xc48, x40c
+
+            // consensus.defaultAssumeValid = uint256{"00000008414aab61092ef93f1aacc54cf9e9f16af29ddad493b908a01ff5c329"}; // 293175
+            assumeValid = [0x29, 0xc3, 0xf5, 0x1f, 0xa0, 0x08, 0xb9, 0x93, 0xd4, 0xda, 0x9d, 0xf2, 0x6a, 0xf1, 0xe9, 0xf9, 0x4c, 0xc5, 0xac, 0x1a, 0x3f, 0xf9, 0x2e, 0x09, 0x61, 0xab, 0x4a, 0x41, 0x08, 0x00, 0x00, 0x00]
+
+            // consensus.nMinimumChainWork = uint256{"00000000000000000000000000000000000000000000000000000b463ea0a4b8"};
+            minChainwork = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0b, 0x46, 0x3e, 0xa0, 0xa4, 0xb8]
+
+            // TODO: - Figure out what to do with assume blockchain size and assumed chain state size for all networks
+            // m_assumed_blockchain_size = 24;
+            // m_assumed_chain_state_size = 4;
+
+            // Data from RPC: getchaintxstats 4096 00000008414aab61092ef93f1aacc54cf9e9f16af29ddad493b908a01ff5c329
+            chainData = .init(time: 1772055248, txCount: 28676833, txRate: 0.06736623436338929)
+
+        }
+
+        // Message start (magic bytes) is defined as the first 4 bytes of the sha256d (Hash256) of the block script.
+        // Default signet magic bytes: `0x40cf030a`.
+        var hasher = Hash256()
+        hasher.update(data: VarInt(resolvedChallenge.count).data)
+        hasher.update(data: resolvedChallenge)
+        let hash = hasher.finalize()
+        let magicBytes = [UInt8](hash.prefix(4))
+
+        let magicBytesInt = Int(magicBytes[0]) << 24 |
+                            Int(magicBytes[1]) << 16 |
+                            Int(magicBytes[2]) << 8  |
+                            Int(magicBytes[3])
+
+        return .init(
+            chain: "signet",
+            magicBytes: magicBytesInt,
+            // consensus.powLimit = uint256{"00000377ae000000000000000000000000000000000000000000000000000000"};
+            powLimit: .init([0x00, 0x00, 0x03, 0x77, 0xae, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
+            powTargetSpacing: 10 * 60,
+            powAllowMinDifficultyBlocks: false,
+            powNoRetargeting: false,
+
+            // consensus.enforce_BIP94 = false;
+            preventBlockStorms: false,
+
+            //blockSubsidy: Amount,
+            //genesisMessage: String,
+            //genesisScript: Script,
+            genesisReward: 5_000_000_000,
+            genesisBlockTime: 1598918400,
+            genesisBlockNonce: 52613770,
+            genesisBlockTarget: 0x1e0377ae,
+            assumeValid: assumeValid,
+            minChainwork: minChainwork,
+            chainData: chainData,
+            //coinbaseMaturity: Int,
+            subsidyHalvingInterval: 210_000,
+            heightInCoinbaseHeight: 1,
+            cltvHeight: 1,
+            strictDERSignatureHeight: 1,
+            csvHeight: 1,
+            segwitHeight: 1,
+            signetChallenge: resolvedChallenge
+        )
+    }
+
     package static let swiftTesting = Self( // Similar to regtest
         chain: "swift-testing",
         magicBytes: 0xdab5bffa,
@@ -219,5 +307,12 @@ public struct ConsensusParams: Sendable {
     )
 
     // TODO: Define testnet params with magicBytes 0x0709110b
-    // TODO: Define signet params with magicBytes 0x40cf030a
+}
+
+public struct SignetOptions {
+    public init(challenge: [UInt8]? = nil) {
+        self.challenge = challenge
+    }
+    
+    let challenge: [UInt8]?
 }

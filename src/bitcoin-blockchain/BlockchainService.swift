@@ -1688,11 +1688,15 @@ extension BlockchainService {
         try await checkHeader(block.header, previousHeader: previousRef)
 
         // Signet only: check block solution
-        // TODO: Check signet solution BIP325
-        // if params.signetBlocks && checkPOW && checkSignetBlockSolution(block) {
-            // logger.error("signet block signature validation failure")
-            // throw .badSignetBlockSignature
-        // }
+        if let signetChallenge = params.signetChallenge /*, checkPOW && */ {
+            let challengeScript: Script
+            do {
+                challengeScript = try Script(prefixedData: Data(signetChallenge))
+            } catch {
+                throw .malformedSignetChallenge
+            }
+            try checkSignetBlockSolution(block, challenge: challengeScript)
+         }
 
         // Verify merkle root
         let expectedMerkleRoot = calculateMerkleRoot(block.txs)
@@ -1747,6 +1751,114 @@ extension BlockchainService {
         guard sigops * Transaction.witnessScaleFactor <= Block.maxSigopsCost else {
             // out-of-bounds SigOpCount
             throw .badBlockSigops
+        }
+    }
+
+    /// Scans the script for a pushdata element starting with the given header.
+    /// If found, extracts the bytes after the header as signetSolution, removes them from the script and returns the solution and the cleared script.
+    ///
+    /// `static bool FetchAndClearCommitmentSection(const std::span<const uint8_t> header, CScript& witness_commitment, std::vector<uint8_t>& result)`
+    func fetchAndClearCommitmentSection(_ commitment: Script) -> (signetSolution: Data, clearedCommitment: Script)? {
+        var solution: Data?
+        var newOps: [Script.Operation] = []
+        for op in commitment.ops {
+            if solution == nil, let data = op.pushedData, data.count > signetHeader.count, data.starts(with: signetHeader) {
+                solution = Data(data.dropFirst(signetHeader.count))
+                newOps.append(Script.Operation.encodeMinimally(signetHeader))
+            } else {
+                newOps.append(op)
+            }
+        }
+        if let solution {
+            return (solution, Script(newOps))
+        } else {
+            return nil
+        }
+    }
+
+    /// `std::optional<SignetTxs> SignetTxs::Create(const CBlock& block, const CScript& challenge)`
+    private func createSignetTransactions(block: Block, challenge: Script) throws(Error) -> (toSpend: Transaction, spending: Transaction) {
+        // find and delete signet signature
+        guard let coinbase = block.txs.first else {
+            // no coinbase tx in block; invalid
+            preconditionFailure("No coinbase transaction in block. Cannot create signet transactions.")
+        }
+
+        guard let commitIndex = witnessCommitmentOutputIndex(in: coinbase) else {
+            // return std::nullopt; // require a witness commitment
+            // preconditionFailure("No witness commitment output in coinbase. Cannot create signet transactions.")
+            throw .signetBlockMissingWitnessCommitment
+        }
+        let witnessCommitment = coinbase.outs[commitIndex].script
+
+        let toSpend: Transaction
+        let spending: Transaction
+        if let (solution, clearedCommitment) = fetchAndClearCommitmentSection(witnessCommitment) {
+
+            let script: Script
+            do {
+                script = try Script(prefixedData: solution)
+            } catch {
+                throw .invalidSignetSolutionScript
+            }
+            let witness: Transaction.Witness
+            do {
+                witness = try .init(solution.dropFirst(script.sizePrefixed))
+            } catch {
+                throw .invalidSignetSolutionWitness
+            }
+            guard solution.count == script.sizePrefixed + witness.dataSize else {
+                throw .extraneousSignetSolutionData
+            }
+
+            var newOuts = coinbase.outs
+            newOuts[commitIndex].script = clearedCommitment
+            let newCoinbase = Transaction(version: coinbase.version, locktime: coinbase.locktime, ins: coinbase.ins, outs: newOuts)
+            var newTransactions = block.txs
+            newTransactions[0] = newCoinbase
+            let newMerkleRoot = calculateMerkleRoot(newTransactions)
+            let newHeader = Block(
+                version: block.version, previous: block.previous, merkleRoot: newMerkleRoot, time: block.time, target: block.target, nonce: block.nonce)
+            let blockData = newHeader.data(encoding: .signet)
+            toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
+                .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
+            ], outs: [
+                .init(value: 0, script: challenge)
+            ])
+
+            spending = Transaction(version: .v0, locktime: .disabled, ins: [
+                .init(outpoint: toSpend.outpoint(0), sequence: .initial, script: script, witness: witness)
+            ], outs: [
+                .init(value: 0, script: [.return])
+            ])
+        } else {
+            let blockData = block.data(encoding: .signet)
+            toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
+                .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
+            ], outs: [
+                .init(value: 0, script: challenge)
+            ])
+            spending = Transaction(version: .v0, locktime: .disabled, ins: [
+                .init(outpoint: toSpend.outpoint(0), sequence: .initial)
+            ], outs: [
+                .init(value: 0, script: [.return])
+            ])
+        }
+
+        return (toSpend, spending)
+    }
+
+    private func checkSignetBlockSolution(_ block: Block, challenge: Script) throws(Error) {
+        if block.previous == Block.nullParent {
+            return
+        }
+        //static constexpr script_verify_flags BLOCK_SCRIPT_VERIFY_FLAGS = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_NULLDUMMY;
+
+        let (toSpend, spending) = try createSignetTransactions(block: block, challenge: challenge)
+
+        guard spending.verifyScripts(prevouts: toSpend.outs, config: [.payToScriptHash, .witness, .strictDER, .nullDummy]) else {
+            logger.error("signet block signature validation failure")
+            throw .badSignetBlockSignature
         }
     }
 
@@ -1856,7 +1968,7 @@ extension BlockchainService {
 
 // MARK: - Connect block (consensus)
 
-/// Generate.
+/// Connect block.
 extension BlockchainService {
 
     private func validateBlocks() async throws(Error) {
@@ -2274,3 +2386,5 @@ private typealias LockPair = (height: Int, time: Int)
 /// Block files containing a block-height within MIN_BLOCKS_TO_KEEP of ActiveChain().Tip() will not be pruned.
 private let minBlocksToKeep = 288
 
+/// BIP325 Signet header
+private let signetHeader = Data([0xec, 0xc7, 0xda, 0xa2])

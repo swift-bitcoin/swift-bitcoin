@@ -14,12 +14,8 @@ struct ChainTips: AsyncParsableCommand {
     @OptionGroup var parent: Chain
 
     mutating func run() async throws {
-        let params: ConsensusParams = switch parent.network {
-        case .mainnet: .mainnet
-        case .testnet: .testnet
-        case .regtest: .regtest
-        }
-        let blockchain = try await BlockchainService(params: params, config: .init(dataLocation: .defaultPath), logger: .init(label: "tips"))
+        let network = try parent.resolvedNetwork
+        let blockchain = try await BlockchainService(params: network.params, config: .init(dataLocation: .defaultPath), logger: .init(label: "tips"))
         let tips = await blockchain.chainTips
 
         let printableTips = tips.map {

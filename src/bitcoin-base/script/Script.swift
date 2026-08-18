@@ -318,7 +318,7 @@ extension Script: BinaryCodable {
         decoder.resetLimit()
     }
 
-    init(prefixedData: Data) throws {
+    public init(prefixedData: Data) throws {
         var decoder = BinaryDecoder(prefixedData)
         try self.init(prefixedFrom: &decoder)
     }
