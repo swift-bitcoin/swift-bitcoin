@@ -11,6 +11,8 @@ public struct ScriptConfig: OptionSet, Sendable {
 
     /// BIP66 (consensus) and BIP62 rule 1 (policy)
     /// Passing a non-strict-DER signature to a checksig operation causes script failure.
+    ///
+    /// `SCRIPT_VERIFY_DERSIG` in Bitcoin Core.
     public static let strictDER = Self(rawValue: 1 << 0)
 
     /// BIP62 rule 2

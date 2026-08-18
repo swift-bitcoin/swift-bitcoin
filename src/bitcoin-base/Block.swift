@@ -80,7 +80,16 @@ package extension Block {
 extension Block: CustomBinaryCodable {
 
     public enum Encoding: Equatable, Sendable {
-        case headerOnly, noWitness, file(magicBytes: Int)
+        case headerOnly
+        case noWitness
+
+        /// For signet challenge verification. Use only with encoder, not decoder.
+        ///
+        /// BIP325
+        case signet
+
+        /// For block and undo file storage.
+        case file(magicBytes: Int)
     }
 
     public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws {
@@ -98,6 +107,7 @@ extension Block: CustomBinaryCodable {
                 try decoder.decode(encoding: encoding == .noWitness ? .noWitness : nil)
             }
             self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
+        case .signet: fatalError("Signet encoding is for use with encoder only.")
         case .file(let magicBytes):
             let magic = Int(try decoder.decode() as UInt32)
             guard magic == magicBytes else {
@@ -122,6 +132,11 @@ extension Block: CustomBinaryCodable {
             if encoding != .headerOnly {
                 encoder.encode(txs, encoding: encoding == .noWitness ? .noWitness : nil)
             }
+        case .signet:
+            encoder.encode(Int32(version))
+            encoder.encode(previous)
+            encoder.encode(merkleRoot)
+            encoder.encode(UInt32(time.timeIntervalSince1970))
         case .file(let magicBytes):
             encoder.encode(UInt32(magicBytes))
             encoder.encode(UInt32(dataSize))
@@ -141,6 +156,11 @@ extension Block: CustomBinaryCodable {
             if encoding != .headerOnly {
                 counter.count(txs, encoding: encoding == .noWitness ? .noWitness : nil)
             }
+        case .signet:
+            counter.count(Int32(version))
+            counter.count(previous)
+            counter.count(merkleRoot)
+            counter.count(UInt32(time.timeIntervalSince1970))
         case .file(_):
             counter.count(UInt32.self)
             counter.count(UInt32.self)

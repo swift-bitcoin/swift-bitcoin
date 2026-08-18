@@ -22,6 +22,8 @@ extension BlockchainService {
 
         case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insuficientProofOfWork, headerTooOld, headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, missingInput, badBlockSize, multipleCoinbaseTransactions, badBlockSigops, coinbaseTransactionOverspends, wrongMerkleRoot, invalidBlockAlreadyExists, futureLocktime, lowWorkChain
 
+        case malformedSignetChallenge, badSignetBlockSignature, invalidSignetSolutionScript, invalidSignetSolutionWitness, extraneousSignetSolutionData, signetBlockMissingWitnessCommitment
+
         case dataDirIssue, blockFileIssue
 
         /// Block's timestamp is too early on diff adjustment block.

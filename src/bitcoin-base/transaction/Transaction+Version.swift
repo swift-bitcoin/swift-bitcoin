@@ -25,6 +25,11 @@ extension Transaction {
             lhs.versionValue < rhs.versionValue
         }
 
+        /// Transaction version 0.
+        ///
+        /// Used in BIP325 (signet)
+        package static let v0 = Self(0)
+
         /// Transaction version 1.
         public static let v1 = Self(1)
 

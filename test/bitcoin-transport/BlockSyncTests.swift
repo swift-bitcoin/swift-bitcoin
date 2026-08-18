@@ -50,15 +50,15 @@ struct BlockSyncTests {
         if let peerB, let alice {
             await alice.removePeer(peerB)
         }
-        if let alice, let aliceChain {
-            self.alice = nil
+        self.alice = nil
+        if let aliceChain {
             await aliceChain.shutdown()
         }
         if let peerA, let bob {
             await bob.removePeer(peerA)
         }
-        if let bob, let bobChain {
-            self.bob = nil
+        self.bob = nil
+        if let bobChain {
             await bobChain.shutdown()
         }
     }
