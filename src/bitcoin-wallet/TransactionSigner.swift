@@ -82,16 +82,22 @@ public struct TransactionSigner {
         if let redeemScript { sigs.append(redeemScript.data) }
         if let witnessScript { sigs.append(witnessScript.data)}
 
-        if let witnessScript {
-            let witness = [Data()] + sigs
-            tx.ins[input].witness = .init(witness)
-            if lockScript.isPayToScriptHash {
-                let redeemScriptP2WSH = Script.payToWitnessScriptHash(witnessScript)
-                tx.ins[input].script = [.encodeMinimally(redeemScriptP2WSH.data)]
+        tx.mutate {
+            if let witnessScript {
+                let witness = [Data()] + sigs
+                $0.ins[input].mutate {
+                    $0.witness = .init(witness)
+                    if lockScript.isPayToScriptHash {
+                        let redeemScriptP2WSH = Script.payToWitnessScriptHash(witnessScript)
+                        $0.script = [.encodeMinimally(redeemScriptP2WSH.data)]
+                    }
+                }
+            } else {
+                let unlockScript = Script([.zero] + sigs.map { Script.Operation.encodeMinimally($0) })
+                $0.ins[input].mutate {
+                    $0.script = unlockScript
+                }
             }
-        } else {
-            let unlockScript = Script([.zero] + sigs.map { Script.Operation.encodeMinimally($0) })
-            tx.ins[input].script = unlockScript
         }
         return tx
     }
@@ -155,16 +161,20 @@ public struct TransactionSigner {
             // For pay-to-public-key-hash we need to also add the public key to the unlock script.
             witnessData.append(secretKey.pubkey.data)
         }
-        if lockScript.isPayToWitnessKeyHash || lockScript.isPayToScriptHash || lockScript.isPayToTaproot {
-            // For pay-to-witness-public-key-hash we sign a different hash and we add the signature and public key to the input's _witness_.
-            tx.ins[input].witness = .init(witnessData)
-        }
-        if lockScript.isPayToPubkey || lockScript.isPayToPubkeyHash {
-            let ops = witnessData.map { Script.Operation.pushBytes($0) }
-            tx.ins[input].script = .init(ops)
-        }
-        if lockScript.isPayToScriptHash {
-            tx.ins[input].script = [.encodeMinimally(redeemScript.data)]
+        tx.mutate {
+            $0.ins[input].mutate {
+                if lockScript.isPayToWitnessKeyHash || lockScript.isPayToScriptHash || lockScript.isPayToTaproot {
+                    // For pay-to-witness-public-key-hash we sign a different hash and we add the signature and public key to the input's _witness_.
+                    $0.witness = .init(witnessData)
+                }
+                if lockScript.isPayToPubkey || lockScript.isPayToPubkeyHash {
+                    let ops = witnessData.map { Script.Operation.pushBytes($0) }
+                    $0.script = .init(ops)
+                }
+                if lockScript.isPayToScriptHash {
+                    $0.script = [.encodeMinimally(redeemScript.data)]
+                }
+            }
         }
         return tx
     }

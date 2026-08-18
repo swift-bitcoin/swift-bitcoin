@@ -37,7 +37,7 @@ public struct Block: Equatable, Sendable {
 
     public let nonce: Int
 
-    public var txs: [Transaction]
+    public let txs: [Transaction]
 
     // MARK: - Computed Properties
 
@@ -49,9 +49,9 @@ public struct Block: Equatable, Sendable {
 
     /// Returns a copy of self without the transactions – i.e. header only.
     public var header: Self {
-        var header = self
-        header.txs = []
-        return header
+        mutating {
+            $0.txs = []
+        }
     }
 
     public var weight: Int {

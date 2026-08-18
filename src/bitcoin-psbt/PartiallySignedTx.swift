@@ -882,11 +882,17 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         var tx = unsignedTx
         for i in ins.indices {
             let psbtIn = ins[i]
-            if let scriptSig = psbtIn.finalScriptSig {
-                tx.ins[i].script = scriptSig
-            }
-            if let witness = psbtIn.finalScriptWitness {
-                tx.ins[i].witness = witness
+            tx.mutate {
+                if let scriptSig = psbtIn.finalScriptSig {
+                    $0.ins[i].mutate {
+                        $0.script = scriptSig
+                    }
+                }
+                if let witness = psbtIn.finalScriptWitness {
+                    $0.ins[i].mutate {
+                        $0.witness = witness
+                    }
+                }
             }
         }
         return tx
