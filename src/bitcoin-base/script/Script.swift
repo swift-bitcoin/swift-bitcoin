@@ -19,10 +19,10 @@ public struct Script: Equatable, Sendable {
     // MARK: - Instance Properties
 
     /// List of all decoded script operations.
-    public let ops: [Script.Operation]
+    public var ops: [Script.Operation]
 
     /// The portion of the original script data that could not be decoded into operations.
-    public let unparsable: Data
+    public var unparsable: Data
 
     // MARK: - Computed Properties
 

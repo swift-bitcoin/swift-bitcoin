@@ -178,7 +178,7 @@ extension Transaction: CustomBinaryCodable {
             throw DecodingError.witnessEncoded
         }
 
-        ins = try decoder.decode()
+        var ins: [Input] = try decoder.decode()
         outs = try decoder.decode()
 
         // BIP144
@@ -187,6 +187,7 @@ extension Transaction: CustomBinaryCodable {
                 ins[i].witness = try decoder.decode()
             }
         }
+        self.ins = ins
 
         locktime = try decoder.decode()
     }

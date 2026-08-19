@@ -553,8 +553,7 @@ public actor NodeService: Sendable {
                     if peer.highBandwidthCompactBlocks {
                         await self.sendBlock(block, to: id)
                     } else {
-                        var header = block
-                        header.txs = []
+                        let header = block.header
                         let items = [header]
                         let headersMessage = HeadersMessage(items: items)
                         if peer.prefersHeaders {

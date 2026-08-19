@@ -27,15 +27,15 @@ public struct Block: Equatable, Sendable {
     // MARK: - Instance Properties
 
     // Header
-    public let version: Int
-    public let previous: Block.ID
-    public let merkleRoot: Data
-    public let time: Date
+    public var version: Int
+    public var previous: Block.ID
+    public var merkleRoot: Data
+    public var time: Date
 
     /// Difficulty bits.
-    public let target: Int
+    public var target: Int
 
-    public let nonce: Int
+    public var nonce: Int
 
     public var txs: [Transaction]
 
@@ -59,6 +59,11 @@ public struct Block: Equatable, Sendable {
     }
 
     // MARK: - Instance Methods
+
+    /// Repopulates the Merkle root in ``merkleRoot`` based on current transactions in ``txs``.
+    public mutating func recalculateMerkleRoot() {
+        merkleRoot = calculateWitnessMerkleRoot(txs)
+    }
 
     // MARK: - Type Properties
 

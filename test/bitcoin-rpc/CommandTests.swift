@@ -15,8 +15,6 @@ struct CommandTests {
         let satoshiChain = try await BlockchainService(params: .swiftTesting)
         let pubkey = try #require(PublicKey(compressed: [0x02, 0x9a, 0x38, 0x65, 0xb2, 0x48, 0x8e, 0x2f, 0xee, 0x75, 0x33, 0x6d, 0x10, 0x48, 0xc1, 0xd0, 0x79, 0x5a, 0x08, 0x83, 0x68, 0xa0, 0xca, 0xa4, 0xad, 0xc0, 0x76, 0x42, 0x5c, 0x90, 0x22, 0x7b, 0xc3]))
 
-        var satoshi: NodeService! = await NodeService(blockchain: satoshiChain, config: .init(network: .regtest, feeFilterRate: 2))
-
         let output1 = await GetBlockchainInfoRPC().run(blockchain: satoshiChain)
         #expect(output1.chain == "swift-testing")
         #expect(output1.blocks == 0)
@@ -89,9 +87,6 @@ struct CommandTests {
         #expect(getBlockOut.txs == [
             "71847446d61f87f01ea98e4c32f3ecd7a509cdb912c04a13a4b20736af5a0d49"
         ])
-
-        //await satoshi.stop()
-        satoshi = nil
 
         await satoshiChain.shutdown()
     }

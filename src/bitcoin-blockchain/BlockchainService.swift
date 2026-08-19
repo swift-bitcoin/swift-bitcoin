@@ -1811,15 +1811,11 @@ extension BlockchainService {
                 throw .extraneousSignetSolutionData
             }
 
-            var newOuts = coinbase.outs
-            newOuts[commitIndex].script = clearedCommitment
-            let newCoinbase = Transaction(version: coinbase.version, locktime: coinbase.locktime, ins: coinbase.ins, outs: newOuts)
-            var newTransactions = block.txs
-            newTransactions[0] = newCoinbase
-            let newMerkleRoot = calculateMerkleRoot(newTransactions)
-            let newHeader = Block(
-                version: block.version, previous: block.previous, merkleRoot: newMerkleRoot, time: block.time, target: block.target, nonce: block.nonce)
-            let blockData = newHeader.data(encoding: .signet)
+            var modifiedBlock = block
+            modifiedBlock.txs[0].outs[commitIndex].script = clearedCommitment
+            modifiedBlock.recalculateMerkleRoot()
+            let blockData = modifiedBlock.data(encoding: .signet)
+
             toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
                 .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
             ], outs: [
@@ -2314,6 +2310,18 @@ extension BlockchainService {
         let blockReward = params.blockSubsidy + totalFees
         let coinbaseTx = Transaction.coinbase(version: txVersion, blockHeight: activeTip.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot, tag: tag)
 
+//        guard let commitIndex = witnessCommitmentOutputIndex(in: coinbaseTx) else {
+//            fatalError()
+//        }
+//        var commitment = coinbaseTx.outs[commitIndex]
+//        var newOps = commitment.script.ops
+//        newOps.append(.encodeMinimally(signetHeader))
+//
+//        var newCommitment = commitment
+//
+//        let newCoinbase = Transaction(version: coinbaseTx.version, locktime: coinbaseTx.locktime, ins: coinbaseTx.ins, outs: newOuts)
+//
+//
         let previousBlockHash = activeTip.header.id
         let txs = [coinbaseTx] + mempoolTxs
         let merkleRoot = calculateMerkleRoot(txs)

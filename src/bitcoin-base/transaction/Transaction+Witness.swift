@@ -12,7 +12,7 @@ extension Transaction {
         }
 
         /// The list of elements that makes up this witness.
-        public let stack: [Data]
+        public var stack: [Data]
 
         /// BIP341
         var taprootAnnex: Data? {

@@ -42,28 +42,28 @@ struct BaseDocumentationExamples {
         let sighash0 = SignatureHash(tx: spend, input: 0, sighashType: .all, scriptCode: prevout0.script.data).data
         let sig0 = sk.sign(hash: sighash0)
         let sigExt0 = ECDSASignature.Extended(sig0, sighashType: .all)
-        spend.ins[0].script = [.pushBytes(sigExt0.data)]
 
         // For pay-to-public-key-hash we need to also add the public key to the unlock script.
         let sighash1 = SignatureHash(tx: spend, input: 1, sighashType: .all, scriptCode: prevout1.script.data).data
         let sig1 = sk.sign(hash: sighash1)
         let sigExt1 = ECDSASignature.Extended(sig1, sighashType: .all)
-        spend.ins[1].script = [.pushBytes(sigExt1.data), .pushBytes(sk.pubkey.data)]
 
         // For pay-to-witness-public-key-hash we sign a different hash and we add the signature and public key to the input's _witness_.
         let sighash2 = SignatureHash.Segwit(tx: spend, input: 2, sighashType: .all, scriptCode: nil, prevout: prevout2).data
 
         let sig2 = sk.sign(hash: sighash2)
         let sigExt2 = ECDSASignature.Extended(sig2, sighashType: .all)
-        spend.ins[2].witness = .init([sigExt2.data, sk.pubkey.data])
 
         // For pay-to-taproot with key we need a different sighash and a _tweaked_ version of our secret key to sign it. We use the default sighash type which is equal to _all_.
         let sighash3 = SignatureHash.Taproot(tx: spend, input: 3, sighashType: nil, prevouts: [prevout0, prevout1, prevout2, prevout3]).data
         let sig3 = sk.taprootSecretKey().signSchnorr(hash: sighash3)
         let sigExt3 = SchnorrSignature.Extended(sig3, sighashType: nil)
+
+        spend.ins[0].script = [.pushBytes(sigExt0.data)]
+        spend.ins[1].script = [.pushBytes(sigExt1.data), .pushBytes(sk.pubkey.data)]
+        spend.ins[2].witness = .init([sigExt2.data, sk.pubkey.data])
         // The witness only requires the signature
         spend.ins[3].witness = .init([sigExt3.data])
-
         let result = spend.verifyScripts(prevouts: [prevout0, prevout1, prevout2, prevout3])
         #expect(result)
     }
