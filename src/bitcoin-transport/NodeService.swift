@@ -1089,9 +1089,7 @@ public actor NodeService: Sendable {
         let headerProcessingResult: HeaderProcessingResult
         if missingTxIndices.isEmpty {
             var block = compactBlockMessage.header
-            block.mutate {
-                $0.txs = txs.compactMap { $0 }
-            }
+            block.txs = txs.compactMap { $0 }
             precondition(block.txs.count == txs.count)
             headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true) // TODO: Immediate = false to not block
         } else {
@@ -1141,9 +1139,7 @@ public actor NodeService: Sendable {
         guard var block = await blockchain.header(for: blockTxsMessage.blockHash) else {
             throw .blockNotFound
         }
-        block.mutate {
-            $0.txs = pendingBlockTxs.compactMap { $0 }
-        }
+        block.txs = pendingBlockTxs.compactMap { $0 }
         let headerProcessingResult: HeaderProcessingResult
         do {
             headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true) // TODO: Immediate = false to not block

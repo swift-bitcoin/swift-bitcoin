@@ -30,16 +30,16 @@ public struct Transaction: Equatable, Sendable {
     // MARK: - Instance Properties
 
     /// The transaction's version.
-    public let version: Version
+    public var version: Version
 
     /// Lock time value applied to this transaction. It represents the earliest time at which this transaction should be considered valid.
-    public let locktime: Locktime
+    public var locktime: Locktime
 
     /// All of the inputs consumed (coins spent) by this transaction.
-    public let ins: [Transaction.Input]
+    public var ins: [Transaction.Input]
 
     /// The new outputs to be created by this transaction.
-    public let outs: [TransactionOutput]
+    public var outs: [TransactionOutput]
 
     // MARK: - Computed Properties
 
@@ -184,10 +184,7 @@ extension Transaction: CustomBinaryCodable {
         // BIP144
         if isSegwit {
             for i in ins.indices {
-                let witnessValue: Witness = try decoder.decode()
-                ins[i].mutate {
-                    $0.witness = witnessValue
-                }
+                ins[i].witness = try decoder.decode()
             }
         }
         self.ins = ins

@@ -25,16 +25,16 @@ extension Transaction {
         // MARK: - Instance Properties
 
         /// A reference to a previously unspent output of a prior transaction.
-        public let outpoint: Outpoint
+        public var outpoint: Outpoint
 
         /// The sequence number for this input.
-        public let sequence: Sequence
+        public var sequence: Sequence
 
         /// The script that unlocks the output associated with this input.
-        public let script: Script
+        public var script: Script
 
         /// BIP141 - Segregated witness data associated with this input.
-        public let witness: Witness
+        public var witness: Witness
     }
 }
 

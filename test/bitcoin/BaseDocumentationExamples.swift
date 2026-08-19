@@ -59,21 +59,11 @@ struct BaseDocumentationExamples {
         let sig3 = sk.taprootSecretKey().signSchnorr(hash: sighash3)
         let sigExt3 = SchnorrSignature.Extended(sig3, sighashType: nil)
 
-        spend.mutate {
-            $0.ins[0].mutate {
-                $0.script = [.pushBytes(sigExt0.data)]
-            }
-            $0.ins[1].mutate {
-                $0.script = [.pushBytes(sigExt1.data), .pushBytes(sk.pubkey.data)]
-            }
-            $0.ins[2].mutate {
-                $0.witness = .init([sigExt2.data, sk.pubkey.data])
-            }
-            // The witness only requires the signature
-            $0.ins[3].mutate {
-                $0.witness = .init([sigExt3.data])
-            }
-        }
+        spend.ins[0].script = [.pushBytes(sigExt0.data)]
+        spend.ins[1].script = [.pushBytes(sigExt1.data), .pushBytes(sk.pubkey.data)]
+        spend.ins[2].witness = .init([sigExt2.data, sk.pubkey.data])
+        // The witness only requires the signature
+        spend.ins[3].witness = .init([sigExt3.data])
         let result = spend.verifyScripts(prevouts: [prevout0, prevout1, prevout2, prevout3])
         #expect(result)
     }
@@ -105,11 +95,7 @@ struct BaseDocumentationExamples {
         let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
-        spend.mutate {
-            $0.ins[input].mutate {
-                $0.script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data)]
-            }
-        }
+        spend.ins[input].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data)]
 
         let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
@@ -140,11 +126,7 @@ struct BaseDocumentationExamples {
         let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
-        spend.mutate {
-            $0.ins[input].mutate{
-                $0.script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data), .encodeMinimally(redeemScript.data)]
-            }
-        }
+        spend.ins[input].script = [.zero, .pushBytes(sigExt0.data), .pushBytes(sigExt1.data), .encodeMinimally(redeemScript.data)]
 
         let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
@@ -179,11 +161,7 @@ struct BaseDocumentationExamples {
         let sigExt1 = ECDSASignature.Extended(sig1, sighashType: sighashType)
 
         // Signatures need to appear in the right order, plus a dummy value
-        spend.mutate {
-            $0.ins[input].mutate {
-                $0.witness = .init([Data(), sigExt0.data, sigExt1.data, redeemScript.data])
-            }
-        }
+        spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, redeemScript.data])
 
         let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
@@ -218,12 +196,8 @@ struct BaseDocumentationExamples {
         let sig = sk.sign(hash: sighash)
         let sigExt = ECDSASignature.Extended(sig, sighashType: sighashType)
 
-        spend.mutate {
-            $0.ins[input].mutate {
-                $0.witness = .init([sigExt.data, pubkey.data])
-                $0.script = [.encodeMinimally(redeemScript.data)]
-            }
-        }
+        spend.ins[input].witness = .init([sigExt.data, pubkey.data])
+        spend.ins[input].script = [.encodeMinimally(redeemScript.data)]
 
         let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
@@ -261,12 +235,8 @@ struct BaseDocumentationExamples {
 
         // Signatures need to appear in the right order, plus a dummy value
 
-        spend.mutate {
-            $0.ins[input].mutate {
-                $0.witness = .init([Data(), sigExt0.data, sigExt1.data, witnessScript.data])
-                $0.script = [.encodeMinimally(redeemScript.data)]
-            }
-        }
+        spend.ins[input].witness = .init([Data(), sigExt0.data, sigExt1.data, witnessScript.data])
+        spend.ins[input].script = [.encodeMinimally(redeemScript.data)]
 
         let result = spend.verifyScripts(prevouts: [prevout])
         #expect(result)
@@ -315,17 +285,13 @@ struct BaseDocumentationExamples {
         let sig3 = sk3.signSchnorr(hash: sighash)
         let sigExt3 = SchnorrSignature.Extended(sig3, sighashType: sighashType)
 
-        spend.mutate {
-            $0.ins[input].mutate {
-                $0.witness = .init([
-                    sigExt3.data,
-                    Data(),
-                    sigExt1.data,
-                    tapscript,
-                    controlBlocks[0]
-                ])
-            }
-        }
+        spend.ins[input].witness = .init([
+            sigExt3.data,
+            Data(),
+            sigExt1.data,
+            tapscript,
+            controlBlocks[0]
+        ])
 
         let result = spend.verifyScripts(prevouts: prevouts)
         #expect(result)

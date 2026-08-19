@@ -15,10 +15,10 @@ public struct Outpoint: Equatable, Hashable, Sendable {
     }
 
     // The identifier for the transaction containing the referenced output.
-    public let txID: Transaction.ID
+    public var txID: Transaction.ID
 
     /// The index of an output in the referenced transaction.
-    public let out: Int
+    public var out: Int
 
     /// The outpoint meant for the single coinbase transaction input. Also known as _null_ outpoint or _null prevout_.
     public static let coinbase = Self(

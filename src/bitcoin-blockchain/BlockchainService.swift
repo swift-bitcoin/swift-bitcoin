@@ -1811,19 +1811,11 @@ extension BlockchainService {
                 throw .extraneousSignetSolutionData
             }
 
-            var newTransactions = block.txs
-            newTransactions[0].mutate {
-                $0.outs[commitIndex].mutate {
-                    $0.script = clearedCommitment
-                }
-            }
-            let newMerkleRoot = calculateMerkleRoot(newTransactions)
-            let newHeader = block.mutating {
-                $0.merkleRoot = newMerkleRoot
-                $0.txs = []
-            }
+            var modifiedBlock = block
+            modifiedBlock.txs[0].outs[commitIndex].script = clearedCommitment
+            modifiedBlock.recalculateMerkleRoot()
+            let blockData = modifiedBlock.data(encoding: .signet)
 
-            let blockData = newHeader.data(encoding: .signet)
             toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
                 .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
             ], outs: [
@@ -2355,9 +2347,7 @@ extension BlockchainService {
             return nil
         }
 
-        block.mutate {
-            $0.txs = txs
-        }
+        block.txs = txs
 
         // Process the header and block normally
         try! await processBlock(block, isRequested: true, immediate: true)
