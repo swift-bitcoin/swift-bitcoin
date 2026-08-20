@@ -1,4 +1,7 @@
+import Foundation
 import Configuration
+import BitcoinCrypto
+import BitcoinBase
 
 extension NodeConfig {
 
@@ -7,6 +10,28 @@ extension NodeConfig {
             n
         } else {
             NodeConfig.default.network
+        }
+
+        let signetChallenge: String?
+        if let signetChallengeHex = config.string(forKey: "signetChallenge") {
+            guard network == .signet else {
+                throw .conflictingArguments("network=\(network)", "signetChallenge")
+            }
+            let decoder = Base16Decoder()
+            let signetChallengeData: Data
+            do {
+                signetChallengeData = try decoder.decode(signetChallengeHex)
+            } catch {
+                throw .invalidHexadecimalString("signetChallenge=\"\(signetChallengeHex)\"")
+            }
+            do {
+                _ = try Script(signetChallengeData)
+            } catch {
+                throw .invalidScript("signetChallenge")
+            }
+            signetChallenge = signetChallengeHex
+        } else {
+            signetChallenge = NodeConfig.default.signetChallenge
         }
 
         let rpcHost = config.string(forKey: "rpc.host", default: NodeConfig.default.rpc.host)
@@ -63,7 +88,7 @@ extension NodeConfig {
 
         let feeRate = config.int(forKey: "feeRate") ?? NodeConfig.default.feeRate
 
-        self.init(network: network, rpc: rpc, dataLocation: dataLocation, bind: bind, connect: connect, autoConnect: autoConnect, logLevel: logLevel, metrics: metrics, enableProfiling: enableProfiling, feeRate: feeRate)
+        self.init(network: network, signetChallenge: signetChallenge, rpc: rpc, dataLocation: dataLocation, bind: bind, connect: connect, autoConnect: autoConnect, logLevel: logLevel, metrics: metrics, enableProfiling: enableProfiling, feeRate: feeRate)
     }
 }
 

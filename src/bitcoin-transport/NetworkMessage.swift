@@ -51,7 +51,7 @@ extension NetworkMessage {
             $0.loadUnaligned(as: UInt32.self)
         })
         self.magicBytes = magicBytes
-        data = data.dropFirst(NodeNetwork.size)
+        data = data.dropFirst(MemoryLayout<UInt32>.size)
         guard let command = MessageCommand(data) else { return nil }
         self.command = command
         data = data.dropFirst(MessageCommand.size)

@@ -62,7 +62,7 @@ public struct Block: Equatable, Sendable {
 
     /// Repopulates the Merkle root in ``merkleRoot`` based on current transactions in ``txs``.
     public mutating func recalculateMerkleRoot() {
-        merkleRoot = calculateWitnessMerkleRoot(txs)
+        merkleRoot = calculateMerkleRoot(txs)
     }
 
     // MARK: - Type Properties

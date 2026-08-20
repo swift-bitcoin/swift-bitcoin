@@ -8,6 +8,9 @@ struct ConfigOptions: ParsableArguments {
     @Option(help: "The P2P network to connect to. Defaults to what's specified in the configuration file. (default: \(NodeConfig.default.network))")
     var network: NodeConfig.Network?
 
+    @Option(help: "Serialized script for seeding signet, in hexadecimal format.")
+    var signetChallenge: String?
+
     @Option(help: "The address to bind the RPC server to.")
     var rpcHost: String?
 

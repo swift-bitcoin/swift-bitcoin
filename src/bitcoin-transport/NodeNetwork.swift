@@ -1,8 +1,9 @@
 import Foundation
+import BitcoinBase
 import BitcoinBlockchain
 
 public enum NodeNetwork: Sendable {
-    case mainnet, testnet, regtest, signet(challenge: [UInt8]?)
+    case mainnet, testnet, regtest, signet(challenge: Script?)
 
     /// Also known as block and message header.
     public var magicBytes: Int {
@@ -29,15 +30,6 @@ public enum NodeNetwork: Sendable {
         case .signet: 38333
         }
     }
-
-//
-//    public var id: String {
-//        rawValue
-//    }
-//
-//    public var description: String {
-//        rawValue.capitalized
-//    }
 
     public var autoconnectPeers: [(host: String, port: Int)] {
         switch self {
@@ -92,6 +84,50 @@ public enum NodeNetwork: Sendable {
             ("217.31.57.128", 48333),
             ("222.66.94.2", 48333),
         ]
+        case .signet(challenge: let challenge):
+            if challenge == nil {
+                [
+                    ("[fc10:efa7:ca6:1548:f8c:6bb9:1cc4:63ae]", 38333),
+                    ("[fc1f:22c3:95dc:a3af:4a93:8251:beb9:1858]", 38333),
+                    ("18.142.242.1", 38333),
+                    ("34.171.112.142", 38333),
+                    ("35.217.13.118", 38333),
+                    ("38.247.82.124", 38333),
+                    ("45.94.168.5", 38333),
+                    ("51.210.144.135", 38333),
+                    ("54.151.174.170", 38333),
+                    ("66.254.43.122", 38333),
+                    ("72.48.253.168", 38333),
+                    ("81.17.97.236", 38333),
+                    ("91.134.73.14", 38333),
+                    ("95.141.35.117", 38333),
+                    ("129.226.149.150", 38333),
+                    ("131.153.11.131", 38333),
+                    ("135.180.99.74", 38333),
+                    ("136.144.237.250", 38333),
+                    ("144.24.238.157", 38333),
+                    ("144.24.241.206", 38333),
+                    ("144.76.2.169", 38333),
+                    ("147.182.229.68", 38333),
+                    ("152.53.52.229", 38333),
+                    ("153.126.143.201", 38333),
+                    ("159.223.59.213", 38333),
+                    ("170.75.172.6", 38333),
+                    ("172.105.179.233", 38333),
+                    ("175.110.114.74", 38333),
+                    ("178.250.189.42", 38333),
+                    ("188.213.140.180", 38333),
+                    ("194.163.134.64", 38333),
+                    ("195.201.164.54", 38333),
+                    ("202.61.205.162", 38333),
+                    ("206.162.217.86", 38333),
+                    ("208.68.4.71", 38333),
+                    ("209.141.62.48", 38333),
+                    ("213.22.195.68", 38333)
+                ]
+            } else {
+                []
+            }
         case .mainnet: [
             ("5.59.96.54", 8333),
             ("5.128.87.126", 8333),
@@ -128,32 +164,4 @@ public enum NodeNetwork: Sendable {
         case .signet(let challenge): .signet(options: .init(challenge: challenge))
         }
     }
-}
-
-public extension NodeNetwork {
-
-//    init?(_ data: Data) {
-//        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
-//        let magicBytes = data.withUnsafeBytes {
-//            $0.loadUnaligned(as: UInt32.self)
-//        }
-//        switch magicBytes {
-//        case Self.mainnet.magicBytes:
-//            self = .mainnet
-//        case Self.testnet.magicBytes:
-//            self = .testnet
-//        case Self.signet.magicBytes:
-//            self = .signet
-//        case Self.regtest.magicBytes:
-//            self = .regtest
-//        default:
-//            return nil
-//        }
-//    }
-
-    var data: Data {
-        Data(value: magicBytes)
-    }
-
-    static var size: Int { MemoryLayout<UInt32>.size }
 }

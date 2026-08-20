@@ -35,7 +35,7 @@ struct BlockchainServiceTests {
 
     /// Tests synchronizing blocks between two blockchains.
     @Test("Blockchain synchronization with traffic limit")
-    func tafficLimitBlockchainSync() async throws {
+    func trafficLimitBlockchainSync() async throws {
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey
 

@@ -18,7 +18,17 @@ struct TestnetTests {
 
         let script = expected.txs[0].outs[0].script
         let date = expected.time
-        let block = try #require(await blockchain.generateTo(script, initialNonce: expected.nonce, maxTries: 1, blockTime: date, tag: "/@wiz/", txVersion: expected.txs[0].version))
+
+        #expect(date == .init(timeIntervalSince1970: 1715000928))
+        #expect(expected.nonce == 2918744230)
+
+        // Pubkey hash 0a59837ccd4df25adc31cdad39be6a8d97557ed6
+        let pubkeyHash = Data([0x0a, 0x59, 0x83, 0x7c, 0xcd, 0x4d, 0xf2, 0x5a, 0xdc, 0x31, 0xcd, 0xad, 0x39, 0xbe, 0x6a, 0x8d, 0x97, 0x55, 0x7e, 0xd6])
+        #expect(script == .payToPubkeyHash(pubkeyHash))
+
+        #expect(expected.txs[0].version == .v1)
+
+        let block = try #require(await blockchain.generateTo(script, initialNonce: expected.nonce, maxTries: 0, blockTime: date, tag: "/@wiz/", txVersion: expected.txs[0].version))
 
         #expect(block == expected)
     }

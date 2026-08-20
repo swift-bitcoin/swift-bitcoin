@@ -1,4 +1,5 @@
 import ArgumentParser
+import BitcoinBase
 import Foundation
 import enum BitcoinTransport.NodeNetwork
 
@@ -22,12 +23,16 @@ struct Chain: AsyncParsableCommand {
 
     var resolvedNetwork: NodeNetwork {
         get throws(ValidationError) {
-            let challenge: [UInt8]?
+            let challenge: Script?
             if let signetChallenge {
                 guard let parsedChallenge = Data(hex: signetChallenge) else {
                     throw ValidationError("Invalid hexadecimal value: signet-challenge")
                 }
-                challenge = [UInt8](parsedChallenge)
+                do {
+                    challenge = try Script(parsedChallenge)
+                } catch {
+                    throw ValidationError("Invalid script signet-challenge.")
+                }
             } else {
                 challenge = nil
             }
