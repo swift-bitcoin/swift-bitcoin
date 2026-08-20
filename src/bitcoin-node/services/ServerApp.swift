@@ -1,5 +1,6 @@
 import Foundation
 import JSONRPC
+import BitcoinBase
 import BitcoinBlockchain
 import BitcoinTransport
 import Logging
@@ -62,12 +63,16 @@ import NIOPosix
 actor ServerApp {
 
     init(_ config: NodeConfig) async throws(ServerError) {
-        let challenge: [UInt8]?
+        let challenge: Script?
         if let signetChallenge = config.signetChallenge {
             guard let parsedChallenge = Data(hex: signetChallenge) else {
                 throw .configurationError("signetChallenge - Invalid hex string.")
             }
-            challenge = [UInt8](parsedChallenge)
+            do {
+                challenge = try Script(parsedChallenge)
+            } catch {
+                throw .configurationError("signetChallenge - Invalid script.")
+            }
         } else {
             challenge = nil
         }

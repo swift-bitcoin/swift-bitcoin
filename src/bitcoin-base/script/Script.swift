@@ -224,7 +224,7 @@ public struct Script: Equatable, Sendable {
 
     /// Is this a BIP141 witness commitment script
     public var isWitnessCommitment: Bool {
-        guard ops.count == 2, ops[0] == .return, case let .pushBytes(data) = ops[1], data.count == Self.witnessCommitmentTag.count + Hash256.Digest.byteCount, data.starts(with: Self.witnessCommitmentTag) else { return false }
+        guard ops.count >= 2, ops[0] == .return, case let .pushBytes(data) = ops[1], data.count == Self.witnessCommitmentTag.count + Hash256.Digest.byteCount, data.starts(with: Self.witnessCommitmentTag) else { return false }
         return true
     }
 }
@@ -303,6 +303,7 @@ extension Script: BinaryCodable {
 
     public init(from decoder: inout BinaryDecoder) throws {
         var ops = [Script.Operation]()
+        // Any error from parsing the operation is suppressed and the bytes aren't read, this breaks the loop and saves the remaining bytes as unparsable data.
         while let op: Script.Operation = try? decoder.decode() {
             ops.append(op)
         }

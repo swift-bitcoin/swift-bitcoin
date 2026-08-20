@@ -1297,7 +1297,7 @@ extension BlockchainService {
     /// Processes a list of block headers without transactions.
     ///
     /// There may be preexisting headers in the blockchain.
-    public func processHeaders(_ headers: [Block]) async throws(Error) -> HeaderProcessingResult {
+    @discardableResult public func processHeaders(_ headers: [Block]) async throws(Error) -> HeaderProcessingResult {
         var headerRefs = Set<BlockRef>()
         var connectedHeaders = Set<BlockRef>()
         var heldHeaders = Set<Block.ID>()
@@ -1688,13 +1688,7 @@ extension BlockchainService {
         try await checkHeader(block.header, previousHeader: previousRef)
 
         // Signet only: check block solution
-        if let signetChallenge = params.signetChallenge /*, checkPOW && */ {
-            let challengeScript: Script
-            do {
-                challengeScript = try Script(prefixedData: Data(signetChallenge))
-            } catch {
-                throw .malformedSignetChallenge
-            }
+        if let challengeScript = params.signetChallenge /*, checkPOW && */ {
             try checkSignetBlockSolution(block, challenge: challengeScript)
          }
 
@@ -1758,22 +1752,14 @@ extension BlockchainService {
     /// If found, extracts the bytes after the header as signetSolution, removes them from the script and returns the solution and the cleared script.
     ///
     /// `static bool FetchAndClearCommitmentSection(const std::span<const uint8_t> header, CScript& witness_commitment, std::vector<uint8_t>& result)`
-    func fetchAndClearCommitmentSection(_ commitment: Script) -> (signetSolution: Data, clearedCommitment: Script)? {
-        var solution: Data?
-        var newOps: [Script.Operation] = []
-        for op in commitment.ops {
-            if solution == nil, let data = op.pushedData, data.count > signetHeader.count, data.starts(with: signetHeader) {
-                solution = Data(data.dropFirst(signetHeader.count))
-                newOps.append(Script.Operation.encodeMinimally(signetHeader))
-            } else {
-                newOps.append(op)
+    func findSignetSolution(_ commitment: Script) -> (signetSolution: Data, opIndex: Int)? {
+        for (i, op) in commitment.ops.enumerated() {
+            if let data = op.pushedData, data.count > signetHeader.count, data.starts(with: signetHeader) {
+                let solution = Data(data.dropFirst(signetHeader.count))
+                return (solution, i)
             }
         }
-        if let solution {
-            return (solution, Script(newOps))
-        } else {
-            return nil
-        }
+        return nil
     }
 
     /// `std::optional<SignetTxs> SignetTxs::Create(const CBlock& block, const CScript& challenge)`
@@ -1791,55 +1777,53 @@ extension BlockchainService {
         }
         let witnessCommitment = coinbase.outs[commitIndex].script
 
-        let toSpend: Transaction
-        let spending: Transaction
-        if let (solution, clearedCommitment) = fetchAndClearCommitmentSection(witnessCommitment) {
-
-            let script: Script
-            do {
-                script = try Script(prefixedData: solution)
-            } catch {
-                throw .invalidSignetSolutionScript
-            }
-            let witness: Transaction.Witness
-            do {
-                witness = try .init(solution.dropFirst(script.sizePrefixed))
-            } catch {
-                throw .invalidSignetSolutionWitness
-            }
-            guard solution.count == script.sizePrefixed + witness.dataSize else {
-                throw .extraneousSignetSolutionData
-            }
-
-            var modifiedBlock = block
-            modifiedBlock.txs[0].outs[commitIndex].script = clearedCommitment
-            modifiedBlock.recalculateMerkleRoot()
-            let blockData = modifiedBlock.data(encoding: .signet)
-
-            toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
-                .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
-            ], outs: [
-                .init(value: 0, script: challenge)
-            ])
-
-            spending = Transaction(version: .v0, locktime: .disabled, ins: [
-                .init(outpoint: toSpend.outpoint(0), sequence: .initial, script: script, witness: witness)
-            ], outs: [
-                .init(value: 0, script: [.return])
-            ])
-        } else {
+        guard let (solution, opIndex) = findSignetSolution(witnessCommitment) else {
             let blockData = block.data(encoding: .signet)
-            toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
+            let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
                 .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
             ], outs: [
                 .init(value: 0, script: challenge)
             ])
-            spending = Transaction(version: .v0, locktime: .disabled, ins: [
+            let spending = Transaction(version: .v0, locktime: .disabled, ins: [
                 .init(outpoint: toSpend.outpoint(0), sequence: .initial)
             ], outs: [
                 .init(value: 0, script: [.return])
             ])
+            return (toSpend, spending)
         }
+
+        let script: Script
+        do {
+            script = try Script(prefixedData: solution)
+        } catch {
+            throw .invalidSignetSolutionScript
+        }
+        let witness: Transaction.Witness
+        do {
+            witness = try .init(solution.dropFirst(script.sizePrefixed))
+        } catch {
+            throw .invalidSignetSolutionWitness
+        }
+        guard solution.count == script.sizePrefixed + witness.dataSize else {
+            throw .extraneousSignetSolutionData
+        }
+
+        var modifiedBlock = block
+        modifiedBlock.txs[0].outs[commitIndex].script.ops[opIndex] = .encodeMinimally(signetHeader)
+        modifiedBlock.recalculateMerkleRoot()
+        let blockData = modifiedBlock.data(encoding: .signet)
+
+        let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
+            .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
+        ], outs: [
+            .init(value: 0, script: challenge)
+        ])
+
+        let spending = Transaction(version: .v0, locktime: .disabled, ins: [
+            .init(outpoint: toSpend.outpoint(0), sequence: .initial, script: script, witness: witness)
+        ], outs: [
+            .init(value: 0, script: [.return])
+        ])
 
         return (toSpend, spending)
     }
@@ -1852,7 +1836,7 @@ extension BlockchainService {
 
         let (toSpend, spending) = try createSignetTransactions(block: block, challenge: challenge)
 
-        guard spending.verifyScripts(prevouts: toSpend.outs, config: [.payToScriptHash, .witness, .strictDER, .nullDummy]) else {
+        guard spending.verifyScripts(prevouts: [toSpend.outs[0]], config: [.payToScriptHash, .witness, .strictDER, .nullDummy]) else {
             logger.error("signet block signature validation failure")
             throw .badSignetBlockSignature
         }
@@ -1936,7 +1920,7 @@ extension BlockchainService {
             let commitmentScript = coinbase.outs[commitIndex].script
             // OP_RETURN (0x6a) PUSHDATA(36) (0x24) tag(0xaa21a9ed) then 32-byte commitment
 
-            guard commitmentScript == Script.witnessCommitment(witnessMerkleRoot: wmr, witnessReservedValue: reservedValue) else {
+            guard /*commitmentScript == */commitmentScript.ops.starts(with: Script.witnessCommitment(witnessMerkleRoot: wmr, witnessReservedValue: reservedValue).ops) else {
                 // witness merkle commitment mismatch
                 throw .badWitnessMerkleMatch
             }
@@ -2271,10 +2255,10 @@ extension BlockchainService {
 extension BlockchainService {
 
     /// Generates a number of new blocks with the coinbase transaction going to the specified script.
-    @discardableResult public func generateToScript(_ script: Script, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = nil) async -> [Block.ID] {
+    @discardableResult public func generateToScript(_ script: Script, signetSecretKey: SecretKey? = nil, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = nil) async -> [Block.ID] {
         var ids = [Block.ID]()
         for _ in 0 ..< blocks {
-            if let block = await generateTo(script, maxTries: maxTries, blockTime: blockTime ?? .now) {
+            if let block = await generateTo(script, signetSecretKey: signetSecretKey, maxTries: maxTries, blockTime: blockTime ?? .now) {
                 ids.append(block.id)
             }
         }
@@ -2282,15 +2266,15 @@ extension BlockchainService {
     }
 
     /// Generates a number of new blocks with the coinbase transaction going to the specified public key using standard pay-to-public-key-hash output.
-    @discardableResult public func generateTo(_ pubkey: PublicKey, blockTime: Date = .now) async -> Block? {
+    @discardableResult public func generateTo(_ pubkey: PublicKey, signetSecretKey: SecretKey? = nil, blockTime: Date = .now) async -> Block? {
         logger.info("Generating blocks with coinbase reward going to public key.")
-        return await generateTo(Script.payToPubkeyHash(pubkey), blockTime: blockTime)
+        return await generateTo(Script.payToPubkeyHash(pubkey), signetSecretKey: signetSecretKey, blockTime: blockTime)
     }
 
     /// Generates a block using the mempool transactions and locks the coinbase reward output to the provided public key hash.
     ///
     /// This function essentially mines a block in current thread so it has the potential to completely block. Future versions of this method will provide asynchronous control via detached background task.
-    @discardableResult public func generateTo(_ script: Script, initialNonce: Int = 0, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now, tag: String? = nil, txVersion: Transaction.Version? = nil) async -> Block? {
+    @discardableResult public func generateTo(_ script: Script, signetSecretKey: SecretKey? = nil, initialNonce: Int = 0, maxTries: Int = Config.defaultMaxTries, blockTime: Date = .now, tag: String? = nil, txVersion: Transaction.Version? = nil) async -> Block? {
         logger.info("Generating blocks with coinbase reward going to public key hash.")
 
         guard isSynchronized else {
@@ -2308,27 +2292,25 @@ extension BlockchainService {
         }
 
         let blockReward = params.blockSubsidy + totalFees
-        let coinbaseTx = Transaction.coinbase(version: txVersion, blockHeight: activeTip.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot, tag: tag)
+        var coinbaseTx = Transaction.coinbase(version: txVersion, blockHeight: activeTip.height + 1, out: .init(value: blockReward, script: script), witnessMerkleRoot: witnessMerkleRoot, tag: tag)
 
-//        guard let commitIndex = witnessCommitmentOutputIndex(in: coinbaseTx) else {
-//            fatalError()
-//        }
-//        var commitment = coinbaseTx.outs[commitIndex]
-//        var newOps = commitment.script.ops
-//        newOps.append(.encodeMinimally(signetHeader))
-//
-//        var newCommitment = commitment
-//
-//        let newCoinbase = Transaction(version: coinbaseTx.version, locktime: coinbaseTx.locktime, ins: coinbaseTx.ins, outs: newOuts)
-//
-//
         let previousBlockHash = activeTip.header.id
+        let target = await getNextWorkRequired(lastHeader: activeTip, newBlockTime: blockTime, params: params)
+        var nonce = initialNonce
+
+        // Signet
+        if let challenge = params.signetChallenge {
+            do {
+                try signCoinbase(&coinbaseTx, signetChallenge: challenge, signetSecretKey: signetSecretKey, previousBlockHash: previousBlockHash, blockTime: blockTime, txs: mempoolTxs)
+            } catch {
+                logger.error("Error while signing signet coinbase: \(error)")
+                return nil
+            }
+        }
+
         let txs = [coinbaseTx] + mempoolTxs
         let merkleRoot = calculateMerkleRoot(txs)
 
-        let target = await getNextWorkRequired(lastHeader: activeTip, newBlockTime: blockTime, params: params)
-
-        var nonce = initialNonce
         var tries = maxTries
         var block: Block
         repeat {
@@ -2344,6 +2326,7 @@ extension BlockchainService {
         } while tries > 0 && (try! DifficultyTarget(block.id) > DifficultyTarget(compact: target))
 
         guard try! DifficultyTarget(block.id) <= DifficultyTarget(compact: target) else {
+            logger.error("Difficulty target not met")
             return nil
         }
 
@@ -2358,6 +2341,59 @@ extension BlockchainService {
         mempoolCoins = [:]
 
         return block
+    }
+
+    /// Signs a signet block by adding the signature to the coinbase as challenge solution.
+    ///
+    /// BIP325
+    private func signCoinbase(_ coinbaseTx: inout Transaction, signetChallenge challenge: Script, signetSecretKey: SecretKey? = nil, previousBlockHash: Data, blockTime: Date, txs: [Transaction]) throws(Error) {
+        guard let commitIndex = witnessCommitmentOutputIndex(in: coinbaseTx) else {
+            // We created the witness coinbase transaction in this function.
+            preconditionFailure()
+        }
+
+        var coinbaseWithSignetHeader = coinbaseTx
+        coinbaseWithSignetHeader.outs[commitIndex].script.ops.append(.encodeMinimally(signetHeader))
+        let modifiedBlock = Block(
+            previous: previousBlockHash,
+            merkleRoot: calculateMerkleRoot([coinbaseWithSignetHeader] + txs),
+            time: blockTime,
+            target: 0
+        )
+        let blockData = modifiedBlock.data(encoding: .signet)
+
+        let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
+            .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
+        ], outs: [
+            .init(value: 0, script: challenge)
+        ])
+
+        var spending = Transaction(version: .v0, locktime: .disabled, ins: [
+            .init(outpoint: toSpend.outpoint(0), sequence: .initial)
+        ], outs: [
+            .init(value: 0, script: [.return])
+        ])
+
+        let witness: Transaction.Witness
+        if let signetSecretKey {
+            let sighash = SignatureHash.Taproot(tx: spending, input: 0, prevouts: [toSpend.outs[0]]).data
+            let sig = signetSecretKey.taprootSecretKey().signSchnorr(hash: sighash)
+            let sigData = SchnorrSignature.Extended(sig).data
+            witness = [sigData]
+            spending.ins[0].witness = witness
+        } else {
+            witness = []
+        }
+
+        guard spending.verifyScripts(prevouts: [toSpend.outs[0]], config: [.payToScriptHash, .witness, .strictDER, .nullDummy]) else {
+            logger.error("issue generating block: signet block signature validation failure")
+            throw .badSignetBlockSignature
+        }
+
+        if !witness.stack.isEmpty {
+            let signetSolution = signetHeader + Script.empty.dataPrefixed + witness.data
+            coinbaseTx.outs[commitIndex].script.ops.append(.encodeMinimally(signetSolution))
+        }
     }
 
     private func calculateFees(_ tx: Transaction, auxCoins: [Outpoint : UnspentOutput]) async -> Amount {

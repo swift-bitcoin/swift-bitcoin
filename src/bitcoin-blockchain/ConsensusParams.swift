@@ -44,7 +44,7 @@ public struct ConsensusParams: Sendable {
         strictDERSignatureHeight: Int = 363725,
         csvHeight: Int = 419328,
         segwitHeight: Int = 481824,
-        signetChallenge: [UInt8]? = nil
+        signetChallenge: Script? = nil
     ) {
         precondition(minChainwork.count == 32)
         self.chain = chain
@@ -131,7 +131,7 @@ public struct ConsensusParams: Sendable {
     /// BIP141 Segregated Witness, BIP143, BIP147 `NULLDUMMY`
     public let segwitHeight: Int
 
-    public var signetChallenge: [UInt8]?
+    public var signetChallenge: Script?
 
     public var difficultyAdjustmentInterval: Int {
         powTargetTimespan / powTargetSpacing
@@ -201,7 +201,7 @@ public struct ConsensusParams: Sendable {
     )
 
     public static func signet(options: SignetOptions = .init()) -> Self {
-        let resolvedChallenge: [UInt8]
+        let resolvedChallenge: Script
         let assumeValid: [UInt8]?
         let minChainwork: [UInt8]
         let chainData: ChainData
@@ -215,7 +215,7 @@ public struct ConsensusParams: Sendable {
             chainData = .init()
         } else {
             // bin = "512103ad5e0edad18cb1f0fc0d28a3d4f1f3e445640337489abb10404f2d1e086be430210359ef5021964fe22d6f8e05b2463c9540ce96883fe3b278760f048f5189f2e6c452ae"_hex_v_u8;
-            resolvedChallenge = [0x51, 0x21, 0x03, 0xad, 0x5e, 0x0e, 0xda, 0xd1, 0x8c, 0xb1, 0xf0, 0xfc, 0x0d, 0x28, 0xa3, 0xd4, 0xf1, 0xf3, 0xe4, 0x45, 0x64, 0x03, 0x37, 0x48, 0x9a, 0xbb, 0x10, 0x40, 0x4f, 0x2d, 0x1e, 0x08, 0x6b, 0xe4, 0x30, 0x21, 0x03, 0x59, 0xef, 0x50, 0x21, 0x96, 0x4f, 0xe2, 0x2d, 0x6f, 0x8e, 0x05, 0xb2, 0x46, 0x3c, 0x95, 0x40, 0xce, 0x96, 0x88, 0x3f, 0xe3, 0xb2, 0x78, 0x76, 0x0f, 0x04, 0x8f, 0x51, 0x89, 0xf2, 0xe6, 0xc4, 0x52, 0xae]
+            resolvedChallenge = try! Script([0x51, 0x21, 0x03, 0xad, 0x5e, 0x0e, 0xda, 0xd1, 0x8c, 0xb1, 0xf0, 0xfc, 0x0d, 0x28, 0xa3, 0xd4, 0xf1, 0xf3, 0xe4, 0x45, 0x64, 0x03, 0x37, 0x48, 0x9a, 0xbb, 0x10, 0x40, 0x4f, 0x2d, 0x1e, 0x08, 0x6b, 0xe4, 0x30, 0x21, 0x03, 0x59, 0xef, 0x50, 0x21, 0x96, 0x4f, 0xe2, 0x2d, 0x6f, 0x8e, 0x05, 0xb2, 0x46, 0x3c, 0x95, 0x40, 0xce, 0x96, 0x88, 0x3f, 0xe3, 0xb2, 0x78, 0x76, 0x0f, 0x04, 0x8f, 0x51, 0x89, 0xf2, 0xe6, 0xc4, 0x52, 0xae])
 
             // TODO: - Deal with seeds for all default networks
             // vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_signet), std::end(chainparams_seed_signet));
@@ -239,10 +239,10 @@ public struct ConsensusParams: Sendable {
 
         // Message start (magic bytes) is defined as the first 4 bytes of the sha256d (Hash256) of the block script.
         // Default signet magic bytes: `0x40cf030a`.
-        var hasher = Hash256()
-        hasher.update(data: VarInt(resolvedChallenge.count).data)
-        hasher.update(data: resolvedChallenge)
-        let hash = hasher.finalize()
+        // var hasher = Hash256()
+        //hasher.update(data: VarInt(resolvedChallenge.count).data)
+        //hasher.update(data: resolvedChallenge)
+        let hash = Hash256.hash(data: resolvedChallenge.dataPrefixed)
         let magicBytes = [UInt8](hash.prefix(4))
 
         let magicBytesInt = Int(magicBytes[0]) << 24 |
@@ -310,9 +310,9 @@ public struct ConsensusParams: Sendable {
 }
 
 public struct SignetOptions {
-    public init(challenge: [UInt8]? = nil) {
+    public init(challenge: Script? = nil) {
         self.challenge = challenge
     }
     
-    let challenge: [UInt8]?
+    let challenge: Script?
 }

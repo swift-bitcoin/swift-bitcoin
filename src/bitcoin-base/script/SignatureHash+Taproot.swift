@@ -14,7 +14,7 @@ extension SignatureHash {
 
 extension SignatureHash.Taproot {
 
-    public init(tx: Transaction, input: Int, sighashType: SighashType?, prevouts: [TransactionOutput], tapscriptExtension: TapscriptExtension? = nil) {
+    public init(tx: Transaction, input: Int, sighashType: SighashType? = nil, prevouts: [TransactionOutput], tapscriptExtension: TapscriptExtension? = nil) {
         var cache = SignatureMessage.Taproot.Cache()
         self.init(tx: tx, input: input, sighashType: sighashType, prevouts: prevouts, tapscriptExtension: tapscriptExtension, sighashCache: &cache)
     }

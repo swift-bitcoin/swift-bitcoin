@@ -60,7 +60,9 @@ extension ScriptRuntime {
             // If there are more signatures left than keys left,
             // then too many signatures have failed. Exit early,
             // without checking any further signatures.
-            if sigsCount > keysCount { success = false }
+            if sigsCount > keysCount {
+                success = false
+            }
         }
 
         if !success && config.contains(.nullFail) && !sigs.allSatisfy(\.isEmpty) {
