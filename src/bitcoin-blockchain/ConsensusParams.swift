@@ -19,7 +19,7 @@ public struct ConsensusParams: Sendable {
 
     public init(
         chain: String = "mainnet",
-        magicBytes: Int = 0xd9b4bef9,
+        magicBytes: Int = 0xd9b4bef9, // Sent/stored as little endian `[0xf9, 0xbe, 0xb4, 0xd9]`
         powLimit: Data = Data([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
         powTargetTimespan: Int = 14 * 24 * 60 * 60, // two weeks
         powTargetSpacing: Int = 10 * 60,
@@ -151,7 +151,7 @@ public struct ConsensusParams: Sendable {
     /// BIP94
     public static let testnet = Self(
         chain: "testnet4",
-        magicBytes: 0x283f161c,
+        magicBytes: 0x283f161c, // Sent/stored as little endian `[0x1c, 0x16, 0x3f, 0x28]`
         powAllowMinDifficultyBlocks: true,
         preventBlockStorms: true,
         genesisMessage: "03/May/2024 000000000000000000001ebd58c244970b3aa9d783bb001011fbe8ea8e98e00e",
@@ -180,7 +180,7 @@ public struct ConsensusParams: Sendable {
 
     public static let regtest = Self(
         chain: "regtest",
-        magicBytes: 0xdab5bffa,
+        magicBytes: 0xdab5bffa, // Sent/stored as little endian `[0xfa, 0xbf, 0xb5, 0xda]`
         powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
         powTargetTimespan: 24 * 60 * 60, // one day
         powAllowMinDifficultyBlocks: true,
@@ -238,17 +238,17 @@ public struct ConsensusParams: Sendable {
         }
 
         // Message start (magic bytes) is defined as the first 4 bytes of the sha256d (Hash256) of the block script.
-        // Default signet magic bytes: `0x40cf030a`.
+        // Default signet magic bytes: [0x06, 0x03, 0xcf, 0x40] or as a big endian literal: `0x40cf030a`.
         // var hasher = Hash256()
         //hasher.update(data: VarInt(resolvedChallenge.count).data)
         //hasher.update(data: resolvedChallenge)
         let hash = Hash256.hash(data: resolvedChallenge.dataPrefixed)
         let magicBytes = [UInt8](hash.prefix(4))
 
-        let magicBytesInt = Int(magicBytes[0]) << 24 |
-                            Int(magicBytes[1]) << 16 |
-                            Int(magicBytes[2]) << 8  |
-                            Int(magicBytes[3])
+        let magicBytesInt = Int(magicBytes[3]) << 24 |
+                            Int(magicBytes[2]) << 16 |
+                            Int(magicBytes[1]) << 8  |
+                            Int(magicBytes[0])
 
         return .init(
             chain: "signet",
@@ -286,7 +286,7 @@ public struct ConsensusParams: Sendable {
 
     package static let swiftTesting = Self( // Similar to regtest
         chain: "swift-testing",
-        magicBytes: 0xdab5bffa,
+        magicBytes: 0xdab5bffa, // Sent/stored as little endian `[0xfa, 0xbf, 0xb5, 0xda]`
         powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
         powTargetTimespan: 24 * 60 * 60, // one day
         powAllowMinDifficultyBlocks: true,
@@ -306,7 +306,7 @@ public struct ConsensusParams: Sendable {
         segwitHeight: 0
     )
 
-    // TODO: Define testnet params with magicBytes 0x0709110b
+    // TODO: Define testnet params with magicBytes 0x0709110b (big endian literas; sent/stored as little endian `[0x0b, 0x11, 0x09, 0x07]`)
 }
 
 public struct SignetOptions {
