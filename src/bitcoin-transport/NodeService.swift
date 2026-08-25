@@ -826,7 +826,7 @@ public actor NodeService: Sendable {
 
         state.peers[id]!.registerKnownBlocks(headersMessage.items.map(\.id))
 
-        let headerProcessingResult: HeaderProcessingResult
+        let headerProcessingResult: MultipleHeadersProcessingResult
         do {
             headerProcessingResult = try await blockchain.processHeaders(headersMessage.items)
         } catch {
@@ -872,7 +872,15 @@ public actor NodeService: Sendable {
         }
     }
 
-    private func updatePeer(_ id: PeerID, with headerProcessingResult: HeaderProcessingResult) {
+    private func updatePeer(_ id: PeerID, with headerProcessingResult: SingleHeaderProcessingResult) {
+        var headerRefs = Set<BlockRef>()
+        if let (headerRef, _) = headerProcessingResult.headerAndPrevious {
+            headerRefs.insert(headerRef)
+        }
+        updatePeer(id, with: .init(headerRefs: headerRefs, connectedHeaders: headerProcessingResult.connectedHeaders, heldHeaders: headerProcessingResult.heldHeaders))
+    }
+
+    private func updatePeer(_ id: PeerID, with headerProcessingResult: MultipleHeadersProcessingResult) {
 
         // Update peer's held headers (non-connecting)
         state.peers[id]!.heldHeaders.formUnion(headerProcessingResult.heldHeaders)
@@ -1086,14 +1094,14 @@ public actor NodeService: Sendable {
             if tx == nil { i } else { nil }
         }
 
-        let headerProcessingResult: HeaderProcessingResult
+        let headerProcessingResult: SingleHeaderProcessingResult
         if missingTxIndices.isEmpty {
             var block = compactBlockMessage.header
             block.txs = txs.compactMap { $0 }
             precondition(block.txs.count == txs.count)
             headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true) // TODO: Immediate = false to not block
         } else {
-             headerProcessingResult = try await blockchain.processHeaders([header])
+             headerProcessingResult = try await blockchain.processHeader(header)
 
             pendingBlockTxs[header.id] = txs
             let getBlockTxs = GetBlockTransactionsMessage(blockHash: compactBlockMessage.header.id, txIndices: missingTxIndices)
@@ -1140,7 +1148,7 @@ public actor NodeService: Sendable {
             throw .blockNotFound
         }
         block.txs = pendingBlockTxs.compactMap { $0 }
-        let headerProcessingResult: HeaderProcessingResult
+        let headerProcessingResult: SingleHeaderProcessingResult
         do {
             headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true) // TODO: Immediate = false to not block
         } catch {

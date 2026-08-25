@@ -1297,38 +1297,47 @@ extension BlockchainService {
     /// Processes a list of block headers without transactions.
     ///
     /// There may be preexisting headers in the blockchain.
-    @discardableResult public func processHeaders(_ headers: [Block]) async throws(Error) -> HeaderProcessingResult {
+    @discardableResult public func processHeaders(_ headers: [Block]) async throws(Error) -> MultipleHeadersProcessingResult {
         var headerRefs = Set<BlockRef>()
         var connectedHeaders = Set<BlockRef>()
         var heldHeaders = Set<Block.ID>()
         for header in headers {
             let result = try await processHeader(header)
-            headerRefs.formUnion(result.headerRefs)
+            if let processedHeader = result.headerAndPrevious?.header {
+                headerRefs.insert(processedHeader)
+            }
             connectedHeaders.formUnion(result.connectedHeaders)
             heldHeaders.formUnion(result.heldHeaders)
         }
         return .init(headerRefs: headerRefs, connectedHeaders: connectedHeaders, heldHeaders: heldHeaders)
     }
 
+    /// Processes a list of block headers without transactions.
+    ///
+    /// There may be preexisting headers in the blockchain.
+    public func processHeader(_ header: Block) async throws(Error) -> SingleHeaderProcessingResult {
+        try await processHeader(header, locator: nil)
+    }
+
     /// Processes a block header without its transactions.
     ///
     /// Returns: a reference to the added header plus a list of held headers which ended up being connected.
-    private func processHeader(_ header: Block, locator: BlockStorageLocator? = nil) async throws(Error) -> HeaderProcessingResult {
+    private func processHeader(_ header: Block, locator: BlockStorageLocator?) async throws(Error) -> SingleHeaderProcessingResult {
         // Header already exist
-        if let headerRef = await blockIndex.get(header.id) {
+        if let headerRef = await blockIndex.get(header.id), let prev = await blockIndex.get(header.previous) {
             // Compact block might send us a known header again
-            return .init(headerRefs: [headerRef], connectedHeaders: [], heldHeaders: [])
+            return .init(headerAndPrevious: (headerRef, prev), connectedHeaders: [], heldHeaders: [])
         }
 
         metrics.headersCounter.increment()
 
         // Header is not connected to the existing header chain
         guard let prev = await checkConnectivity(header, locator: locator) else {
-            return .init(headerRefs: [], connectedHeaders: [], heldHeaders: [header.id])
+            return .init(headerAndPrevious: nil, connectedHeaders: [], heldHeaders: [header.id])
         }
 
         let (headerRef, connectedHeaders) = try await processHeader(header, previousHeader: prev)
-        return .init(headerRefs: [headerRef], connectedHeaders: connectedHeaders, heldHeaders: [])
+        return .init(headerAndPrevious: (headerRef, prev), connectedHeaders: connectedHeaders, heldHeaders: [])
     }
 
     private func checkConnectivity(_ block: Block, locator: BlockStorageLocator? = nil) async -> BlockRef? {
@@ -1400,7 +1409,7 @@ extension BlockchainService {
             otherHeaders.formUnion(otherOtherHeaders)
             if !h.txs.isEmpty {
                 // TODO: Save original `isRequested` value on `heldBlocks`
-                try await acceptBlock(h, ref: ref, isRequested: false, locator: loc)
+                try await acceptBlock(h, ref: ref, previous: newHeader, isRequested: false, locator: loc)
             }
 
             heldBlocks[h.id] = nil
@@ -1555,22 +1564,23 @@ extension BlockchainService {
     /// Processes a block by checking its header and transaction merkle root and then storing it.
     ///
     /// After the merkle root validation the block could be ready for connection to the blockchain. If that's the case, the immediate parameter is used to determine whether the full validation and connection is done on the current `Task` or a new background task.
-    @discardableResult public func processBlock(_ block: Block, isRequested: Bool = true, immediate: Bool = true) async throws(Error) -> HeaderProcessingResult {
+    @discardableResult public func processBlock(_ block: Block, isRequested: Bool = true, immediate: Bool = true) async throws(Error) -> SingleHeaderProcessingResult {
         try await processBlock(block, isRequested: isRequested, immediate: immediate, locator: nil)
     }
 
     /// The locator parameter is used in calls from the re-indexing process.
-    @discardableResult private func processBlock(_ block: Block, isRequested: Bool, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> HeaderProcessingResult {
+    @discardableResult private func processBlock(_ block: Block, isRequested: Bool, immediate: Bool = true, locator: BlockStorageLocator?) async throws(Error) -> SingleHeaderProcessingResult {
 
         metrics.seenBlocksCounter.increment()
 
         let headerProcessingResult = try await processHeader(block.header, locator: locator)
-        guard let headerRef = headerProcessingResult.headerRefs.first else {
+        guard let headerAndPrevious = headerProcessingResult.headerAndPrevious else {
             return headerProcessingResult
         }
 
+        let (headerRef, previous) = headerAndPrevious
         switch headerRef.status {
-        case .header: try await acceptBlock(block, ref: headerRef, isRequested: isRequested, locator: locator)
+        case .header: try await acceptBlock(block, ref: headerRef, previous: previous, isRequested: isRequested, locator: locator)
         case .merkle: break
         case .active, .stale: return headerProcessingResult
         case .invalid: throw .invalidBlockAlreadyExists
@@ -1595,7 +1605,7 @@ extension BlockchainService {
     /// If it is the first time we see this block, its header will be processed first.
     /// If the block builds on the acvite chain tip, it will be connected thus validating its transactions.
     /// Otherwise the index will be updated to reflect that the merkle root has been verified.
-    private func acceptBlock(_ block: Block, ref blockRef: BlockRef, isRequested: Bool, locator: BlockStorageLocator? = nil) async throws(Error) {
+    private func acceptBlock(_ block: Block, ref blockRef: BlockRef, previous: BlockRef, isRequested: Bool, locator: BlockStorageLocator? = nil) async throws(Error) {
         logger.debug("Processing block \(block.idHex)")
 
         // Check all requested blocks that we do not already have for validity and save them to disk. Skip processing of unrequested blocks as an anti-DoS measure, unless the blocks have more work than the active chain tip, and aren't too far ahead of it, so are likely to be attached soon.
@@ -1640,7 +1650,7 @@ extension BlockchainService {
         try await checkBlock(block, previousRef: prev)
 
         do {
-            try await contextualCheckBlock(block, ref: blockRef, previous: activeTip)
+            try await contextualCheckBlock(block, ref: blockRef, previous: previous)
         } catch {
             logger.error("Issue while contextually checking block: \(error)")
             throw .invalidTransactionInBlock(error)
@@ -2412,7 +2422,19 @@ extension BlockchainService {
     }
 }
 
-public struct HeaderProcessingResult: Sendable {
+public struct SingleHeaderProcessingResult: Sendable {
+    public let headerAndPrevious: (header: BlockRef, previous: BlockRef)?
+    public let connectedHeaders: Set<BlockRef>
+    public let heldHeaders: Set<Block.ID>
+}
+
+public struct MultipleHeadersProcessingResult: Sendable {
+    package init(headerRefs: Set<BlockRef>, connectedHeaders: Set<BlockRef>, heldHeaders: Set<Block.ID>) {
+        self.headerRefs = headerRefs
+        self.connectedHeaders = connectedHeaders
+        self.heldHeaders = heldHeaders
+    }
+    
     public let headerRefs: Set<BlockRef>
     public let connectedHeaders: Set<BlockRef>
     public let heldHeaders: Set<Block.ID>

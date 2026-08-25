@@ -4,7 +4,7 @@ struct BlockStorageConfig {
     // TODO: change default maxFileSize to 0 and let blockchain service determine it.
     init(
         path: FilePath? = nil,
-        magic: Int = 0,
+        magic: Int = 0, // Default 0 for transient storage
         maxBlock: Int = 0,
         maxFileSize: Int = 0x8000000 // 128 MiB = 134,217,728 bytes
     ) {

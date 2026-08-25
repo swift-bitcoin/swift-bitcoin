@@ -76,7 +76,7 @@ actor ServerApp {
         } else {
             challenge = nil
         }
-        let network: NodeNetwork = switch config.network {
+        network = switch config.network {
         case .mainnet: .mainnet
         case .testnet: .testnet
         case .regtest: .regtest
@@ -201,6 +201,7 @@ actor ServerApp {
     }
 
     private let logger: Logger
+    private let network: NodeNetwork
     private var node: NodeService?
     private let rpcService: RPCService
     private var p2pService: P2PService? = nil
@@ -265,7 +266,7 @@ actor ServerApp {
 
         guard let node else { preconditionFailure() }
 
-        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port)
+        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port ?? network.defaultP2PPort)
         let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup) // TODO: Maybe do not shut down when we timeout on an outgoing peer?
         await serviceGroup.addServiceUnlessShutdown(config)
         return service.peerID
