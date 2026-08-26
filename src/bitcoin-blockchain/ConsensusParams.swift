@@ -44,6 +44,10 @@ public struct ConsensusParams: Sendable {
         strictDERSignatureHeight: Int = 363725,
         csvHeight: Int = 419328,
         segwitHeight: Int = 481824,
+        scriptConfigExceptions: [Block.ID : ScriptConfig] = [
+            Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xdc, 0x75, 0x6e, 0xeb, 0xf4, 0xf4, 0x97, 0x23, 0xed, 0x8d, 0x30, 0xcc, 0x28, 0xa5, 0xf1, 0x08, 0xeb, 0x94, 0xb1, 0xba, 0x88, 0xac, 0x4f, 0x9c, 0x22]): [], // BIP16 exception
+            Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x14, 0xc3, 0x5b, 0x2d, 0x84, 0x1e, 0x98, 0x6a, 0xb5, 0x44, 0x1d, 0xe8, 0xc5, 0x85, 0xd5, 0xff, 0xe5, 0x5e, 0xa1, 0xe3, 0x95, 0xad]): [.payToScriptHash, .witness] // Taproot exception
+        ],
         signetChallenge: Script? = nil
     ) {
         precondition(minChainwork.count == 32)
@@ -72,6 +76,7 @@ public struct ConsensusParams: Sendable {
         self.strictDERSignatureHeight = strictDERSignatureHeight
         self.csvHeight = csvHeight
         self.segwitHeight = segwitHeight
+        self.scriptConfigExceptions = scriptConfigExceptions
         self.signetChallenge = signetChallenge
     }
 
@@ -131,6 +136,14 @@ public struct ConsensusParams: Sendable {
     /// BIP141 Segregated Witness, BIP143, BIP147 `NULLDUMMY`
     public let segwitHeight: Int
 
+    /// Hashes of blocks that
+    ///  - are known to be consensus valid, and
+    ///  - buried in the chain, and
+    ///  - fail if the default script verify flags are applied.
+    ///
+    /// Analog to `script_flag_exceptions` in Core
+    public let scriptConfigExceptions: [Block.ID : ScriptConfig]
+
     public var signetChallenge: Script?
 
     public var difficultyAdjustmentInterval: Int {
@@ -175,7 +188,8 @@ public struct ConsensusParams: Sendable {
         cltvHeight: 1,
         strictDERSignatureHeight: 1,
         csvHeight: 1,
-        segwitHeight: 1
+        segwitHeight: 1,
+        scriptConfigExceptions: [:] // For testnet3 there would be one exception but this is testnet 4
     )
 
     public static let regtest = Self(
@@ -197,7 +211,8 @@ public struct ConsensusParams: Sendable {
         cltvHeight: 1,
         strictDERSignatureHeight: 1,
         csvHeight: 1,
-        segwitHeight: 0
+        segwitHeight: 0,
+        scriptConfigExceptions: [:]
     )
 
     public static func signet(options: SignetOptions = .init()) -> Self {
@@ -280,6 +295,7 @@ public struct ConsensusParams: Sendable {
             strictDERSignatureHeight: 1,
             csvHeight: 1,
             segwitHeight: 1,
+            scriptConfigExceptions: [:],
             signetChallenge: resolvedChallenge
         )
     }
@@ -303,7 +319,8 @@ public struct ConsensusParams: Sendable {
         cltvHeight: 1,
         strictDERSignatureHeight: 1,
         csvHeight: 1,
-        segwitHeight: 0
+        segwitHeight: 0,
+        scriptConfigExceptions: [:]
     )
 
     // TODO: Define testnet params with magicBytes 0x0709110b (big endian literas; sent/stored as little endian `[0x0b, 0x11, 0x09, 0x07]`)

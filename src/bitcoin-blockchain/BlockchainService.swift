@@ -1458,10 +1458,11 @@ extension BlockchainService {
             }
         }
 
+        let height = previousHeader.height + 1
         // Reject blocks with outdated version
-        if header.version < 2 && previousHeader.height >= params.heightInCoinbaseHeight ||
-            (header.version < 3 && previousHeader.height >= params.strictDERSignatureHeight) ||
-            (header.version < 4 && previousHeader.height >= params.cltvHeight) {
+        if header.version < 2 && height >= params.heightInCoinbaseHeight ||
+            (header.version < 3 && height >= params.strictDERSignatureHeight) ||
+            (header.version < 4 && height >= params.cltvHeight) {
             logger.error("Header \(header.idHex) - unsupported block version \(header.version)")
             throw .unsupportedBlockVersion
         }
@@ -2040,8 +2041,7 @@ extension BlockchainService {
         let verifyLocktimeSequence = blockRef.height >= params.csvHeight
 
         // Get the script flags for this block
-        let scriptConfig = ScriptConfig.mandatory
-        // TODO: Set the correct options (flags) depending on the height and activation status of each feature #547
+        let scriptConfig = flags(forBlock: blockRef)
 
         var fees = Amount(0)
         var sigopsCost = 0
@@ -2419,6 +2419,44 @@ extension BlockchainService {
             valueIn += coin.out.value
         }
         return valueIn - tx.valueOut
+    }
+
+    /// The script options for this particular block given it's height and whether it's on an exception list; checked against deployment heights of soft fork features.
+    ///
+    /// Analog to Core's `script_verify_flags GetBlockScriptFlags(const CBlockIndex& block_index, const ChainstateManager& chainman)`.
+    private func flags(forBlock ref: BlockRef) -> ScriptConfig {
+        // BIP16 didn't become active until Apr 1 2012 (on mainnet, and retroactively applied to testnet)
+        // However, only one historical block violated the P2SH rules (on both mainnet and testnet).
+        // Similarly, only one historical block violated the TAPROOT rules on mainnet.
+        // For simplicity, always leave P2SH+WITNESS+TAPROOT on except for the two violating blocks.
+        var flags = if let specialConfig = params.scriptConfigExceptions[ref.header.id] {
+            specialConfig
+        } else {
+            ScriptConfig([.payToScriptHash, .witness, .taproot])
+        }
+
+        let height = ref.height
+
+        // Enforce the DERSIG (BIP66) rule
+        if height >= params.strictDERSignatureHeight {
+            flags.insert(.strictDER)
+        }
+
+        // Enforce CHECKLOCKTIMEVERIFY (BIP65)
+        if height >= params.cltvHeight {
+            flags.insert(.checkLocktimeVerify)
+        }
+
+        // Enforce CHECKSEQUENCEVERIFY (BIP112)
+        if height >= params.csvHeight {
+            flags.insert(.checkSequenceVerify)
+        }
+
+        // Enforce BIP147 NULLDUMMY (activated simultaneously with segwit)
+        if height >= params.segwitHeight {
+            flags.insert(.nullDummy)
+        }
+        return flags
     }
 }
 
