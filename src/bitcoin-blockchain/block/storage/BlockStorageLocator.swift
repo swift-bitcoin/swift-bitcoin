@@ -22,19 +22,19 @@ struct BlockStorageLocator: Hashable {
 }
 
 extension BlockStorageLocator: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder, format: Never?) throws {
         file = try decoder.decode()
         offset = try decoder.decode()
         undoOffset = try decoder.decode()
     }
 
-    func encode(to encoder: inout BinaryEncoder) {
+    func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(file)
         encoder.encode(offset)
         encoder.encode(undoOffset)
     }
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(Int.self)
         counter.count(Int.self)
         counter.count(Int.self)

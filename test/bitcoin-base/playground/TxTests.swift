@@ -37,7 +37,7 @@ struct TxTests {
             #expect(tx.witnessID == Data(expectedWitnessID.reversed()))
 
             let expectedSize = txInfo.size
-            #expect(tx.dataSize == expectedSize)
+            #expect(tx.binarySize == expectedSize)
 
             let expectedInputCount = txInfo.vin.count
             let expectedOutputCount = txInfo.vout.count

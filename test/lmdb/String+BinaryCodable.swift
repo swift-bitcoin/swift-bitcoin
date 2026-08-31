@@ -16,7 +16,7 @@ func clearDir(_ location: URL) {
 
 extension String: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         let data = try decoder.decode()
         guard let maybeSelf = Self(data: data, encoding: .utf8) else {
             throw BinaryDecodingError.limitExceeded
@@ -24,11 +24,11 @@ extension String: BinaryCodable {
         self = maybeSelf
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(data(using: .utf8)!)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.countSize(data(using: .utf8)!.count)
     }
 }

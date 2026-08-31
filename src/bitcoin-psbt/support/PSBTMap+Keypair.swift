@@ -18,14 +18,14 @@ extension PSBTMap {
     /// `<valuelen>` - The compact size unsigned integer containing the length of `<valuedata>`.
     /// `<magic>` - Magic bytes which are ASCII for psbt [2] followed by a separator of `0xff`. This integer must be serialized in most significant byte order.
     ///
-    struct Keypair: CustomBinaryCodable {
+    struct Keypair: BinaryCodable {
 
         init(key: Key, value: Data) {
             self.key = key
             self.value = value
         }
 
-        init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PSBTMapError) {
+        init(from decoder: inout BinaryDecoder, format: Never?) throws(PSBTMapError) {
             do {
                 key = try decoder.decodeExplicit()
             } catch let error as PSBTMapError {
@@ -45,12 +45,12 @@ extension PSBTMap {
         let key: Key
         let value: Data
 
-        func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+        func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
             counter.count(key)
             counter.count(value, variable: true)
         }
 
-        func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
+        func encode(into encoder: inout BinaryEncoder, format: Never?) {
             encoder.encode(key)
             encoder.encode(value, variable: true)
         }

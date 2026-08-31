@@ -30,18 +30,18 @@ public struct Outpoint: Equatable, Hashable, Sendable {
 /// Data extensions.
 extension Outpoint: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         let tx = try decoder.decode(Transaction.idLength)
         let out = Int(try decoder.decode() as UInt32)
         self.init(tx: tx, out: out)
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(txID)
         encoder.encode(UInt32(out))
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.countSize(Transaction.idLength)
         counter.count(UInt32.self)
     }

@@ -2,50 +2,25 @@ import Foundation
 
 extension Array: BinaryCodable where Element: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Element.BinaryFormat?) throws {
         let count: VarInt = try decoder.decode()
         self.init()
         for _ in 0 ..< count.value {
-            append(try decoder.decode())
+            append(try decoder.decode(format: format))
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Element.BinaryFormat?) {
         encoder.encode(VarInt(count))
         for e in self {
-            e.encode(to: &encoder)
+            e.encode(into: &encoder, format: format)
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Element.BinaryFormat?) {
         counter.count(VarInt(count))
         for e in self {
-            e.encodingSize(&counter)
-        }
-    }
-}
-
-extension Array: CustomBinaryCodable where Element: CustomBinaryCodable {
-
-    public init(from decoder: inout BinaryDecoder, encoding: Element.Encoding?) throws {
-        let count: VarInt = try decoder.decode()
-        self.init()
-        for _ in 0 ..< count.value {
-            append(try decoder.decode(encoding: encoding))
-        }
-    }
-
-    public func encode(to encoder: inout BinaryEncoder, encoding: Element.Encoding?) {
-        encoder.encode(VarInt(count))
-        for e in self {
-            e.encode(to: &encoder, encoding: encoding)
-        }
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Element.Encoding?) {
-        counter.count(VarInt(count))
-        for e in self {
-            e.encodingSize(&counter, encoding: encoding)
+            e.countBytes(into: &counter, format: format)
         }
     }
 }

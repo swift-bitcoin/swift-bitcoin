@@ -42,7 +42,7 @@ public struct Block: Equatable, Sendable {
     // MARK: - Computed Properties
 
     public var id: Block.ID {
-        Data(Hash256.hash(data: data(encoding: .headerOnly)))
+        Data(Hash256.hash(data: data(binaryFormat: .headerOnly)))
     }
 
     public var idHex: String { id.reversed().hex }
@@ -55,7 +55,7 @@ public struct Block: Equatable, Sendable {
     }
 
     public var weight: Int {
-        dataSize(encoding: .noWitness) * 3 + dataSize
+        binarySize(format: .noWitness) * 3 + binarySize
     }
 
     // MARK: - Instance Methods
@@ -82,9 +82,9 @@ package extension Block {
     static let headerSize = 80
 }
 
-extension Block: CustomBinaryCodable {
+extension Block: BinaryCodable {
 
-    public enum Encoding: Equatable, Sendable {
+    public enum BinaryFormat: Equatable, Sendable {
         case headerOnly
         case noWitness
 
@@ -97,8 +97,8 @@ extension Block: CustomBinaryCodable {
         case file(magicBytes: Int)
     }
 
-    public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws {
-        switch encoding {
+    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
+        switch format {
         case nil, .headerOnly, .noWitness:
             let version = Int(try decoder.decode() as Int32)
             let previous = try decoder.decode(Block.idLength)
@@ -106,10 +106,10 @@ extension Block: CustomBinaryCodable {
             let time = Date(timeIntervalSince1970: TimeInterval(try decoder.decode() as UInt32))
             let target = Int(try decoder.decode() as UInt32)
             let nonce = Int(try decoder.decode() as UInt32)
-            let txs: [Transaction] = if encoding == .headerOnly {
+            let txs: [Transaction] = if format == .headerOnly {
                 []
             } else {
-                try decoder.decode(encoding: encoding == .noWitness ? .noWitness : nil)
+                try decoder.decode(format: format == .noWitness ? .noWitness : nil)
             }
             self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
         case .signet: fatalError("Signet encoding is for use with encoder only.")
@@ -125,8 +125,8 @@ extension Block: CustomBinaryCodable {
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
-        switch encoding {
+    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
+        switch format {
         case nil, .headerOnly, .noWitness:
             encoder.encode(Int32(version))
             encoder.encode(previous)
@@ -134,8 +134,8 @@ extension Block: CustomBinaryCodable {
             encoder.encode(UInt32(time.timeIntervalSince1970))
             encoder.encode(UInt32(target))
             encoder.encode(UInt32(nonce))
-            if encoding != .headerOnly {
-                encoder.encode(txs, encoding: encoding == .noWitness ? .noWitness : nil)
+            if format != .headerOnly {
+                encoder.encode(txs, format: format == .noWitness ? .noWitness : nil)
             }
         case .signet:
             encoder.encode(Int32(version))
@@ -144,13 +144,13 @@ extension Block: CustomBinaryCodable {
             encoder.encode(UInt32(time.timeIntervalSince1970))
         case .file(let magicBytes):
             encoder.encode(UInt32(magicBytes))
-            encoder.encode(UInt32(dataSize))
-            encode(to: &encoder)
+            encoder.encode(UInt32(binarySize))
+            encode(into: &encoder)
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
-        switch encoding {
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
+        switch format {
         case nil, .headerOnly, .noWitness:
             counter.count(Int32(version))
             counter.count(previous)
@@ -158,8 +158,8 @@ extension Block: CustomBinaryCodable {
             counter.count(UInt32(time.timeIntervalSince1970))
             counter.count(UInt32(target))
             counter.count(UInt32(nonce))
-            if encoding != .headerOnly {
-                counter.count(txs, encoding: encoding == .noWitness ? .noWitness : nil)
+            if format != .headerOnly {
+                counter.count(txs, format: format == .noWitness ? .noWitness : nil)
             }
         case .signet:
             counter.count(Int32(version))
@@ -169,7 +169,7 @@ extension Block: CustomBinaryCodable {
         case .file(_):
             counter.count(UInt32.self)
             counter.count(UInt32.self)
-            encodingSize(&counter)
+            countBytes(into: &counter)
         }
     }
 }

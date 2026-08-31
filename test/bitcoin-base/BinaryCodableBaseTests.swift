@@ -7,7 +7,7 @@ struct BinaryCodableBaseTests {
 
     @Test func outpointRoundtrip() throws {
         let o = Outpoint.coinbase
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(o)
         var encoder = BinaryEncoder(counter)
         encoder.encode(o)
@@ -19,7 +19,7 @@ struct BinaryCodableBaseTests {
 
     @Test func scriptOpRoundtrip() throws {
         let basicOp = Script.Operation.checkSig
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(basicOp)
         var encoder = BinaryEncoder(counter)
         encoder.encode(basicOp)
@@ -29,7 +29,7 @@ struct BinaryCodableBaseTests {
         #expect(basicOp == basicOp2)
 
         let minPush = Script.Operation.pushBytes(.init([0, 1, 2]))
-        counter = BinaryEncodingSizeCounter()
+        counter = BinarySizeCounter()
         counter.count(minPush)
         encoder = BinaryEncoder(counter)
         encoder.encode(minPush)
@@ -41,7 +41,7 @@ struct BinaryCodableBaseTests {
 
     @Test func scriptRoundtrip() throws {
         let emptyScript = Script.empty
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(emptyScript)
         var encoder = BinaryEncoder(counter)
         encoder.encode(emptyScript)
@@ -51,7 +51,7 @@ struct BinaryCodableBaseTests {
         #expect(emptyScript == emptyScript2)
 
         let minPush: Script = [Script.Operation.pushBytes(.init([0, 1, 2]))]
-        counter = BinaryEncodingSizeCounter()
+        counter = BinarySizeCounter()
         counter.count(minPush)
         encoder = BinaryEncoder(counter)
         encoder.encode(minPush)
@@ -63,8 +63,8 @@ struct BinaryCodableBaseTests {
 
     @Test func scriptPrefixedRoundtrip() throws {
         let emptyScript = Script.empty
-        var counter = BinaryEncodingSizeCounter()
-        emptyScript.encodingSizePrefixed(&counter)
+        var counter = BinarySizeCounter()
+        emptyScript.countBytesPrefixed(into: &counter)
         var encoder = BinaryEncoder(counter)
         emptyScript.encodePrefixed(to: &encoder)
         var data = encoder.data
@@ -73,8 +73,8 @@ struct BinaryCodableBaseTests {
         #expect(emptyScript == emptyScript2)
 
         let minPush: Script = [Script.Operation.pushBytes(.init([0, 1, 2]))]
-        counter = BinaryEncodingSizeCounter()
-        minPush.encodingSizePrefixed(&counter)
+        counter = BinarySizeCounter()
+        minPush.countBytesPrefixed(into: &counter)
         encoder = BinaryEncoder(counter)
         minPush.encodePrefixed(to: &encoder)
         data = encoder.data
@@ -85,7 +85,7 @@ struct BinaryCodableBaseTests {
 
     @Test func sequenceRoundtrip() throws {
         let final = Transaction.Input.Sequence.final
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(final)
         var encoder = BinaryEncoder(counter)
         encoder.encode(final)
@@ -95,7 +95,7 @@ struct BinaryCodableBaseTests {
         #expect(final == final2)
 
         let maxBlocks = Transaction.Input.Sequence.maxLocktimeBlocks
-        counter = BinaryEncodingSizeCounter()
+        counter = BinarySizeCounter()
         counter.count(maxBlocks)
         encoder = BinaryEncoder(counter)
         encoder.encode(maxBlocks)
@@ -109,9 +109,9 @@ struct BinaryCodableBaseTests {
         let outpoint = Outpoint.coinbase
         let emptyScript = Script.empty
         let sequence = Transaction.Input.Sequence.final
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(outpoint)
-        emptyScript.encodingSizePrefixed(&counter)
+        emptyScript.countBytesPrefixed(into: &counter)
         counter.count(sequence)
         var encoder = BinaryEncoder(counter)
         encoder.encode(outpoint)
@@ -129,7 +129,7 @@ struct BinaryCodableBaseTests {
 
     @Test func inputRoundtrip() throws {
         let i = Transaction.Input(outpoint: .coinbase)
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(i)
         var encoder = BinaryEncoder(counter)
         encoder.encode(i)
@@ -152,7 +152,7 @@ struct BinaryCodableBaseTests {
     ])
     func outputRoundtrip(value: Amount, script: [UInt8]) throws {
         let out = TransactionOutput(value: value, script: try .init(script))
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(out)
         var encoder = BinaryEncoder(counter)
         encoder.encode(out)
@@ -167,12 +167,26 @@ struct BinaryCodableBaseTests {
         var decoder = BinaryDecoder(scriptData)
         let script: Script = try decoder.decode()
 
-        var counter = BinaryEncodingSizeCounter()
+        // Swift Binary Parsing
+        let script3 = try scriptData.withParserSpan { input in
+            try Script(parsing: &input)
+        }
+        #expect(script3.unparsable == script.unparsable)
+        #expect(script3 == script)
+
+        var counter = BinarySizeCounter()
         counter.count(script)
 
         var encoder = BinaryEncoder(counter)
         encoder.encode(script)
         #expect(encoder.data == scriptData)
+
+        // Swift Binary Parsing
+        let scriptData3 = try withTemporaryAllocation(byteCount: counter.size, alignment: 1) { span in
+            try script3.encode(into: &span)
+            return Data(span.bytes)
+        }
+        #expect(scriptData3 == scriptData)
 
         let prefixedData = Data([0x20]) + scriptData
         decoder = BinaryDecoder(prefixedData)
@@ -180,12 +194,26 @@ struct BinaryCodableBaseTests {
         #expect(script2.unparsable == script.unparsable)
         #expect(script2 == script)
 
-        counter = BinaryEncodingSizeCounter()
-        script2.encodingSizePrefixed(&counter)
+        // Swift Binary Parsing
+        let script4 = try prefixedData.withParserSpan { input in
+            try Script(parsingPrefixed: &input)
+        }
+        #expect(script4.unparsable == script.unparsable)
+        #expect(script4 == script)
+
+        counter = BinarySizeCounter()
+        script2.countBytesPrefixed(into: &counter)
 
         encoder = BinaryEncoder(counter)
         script2.encodePrefixed(to: &encoder)
         #expect(prefixedData == encoder.data)
+
+        // Swift Binary Parsing
+        let scriptData4 = try withTemporaryAllocation(byteCount: counter.size, alignment: 1) { span in
+            try script4.encodePrefixed(into: &span)
+            return Data(span.bytes)
+        }
+        #expect(scriptData4 == prefixedData)
     }
 
     @Test func txRoundtrip() throws {

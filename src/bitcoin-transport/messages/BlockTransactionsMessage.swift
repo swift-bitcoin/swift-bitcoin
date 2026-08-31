@@ -44,7 +44,7 @@ extension BlockTransactionsMessage {
         for _ in 0 ..< txCount {
             guard let tx = try? Transaction(data) else { return nil }
             txs.append(tx)
-            data = data.dropFirst(tx.dataSize)
+            data = data.dropFirst(tx.binarySize)
         }
         self.txs = txs
     }
@@ -60,6 +60,6 @@ extension BlockTransactionsMessage {
     }
 
     var size: Int {
-        32 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.dataSize }
+        32 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.binarySize }
     }
 }

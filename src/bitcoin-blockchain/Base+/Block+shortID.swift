@@ -26,7 +26,7 @@ extension Block {
     func shortTransactionIDParams(nonce: UInt64) -> (first: UInt64, second: UInt64) {
         // single-SHA256 hashing the block header with the nonce appended (in little-endian)
         var encoder = BinaryEncoder(size: Block.headerSize + MemoryLayout<UInt64>.size)
-        encoder.encode(data(encoding: .headerOnly))
+        encoder.encode(data(binaryFormat: .headerOnly))
         encoder.encode(nonce)
         let headerData = encoder.data
         let headerHash = Data(SHA256.hash(data: headerData))

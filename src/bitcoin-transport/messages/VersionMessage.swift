@@ -122,7 +122,7 @@ extension VersionMessage {
     }
 
     var size: Int {
-        85 + VarInt(userAgentData.count).dataSize + userAgentData.count
+        85 + VarInt(userAgentData.count).binarySize + userAgentData.count
     }
 
     var data: Data {

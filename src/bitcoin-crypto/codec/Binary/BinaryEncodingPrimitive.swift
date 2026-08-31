@@ -1,83 +1,83 @@
 import Foundation
 
-public protocol BinaryEncodingPrimitive: BinaryCodable, CustomBinaryCodable {}
+public protocol BinaryEncodingPrimitive: BinaryCodable {}
 
 extension BinaryEncodingPrimitive {
 
-    public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws {
+    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
         self = try decoder.decodePrimitive()
     }
 
-    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
+    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
         encoder.encode(self)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
         counter.countPrimitive(self)
     }
 }
 
 extension Int: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension Int8: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension Int16: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension Int32: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension Int64: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension UInt: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension UInt8: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension UInt16: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension UInt32: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension UInt64: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension Bool: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension Float: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }
 
 extension Double: BinaryEncodingPrimitive {
-    public typealias Encoding = Never
+    public typealias BinaryFormat = Never
     public typealias DecodingError = BinaryDecodingError
 }

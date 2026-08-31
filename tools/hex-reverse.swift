@@ -30,7 +30,7 @@ func decode(_ hexString: String) -> [UInt8] {
         fatalError("String length must be an even number.")
     }
 
-    let stringBytes: [UInt8] = Array(hexString.lowercased().data(using: String.Encoding.utf8)!)
+    let stringBytes: [UInt8] = Array(hexString.lowercased().data(using: .utf8)!)
 
     var data = [UInt8]()
     for i in stride(from: stringBytes.startIndex, to: stringBytes.endIndex - 1, by: 2) {

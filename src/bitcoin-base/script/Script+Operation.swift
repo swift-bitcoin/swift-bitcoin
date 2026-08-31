@@ -350,7 +350,7 @@ extension Script.Operation {
 
 extension Script.Operation: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         decoder.setCheckpoint()
         let opCode: UInt8 = try decoder.decode()
         switch opCode {
@@ -505,7 +505,7 @@ extension Script.Operation: BinaryCodable {
         decoder.clearCheckpoint()
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(opCode)
         switch self {
         case .pushData1(let d):
@@ -523,7 +523,7 @@ extension Script.Operation: BinaryCodable {
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(UInt8.self) // opCode
         switch self {
         case .pushData1(_):
@@ -546,7 +546,7 @@ extension Script.Operation: BinaryCodable {
 
 import BinaryParsing
 
-extension Script.Operation {
+extension Script.Operation: ExpressibleByParsing {
     public init(parsing input: inout ParserSpan) throws {
         // decoder.setCheckpoint()
         let range = input.parserRange
@@ -714,65 +714,21 @@ extension Script.Operation {
 }
 
 extension Script.Operation {
-    public func encode(to output: inout OutputRawSpan) throws {
-        output.append(opCode)
+    public func encode(into out: inout OutputRawSpan) throws {
+        out.append(opCode)
         switch self {
         case .pushData1(let d):
-            output.append(UInt8(d.count))
+            out.append(UInt8(d.count))
         case .pushData2(let d):
-            output.append(UInt16(d.count).littleEndian, as: UInt16.self)
+            out.append(UInt16(d.count).littleEndian, as: UInt16.self)
         case .pushData4(let d):
-            output.append(UInt32(d.count).littleEndian, as: UInt32.self)
+            out.append(UInt32(d.count).littleEndian, as: UInt32.self)
         default: break
         }
         switch self {
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d):
-            output.append(contentsOf: d)
+            out.append(contentsOf: d)
         default: break
-        }
-    }
-}
-
-extension OutputRawSpan {
-    /// Appends the contents of a Foundation Data buffer to this raw span.
-    public mutating func append(contentsOf data: Data) {
-        guard !data.isEmpty else { return }
-
-        // 1. Access the raw mutable buffer of the span
-        self.withUnsafeMutableBytes { (destBuffer: UnsafeMutableRawBufferPointer, initializedCount: inout Int) in
-            // Ensure there is enough free capacity to avoid an out-of-bounds crash
-            precondition(destBuffer.count - initializedCount >= data.count, "Out of bounds: OutputRawSpan has insufficient capacity.")
-
-            // 2. Identify the next uninitialized position in the destination span
-            let writePointer = destBuffer.baseAddress! + initializedCount
-
-            // 3. Copy bytes directly from Data to the span destination pointer
-            data.copyBytes(to: writePointer.assumingMemoryBound(to: UInt8.self), count: data.count)
-
-            // Swift 6.4 alternative
-            //let sourceSpan = data.bytes
-            //writePointer.copyMemory(from: sourceSpan.baseAddress!, byteCount: sourceSpan.byteCount)
-
-            // 4. Critical: Update the initialized count so the span registers the append
-            initializedCount += data.count
-        }
-    }
-
-    /// Appends the contents of a standard [UInt8] array to this raw span.
-    public mutating func append(contentsOf bytes: [UInt8]) {
-        guard !bytes.isEmpty else { return }
-
-        self.withUnsafeMutableBytes { (destBuffer: UnsafeMutableRawBufferPointer, initializedCount: inout Int) in
-            precondition(destBuffer.count - initializedCount >= bytes.count, "Out of bounds: OutputRawSpan has insufficient capacity.")
-
-            let writePointer = destBuffer.baseAddress! + initializedCount
-
-            // Access the source array's contiguous memory buffer safely
-            bytes.withUnsafeBytes { sourceBuffer in
-                writePointer.copyMemory(from: sourceBuffer.baseAddress!, byteCount: bytes.count)
-            }
-
-            initializedCount += bytes.count
         }
     }
 }

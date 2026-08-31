@@ -6,7 +6,7 @@ struct BinaryCodableTests {
 
     @Test func trivialRoundtrip() throws {
         let a = Int.random(in: Int.min ... Int.max)
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(a)
         var encoder = BinaryEncoder(counter)
         encoder.encode(a)
@@ -18,7 +18,7 @@ struct BinaryCodableTests {
 
     @Test func customStructRoundtrip() throws {
         let s = CustomStruct(int: .max, intArray: [0, 1, 2], data: .init([3, 4, 5, 6]), uInt64: .max)
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(s)
         var encoder = BinaryEncoder(counter)
         encoder.encode(s)
@@ -31,7 +31,7 @@ struct BinaryCodableTests {
     @Test func nestedStructRoundtrip() throws {
         let child = CustomStruct(int: .max, intArray: [0, 1, 2], data: .init([3, 4, 5, 6]), uInt64: .max)
         let parent = ParentStruct(int1: .max, child: child, int2: .max / 2, children: [child, child, child], int3: .max / 3)
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(parent)
         var encoder = BinaryEncoder(counter)
         encoder.encode(parent)
@@ -51,7 +51,7 @@ private struct ParentStruct: Equatable {
 }
 
 extension ParentStruct: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder, format: Never?) throws {
         int1 = try decoder.decode()
         child = try decoder.decode()
         int2 = try decoder.decode()
@@ -59,7 +59,7 @@ extension ParentStruct: BinaryCodable {
         int3 = try decoder.decode()
     }
 
-    func encode(to encoder: inout BinaryEncoder) {
+    func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(int1)
         encoder.encode(child)
         encoder.encode(int2)
@@ -67,7 +67,7 @@ extension ParentStruct: BinaryCodable {
         encoder.encode(int3)
     }
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(int1)
         counter.count(child)
         counter.count(int2)
@@ -84,21 +84,21 @@ private struct CustomStruct: Equatable {
 }
 
 extension CustomStruct: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
+    init(from decoder: inout BinaryDecoder, format: Never?) throws {
         int = try decoder.decode()
         intArray = try decoder.decode()
         data = try decoder.decode(variable: true)
         uInt64 = try decoder.decode()
     }
 
-    func encode(to encoder: inout BinaryEncoder) {
+    func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(int)
         encoder.encode(intArray)
         encoder.encode(data, variable: true)
         encoder.encode(uInt64)
     }
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(int)
         counter.count(intArray)
         counter.count(data, variable: true)

@@ -1,56 +1,78 @@
 import Foundation
 
-/// A type that can convert itself into and out of a binary external representation.
+/// Encode and decode binary data with custom binary format.
 ///
-/// Codable is a type alias for the `BinaryEncodable` and `BinaryDecodable` protocols. When you use Codable as a type or a generic constraint, it matches any type that conforms to both protocols.
-public typealias BinaryCodable = BinaryDecodable & BinaryEncodable
+/// Because the associated ``BinaryEncodable/BinaryFormat`` and ``BinaryDecodable/BinaryFormat`` share their identifier, these must be the same type.
+///
+/// If the Swift Language changes in the future to allow for different `BinaryFormat` types to be defined, this protocol can also be declared as `protocol BinaryCodable<BinaryFormat>: BinaryEncodable, BinaryDecodable {}`.
+///
+public typealias BinaryCodable = BinaryEncodable & BinaryDecodable
 
-/// A type that can encode itself to a binary external representation.
 public protocol BinaryEncodable {
 
-    /// Encodes this value into the given binary encoder.
-    /// - Parameter encoder: The encoder to write binary data to.
-    ///
-    /// This function throws an error if any values are invalid for the given encoder’s format.
-    func encode(to encoder: inout BinaryEncoder)
+    associatedtype BinaryFormat
 
-    /// Reports the length of the binary representation.
-    /// - Parameter counter: The counter to report the instance's encoded size to.
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter)
-}
-
-/// A type that can decode itself from an external binary representation.
-public protocol BinaryDecodable {
-
-    /// Creates a new instance by decoding from the given decoder.
-    init(from decoder: inout BinaryDecoder) throws
+    func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?)
+    func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?)
 }
 
 public extension BinaryEncodable {
 
-    /// The instance's external binary representation.
-    var data: Data {
-        var encoder = BinaryEncoder(size: dataSize)
-        encode(to: &encoder)
+    func countBytes(into counter: inout BinarySizeCounter) {
+        countBytes(into: &counter, format: nil)
+    }
+
+    func encode(into encoder: inout BinaryEncoder) {
+        encode(into: &encoder, format: nil)
+    }
+
+    func binarySize(format: BinaryFormat?) -> Int {
+        var counter = BinarySizeCounter()
+        countBytes(into: &counter, format: format)
+        return counter.size
+    }
+
+    func data(binaryFormat: BinaryFormat?) -> Data {
+        var counter = BinarySizeCounter()
+        countBytes(into: &counter, format: binaryFormat)
+        var encoder = BinaryEncoder(counter)
+        encode(into: &encoder, format: binaryFormat)
         return encoder.data
     }
 
     /// The external binary representation's length in bytes.
-    var dataSize: Int {
-        var counter = BinaryEncodingSizeCounter()
-        encodingSize(&counter)
-        return counter.size
+    var binarySize: Int {
+        binarySize(format: nil)
+    }
+
+    /// The instance's external binary representation.
+    var data: Data {
+        data(binaryFormat: nil)
     }
 }
 
+public protocol BinaryDecodable {
+    associatedtype BinaryFormat
+
+    init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws
+}
+
 public extension BinaryDecodable {
+
+    init(from decoder: inout BinaryDecoder) throws {
+        try self.init(from: &decoder, format: nil)
+    }
 
     /// Creates a new instance from an external binary representation.
     /// - Parameter data: The binary representation to decode.
     ///
     /// This initializer is generic over `DataProtocol`  meaning it can be passed a `Data` instance or a `UInt8` array.
     init<D: DataProtocol>(_ data: D) throws {
+        try self.init(data, binaryFormat: nil)
+    }
+
+    init<D: DataProtocol>(_ data:D, binaryFormat: BinaryFormat?) throws {
         var decoder = BinaryDecoder(data)
-        try self.init(from: &decoder)
+        try self.init(from: &decoder, format: binaryFormat)
     }
 }

@@ -261,20 +261,20 @@ public struct DifficultyTarget: Comparable, Sendable {
 
 extension DifficultyTarget: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         n = .init(repeating: 0, count: Self.width)
         for i in n.indices {
             n[i] = try decoder.decode()
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         for value in n {
             encoder.encode(value)
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.countSize(Self.bytes)
     }
 }

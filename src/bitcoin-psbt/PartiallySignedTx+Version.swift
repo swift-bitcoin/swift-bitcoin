@@ -3,9 +3,9 @@ import BitcoinCrypto
 
 public extension PartiallySignedTx {
 
-    enum Version: Int, Equatable, Sendable, CustomBinaryCodable {
+    enum Version: Int, Equatable, Sendable, BinaryCodable {
 
-        public init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PartiallySignedTxError) {
+        public init(from decoder: inout BinaryDecoder, format: Never?) throws(PartiallySignedTxError) {
             let value: UInt32
             do {
                 value = try decoder.decode()
@@ -25,11 +25,11 @@ public extension PartiallySignedTx {
             UInt32(rawValue)
         }
 
-        public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+        public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
             counter.count(value)
         }
 
-        public func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
+        public func encode(into encoder: inout BinaryEncoder, format: Never?) {
             encoder.encode(value)
         }
     }

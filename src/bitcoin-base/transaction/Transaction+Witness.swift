@@ -50,7 +50,7 @@ extension Transaction.Witness: ExpressibleByArrayLiteral {
 /// Binary data extensions.
 extension Transaction.Witness: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         let count = (try decoder.decode() as VarInt).value
         var stack = [Data]()
         for _ in 0 ..< count {
@@ -59,14 +59,14 @@ extension Transaction.Witness: BinaryCodable {
         self.stack = stack
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(VarInt(stack.count))
         for e in stack {
             encoder.encode(e, variable: true)
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(VarInt(stack.count))
         for e in stack {
             counter.count(e, variable: true)

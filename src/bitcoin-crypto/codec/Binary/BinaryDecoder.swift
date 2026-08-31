@@ -69,20 +69,20 @@ public struct BinaryDecoder {
 
     /// Decodes a binary decodable object.
     public mutating func decode<T: BinaryDecodable>() throws -> T {
-        try T(from: &self)
+        try decode(format: nil)
     }
 
     public mutating func decodeExplicit<T: BinaryDecodable>() throws -> T {
-        try T(from: &self)
+        try decodeExplicit(format: nil)
     }
 
     /// Decodes a custom binary decodable object.
-    public mutating func decode<T: CustomBinaryDecodable>(encoding: T.Encoding?) throws -> T {
-        try T(from: &self, encoding: encoding)
+    public mutating func decode<T: BinaryDecodable>(format: T.BinaryFormat?) throws -> T {
+        try T(from: &self, format: format)
     }
 
-    public mutating func decodeExplicit<T: CustomBinaryDecodable>(encoding: T.Encoding?) throws -> T {
-        try T(from: &self, encoding: encoding)
+    public mutating func decodeExplicit<T: BinaryDecodable>(format: T.BinaryFormat?) throws -> T {
+        try T(from: &self, format: format)
     }
 
     public mutating func decodeArray<T: BinaryEncodingPrimitive>(count: Int? = nil) throws -> [T] {

@@ -22,13 +22,13 @@ public struct DerivationPath: Equatable, Sendable {
     public let indices: [Int]
 }
 
-extension DerivationPath: CustomBinaryCodable {
+extension DerivationPath: BinaryCodable {
 
     public enum DecodingError: Error {
         case invalidFingerprint, invalidIndex
     }
 
-    public init(from decoder: inout BinaryDecoder, encoding: Never?) throws(DecodingError) {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws(DecodingError) {
         guard let fingerprintRaw = try? decoder.decode() as UInt32 else {
             throw .invalidFingerprint
         }
@@ -39,12 +39,12 @@ extension DerivationPath: CustomBinaryCodable {
         indices = indicesRaw.map { Int($0) }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(UInt32(fingerprint))
         counter.countArray(indices.map { UInt32($0) })
     }
 
-    public func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(UInt32(fingerprint))
         encoder.encodeArray(indices.map { UInt32($0) })
     }

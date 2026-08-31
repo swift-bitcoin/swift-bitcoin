@@ -22,21 +22,22 @@ public struct TransactionOutput: Equatable, Sendable {
 
 /// Data extensions.
 extension TransactionOutput: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         value = try decoder.decode()
         script = try Script(prefixedFrom: &decoder)
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(value)
         script.encodePrefixed(to: &encoder)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(value)
-        script.encodingSizePrefixed(&counter)
+        script.countBytesPrefixed(into: &counter)
     }
 
+    // TODO: Use a custom binary format for just the value
     var valueData: Data {
         var encoder = BinaryEncoder(size: valueSize)
         encoder.encode(value)
@@ -44,7 +45,7 @@ extension TransactionOutput: BinaryCodable {
     }
 
     var valueSize: Int {
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(value)
         return counter.size
     }
@@ -62,8 +63,8 @@ extension TransactionOutput {
 }
 
 extension TransactionOutput {
-    public func encode(to output: inout OutputRawSpan) throws {
-        output.append(UInt64(value).littleEndian, as: UInt64.self)
-        try script.encode(to: &output)
+    public func encode(into out: inout OutputRawSpan) throws {
+        out.append(UInt64(value).littleEndian, as: UInt64.self)
+        try script.encode(into: &out)
     }
 }

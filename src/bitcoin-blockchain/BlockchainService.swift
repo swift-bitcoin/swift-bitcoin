@@ -1039,7 +1039,7 @@ extension BlockchainService {
         }
 
         // Transactions smaller than 65 non-witness bytes are not relayed to mitigate CVE-2017-12842.
-        guard tx.dataSize(encoding: .noWitness) >= Transaction.minStandardNonWitnessSize else {
+        guard tx.binarySize(format: .noWitness) >= Transaction.minStandardNonWitnessSize else {
             throw .smallTransactionSize
         }
 
@@ -1717,7 +1717,7 @@ extension BlockchainService {
         // checks that use witness data may be performed here.
 
         // Size limits
-        guard let firstTx = block.txs.first, block.txs.count * Transaction.witnessScaleFactor <= Block.maxWeight, block.dataSize(encoding: .noWitness) * Transaction.witnessScaleFactor <= Block.maxWeight else {
+        guard let firstTx = block.txs.first, block.txs.count * Transaction.witnessScaleFactor <= Block.maxWeight, block.binarySize(format: .noWitness) * Transaction.witnessScaleFactor <= Block.maxWeight else {
             // size limits failed
             throw .badBlockSize
         }
@@ -1789,7 +1789,7 @@ extension BlockchainService {
         let witnessCommitment = coinbase.outs[commitIndex].script
 
         guard let (solution, opIndex) = findSignetSolution(witnessCommitment) else {
-            let blockData = block.data(encoding: .signet)
+            let blockData = block.data(binaryFormat: .signet)
             let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
                 .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
             ], outs: [
@@ -1815,14 +1815,14 @@ extension BlockchainService {
         } catch {
             throw .invalidSignetSolutionWitness
         }
-        guard solution.count == script.sizePrefixed + witness.dataSize else {
+        guard solution.count == script.sizePrefixed + witness.binarySize else {
             throw .extraneousSignetSolutionData
         }
 
         var modifiedBlock = block
         modifiedBlock.txs[0].outs[commitIndex].script.ops[opIndex] = .encodeMinimally(signetHeader)
         modifiedBlock.recalculateMerkleRoot()
-        let blockData = modifiedBlock.data(encoding: .signet)
+        let blockData = modifiedBlock.data(binaryFormat: .signet)
 
         let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
             .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
@@ -2370,7 +2370,7 @@ extension BlockchainService {
             time: blockTime,
             target: 0
         )
-        let blockData = modifiedBlock.data(encoding: .signet)
+        let blockData = modifiedBlock.data(binaryFormat: .signet)
 
         let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
             .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])

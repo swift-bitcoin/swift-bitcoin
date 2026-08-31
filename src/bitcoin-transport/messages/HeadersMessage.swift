@@ -36,7 +36,7 @@ extension HeadersMessage {
         for _ in 0 ..< itemCount {
             guard let block = try? Block(data), block.txs.isEmpty else { return nil }
             items.append(block)
-            data = data.dropFirst(block.dataSize)
+            data = data.dropFirst(block.binarySize)
         }
         self.items = items
     }

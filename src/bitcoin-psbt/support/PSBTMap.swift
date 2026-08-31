@@ -5,13 +5,13 @@ public enum PSBTMapError: Error {
     case /*invalidKeyType, invalidKeyData,*/ invalidKeyEncoding, invalidValueEncoding, invalidKeyPairEncoding, duplicateKey, missingDelimiter
 }
 
-struct PSBTMap: CustomBinaryCodable {
+struct PSBTMap: BinaryCodable {
 
     init(entries: [Key : Data]) {
         self.entries = entries
     }
 
-    init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PSBTMapError) {
+    init(from decoder: inout BinaryDecoder, format: Never?) throws(PSBTMapError) {
         guard let maybeDelimiter = decoder.peek() else {
             throw .missingDelimiter
         }
@@ -45,14 +45,14 @@ struct PSBTMap: CustomBinaryCodable {
         entries.map { Keypair(key: $0, value: $1) }
     }
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+    func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         for keypair in keypairs {
             counter.count(keypair)
         }
         counter.count(Self.delimiter)
     }
 
-    func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
+    func encode(into encoder: inout BinaryEncoder, format: Never?) {
         for keypair in keypairs {
             encoder.encode(keypair)
         }

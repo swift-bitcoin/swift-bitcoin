@@ -5,13 +5,13 @@ public struct BinaryEncoder {
 
     /// Initializes an encoder with the specified capacity.
     ///
-    /// Use ``BinaryEncodingSizeCounter`` to pre-calculate the size.
+    /// Use ``BinarySizeCounter`` to pre-calculate the size.
     public init(size: Int) {
         data = .init(count: size)
     }
 
-    /// Initializes an encoder from a binary encoding size counter.
-    public init(_ counter: BinaryEncodingSizeCounter) {
+    /// Initializes an encoder from a binary binary size counter.
+    public init(_ counter: BinarySizeCounter) {
         data = .init(count: counter.size)
     }
 
@@ -46,11 +46,11 @@ public struct BinaryEncoder {
     }
 
     public mutating func encode<T: BinaryEncodable>(_ value: T) {
-        value.encode(to: &self)
+        encode(value, format: nil)
     }
 
-    public mutating func encode<T: CustomBinaryEncodable>(_ value: T, encoding: T.Encoding?) {
-        value.encode(to: &self, encoding: encoding)
+    public mutating func encode<T: BinaryEncodable>(_ value: T, format: T.BinaryFormat?) {
+        value.encode(into: &self, format: format)
     }
 
     mutating func encode<T: BinaryEncodingPrimitive>(_ value: T) {
@@ -63,7 +63,7 @@ public struct BinaryEncoder {
     }
 
     public static func encode<T: BinaryEncodingPrimitive>(_ value: T) -> Data {
-        var counter = BinaryEncodingSizeCounter()
+        var counter = BinarySizeCounter()
         counter.count(value)
         var encoder = BinaryEncoder(counter)
         encoder.encode(value)

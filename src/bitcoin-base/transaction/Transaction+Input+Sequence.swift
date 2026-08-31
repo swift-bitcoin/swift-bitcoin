@@ -83,16 +83,16 @@ extension Transaction.Input.Sequence {
 
 /// Data extensions.
 extension Transaction.Input.Sequence: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         let rawValue: UInt32 = try decoder.decode()
         self.init(Int(rawValue))
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(UInt32(sequenceValue))
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(UInt32.self)
     }
 }

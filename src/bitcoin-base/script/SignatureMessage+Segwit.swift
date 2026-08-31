@@ -55,7 +55,7 @@ extension SignatureMessage.Segwit {
         let amountData = withUnsafeBytes(of: amount) { Data($0) }
         let sequenceData = tx.ins[inputIndex].sequence.data
 
-        let remainingData = sequenceData + hashOuts + tx.locktime.data + sighashType.data(encoding: .fullLength)
+        let remainingData = sequenceData + hashOuts + tx.locktime.data + sighashType.data(binaryFormat: .fullLength)
         data = tx.version.data + hashPrevouts + hashSequence + outpointData + scriptCodeData + amountData + remainingData
     }
 }

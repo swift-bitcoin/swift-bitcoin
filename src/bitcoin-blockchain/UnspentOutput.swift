@@ -24,19 +24,19 @@ public struct UnspentOutput: Equatable, Sendable {
 
 extension UnspentOutput: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         out = try decoder.decode()
         height = try decoder.decode()
         isCoinbase = try decoder.decode()
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(out)
         encoder.encode(height)
         encoder.encode(isCoinbase)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(out)
         counter.count(Int.self)
         counter.count(Bool.self)
@@ -44,7 +44,7 @@ extension UnspentOutput: BinaryCodable {
 }
 
 extension Optional: BinaryCodable where Wrapped == UnspentOutput {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         let intData = decoder.peek(MemoryLayout<Int>.size)
         if intData == Data([UInt8](repeating: 0xff, count: MemoryLayout<Int>.size)) {
             let decoded: Int = try decoder.decode()
@@ -55,7 +55,7 @@ extension Optional: BinaryCodable where Wrapped == UnspentOutput {
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         if let self {
             encoder.encode(self)
         } else {
@@ -63,7 +63,7 @@ extension Optional: BinaryCodable where Wrapped == UnspentOutput {
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         if let self {
             counter.count(self)
         } else {

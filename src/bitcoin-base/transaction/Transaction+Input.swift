@@ -40,22 +40,22 @@ extension Transaction {
 
 /// Data extensions.
 extension Transaction.Input: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         outpoint = try decoder.decode()
         script = try Script(prefixedFrom: &decoder)
         sequence = try decoder.decode()
         witness = []
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(outpoint)
         script.encodePrefixed(to: &encoder)
         encoder.encode(sequence)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(outpoint)
-        script.encodingSizePrefixed(&counter)
+        script.countBytesPrefixed(into: &counter)
         counter.count(sequence)
     }
 }

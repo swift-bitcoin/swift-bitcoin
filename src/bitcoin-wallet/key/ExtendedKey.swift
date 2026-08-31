@@ -165,7 +165,7 @@ public extension ExtendedKey {
 
 extension ExtendedKey: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws(Error) {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws(Error) {
 
         let version: UInt32
         do {
@@ -233,7 +233,7 @@ extension ExtendedKey: BinaryCodable {
         try self.init(secretKey: secretKey, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet)
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encodeVersion(to: &encoder)
         encoder.encode(UInt8(depth))
         encoder.encode(UInt32(parentFingerprint))
@@ -258,17 +258,19 @@ extension ExtendedKey: BinaryCodable {
         encoder.encode(version)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.countSize(78)
     }
 
-    public func encodingSizeVersion(_ counter: inout BinaryEncodingSizeCounter) {
+    // TODO: use binary format for version only
+
+    public func countBytesVersion(into counter: inout BinarySizeCounter) {
         counter.count(UInt32.self)
     }
 
     var versionData: Data {
-        var counter = BinaryEncodingSizeCounter()
-        encodingSizeVersion(&counter)
+        var counter = BinarySizeCounter()
+        countBytesVersion(into: &counter)
         var encoder = BinaryEncoder(counter)
         encodeVersion(to: &encoder)
         return encoder.data

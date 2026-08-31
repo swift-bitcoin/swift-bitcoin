@@ -55,25 +55,25 @@ public struct BlockRef: Equatable, Hashable, Sendable {
 }
 
 extension ValidationStatus: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         guard let maybeSelf = Self(rawValue: try decoder.decode()) else {
             throw BinaryDecodingError.limitExceeded // TODO: find better error
         }
         self = maybeSelf
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(rawValue)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(UInt8.self)
     }
 
 }
 
 extension BlockRef: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         header = try decoder.decode()
         height = try decoder.decode()
         chainwork = try decoder.decode()
@@ -83,7 +83,7 @@ extension BlockRef: BinaryCodable {
         self.locator = locator == .placeholder ? nil : locator
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(header)
         encoder.encode(height)
         encoder.encode(chainwork)
@@ -96,7 +96,7 @@ extension BlockRef: BinaryCodable {
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(header)
         counter.count(height)
         counter.count(chainwork)

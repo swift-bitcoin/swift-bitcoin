@@ -1,7 +1,7 @@
 import Foundation
 
-/// Pre-calculates a binary encoding size by accumulating the byte count of values.
-public struct BinaryEncodingSizeCounter {
+/// Pre-calculates a binary size by accumulating the byte count of values.
+public struct BinarySizeCounter {
 
     /// Initializes a size counter at zero bytes.
     public init() { }
@@ -35,11 +35,11 @@ public struct BinaryEncodingSizeCounter {
 
     /// Counts the size of an encodable value.
     public mutating func count<T: BinaryEncodable>(_ value: T) {
-        value.encodingSize(&self)
+        count(value, format: nil)
     }
 
-    public mutating func count<T: CustomBinaryEncodable>(_ value: T, encoding: T.Encoding?) {
-        value.encodingSize(&self, encoding: encoding)
+    public mutating func count<T: BinaryEncodable>(_ value: T, format: T.BinaryFormat?) {
+        value.countBytes(into: &self, format: format)
     }
 
     public mutating func countArray<T: BinaryEncodingPrimitive>(_ array: [T]) {

@@ -20,7 +20,7 @@ extension Transaction {
         }
 
         // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
-        let recalculatedWeight = dataSize(encoding: .noWitness) * Transaction.witnessScaleFactor
+        let recalculatedWeight = binarySize(format: .noWitness) * Transaction.witnessScaleFactor
         // assert(recalculatedWeight == weight)
         guard recalculatedWeight <= Block.maxWeight else {
             throw .oversized
@@ -58,7 +58,7 @@ extension Transaction {
             }
         }
         if isCoinbase {
-            guard ins[0].script.dataSize >= 2 && ins[0].script.dataSize <= 100 else {
+            guard ins[0].script.binarySize >= 2 && ins[0].script.binarySize <= 100 else {
                 throw .coinbaseLengthOutOfRange
             }
         } else {
@@ -134,7 +134,7 @@ extension Transaction {
 
         for txIn in ins {
             // Biggest 'standard' txin involving only keys is a 15-of-15 P2SH multisig with compressed keys (remember the MAX_SCRIPT_ELEMENT_SIZE byte limit on redeemScript size). That works out to a (15*(33+1))+3=513 byte redeemScript, 513+1+15*(73+1)+3=1627 bytes of scriptSig, which we round off to 1650(MAX_STANDARD_SCRIPTSIG_SIZE) bytes for some minor future-proofing. That's also enough to spend a 20-of-20 CHECKMULTISIG scriptPubKey, though such a scriptPubKey is not considered standard.
-            guard txIn.script.dataSize <= Script.maxStandardInputScriptSize else {
+            guard txIn.script.binarySize <= Script.maxStandardInputScriptSize else {
                 throw .inputScriptSize
             }
             guard txIn.script.isPushOnly else {
@@ -150,7 +150,7 @@ extension Transaction {
             }
 
             if whichType == .nullData {
-                let size = out.script.dataSize
+                let size = out.script.binarySize
                 guard size <= datacarrierBytesLeft else {
                     throw .dataCarrierSize
                 }
@@ -440,7 +440,7 @@ extension Transaction {
             return 0
         }
 
-        var size = out.dataSize // uint64_t nSize{GetSerializeSize(txout)};
+        var size = out.binarySize // uint64_t nSize{GetSerializeSize(txout)};
 
         // Note this computation is for spending a Segwit v0 P2WPKH output (a 33 bytes public key + an ECDSA signature). For Segwit v1 Taproot outputs the minimum satisfaction is lower (a single BIP340 signature) but this computation was  kept to not further reduce the dust level.
         // See discussion in https://github.com/bitcoin/bitcoin/pull/22779 for details.

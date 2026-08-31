@@ -107,7 +107,7 @@ extension ScriptNumber: BinaryEncodable {
         value = (negative ? -1 : 1) * magnitude
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         guard value != 0 else { return }
         let magnitude = value.magnitude
         if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
@@ -137,7 +137,7 @@ extension ScriptNumber: BinaryEncodable {
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         guard value != 0 else { return }
         let magnitude = value.magnitude
         let size = if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {

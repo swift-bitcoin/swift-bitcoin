@@ -18,14 +18,14 @@ public struct TapscriptExtension: Equatable, Sendable {
 
 extension TapscriptExtension: BinaryEncodable {
 
-    public func encode(to encoder: inout BitcoinCrypto.BinaryEncoder) {
+    public func encode(into encoder: inout BitcoinCrypto.BinaryEncoder, format: Never?) {
         encoder.encode(tapLeafHash)
         encoder.encode(keyVersion)
         encoder.encode(codesepPos)
     }
 
     /// Records the size which is always 37 bytes.
-    public func encodingSize(_ counter: inout BitcoinCrypto.BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BitcoinCrypto.BinarySizeCounter, format: Never?) {
         counter.count(tapLeafHash)
         counter.count(keyVersion)
         counter.count(codesepPos)
