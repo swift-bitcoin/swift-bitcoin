@@ -36,13 +36,20 @@ extension Outpoint: BinaryCodable {
         self.init(tx: tx, out: out)
     }
 
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(txID)
-        encoder.encode(UInt32(out))
-    }
-
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.countSize(Transaction.idLength)
         counter.count(UInt32.self)
     }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(contentsOf: txID)
+        out.append(UInt32(self.out), as: UInt32.self, .littleEndian)
+    }
+
+    /*
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
+        encoder.encode(txID)
+        encoder.encode(UInt32(out))
+    }
+    */
 }

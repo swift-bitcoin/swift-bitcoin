@@ -62,17 +62,23 @@ extension ValidationStatus: BinaryCodable {
         self = maybeSelf
     }
 
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(rawValue)
-    }
-
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(UInt8.self)
     }
 
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(rawValue)
+    }
+
+    /*
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
+        encoder.encode(rawValue)
+    }
+    */
 }
 
 extension BlockRef: BinaryCodable {
+
     public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         header = try decoder.decode()
         height = try decoder.decode()
@@ -83,6 +89,29 @@ extension BlockRef: BinaryCodable {
         self.locator = locator == .placeholder ? nil : locator
     }
 
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(header)
+        counter.count(height)
+        counter.count(chainwork)
+        counter.count(chainTxCount)
+        counter.count(status)
+        counter.count(BlockStorageLocator.placeholder)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try header.encode(into: &out)
+        out.append(height, as: Int.self, .littleEndian)
+        try chainwork.encode(into: &out)
+        out.append(chainTxCount, as: Int.self, .littleEndian)
+        try status.encode(into: &out)
+        if let locator {
+            try locator.encode(into: &out)
+        } else {
+            try BlockStorageLocator.placeholder.encode(into: &out)
+        }
+    }
+
+    /*
     public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(header)
         encoder.encode(height)
@@ -95,15 +124,7 @@ extension BlockRef: BinaryCodable {
             encoder.encode(BlockStorageLocator.placeholder)
         }
     }
-
-    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        counter.count(header)
-        counter.count(height)
-        counter.count(chainwork)
-        counter.count(chainTxCount)
-        counter.count(status)
-        counter.count(BlockStorageLocator.placeholder)
-    }
+    */
 }
 
 public enum ValidationStatus: UInt8, CustomStringConvertible, Equatable, Hashable, Sendable {

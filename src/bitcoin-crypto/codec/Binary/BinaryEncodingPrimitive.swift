@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol BinaryEncodingPrimitive: BinaryCodable {}
+public protocol BinaryEncodingPrimitive: BinaryCodableLegacy {}
 
 extension BinaryEncodingPrimitive {
 

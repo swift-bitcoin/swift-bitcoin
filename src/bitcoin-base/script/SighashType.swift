@@ -104,17 +104,6 @@ extension SighashType: BinaryCodable {
         }
     }
 
-    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
-        switch format {
-        case nil: encoder.encode(value)
-        case .some(let format):
-            switch format {
-            case .fullLength:
-                encoder.encode(rawValue)
-            }
-        }
-    }
-
     public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
         switch format {
         case nil: counter.count(value)
@@ -125,6 +114,30 @@ extension SighashType: BinaryCodable {
             }
         }
     }
+
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        switch format {
+        case nil: out.append(value)
+        case .some(let format):
+            switch format {
+            case .fullLength:
+                out.append(rawValue, as: Int32.self, .littleEndian)
+            }
+        }
+    }
+
+    /*
+    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
+        switch format {
+        case nil: encoder.encode(value)
+        case .some(let format):
+            switch format {
+            case .fullLength:
+                encoder.encode(rawValue)
+            }
+        }
+    }
+    */
 }
 
 /// BIP341: Used to represent the `default` signature hash type.

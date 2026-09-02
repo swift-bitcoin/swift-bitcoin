@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 /// A fully decoded Bitcoin script and its associated signature version.
@@ -299,9 +300,43 @@ extension Script: ExpressibleByArrayLiteral {
 }
 
 /// Data extensions.
-extension Script: BinaryCodable {
+extension Script: BinaryCodable, ExpressibleByParsing {
 
-    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
+    public enum BinaryFormat {
+        case prefixed
+    }
+
+    public init(parsing input: inout ParserSpan) throws {
+        var ops = [Script.Operation]()
+        // Any error from parsing the operation is suppressed and the bytes aren't read, this breaks the loop and saves the remaining bytes as unparsable data.
+        while let op = try? Script.Operation(parsing: &input) {
+            ops.append(op)
+        }
+        self.ops = ops
+        unparsable = .init([UInt8](parsingRemainingBytes: &input))
+    }
+
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
+        let upperBound: Int?
+        if format == .prefixed {
+            let size = try VarInt(parsing: &input, format: nil) // TODO(binary): Remove format
+            // decoder.setLimit(size.value)
+            let range = try input.sliceRange(byteCount: size.value)
+            try input.seek(toRange: range)
+            upperBound = range.upperBound
+        } else {
+            upperBound = nil
+        }
+
+        try self.init(parsing: &input)
+
+        if let upperBound {
+            // decoder.resetLimit()
+            try input.seek(toAbsoluteOffset: upperBound)
+        }
+    }
+
+    public init(from decoder: inout BinaryDecoder) throws {
         var ops = [Script.Operation]()
         // Any error from parsing the operation is suppressed and the bytes aren't read, this breaks the loop and saves the remaining bytes as unparsable data.
         while let op: Script.Operation = try? decoder.decode() {
@@ -311,6 +346,20 @@ extension Script: BinaryCodable {
         unparsable = try decoder.decode()
     }
 
+    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
+        if format == .prefixed {
+            let size: VarInt = try decoder.decode()
+            decoder.setLimit(size.value)
+        }
+
+        try self.init(from: &decoder)
+
+        if format == .prefixed {
+            decoder.resetLimit()
+        }
+    }
+
+    /*
     // TODO: Replace conformance with public BinaryEncodable with 2 binary formats: default/nil for unprefixed and a prefixed one
     public init(prefixedFrom decoder: inout BinaryDecoder) throws {
         let size: VarInt = try decoder.decode()
@@ -323,7 +372,44 @@ extension Script: BinaryCodable {
         var decoder = BinaryDecoder(prefixedData)
         try self.init(prefixedFrom: &decoder)
     }
+    */
 
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
+        switch format {
+        case .prefixed:
+            counter.count(VarInt(binarySize))
+            countBytes(into: &counter)
+        default:
+            for op in ops {
+                counter.count(op)
+            }
+            counter.countSize(unparsable.count)
+        }
+    }
+
+    /*
+    public func countBytesPrefixed(into counter: inout BinarySizeCounter) {
+        counter.count(VarInt(binarySize))
+        countBytes(into: &counter)
+    }
+    */
+
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        switch format {
+        case .prefixed:
+            try VarInt(binarySize).encode(into: &out)
+            try encode(into: &out)
+        default:
+            for op in ops {
+                try op.encode(into: &out)
+            }
+            out.append(contentsOf: unparsable)
+            // Coming in Swift 6.5+
+            // unparsable.withBytes { out.append(copying: $0) }
+        }
+    }
+
+    /*
     public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         for op in ops {
             encoder.encode(op)
@@ -335,19 +421,9 @@ extension Script: BinaryCodable {
         encoder.encode(VarInt(binarySize))
         encode(into: &encoder)
     }
+    */
 
-    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        for op in ops {
-            counter.count(op)
-        }
-        counter.countSize(unparsable.count)
-    }
-
-    public func countBytesPrefixed(into counter: inout BinarySizeCounter) {
-        counter.count(VarInt(binarySize))
-        countBytes(into: &counter)
-    }
-
+    /*
     public var dataPrefixed: Data {
         var encoder = BinaryEncoder(size: sizePrefixed)
         encodePrefixed(to: &encoder)
@@ -359,50 +435,5 @@ extension Script: BinaryCodable {
         self.countBytesPrefixed(into: &counter)
         return counter.size
     }
-}
-
-// Binary parsing
-
-import BinaryParsing
-
-extension Script: ExpressibleByParsing {
-    public init(parsing input: inout ParserSpan) throws {
-        var ops = [Script.Operation]()
-        // Any error from parsing the operation is suppressed and the bytes aren't read, this breaks the loop and saves the remaining bytes as unparsable data.
-        while let op = try? Script.Operation(parsing: &input) {
-            ops.append(op)
-        }
-        self.ops = ops
-        unparsable = .init([UInt8](parsingRemainingBytes: &input))
-    }
-
-    public init(parsingPrefixed input: inout ParserSpan) throws {
-        let size = try VarInt(parsing: &input)
-
-        // decoder.setLimit(size.value)
-        let range = try input.sliceRange(byteCount: size.value)
-        try input.seek(toRange: range)
-
-        try self.init(parsing: &input)
-
-        // decoder.resetLimit()
-        try input.seek(toAbsoluteOffset: range.upperBound)
-    }
-}
-
-extension Script {
-    public func encode(into out: inout OutputRawSpan) throws {
-        for op in ops {
-            try op.encode(into: &out)
-        }
-        out.append(contentsOf: unparsable)
-
-        // Coming in Swift
-        // unparsable.withBytes { out.append(copying: $0) }
-    }
-
-    public func encodePrefixed(into out: inout OutputRawSpan) throws {
-        try VarInt(binarySize).encode(into: &out)
-        try encode(into: &out)
-    }
+    */
 }

@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 /// The output of a ``Transaction``. While unspent also referred to as a _coin_.
@@ -22,49 +23,47 @@ public struct TransactionOutput: Equatable, Sendable {
 
 /// Data extensions.
 extension TransactionOutput: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
-        value = try decoder.decode()
-        script = try Script(prefixedFrom: &decoder)
+
+    public enum BinaryFormat {
+        case valueOnly
     }
 
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
+        value = try Int(parsing: &input, storedAsLittleEndian: UInt64.self)
+        if format == .valueOnly {
+            preconditionFailure("Cannot parse an amount into a transaction output without a script.")
+        } else {
+            script = try .init(parsing: &input, format: .prefixed)
+        }
+    }
+
+    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
+        value = try decoder.decode()
+        if format == .valueOnly {
+            preconditionFailure("Cannot parse an amount into a transaction output without a script.")
+        } else {
+            script = try Script(from: &decoder, format: .prefixed)
+        }
+    }
+
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
+        counter.count(UInt64.self)
+        if format != .valueOnly {
+            script.countBytes(into: &counter, format: .prefixed)
+        }
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        out.append(value == -1 ? UInt64.max : UInt64(value), as: UInt64.self, .littleEndian)
+        if format != .valueOnly {
+            try script.encode(into: &out, format: .prefixed)
+        }
+    }
+
+    /*
     public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(value)
         script.encodePrefixed(to: &encoder)
     }
-
-    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        counter.count(value)
-        script.countBytesPrefixed(into: &counter)
-    }
-
-    // TODO: Use a custom binary format for just the value
-    var valueData: Data {
-        var encoder = BinaryEncoder(size: valueSize)
-        encoder.encode(value)
-        return encoder.data
-    }
-
-    var valueSize: Int {
-        var counter = BinarySizeCounter()
-        counter.count(value)
-        return counter.size
-    }
-}
-
-// Binary parsing
-
-import BinaryParsing
-
-extension TransactionOutput {
-    public init(parsing input: inout ParserSpan) throws {
-        value = try Int(parsing: &input, storedAsLittleEndian: UInt64.self)
-        script = try .init(parsing: &input)
-    }
-}
-
-extension TransactionOutput {
-    public func encode(into out: inout OutputRawSpan) throws {
-        out.append(UInt64(value).littleEndian, as: UInt64.self)
-        try script.encode(into: &out)
-    }
+    */
 }

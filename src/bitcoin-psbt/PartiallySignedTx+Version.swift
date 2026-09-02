@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public extension PartiallySignedTx {
@@ -29,8 +30,14 @@ public extension PartiallySignedTx {
             counter.count(value)
         }
 
+        public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+            out.append(value, as: UInt32.self, .littleEndian)
+        }
+
+        /*
         public func encode(into encoder: inout BinaryEncoder, format: Never?) {
             encoder.encode(value)
         }
+        */
     }
 }

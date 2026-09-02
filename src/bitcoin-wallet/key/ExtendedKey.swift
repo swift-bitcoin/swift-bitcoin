@@ -165,7 +165,15 @@ public extension ExtendedKey {
 
 extension ExtendedKey: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder, format: Never?) throws(Error) {
+    public enum BinaryFormat {
+        case versionOnly
+    }
+
+    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws(Error) {
+
+        guard format == nil else {
+            preconditionFailure("Cannot decode an extended key from only a version.")
+        }
 
         let version: UInt32
         do {
@@ -233,8 +241,52 @@ extension ExtendedKey: BinaryCodable {
         try self.init(secretKey: secretKey, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet)
     }
 
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encodeVersion(to: &encoder)
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
+        switch format {
+        case nil:
+            counter.countSize(78)
+        case .versionOnly:
+            counter.count(UInt32.self)
+        }
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        let version = if hasSecretKey {
+            isMainnet ? mainHDKeyVersionPrivate : testHDKeyVersionPrivate
+        } else {
+            isMainnet ? mainHDKeyVersionPublic : testHDKeyVersionPublic
+        }
+        out.append(version, as: UInt32.self, .littleEndian)
+        guard format != .versionOnly else {
+            return
+        }
+
+        out.append(UInt8(depth))
+        out.append(UInt32(parentFingerprint), as: UInt32.self, .littleEndian)
+        out.append(UInt32(keyIndex), as: UInt32.self, .bigEndian)
+        out.append(contentsOf: chaincode)
+        if let secretKey {
+            out.append(0)
+            out.append(contentsOf: secretKey.data)
+        } else if let pubkey {
+            out.append(contentsOf: pubkey.data)
+        } else {
+            fatalError()
+        }
+    }
+
+    /*
+    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
+        let version = if hasSecretKey {
+            isMainnet ? mainHDKeyVersionPrivate : testHDKeyVersionPrivate
+        } else {
+            isMainnet ? mainHDKeyVersionPublic : testHDKeyVersionPublic
+        }
+        encoder.encode(version)
+        guard format != .versionOnly else {
+            return
+        }
+
         encoder.encode(UInt8(depth))
         encoder.encode(UInt32(parentFingerprint))
         encoder.encode(UInt32(keyIndex).bigEndian)
@@ -248,35 +300,9 @@ extension ExtendedKey: BinaryCodable {
             fatalError()
         }
     }
+    */
 
-    public func encodeVersion(to encoder: inout BinaryEncoder) {
-        let version = if hasSecretKey {
-            isMainnet ? mainHDKeyVersionPrivate : testHDKeyVersionPrivate
-        } else {
-            isMainnet ? mainHDKeyVersionPublic : testHDKeyVersionPublic
-        }
-        encoder.encode(version)
-    }
-
-    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        counter.countSize(78)
-    }
-
-    // TODO: use binary format for version only
-
-    public func countBytesVersion(into counter: inout BinarySizeCounter) {
-        counter.count(UInt32.self)
-    }
-
-    var versionData: Data {
-        var counter = BinarySizeCounter()
-        countBytesVersion(into: &counter)
-        var encoder = BinaryEncoder(counter)
-        encodeVersion(to: &encoder)
-        return encoder.data
-    }
-
-    static let versionSize = MemoryLayout<UInt32>.size
+    private static let versionSize = MemoryLayout<UInt32>.size
 }
 
 private let mainHDKeyVersionPrivate = UInt32(0xe4ad8804) // LE: 0x0488ade4

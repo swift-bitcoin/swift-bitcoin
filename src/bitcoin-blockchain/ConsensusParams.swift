@@ -257,7 +257,7 @@ public struct ConsensusParams: Sendable {
         // var hasher = Hash256()
         //hasher.update(data: VarInt(resolvedChallenge.count).data)
         //hasher.update(data: resolvedChallenge)
-        let hash = Hash256.hash(data: resolvedChallenge.dataPrefixed)
+        let hash = Hash256.hash(data: resolvedChallenge.data(binaryFormat: .prefixed))
         let magicBytes = [UInt8](hash.prefix(4))
 
         let magicBytesInt = Int(magicBytes[3]) << 24 |

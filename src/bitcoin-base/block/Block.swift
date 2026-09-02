@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 /// A block of transactions. It may be interpreted as a just a block header when body of transactions is empty. It may also include additional contextual information such as the block's height within the blockchain.
@@ -109,7 +110,8 @@ extension Block: BinaryCodable {
             let txs: [Transaction] = if format == .headerOnly {
                 []
             } else {
-                try decoder.decode(format: format == .noWitness ? .noWitness : nil)
+                // try decoder.decode(format: format == .noWitness ? (nil, .noWitness) : nil)
+                try [Transaction](from: &decoder, format: format == .noWitness ? (nil, .noWitness) : nil)
             }
             self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
         case .signet: fatalError("Signet encoding is for use with encoder only.")
@@ -125,6 +127,54 @@ extension Block: BinaryCodable {
         }
     }
 
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        switch format {
+        case nil, .headerOnly, .noWitness:
+            out.append(Int32(version), as: Int32.self, .littleEndian)
+            out.append(contentsOf: previous)
+            out.append(contentsOf: merkleRoot)
+            out.append(UInt32(time.timeIntervalSince1970), as: UInt32.self, .littleEndian)
+            out.append(UInt32(target), as: UInt32.self, .littleEndian)
+            out.append(UInt32(nonce), as: UInt32.self, .littleEndian)
+            if format != .headerOnly {
+                try txs.encode(into: &out, format: format == .noWitness ? (nil, .noWitness) : nil)
+            }
+        case .signet:
+            out.append(Int32(version), as: Int32.self, .littleEndian)
+            out.append(contentsOf: previous)
+            out.append(contentsOf: merkleRoot)
+            out.append(UInt32(time.timeIntervalSince1970), as: UInt32.self, .littleEndian)
+        case .file(let magicBytes):
+            out.append(UInt32(magicBytes), as: UInt32.self, .littleEndian)
+            out.append(UInt32(binarySize), as: UInt32.self, .littleEndian)
+            try encode(into: &out)
+        }
+    }
+
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
+        switch format {
+        case nil, .headerOnly, .noWitness:
+            counter.count(Int32(version))
+            counter.count(previous)
+            counter.count(merkleRoot)
+            counter.count(UInt32(time.timeIntervalSince1970))
+            counter.count(UInt32(target))
+            counter.count(UInt32(nonce))
+            if format != .headerOnly {
+                counter.count(txs, format: format == .noWitness ? (nil, .noWitness) : nil)
+            }
+        case .signet:
+            counter.count(Int32(version))
+            counter.count(previous)
+            counter.count(merkleRoot)
+            counter.count(UInt32(time.timeIntervalSince1970))
+        case .file(_):
+            counter.count(UInt32.self)
+            counter.count(UInt32.self)
+            countBytes(into: &counter)
+        }
+    }
+    /*
     public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
         switch format {
         case nil, .headerOnly, .noWitness:
@@ -148,28 +198,5 @@ extension Block: BinaryCodable {
             encode(into: &encoder)
         }
     }
-
-    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
-        switch format {
-        case nil, .headerOnly, .noWitness:
-            counter.count(Int32(version))
-            counter.count(previous)
-            counter.count(merkleRoot)
-            counter.count(UInt32(time.timeIntervalSince1970))
-            counter.count(UInt32(target))
-            counter.count(UInt32(nonce))
-            if format != .headerOnly {
-                counter.count(txs, format: format == .noWitness ? .noWitness : nil)
-            }
-        case .signet:
-            counter.count(Int32(version))
-            counter.count(previous)
-            counter.count(merkleRoot)
-            counter.count(UInt32(time.timeIntervalSince1970))
-        case .file(_):
-            counter.count(UInt32.self)
-            counter.count(UInt32.self)
-            countBytes(into: &counter)
-        }
-    }
+    */
 }

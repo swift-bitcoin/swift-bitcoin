@@ -28,15 +28,23 @@ extension BlockStorageLocator: BinaryCodable {
         undoOffset = try decoder.decode()
     }
 
-    func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(file)
-        encoder.encode(offset)
-        encoder.encode(undoOffset)
-    }
-
     func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(Int.self)
         counter.count(Int.self)
         counter.count(Int.self)
     }
+
+    func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(file, as: Int.self, .littleEndian)
+        out.append(offset, as: Int.self, .littleEndian)
+        out.append(undoOffset, as: Int.self, .littleEndian)
+    }
+
+    /*
+    func encode(into encoder: inout BinaryEncoder, format: Never?) {
+        encoder.encode(file)
+        encoder.encode(offset)
+        encoder.encode(undoOffset)
+    }
+    */
 }

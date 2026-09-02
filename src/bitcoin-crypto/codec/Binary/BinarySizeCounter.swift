@@ -34,8 +34,16 @@ public struct BinarySizeCounter {
     }
 
     /// Counts the size of an encodable value.
+    public mutating func count<T: BinaryEncodableLegacy>(_ value: T) {
+        count(value, format: nil)
+    }
+
     public mutating func count<T: BinaryEncodable>(_ value: T) {
         count(value, format: nil)
+    }
+
+    public mutating func count<T: BinaryEncodableLegacy>(_ value: T, format: T.BinaryFormat?) {
+        value.countBytes(into: &self, format: format)
     }
 
     public mutating func count<T: BinaryEncodable>(_ value: T, format: T.BinaryFormat?) {

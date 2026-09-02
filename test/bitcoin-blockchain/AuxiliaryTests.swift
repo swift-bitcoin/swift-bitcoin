@@ -42,7 +42,7 @@ struct AuxiliaryTests {
         ]
         let data = coins.data
         var decoder = BinaryDecoder(data)
-        let coins2: [UnspentOutput?] = try decoder.decodeExplicit()
+        let coins2: [UnspentOutput?] = try .init(from: &decoder, format: nil)
         #expect(coins == coins2)
 
         let maybeCoins = [
@@ -50,7 +50,11 @@ struct AuxiliaryTests {
             coin,
             .init(.init(value: 456), height: 7, isCoinbase: false)
         ]
-        let maybeCoins2: [UnspentOutput?] = try .init(maybeCoins.data)
+
+        // let maybeCoins2: [UnspentOutput?] = try .init(maybeCoins.data)
+        var decoder2 = BinaryDecoder(maybeCoins.data)
+        let maybeCoins2: [UnspentOutput?] = try .init(from: &decoder2, format: nil)
+
         #expect(maybeCoins == maybeCoins2)
 
         let undo = BlockUndo(spentCoins: coins)

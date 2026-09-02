@@ -39,16 +39,23 @@ extension Transaction {
 
 /// Binary data extensions.
 extension Transaction.Locktime: BinaryCodable {
+
     public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         let rawValue: UInt32 = try decoder.decode()
         self.init(Int(rawValue))
     }
 
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(UInt32(locktimeValue))
-    }
-
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(UInt32.self)
     }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt32(locktimeValue), as: UInt32.self, .littleEndian)
+    }
+
+    /*
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
+        encoder.encode(UInt32(locktimeValue))
+    }
+    */
 }

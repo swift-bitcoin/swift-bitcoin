@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public struct DerivationPath: Equatable, Sendable {
@@ -44,8 +45,17 @@ extension DerivationPath: BinaryCodable {
         counter.countArray(indices.map { UInt32($0) })
     }
 
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt32(fingerprint), as: UInt32.self, .littleEndian)
+        for i in indices.map(UInt32.init) {
+            out.append(i, as: UInt32.self, .littleEndian)
+        }
+    }
+
+    /*
     public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(UInt32(fingerprint))
         encoder.encodeArray(indices.map { UInt32($0) })
     }
+    */
 }

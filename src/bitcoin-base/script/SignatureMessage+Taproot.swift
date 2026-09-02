@@ -63,7 +63,7 @@ extension SignatureMessage.Taproot {
                 shaAmounts = cached
                 sighashCache.shaAmountsHit = true
             } else {
-                let amounts = prevouts.reduce(Data()) { $0 + $1.valueData }
+                let amounts = prevouts.reduce(Data()) { $0 + $1.data(binaryFormat: .valueOnly) }
                 shaAmounts = Data(SHA256.hash(data: amounts))
                 sighashCache.shaAmounts = shaAmounts
             }
@@ -75,7 +75,7 @@ extension SignatureMessage.Taproot {
                 shaScriptPubKeys = cached
                 sighashCache.shaScriptPubKeysHit = true
             } else {
-                let scriptPubKeys = prevouts.reduce(Data()) { $0 + $1.script.dataPrefixed }
+                let scriptPubKeys = prevouts.reduce(Data()) { $0 + $1.script.data(binaryFormat: .prefixed) }
                 shaScriptPubKeys = Data(SHA256.hash(data: scriptPubKeys))
                 sighashCache.shaScriptPubKeys = shaScriptPubKeys
             }
@@ -121,10 +121,10 @@ extension SignatureMessage.Taproot {
             let outpoint = tx.ins[inputIndex].outpoint.data
             inputData.append(outpoint)
             // amount (8): value of the previous output spent by this input.
-            let amount = prevouts[inputIndex].valueData
+            let amount = prevouts[inputIndex].data(binaryFormat: .valueOnly)
             inputData.append(amount)
             // scriptPubKey (35): scriptPubKey of the previous output spent by this input, serialized as script inside CTxOut. Its size is always 35 bytes.
-            let scriptPubKey = prevouts[inputIndex].script.dataPrefixed
+            let scriptPubKey = prevouts[inputIndex].script.data(binaryFormat: .prefixed)
             inputData.append(scriptPubKey)
             // nSequence (4): nSequence of this input.
             let sequence = tx.ins[inputIndex].sequence.data

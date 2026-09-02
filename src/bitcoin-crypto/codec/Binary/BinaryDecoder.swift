@@ -35,7 +35,9 @@ public struct BinaryDecoder {
     /// Decodes data which may appear prefixed by its length as a variable integer.
     public mutating func decode(variable: Bool, byteSwapped: Bool = false) throws -> Data {
         if variable {
-            let varInt: VarInt = try decode()
+            // let varInt: VarInt = try decode()
+            let varInt: VarInt = try .init(data[offset...])
+            offset += varInt.binarySize
             return try decode(varInt.value, byteSwapped: byteSwapped)
         }
         return try decode(byteSwapped: byteSwapped)
@@ -68,20 +70,20 @@ public struct BinaryDecoder {
     }
 
     /// Decodes a binary decodable object.
-    public mutating func decode<T: BinaryDecodable>() throws -> T {
+    public mutating func decode<T: BinaryDecodableLegacy>() throws -> T {
         try decode(format: nil)
     }
 
-    public mutating func decodeExplicit<T: BinaryDecodable>() throws -> T {
+    public mutating func decodeExplicit<T: BinaryDecodableLegacy>() throws -> T {
         try decodeExplicit(format: nil)
     }
 
     /// Decodes a custom binary decodable object.
-    public mutating func decode<T: BinaryDecodable>(format: T.BinaryFormat?) throws -> T {
+    public mutating func decode<T: BinaryDecodableLegacy>(format: T.BinaryFormat?) throws -> T {
         try T(from: &self, format: format)
     }
 
-    public mutating func decodeExplicit<T: BinaryDecodable>(format: T.BinaryFormat?) throws -> T {
+    public mutating func decodeExplicit<T: BinaryDecodableLegacy>(format: T.BinaryFormat?) throws -> T {
         try T(from: &self, format: format)
     }
 

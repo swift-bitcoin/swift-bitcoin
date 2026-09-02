@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 import BitcoinBase
 import BitcoinWallet
@@ -250,9 +251,15 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
             counter.count(map)
         }
 
+        public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+            try map.encode(into: &out)
+        }
+
+        /*
         public func encode(into encoder: inout BinaryEncoder, format: Never?) {
             encoder.encode(map)
         }
+        */
 
         mutating func combine(with other: PartiallySignedTx.In) {
             if witnessPrevout == nil, let newValue = other.witnessPrevout {
@@ -459,9 +466,15 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
             counter.count(map)
         }
 
+        public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+            try map.encode(into: &out)
+        }
+
+        /*
         public func encode(into encoder: inout BinaryEncoder, format: Never?) {
             encoder.encode(map)
         }
+        */
 
         mutating func combine(with other: PartiallySignedTx.Out) {
             if redeemScript == nil, let newValue = other.redeemScript {
@@ -623,6 +636,14 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
         }
     }
 
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(contentsOf: Self.magic)
+        try globalMap.encode(into: &out)
+        try ins.encode(into: &out, format: (.unprefixed, nil))
+        try outs.encode(into: &out, format: (.unprefixed, nil))
+    }
+
+    /*
     public func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(Self.magic)
         encoder.encode(globalMap)
@@ -633,6 +654,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
             encoder.encode(out)
         }
     }
+    */
 
     public mutating func update(input i: Int, _ tx: Transaction) {
         ins[i].prevoutTx = tx
@@ -940,8 +962,16 @@ private struct ProprietarySuperKey: Hashable, BinaryCodable {
         counter.count(subkey)
     }
 
+    func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try VarInt(id.count).encode(into: &out)
+        out.append(contentsOf: id)
+        try subkey.encode(into: &out)
+    }
+
+    /*
     func encode(into encoder: inout BinaryEncoder, format: Never?) {
         encoder.encode(id, variable: true)
         encoder.encode(subkey)
     }
+    */
 }

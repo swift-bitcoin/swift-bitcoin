@@ -24,7 +24,10 @@ public struct BinaryEncoder {
         let data = byteSwapped ? Data(data.reversed()) : Data(data)
         if variable {
             let varInt = VarInt(data.count)
-            encode(varInt)
+            //encode(varInt)
+            let varIntData = varInt.data
+            self.data.replaceSubrange(offset ..< offset.advanced(by: varIntData.count), with: varIntData)
+            offset += varIntData.count
         }
         let nextOffset = offset + data.count
         self.data.withUnsafeMutableBytes { destination in
@@ -45,11 +48,11 @@ public struct BinaryEncoder {
         offset = nextOffset
     }
 
-    public mutating func encode<T: BinaryEncodable>(_ value: T) {
+    public mutating func encode<T: BinaryEncodableLegacy>(_ value: T) {
         encode(value, format: nil)
     }
 
-    public mutating func encode<T: BinaryEncodable>(_ value: T, format: T.BinaryFormat?) {
+    public mutating func encode<T: BinaryEncodableLegacy>(_ value: T, format: T.BinaryFormat?) {
         value.encode(into: &self, format: format)
     }
 

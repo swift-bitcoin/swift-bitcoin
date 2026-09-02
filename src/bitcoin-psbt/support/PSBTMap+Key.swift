@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 extension PSBTMap {
@@ -38,6 +39,15 @@ extension PSBTMap {
             counter.count(data)
         }
 
+        func encode(into out: inout OutputRawSpan, format: Never?) throws {
+            let type = VarInt(type)
+            let keySize = VarInt(type.binarySize + data.count)
+            try keySize.encode(into: &out)
+            try type.encode(into: &out)
+            out.append(contentsOf: data)
+        }
+
+        /*
         func encode(into encoder: inout BinaryEncoder, format: Never?) {
             let type = VarInt(type)
             let keySize = VarInt(type.binarySize + data.count)
@@ -45,5 +55,6 @@ extension PSBTMap {
             encoder.encode(type)
             encoder.encode(data)
         }
+        */
     }
 }

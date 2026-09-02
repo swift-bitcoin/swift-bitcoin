@@ -1805,17 +1805,17 @@ extension BlockchainService {
 
         let script: Script
         do {
-            script = try Script(prefixedData: solution)
+            script = try Script(solution, binaryFormat: .prefixed)
         } catch {
             throw .invalidSignetSolutionScript
         }
         let witness: Transaction.Witness
         do {
-            witness = try .init(solution.dropFirst(script.sizePrefixed))
+            witness = try .init(solution.dropFirst(script.binarySize(format: .prefixed)))
         } catch {
             throw .invalidSignetSolutionWitness
         }
-        guard solution.count == script.sizePrefixed + witness.binarySize else {
+        guard solution.count == script.binarySize(format: .prefixed) + witness.binarySize else {
             throw .extraneousSignetSolutionData
         }
 
@@ -2401,7 +2401,7 @@ extension BlockchainService {
         }
 
         if !witness.stack.isEmpty {
-            let signetSolution = signetHeader + Script.empty.dataPrefixed + witness.data
+            let signetSolution = signetHeader + Script.empty.data(binaryFormat: .prefixed) + witness.data
             coinbaseTx.outs[commitIndex].script.ops.append(.encodeMinimally(signetSolution))
         }
     }

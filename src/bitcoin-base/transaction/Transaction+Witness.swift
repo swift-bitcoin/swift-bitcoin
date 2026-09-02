@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 extension Transaction {
@@ -49,7 +50,6 @@ extension Transaction.Witness: ExpressibleByArrayLiteral {
 
 /// Binary data extensions.
 extension Transaction.Witness: BinaryCodable {
-
     public init(from decoder: inout BinaryDecoder, format: Never?) throws {
         let count = (try decoder.decode() as VarInt).value
         var stack = [Data]()
@@ -59,17 +59,27 @@ extension Transaction.Witness: BinaryCodable {
         self.stack = stack
     }
 
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(VarInt(stack.count))
-        for e in stack {
-            encoder.encode(e, variable: true)
-        }
-    }
-
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(VarInt(stack.count))
         for e in stack {
             counter.count(e, variable: true)
         }
     }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try VarInt(stack.count).encode(into: &out)
+        for e in stack {
+            try VarInt(e.count).encode(into: &out)
+            out.append(contentsOf: e)
+        }
+    }
+
+    /*
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
+        encoder.encode(VarInt(stack.count))
+        for e in stack {
+            encoder.encode(e, variable: true)
+        }
+    }
+    */
 }

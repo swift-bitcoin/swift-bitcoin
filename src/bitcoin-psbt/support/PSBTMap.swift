@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public enum PSBTMapError: Error {
@@ -52,12 +53,21 @@ struct PSBTMap: BinaryCodable {
         counter.count(Self.delimiter)
     }
 
+    func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        for keypair in keypairs {
+            try keypair.encode(into: &out)
+        }
+        out.append(Self.delimiter)
+    }
+
+    /*
     func encode(into encoder: inout BinaryEncoder, format: Never?) {
         for keypair in keypairs {
             encoder.encode(keypair)
         }
         encoder.encode(Self.delimiter)
     }
+    */
 
     static let delimiter = UInt8(0x00)
 }
