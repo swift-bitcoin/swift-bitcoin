@@ -1,19 +1,11 @@
 import Foundation
 
-public protocol BinaryEncodingPrimitive: BinaryCodableLegacy {}
+public protocol BinaryEncodingPrimitive: BinaryDecodableLegacy {}
 
 extension BinaryEncodingPrimitive {
 
     public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
         self = try decoder.decodePrimitive()
-    }
-
-    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
-        encoder.encode(self)
-    }
-
-    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
-        counter.countPrimitive(self)
     }
 }
 

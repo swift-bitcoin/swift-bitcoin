@@ -8,51 +8,6 @@ import BinaryParsing
 /// If the Swift Language changes in the future to allow for different `BinaryFormat` types to be defined, this protocol can also be declared as `protocol BinaryCodable<BinaryFormat>: BinaryEncodable, BinaryDecodable {}`.
 ///
 public typealias BinaryCodable = BinaryEncodable & BinaryDecodableLegacy // Temporarilly mixing *Legacy and new protocol
-public typealias BinaryCodableLegacy = BinaryEncodableLegacy & BinaryDecodableLegacy // Temporarilly mixing *Legacy and new protocol
-
-/// Legacy encodable protocol based on BinaryEncoder instead of OutputRawSpan
-public protocol BinaryEncodableLegacy {
-
-    associatedtype BinaryFormat
-
-    func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?)
-    func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?)
-}
-
-public extension BinaryEncodableLegacy {
-
-    func countBytes(into counter: inout BinarySizeCounter) {
-        countBytes(into: &counter, format: nil)
-    }
-
-    func encode(into encoder: inout BinaryEncoder) {
-        encode(into: &encoder, format: nil)
-    }
-
-    func binarySize(format: BinaryFormat?) -> Int {
-        var counter = BinarySizeCounter()
-        countBytes(into: &counter, format: format)
-        return counter.size
-    }
-
-    func data(binaryFormat: BinaryFormat?) -> Data {
-        var counter = BinarySizeCounter()
-        countBytes(into: &counter, format: binaryFormat)
-        var encoder = BinaryEncoder(counter)
-        encode(into: &encoder, format: binaryFormat)
-        return encoder.data
-    }
-
-    /// The external binary representation's length in bytes.
-    var binarySize: Int {
-        binarySize(format: nil)
-    }
-
-    /// The instance's external binary representation.
-    var data: Data {
-        data(binaryFormat: nil)
-    }
-}
 
 /// Legacy decodable protocol based on BinaryDecoder instead of ParserSpan
 public protocol BinaryDecodableLegacy {

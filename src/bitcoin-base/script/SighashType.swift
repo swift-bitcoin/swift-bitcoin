@@ -106,11 +106,11 @@ extension SighashType: BinaryCodable {
 
     public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
         switch format {
-        case nil: counter.count(value)
+        case nil: counter.countSize(1)
         case .some(let format):
             switch format {
             case .fullLength:
-                counter.count(rawValue)
+                counter.count(Int32.self)
             }
         }
     }

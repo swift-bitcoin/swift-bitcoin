@@ -154,20 +154,20 @@ extension Block: BinaryCodable {
     public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
         switch format {
         case nil, .headerOnly, .noWitness:
-            counter.count(Int32(version))
+            counter.count(Int32.self)
             counter.count(previous)
             counter.count(merkleRoot)
-            counter.count(UInt32(time.timeIntervalSince1970))
-            counter.count(UInt32(target))
-            counter.count(UInt32(nonce))
+            counter.count(UInt32.self)
+            counter.count(UInt32.self)
+            counter.count(UInt32.self)
             if format != .headerOnly {
                 counter.count(txs, format: format == .noWitness ? (nil, .noWitness) : nil)
             }
         case .signet:
-            counter.count(Int32(version))
+            counter.count(Int32.self)
             counter.count(previous)
             counter.count(merkleRoot)
-            counter.count(UInt32(time.timeIntervalSince1970))
+            counter.count(UInt32.self)
         case .file(_):
             counter.count(UInt32.self)
             counter.count(UInt32.self)

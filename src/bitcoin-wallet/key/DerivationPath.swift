@@ -41,7 +41,7 @@ extension DerivationPath: BinaryCodable {
     }
 
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        counter.count(UInt32(fingerprint))
+        counter.count(UInt32.self)
         counter.countArray(indices.map { UInt32($0) })
     }
 

@@ -19,11 +19,6 @@ public struct ScriptBool: Equatable, Sendable {
 }
 
 extension ScriptBool: BinaryEncodable {
-    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
-        if value {
-            out.append(1) // UInt8
-        }
-    }
 
     init(_ data: Data) {
         let firstNonZeroIndex = data.firstIndex { $0 != 0 }
@@ -46,15 +41,23 @@ extension ScriptBool: BinaryEncodable {
         }
     }
 
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        if value {
-            encoder.encode(Data([1]))
-        }
-    }
-
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         if value {
             counter.countSize(1)
         }
     }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        if value {
+            out.append(1) // UInt8
+        }
+    }
+
+    /*
+    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
+        if value {
+            encoder.encode(Data([1]))
+        }
+    }
+    */
 }

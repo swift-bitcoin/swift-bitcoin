@@ -79,7 +79,10 @@ extension NetworkMessage {
 
     public var data: Data {
         var ret = Data(count: size)
-        var offset = ret.addData(UInt32(magicBytes).data)
+        let magicBytesData = Data(capacity: MemoryLayout<UInt32>.size) { out in
+            out.append(UInt32(magicBytes), as: UInt32.self, .littleEndian)
+        }
+        var offset = ret.addData(magicBytesData)
         offset = ret.addData(command.data, at: offset)
         offset = ret.addBytes(UInt32(payloadSize), at: offset)
         offset = ret.addBytes(checksum, at: offset)

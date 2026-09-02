@@ -21,8 +21,8 @@ extension TapscriptExtension: BinaryEncodable {
     /// Records the size which is always 37 bytes.
     public func countBytes(into counter: inout BitcoinCrypto.BinarySizeCounter, format: Never?) {
         counter.count(tapLeafHash)
-        counter.count(keyVersion)
-        counter.count(codesepPos)
+        counter.countSize(1)
+        counter.count(UInt32.self)
     }
 
     public func encode(into out: inout OutputRawSpan, format: Never?) throws {

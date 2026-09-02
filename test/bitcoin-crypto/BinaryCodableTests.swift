@@ -7,10 +7,12 @@ struct BinaryCodableTests {
     @Test func trivialRoundtrip() throws {
         let a = Int.random(in: Int.min ... Int.max)
         var counter = BinarySizeCounter()
-        counter.count(a)
-        var encoder = BinaryEncoder(counter)
-        encoder.encode(a)
-        let data = encoder.data
+        counter.count(Int.self)
+
+        let data = Data(capacity: counter.size) { out in
+            out.append(a, as: Int.self, .littleEndian)
+        }
+
         var decoder = BinaryDecoder(data)
         let a2: Int = try decoder.decode()
         #expect(a == a2)
@@ -78,11 +80,11 @@ extension ParentStruct: BinaryCodable {
     }
 
     func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        counter.count(int1)
+        counter.count(Int.self)
         counter.count(child)
-        counter.count(int2)
+        counter.count(Int.self)
         counter.count(children)
-        counter.count(int3)
+        counter.count(Int.self)
     }
 
     func encode(into out: inout OutputRawSpan, format: Never?) throws {
@@ -126,10 +128,10 @@ extension CustomStruct: BinaryCodable {
     }
 
     func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        counter.count(int)
+        counter.count(Int.self)
         counter.count(intArray)
         counter.count(dataField, variable: true)
-        counter.count(uInt64)
+        counter.count(UInt64.self)
     }
 
     func encode(into out: inout OutputRawSpan, format: Never?) throws {

@@ -19,18 +19,26 @@ extension GetBlockRPC {
             throw .init(.internalError, "Failed to get blockchain information for block.")
         }
 
+        let blockVersionData = Data(capacity: MemoryLayout<Int32>.size) { out in
+            out.append(Int32(block.version), as: Int32.self, .bigEndian)
+        }
+
+        let blockTargetData = Data(capacity: MemoryLayout<UInt32>.size) { out in
+            out.append(UInt32(block.target), as: UInt32.self, .bigEndian)
+        }
+
         let txs = block.txs.map { $0.idHex }
         return .init(
             id: block.idHex,
             confirmations: info.confirmations,
             height: info.height,
             version: block.version,
-            versionHex: BinaryEncoder.encode(Int32(block.version)).reversed().hex, // verion as hex string
+            versionHex: blockVersionData.hex, // verion as hex string
             merkleRoot: block.merkleRoot.reversed().hex,
             time: Int(block.time.timeIntervalSince1970),
             medianTime: Int(info.medianTime.timeIntervalSince1970),
             nonce: block.nonce,
-            bits: BinaryEncoder.encode(UInt32(block.target)).reversed().hex, // block.target as hex
+            bits: blockTargetData.hex, // block.target as hex
             difficulty: info.difficulty, // block.difficulty as double
             chainwork: info.chainwork.reversed().hex,
             transactionCount: txs.count,

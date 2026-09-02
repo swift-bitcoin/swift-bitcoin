@@ -27,7 +27,7 @@ public extension PartiallySignedTx {
         }
 
         public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-            counter.count(value)
+            counter.count(UInt32.self)
         }
 
         public func encode(into out: inout OutputRawSpan, format: Never?) throws {

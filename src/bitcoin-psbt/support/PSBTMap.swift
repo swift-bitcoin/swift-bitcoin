@@ -50,7 +50,7 @@ struct PSBTMap: BinaryCodable {
         for keypair in keypairs {
             counter.count(keypair)
         }
-        counter.count(Self.delimiter)
+        counter.countSize(1) // delimiter
     }
 
     func encode(into out: inout OutputRawSpan, format: Never?) throws {

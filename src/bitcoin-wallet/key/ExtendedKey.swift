@@ -94,7 +94,10 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         } else {
             preconditionFailure()
         }
-        hmac.update(data: UInt32(keyIndex).bigEndian.data)
+        let keyIndexData = Data(capacity: MemoryLayout<UInt32>.size) { out in
+            out.append(UInt32(keyIndex), as: UInt32.self, .bigEndian)
+        }
+        hmac.update(data: keyIndexData)
         let hmacResult = Data(hmac.finalize())
         let chaincode = hmacResult.dropFirst(32)
         let tweak = hmacResult.prefix(32)

@@ -91,9 +91,9 @@ extension BlockRef: BinaryCodable {
 
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(header)
-        counter.count(height)
+        counter.count(Int.self)
         counter.count(chainwork)
-        counter.count(chainTxCount)
+        counter.count(Int.self)
         counter.count(status)
         counter.count(BlockStorageLocator.placeholder)
     }
