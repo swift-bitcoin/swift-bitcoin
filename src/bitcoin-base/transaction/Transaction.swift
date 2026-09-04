@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 /// A Bitcoin transaction.
@@ -44,7 +45,7 @@ public struct Transaction: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var id: Data { Data(Hash256.hash(data: data(encoding: .noWitness))) }
+    public var id: Data { Data(Hash256.hash(data: data(binaryFormat: .noWitness))) }
 
     public var idHex: String { id.reversed().hex }
 
@@ -63,7 +64,7 @@ public struct Transaction: Equatable, Sendable {
     public var witnessIDHex: String { witnessID.reversed().hex }
 
     /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
-    public var weight: Int { dataSize(encoding: .noWitness) * 3 + dataSize }
+    public var weight: Int { binarySize(format: .noWitness) * 3 + binarySize }
 
     ///  BIP141: Virtual transaction size is defined as Transaction weight / 4 (rounded up to the next integer).
     public var virtualSize: Int { Int((Double(weight) / 4).rounded(.up)) }
@@ -139,7 +140,7 @@ extension Transaction {
 
     /// BIP141 / BIP144
     var witnessSize: Int {
-        hasWitness ? Transaction.segwitMarkerAndFlag.count + ins.reduce(0) { $0 + $1.witness.dataSize } : 0
+        hasWitness ? Transaction.segwitMarkerAndFlag.count + ins.reduce(0) { $0 + $1.witness.binarySize } : 0
     }
 
     public static let idLength = Hash256.Digest.byteCount
@@ -154,75 +155,79 @@ extension Transaction {
     // No type methods yet.
 }
 
-extension Transaction: CustomBinaryCodable {
+extension Transaction: BinaryCodable {
 
-    public enum Encoding: Equatable, Sendable {
+    public enum BinaryFormat: Equatable, Sendable {
         case noWitness
     }
 
     //public typealias DecodingError = BinaryDecodingError
 
-    public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws {
-        version = try decoder.decode()
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
+        version = try .init(parsing: &input)
 
         // BIP144 - Check for marker and segwit flag
+        let preCheckRange = input.parserRange
+        let maybeSegwitMarkerAndFlag = try Data(parsing: &input, byteCount: 2)
+
         let isSegwit: Bool
-        if decoder.peek(2) == Transaction.segwitMarkerAndFlag {
-            try decoder.decode(2)
+        if maybeSegwitMarkerAndFlag == Transaction.segwitMarkerAndFlag {
             isSegwit = true
         } else {
             isSegwit = false
+            try input.seek(toRange: preCheckRange)
         }
 
-        if isSegwit && encoding == .noWitness {
+        if isSegwit && format == .noWitness {
             throw DecodingError.witnessEncoded
         }
 
-        var ins: [Input] = try decoder.decode()
-        outs = try decoder.decode()
+        var ins = try [Input](parsing: &input)
+        outs = try [TransactionOutput](parsing: &input)
 
         // BIP144
         if isSegwit {
             for i in ins.indices {
-                ins[i].witness = try decoder.decode()
+                ins[i].witness = try .init(parsing: &input)
             }
         }
         self.ins = ins
 
-        locktime = try decoder.decode()
+        locktime = try .init(parsing: &input)
     }
 
-    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
-        encoder.encode(version)
-        // BIP144
-        if encoding != .noWitness, hasWitness {
-            encoder.encode(Transaction.segwitMarkerAndFlag)
-        }
-        encoder.encode(ins)
-        encoder.encode(outs)
-        // BIP144
-        if encoding != .noWitness, hasWitness {
-            for witness in ins.map(\.witness) {
-                encoder.encode(witness)
-            }
-        }
-        encoder.encode(locktime)
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
         counter.count(version)
         // BIP144
-        if encoding != .noWitness, hasWitness {
+        if format != .noWitness, hasWitness {
             counter.count(Transaction.segwitMarkerAndFlag)
         }
         counter.count(ins)
-        counter.count(outs)
+        //counter.count(outs)
+        outs.countBytes(into: &counter)
         // BIP144
-        if encoding != .noWitness, hasWitness {
+        if format != .noWitness, hasWitness {
             for witness in ins.compactMap({ $0.witness }) {
                 counter.count(witness)
             }
         }
         counter.count(locktime)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        try version.encode(into: &out)
+        // BIP144
+        if format != .noWitness, hasWitness {
+            out.append(contentsOf: Transaction.segwitMarkerAndFlag)
+        }
+
+        try ins.encode(into: &out)
+        try outs.encode(into: &out)
+
+        // BIP144
+        if format != .noWitness, hasWitness {
+            try ins.map(\.witness).encode(into: &out, format: (.unprefixed, nil))
+        }
+        try locktime.encode(into: &out)
     }
 }

@@ -33,7 +33,8 @@ struct AuxiliaryTests {
         #expect(maybeCoin == maybeCoin2)
 
         let maybeNotCoin = UnspentOutput?.none
-        let maybeNotCoin2: UnspentOutput? = try .init(maybeNotCoin.data)
+        let maybeNotCoinData = maybeNotCoin.data
+        let maybeNotCoin2: UnspentOutput? = try .init(maybeNotCoinData)
         #expect(maybeNotCoin == maybeNotCoin2)
 
         let coins = [
@@ -41,8 +42,9 @@ struct AuxiliaryTests {
             .init(.init(value: 456), height: 7, isCoinbase: false),
         ]
         let data = coins.data
-        var decoder = BinaryDecoder(data)
-        let coins2: [UnspentOutput?] = try decoder.decodeExplicit()
+        let coins2 = try data.withParserSpan { input in
+            try [UnspentOutput?].init(parsing: &input)
+        }
         #expect(coins == coins2)
 
         let maybeCoins = [
@@ -50,11 +52,21 @@ struct AuxiliaryTests {
             coin,
             .init(.init(value: 456), height: 7, isCoinbase: false)
         ]
+
         let maybeCoins2: [UnspentOutput?] = try .init(maybeCoins.data)
+
         #expect(maybeCoins == maybeCoins2)
 
         let undo = BlockUndo(spentCoins: coins)
-        let undo2 = try BlockUndo(undo.data)
+
+        let undoData = undo.data
+        let undo2: BlockUndo
+        do {
+            undo2 = try BlockUndo(undoData)
+        } catch {
+            Issue.record("Failed to decode block undo")
+            return
+        }
         #expect(undo == undo2)
 
         let undoWithNils = BlockUndo(spentCoins: maybeCoins)

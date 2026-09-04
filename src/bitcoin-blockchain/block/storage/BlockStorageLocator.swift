@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 struct BlockStorageLocator: Hashable {
@@ -17,26 +18,30 @@ struct BlockStorageLocator: Hashable {
     }
 
     var hasUndoOffset: Bool {
-        undoOffset != -1
+        undoOffset != -1 // TODO: Change -1 for UInt32.max as fixed value
     }
 }
 
 extension BlockStorageLocator: BinaryCodable {
-    init(from decoder: inout BinaryDecoder) throws {
-        file = try decoder.decode()
-        offset = try decoder.decode()
-        undoOffset = try decoder.decode()
+
+    init(parsing input: inout ParserSpan, format: Never?) throws {
+        let file32 = try UInt32(parsingLittleEndian: &input)
+        file = file32 == .max ? -1 : Int(file32)
+        let offset32 = try UInt32(parsingLittleEndian: &input)
+        offset = offset32 == .max ? -1 : Int(offset32)
+        let undoOffset32 = try UInt32(parsingLittleEndian: &input)
+        undoOffset = undoOffset32 == .max ? -1 : Int(undoOffset32)
     }
 
-    func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(file)
-        encoder.encode(offset)
-        encoder.encode(undoOffset)
+    func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt32.self)
+        counter.count(UInt32.self)
+        counter.count(UInt32.self)
     }
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(Int.self)
-        counter.count(Int.self)
-        counter.count(Int.self)
+    func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(file == -1 ? .max : UInt32(file), as: UInt32.self, .littleEndian)
+        out.append(offset == -1 ? .max : UInt32(offset), as: UInt32.self, .littleEndian)
+        out.append(undoOffset == -1 ? .max : UInt32(undoOffset), as: UInt32.self, .littleEndian)
     }
 }

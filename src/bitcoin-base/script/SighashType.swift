@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public struct SighashType: Equatable, Sendable {
@@ -63,9 +64,9 @@ public struct SighashType: Equatable, Sendable {
     public static let singleAnyCanPay = Self(unchecked: Self.sighashSingle | Self.sighashAnyCanPay)
 }
 
-extension SighashType: CustomBinaryCodable {
+extension SighashType: BinaryCodable {
 
-    public enum Encoding: Equatable, Sendable {
+    public enum BinaryFormat: Equatable, Sendable {
         case fullLength
     }
 
@@ -73,12 +74,12 @@ extension SighashType: CustomBinaryCodable {
         case invalidData, undefinedSighashType
     }
 
-    public init(from decoder: inout BinaryDecoder, encoding: Encoding?) throws(DecodingError) {
-        switch encoding {
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws(DecodingError) {
+        switch format {
         case nil:
             let value: UInt8
             do {
-                value = try decoder.decode()
+                value = try UInt8(parsing: &input)
             } catch {
                 throw .invalidData
             }
@@ -86,12 +87,12 @@ extension SighashType: CustomBinaryCodable {
                 throw .undefinedSighashType
             }
             self = maybeSelf
-        case .some(let encoding):
-            switch encoding {
+        case .some(let format):
+            switch format {
             case .fullLength:
                 let rawValue: Int32
                 do {
-                    rawValue = try decoder.decode()
+                    rawValue = try Int32(parsingLittleEndian: &input)
                 } catch {
                     throw .invalidData
                 }
@@ -104,24 +105,24 @@ extension SighashType: CustomBinaryCodable {
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder, encoding: Encoding?) {
-        switch encoding {
-        case nil: encoder.encode(value)
-        case .some(let encoding):
-            switch encoding {
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
+        switch format {
+        case nil: counter.countSize(1)
+        case .some(let format):
+            switch format {
             case .fullLength:
-                encoder.encode(rawValue)
+                counter.count(Int32.self)
             }
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Encoding?) {
-        switch encoding {
-        case nil: counter.count(value)
-        case .some(let encoding):
-            switch encoding {
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        switch format {
+        case nil: out.append(value)
+        case .some(let format):
+            switch format {
             case .fullLength:
-                counter.count(rawValue)
+                out.append(rawValue, as: Int32.self, .littleEndian)
             }
         }
     }

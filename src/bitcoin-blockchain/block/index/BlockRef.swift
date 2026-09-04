@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 import BitcoinBase
 
@@ -54,55 +55,42 @@ public struct BlockRef: Equatable, Hashable, Sendable {
     }
 }
 
-extension ValidationStatus: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
-        guard let maybeSelf = Self(rawValue: try decoder.decode()) else {
-            throw BinaryDecodingError.limitExceeded // TODO: find better error
-        }
-        self = maybeSelf
-    }
-
-    public func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(rawValue)
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(UInt8.self)
-    }
-
-}
-
 extension BlockRef: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
-        header = try decoder.decode()
-        height = try decoder.decode()
-        chainwork = try decoder.decode()
-        chainTxCount = try decoder.decode()
-        status = try decoder.decode()
-        let locator: BlockStorageLocator = try decoder.decode()
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        header = try .init(parsing: &input)
+        height = try Int(UInt32(parsingLittleEndian: &input)) // TODO: Verify conversion to UInt32
+        chainwork = try .init(parsing: &input)
+        chainTxCount = try Int(UInt32(parsingLittleEndian: &input))
+        let statusRaw = try UInt8(parsing: &input)
+        guard let status = ValidationStatus(rawValue: statusRaw) else {
+            throw BinaryDecodingError.invalidEnumCase
+        }
+        self.status = status
+        let locator: BlockStorageLocator = try .init(parsing: &input)
         self.locator = locator == .placeholder ? nil : locator
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(header)
-        encoder.encode(height)
-        encoder.encode(chainwork)
-        encoder.encode(chainTxCount)
-        encoder.encode(status)
-        if let locator {
-            encoder.encode(locator)
-        } else {
-            encoder.encode(BlockStorageLocator.placeholder)
-        }
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(header)
-        counter.count(height)
+        counter.count(UInt32.self)
         counter.count(chainwork)
-        counter.count(chainTxCount)
+        counter.count(UInt32.self)
         counter.count(status)
         counter.count(BlockStorageLocator.placeholder)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try header.encode(into: &out)
+        out.append(UInt32(height), as: UInt32.self, .littleEndian)
+        try chainwork.encode(into: &out)
+        out.append(UInt32(chainTxCount), as: UInt32.self, .littleEndian)
+        out.append(status.rawValue)
+        if let locator {
+            try locator.encode(into: &out)
+        } else {
+            try BlockStorageLocator.placeholder.encode(into: &out)
+        }
     }
 }
 
@@ -127,5 +115,23 @@ public enum ValidationStatus: UInt8, CustomStringConvertible, Equatable, Hashabl
         case .invalid: "invalid"
         case .stale: "stale"
         }
+    }
+}
+
+extension ValidationStatus: BinaryCodable {
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        guard let maybeSelf = Self(rawValue: try .init(parsing: &input)) else {
+            throw BinaryDecodingError.invalidEnumCase
+        }
+        self = maybeSelf
+    }
+
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt8.self)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(rawValue)
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 import BitcoinBase
 import BitcoinWallet
@@ -29,9 +30,9 @@ typealias KeyedValues = [PSBTMap.Key : Data]
 /// `<valuelen>` - The compact size unsigned integer containing the length of `<valuedata>`.
 /// `<magic>` - Magic bytes which are ASCII for psbt [2] followed by a separator of `0xff`. This integer must be serialized in most significant byte order.
 ///
-public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
+public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
 
-    public struct In: Equatable, Sendable, CustomBinaryCodable {
+    public struct In: Equatable, Sendable, BinaryCodable {
 
         public init(
             prevoutTx: Transaction? = nil,
@@ -66,14 +67,14 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             additionalTypes = [:]
         }
 
-        public init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PartiallySignedTxError) {
+        public init(parsing input: inout ParserSpan, format: Never?) throws(PartiallySignedTxError) {
             let map: PSBTMap
             do {
-                map = try decoder.decode()
+                map = try .init(parsing: &input)
             } catch PSBTMapError.duplicateKey {
                 throw .duplicateKey
             } catch {
-                throw .missingOutputMaps
+                throw .missingInputMaps
             }
             try self.init(from: map)
         }
@@ -131,7 +132,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     guard k.data.isEmpty else {
                         throw .nonEmptyInputKeyData("Sighath type")
                     }
-                    guard v.count == 4, let s = try? SighashType(v, encoding: .fullLength) else {
+                    guard v.count == 4, let s = try? SighashType(v, binaryFormat: .fullLength) else {
                         throw .invalidInputSighashType
                     }
                     sighashType = s
@@ -246,12 +247,12 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
 
         private var additionalTypes: KeyedValues
 
-        public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+        public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
             counter.count(map)
         }
 
-        public func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
-            encoder.encode(map)
+        public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+            try map.encode(into: &out)
         }
 
         mutating func combine(with other: PartiallySignedTx.In) {
@@ -303,7 +304,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                 entries[.init(PSBTInputKeyType.partialSig, data: k.data)] = s.data
             }
             if let sighashType {
-                entries[.init(PSBTInputKeyType.sighashType)] = sighashType.data(encoding: .fullLength)
+                entries[.init(PSBTInputKeyType.sighashType)] = sighashType.data(binaryFormat: .fullLength)
             }
             if let redeemScript {
                 entries[.init(PSBTInputKeyType.redeemScript)] = redeemScript.data
@@ -345,7 +346,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
     }
 
-    public struct Out: Equatable, Sendable, CustomBinaryCodable {
+    public struct Out: Equatable, Sendable, BinaryCodable {
 
         public init(
             redeemScript: Script? = nil,
@@ -360,16 +361,17 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             additionalTypes = [:]
         }
 
-        public init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PartiallySignedTxError) {
+        public init(parsing input: inout ParserSpan, format: Never?) throws(PartiallySignedTxError) {
             let map: PSBTMap
             do {
-                map = try decoder.decode()
+                map = try .init(parsing: &input)
             } catch PSBTMapError.duplicateKey {
                 throw .duplicateKey
             } catch {
                 throw .missingOutputMaps
             }
             try self.init(from: map)
+
         }
 
         init(from map: PSBTMap) throws(PartiallySignedTxError) {
@@ -455,12 +457,12 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
             return .init(entries: entries)
         }
 
-        public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+        public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
             counter.count(map)
         }
 
-        public func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
-            encoder.encode(map)
+        public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+            try map.encode(into: &out)
         }
 
         mutating func combine(with other: PartiallySignedTx.Out) {
@@ -504,11 +506,10 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
     }
 
-    public init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PartiallySignedTxError) {
-        // Prefix (magic)
+    public init(parsing input: inout ParserSpan, format: Never?) throws(PartiallySignedTxError) {
         let magic: Data
         do {
-            magic = try decoder.decode(Self.magic.count)
+            magic = try Data(parsing: &input, byteCount: Self.magic.count)
         } catch {
             throw .invalidPrefix // Not enought bytes to decode the prefix
         }
@@ -519,7 +520,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         // Global types
         let globalMap: PSBTMap
         do {
-            globalMap = try decoder.decode()
+            globalMap = try .init(parsing: &input)
         } catch PSBTMapError.duplicateKey {
             throw .duplicateKey
         } catch {
@@ -538,7 +539,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
                     throw .invalidUnsignedTransactionKey
                 }
                 do {
-                    tx = try Transaction(v, encoding: .noWitness)
+                    tx = try Transaction(v, binaryFormat: .noWitness)
                 } catch {
                     throw .invalidUnsignedTransaction
                 }
@@ -589,12 +590,12 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
 
         var ins: [In] = []
         for _ in tx.ins {
-            ins.append(try In(from: &decoder, encoding: nil))
+            ins.append(try In(parsing: &input, format: nil))
         }
 
         var outs: [Out] = []
         for _ in tx.outs {
-            outs.append(try Out(from: &decoder, encoding: nil))
+            outs.append(try Out(parsing: &input, format: nil))
         }
         try self.init(tx, xpubDerivations: xpubDerivations, proprietaryInfo: proprietaryInfo, ins: ins, outs: outs, additionalTypes: additionalTypes)
     }
@@ -612,7 +613,7 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         .created
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(Self.magic)
         counter.count(globalMap)
         for input in ins {
@@ -623,15 +624,11 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
-        encoder.encode(Self.magic)
-        encoder.encode(globalMap)
-        for input in ins {
-            encoder.encode(input)
-        }
-        for out in outs {
-            encoder.encode(out)
-        }
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(contentsOf: Self.magic)
+        try globalMap.encode(into: &out)
+        try ins.encode(into: &out, format: (.unprefixed, nil))
+        try outs.encode(into: &out, format: (.unprefixed, nil))
     }
 
     public mutating func update(input i: Int, _ tx: Transaction) {
@@ -916,17 +913,18 @@ public struct PartiallySignedTx: Equatable, Sendable, CustomBinaryCodable {
     private static let magic = Data([0x70, 0x73, 0x62, 0x74, 0xff])
 }
 
-private struct ProprietarySuperKey: Hashable, CustomBinaryCodable {
+private struct ProprietarySuperKey: Hashable, BinaryCodable {
 
     init(id: Data, subkey: PSBTMap.Key) {
         self.id = id
         self.subkey = subkey
     }
 
-    init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PSBTMapError) {
+    init(parsing input: inout ParserSpan, format: Never?) throws(PSBTMapError) {
         do {
-            id = try decoder.decode(variable: true)
-            subkey = try decoder.decode()
+            let length = try VarInt(parsing: &input)
+            id = try Data(parsing: &input, byteCount: length.value)
+            subkey = try .init(parsing: &input)
         } catch {
             throw .invalidValueEncoding
         }
@@ -935,13 +933,14 @@ private struct ProprietarySuperKey: Hashable, CustomBinaryCodable {
     let id: Data
     let subkey: PSBTMap.Key
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+    func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(id, variable: true)
         counter.count(subkey)
     }
 
-    func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
-        encoder.encode(id, variable: true)
-        encoder.encode(subkey)
+    func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try VarInt(id.count).encode(into: &out)
+        out.append(contentsOf: id)
+        try subkey.encode(into: &out)
     }
 }

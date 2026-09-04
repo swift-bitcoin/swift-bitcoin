@@ -878,7 +878,7 @@ public actor BlockchainService: Sendable {
 
         let data = params.chainData
 
-        if block.chainTxCount == -1 {
+        if block.chainTxCount == 0 {
             logger.debug("Block \(block.header.idHex) has unset m_chain_tx_count. Unable to estimate verification progress.")
             return 0
         }
@@ -1039,7 +1039,7 @@ extension BlockchainService {
         }
 
         // Transactions smaller than 65 non-witness bytes are not relayed to mitigate CVE-2017-12842.
-        guard tx.dataSize(encoding: .noWitness) >= Transaction.minStandardNonWitnessSize else {
+        guard tx.binarySize(format: .noWitness) >= Transaction.minStandardNonWitnessSize else {
             throw .smallTransactionSize
         }
 
@@ -1153,7 +1153,7 @@ extension BlockchainService {
         var prevHeights = await calculatePrevHeights(tx, tip: tip, excludeCoins: mempoolExclude, auxCoins: mempoolCoins)
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
+        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
 
         // When SequenceLocks() is called within ConnectBlock(), the height
         // of the block *being* evaluated is what is used.
@@ -1283,7 +1283,7 @@ extension BlockchainService {
         // Thus if we want to know if a transaction can be part of the *next* block, we need to use one more than chainActive.Height()
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
+        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
 
         try await evaluateSequenceLocks(nextBlockPlaceholder, previous: tip, lockPair: (lockPoints.height, lockPoints.time))
     }
@@ -1717,7 +1717,7 @@ extension BlockchainService {
         // checks that use witness data may be performed here.
 
         // Size limits
-        guard let firstTx = block.txs.first, block.txs.count * Transaction.witnessScaleFactor <= Block.maxWeight, block.dataSize(encoding: .noWitness) * Transaction.witnessScaleFactor <= Block.maxWeight else {
+        guard let firstTx = block.txs.first, block.txs.count * Transaction.witnessScaleFactor <= Block.maxWeight, block.binarySize(format: .noWitness) * Transaction.witnessScaleFactor <= Block.maxWeight else {
             // size limits failed
             throw .badBlockSize
         }
@@ -1789,7 +1789,7 @@ extension BlockchainService {
         let witnessCommitment = coinbase.outs[commitIndex].script
 
         guard let (solution, opIndex) = findSignetSolution(witnessCommitment) else {
-            let blockData = block.data(encoding: .signet)
+            let blockData = block.data(binaryFormat: .signet)
             let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
                 .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
             ], outs: [
@@ -1805,24 +1805,24 @@ extension BlockchainService {
 
         let script: Script
         do {
-            script = try Script(prefixedData: solution)
+            script = try Script(solution, binaryFormat: .prefixed)
         } catch {
             throw .invalidSignetSolutionScript
         }
         let witness: Transaction.Witness
         do {
-            witness = try .init(solution.dropFirst(script.sizePrefixed))
+            witness = try .init(solution.dropFirst(script.binarySize(format: .prefixed)))
         } catch {
             throw .invalidSignetSolutionWitness
         }
-        guard solution.count == script.sizePrefixed + witness.dataSize else {
+        guard solution.count == script.binarySize(format: .prefixed) + witness.binarySize else {
             throw .extraneousSignetSolutionData
         }
 
         var modifiedBlock = block
         modifiedBlock.txs[0].outs[commitIndex].script.ops[opIndex] = .encodeMinimally(signetHeader)
         modifiedBlock.recalculateMerkleRoot()
-        let blockData = modifiedBlock.data(encoding: .signet)
+        let blockData = modifiedBlock.data(binaryFormat: .signet)
 
         let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
             .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
@@ -2370,7 +2370,7 @@ extension BlockchainService {
             time: blockTime,
             target: 0
         )
-        let blockData = modifiedBlock.data(encoding: .signet)
+        let blockData = modifiedBlock.data(binaryFormat: .signet)
 
         let toSpend = Transaction(version: .v0, locktime: .disabled, ins: [
             .init(outpoint: .coinbase, sequence: .initial, script: [.zero, .pushBytes(blockData)])
@@ -2401,7 +2401,7 @@ extension BlockchainService {
         }
 
         if !witness.stack.isEmpty {
-            let signetSolution = signetHeader + Script.empty.dataPrefixed + witness.data
+            let signetSolution = signetHeader + Script.empty.data(binaryFormat: .prefixed) + witness.data
             coinbaseTx.outs[commitIndex].script.ops.append(.encodeMinimally(signetSolution))
         }
     }

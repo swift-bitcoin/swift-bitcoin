@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 extension PSBTMap {
@@ -18,23 +19,24 @@ extension PSBTMap {
     /// `<valuelen>` - The compact size unsigned integer containing the length of `<valuedata>`.
     /// `<magic>` - Magic bytes which are ASCII for psbt [2] followed by a separator of `0xff`. This integer must be serialized in most significant byte order.
     ///
-    struct Keypair: CustomBinaryCodable {
+    struct Keypair: BinaryCodable {
 
         init(key: Key, value: Data) {
             self.key = key
             self.value = value
         }
 
-        init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PSBTMapError) {
+        init(parsing input: inout ParserSpan, format: Never?) throws(PSBTMapError) {
             do {
-                key = try decoder.decodeExplicit()
+                key = try Key(parsing: &input)
             } catch let error as PSBTMapError {
                 throw error
             } catch {
                 throw .invalidKeyEncoding
             }
             do {
-                value = try decoder.decode(variable: true)
+                let length = try VarInt(parsing: &input)
+                value = try Data(parsing: &input, byteCount: length.value)
             } catch let error as PSBTMapError {
                 throw error
             } catch {
@@ -45,14 +47,15 @@ extension PSBTMap {
         let key: Key
         let value: Data
 
-        func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+        func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
             counter.count(key)
             counter.count(value, variable: true)
         }
 
-        func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
-            encoder.encode(key)
-            encoder.encode(value, variable: true)
+        func encode(into out: inout OutputRawSpan, format: Never?) throws {
+            try key.encode(into: &out)
+            try VarInt(value.count).encode(into: &out)
+            out.append(contentsOf: value)
         }
     }
 }

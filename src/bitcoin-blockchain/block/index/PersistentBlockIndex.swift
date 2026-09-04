@@ -119,7 +119,7 @@ actor PersistentBlockIndex: BlockIndex {
 
     func addHeader(_ header: Block) throws(BlockIndexError) -> BlockRef {
         precondition(header.txs.isEmpty)
-        return try add(header, locator: nil, status: .header, chainTxCount: -1)
+        return try add(header, locator: nil, status: .header, chainTxCount: 0)
     }
 
     func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) throws(BlockIndexError) -> BlockRef {

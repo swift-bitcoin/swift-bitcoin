@@ -1,5 +1,6 @@
 import Configuration
 import Foundation
+import BitcoinCrypto
 
 struct SwiftSnapshot {
     let jsonSnapshot: JSONSnapshot
@@ -110,18 +111,5 @@ extension SwiftSnapshot: CustomStringConvertible {
 extension SwiftSnapshot: CustomDebugStringConvertible {
     public var debugDescription: String {
         jsonSnapshot.debugDescription
-    }
-}
-
-extension Data {
-    /// Creates data from a raw span.
-    /// - Parameter span: The raw span whose bytes to copy into a new Data.
-    internal init(_ span: RawSpan) {
-        self = span.withUnsafeBytes { pointer in
-            guard let base = pointer.baseAddress else {
-                return Data()
-            }
-            return Data(bytes: base, count: pointer.count)
-        }
     }
 }

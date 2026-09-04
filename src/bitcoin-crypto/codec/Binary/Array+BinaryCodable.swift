@@ -1,51 +1,43 @@
 import Foundation
+import BinaryParsing
 
 extension Array: BinaryCodable where Element: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
-        let count: VarInt = try decoder.decode()
+    public enum ArrayBinaryFormat {
+        case unprefixed
+    }
+
+    public typealias BinaryFormat = (arrayBinaryFormat: ArrayBinaryFormat?, elementBinaryFormat: Element.BinaryFormat?)
+
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
+        guard format?.arrayBinaryFormat == nil else {
+            preconditionFailure("Cannot decode an unprefixed array.")
+        }
+
+        let count = try VarInt(parsing: &input)
+
         self.init()
         for _ in 0 ..< count.value {
-            append(try decoder.decode())
+            let element = try Element(parsing: &input, format: format?.elementBinaryFormat)
+            append(element)
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(VarInt(count))
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
+        if format?.arrayBinaryFormat == nil {
+            counter.count(VarInt(count))
+        }
         for e in self {
-            e.encode(to: &encoder)
+            e.countBytes(into: &counter, format: format?.elementBinaryFormat)
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(VarInt(count))
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        if format?.arrayBinaryFormat == nil {
+            try VarInt(count).encode(into: &out)
+        }
         for e in self {
-            e.encodingSize(&counter)
-        }
-    }
-}
-
-extension Array: CustomBinaryCodable where Element: CustomBinaryCodable {
-
-    public init(from decoder: inout BinaryDecoder, encoding: Element.Encoding?) throws {
-        let count: VarInt = try decoder.decode()
-        self.init()
-        for _ in 0 ..< count.value {
-            append(try decoder.decode(encoding: encoding))
-        }
-    }
-
-    public func encode(to encoder: inout BinaryEncoder, encoding: Element.Encoding?) {
-        encoder.encode(VarInt(count))
-        for e in self {
-            e.encode(to: &encoder, encoding: encoding)
-        }
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Element.Encoding?) {
-        counter.count(VarInt(count))
-        for e in self {
-            e.encodingSize(&counter, encoding: encoding)
+            try e.encode(into: &out, format: format?.elementBinaryFormat)
         }
     }
 }

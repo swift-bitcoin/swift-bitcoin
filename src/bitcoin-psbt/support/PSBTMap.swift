@@ -1,26 +1,34 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public enum PSBTMapError: Error {
     case /*invalidKeyType, invalidKeyData,*/ invalidKeyEncoding, invalidValueEncoding, invalidKeyPairEncoding, duplicateKey, missingDelimiter
 }
 
-struct PSBTMap: CustomBinaryCodable {
+struct PSBTMap: BinaryCodable {
 
     init(entries: [Key : Data]) {
         self.entries = entries
     }
 
-    init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PSBTMapError) {
-        guard let maybeDelimiter = decoder.peek() else {
+    init(parsing input: inout ParserSpan, format: Never?) throws(PSBTMapError) {
+        var lookAhead = input.parserRange
+        guard let maybeDelimiter = try? UInt8(parsing: &input) else {
             throw .missingDelimiter
         }
+        do {
+            try input.seek(toRange: lookAhead)
+        } catch {
+            throw .missingDelimiter
+        }
+
         var entries = [Key : Data]()
         var foundDelimiter = maybeDelimiter == Self.delimiter
         while !foundDelimiter {
             let keypair: Keypair
             do {
-                keypair = try decoder.decode()
+                keypair = try Keypair(parsing: &input)
             } catch let error as PSBTMapError {
                 throw error
             } catch {
@@ -30,12 +38,24 @@ struct PSBTMap: CustomBinaryCodable {
                 throw .duplicateKey
             }
             entries[keypair.key] = keypair.value
-            guard let maybeDelimiter = decoder.peek() else {
+
+            lookAhead = input.parserRange
+            guard let maybeDelimiter = try? UInt8(parsing: &input) else {
                 throw .missingDelimiter
             }
+            do {
+                try input.seek(toRange: lookAhead)
+            } catch {
+                throw .missingDelimiter
+            }
+
             foundDelimiter = maybeDelimiter == Self.delimiter
         }
-        _ = try! decoder.decode() as UInt8 // Consume delimiter
+        do {
+            _ = try UInt8(parsing: &input) // Consume delimiter
+        } catch {
+            throw .missingDelimiter
+        }
         self.entries = entries
     }
 
@@ -45,18 +65,18 @@ struct PSBTMap: CustomBinaryCodable {
         entries.map { Keypair(key: $0, value: $1) }
     }
 
-    func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+    func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         for keypair in keypairs {
             counter.count(keypair)
         }
-        counter.count(Self.delimiter)
+        counter.countSize(1) // delimiter
     }
 
-    func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
+    func encode(into out: inout OutputRawSpan, format: Never?) throws {
         for keypair in keypairs {
-            encoder.encode(keypair)
+            try keypair.encode(into: &out)
         }
-        encoder.encode(Self.delimiter)
+        out.append(Self.delimiter)
     }
 
     static let delimiter = UInt8(0x00)

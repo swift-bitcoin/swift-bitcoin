@@ -1,14 +1,15 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public extension PartiallySignedTx {
 
-    enum Version: Int, Equatable, Sendable, CustomBinaryCodable {
+    enum Version: Int, Equatable, Sendable, BinaryCodable {
 
-        public init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PartiallySignedTxError) {
+        public init(parsing input: inout ParserSpan, format: Never?) throws(PartiallySignedTxError) {
             let value: UInt32
             do {
-                value = try decoder.decode()
+                value = try .init(parsingLittleEndian: &input)
             } catch {
                 throw .invalidVersionEncoding
             }
@@ -25,12 +26,12 @@ public extension PartiallySignedTx {
             UInt32(rawValue)
         }
 
-        public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
-            counter.count(value)
+        public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+            counter.count(UInt32.self)
         }
 
-        public func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
-            encoder.encode(value)
+        public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+            out.append(value, as: UInt32.self, .littleEndian)
         }
     }
 }

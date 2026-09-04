@@ -55,7 +55,7 @@ struct SignatureMessage: Equatable, Sendable {
             ins: newIns,
             outs: newOuts
         )
-        data = txCopy.data + sighashType.data(encoding: .fullLength)
+        data = txCopy.data + sighashType.data(binaryFormat: .fullLength)
     }
 
     let data: Data

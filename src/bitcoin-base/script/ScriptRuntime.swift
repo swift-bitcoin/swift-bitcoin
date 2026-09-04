@@ -112,11 +112,11 @@ public struct ScriptRuntime {
 
         if sigVersion == .witnessV1 {
             let witness = tx.ins[input].witness
-            sigopBudget = Script.sigopBudgetBase + (witness == [] ? 0 : witness.dataSize)
+            sigopBudget = Script.sigopBudgetBase + (witness == [] ? 0 : witness.binarySize)
         }
 
         // BIP141
-        if (sigVersion == .base || sigVersion == .witnessV0) && script.dataSize > Script.maxScriptSize {
+        if (sigVersion == .base || sigVersion == .witnessV0) && script.binarySize > Script.maxScriptSize {
             throw ScriptError.scriptSizeLimitExceeded
         }
 
@@ -156,7 +156,7 @@ public struct ScriptRuntime {
             if sigVersion != .base && stack.count + altStack.count > Script.maxStackElements {
                 throw ScriptError.stacksLimitExceeded
             }
-            programCounter += op.dataSize
+            programCounter += op.binarySize
             opIndex += 1
         }
         guard pendingIfOps.isEmpty, pendingElseOps.isEmpty else {
@@ -210,7 +210,7 @@ public struct ScriptRuntime {
             {
                 scriptCode.append(op.data)
             }
-            programCounter2 += op.dataSize
+            programCounter2 += op.binarySize
         }
         return scriptCode
     }

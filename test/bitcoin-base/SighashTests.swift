@@ -16,7 +16,7 @@ struct SighashTests {
     ])
     func allVectors(tx: [UInt8], script: [UInt8], input: Int, hashType: Int32, expected: [UInt8]) throws {
         let tx = try Transaction(Data(tx))
-        let script = try Script(script)
+        let script = try Script(Data(script))
 
         var filteredOps = script.ops
         filteredOps.removeAll { $0 == .codeSeparator }

@@ -147,8 +147,8 @@ actor PersistentBlockStorage: BlockStorage {
 
     func store(_ block: Block) -> BlockStorageLocator {
         let maxSize = Int64(config.maxFileSize) // Accounts for magic bytes header and block length prefix
-        let encoding = Block.Encoding.file(magicBytes: config.magic)
-        let serializedBlock = block.data(encoding: encoding)
+        let format = Block.BinaryFormat.file(magicBytes: config.magic)
+        let serializedBlock = block.data(binaryFormat: format)
 
         var offset: Int64
         if fileSizes.count == 0 || Int64(fileSizes.last!) + Int64(serializedBlock.count) > maxSize {
@@ -332,14 +332,14 @@ actor PersistentBlockStorage: BlockStorage {
 
         let locator = store(genesisUndo, forBlockAt: .init(file: 0, offset: 0, undoOffset: -1))
         assert(locator == .init(file: 0, offset: 0, undoOffset: 0))
-        assert(undoFileSizes.count == 1 && undoFileSizes[0] == genesisUndo.dataSize)
+        assert(undoFileSizes.count == 1 && undoFileSizes[0] == genesisUndo.binarySize)
     }
 
     func next(_ iterator: BlockIterator, includeUndo: Bool) async -> BlockIterator? {
-        let encoding = Block.Encoding.file(magicBytes: config.magic)
+        let format = Block.BinaryFormat.file(magicBytes: config.magic)
 
         var file = iterator.locator.file
-        var offset = iterator.locator.offset + iterator.block.dataSize(encoding: encoding)
+        var offset = iterator.locator.offset + iterator.block.binarySize(format: format)
         if offset >= fileSizes[file] {
             file += 1
             offset = 0
@@ -352,7 +352,7 @@ actor PersistentBlockStorage: BlockStorage {
         let undoOffset: Int
 
         if includeUndo, let prevUndo = iterator.undo, undoFileSizes.indices.contains(file) {
-            let nextUndoOffset = iterator.locator.undoOffset + prevUndo.dataSize
+            let nextUndoOffset = iterator.locator.undoOffset + prevUndo.binarySize
             if offset == 0 {
                 // If the blk file increases, the rev file also increments. Offsets must both be 0.
                undoOffset = 0
@@ -394,7 +394,7 @@ actor PersistentBlockStorage: BlockStorage {
         }
 
         let maxBlockSize = Int64(config.maxBlock + MemoryLayout<UInt32>.size * 2) // Accounts for magic bytes header and block length prefix
-        let encoding = Block.Encoding.file(magicBytes: config.magic)
+        let format = Block.BinaryFormat.file(magicBytes: config.magic)
 
         logger.trace("Located block file \(locator.file) at offset \(locator.offset), file size: \(fileSizes[locator.file])")
 
@@ -418,7 +418,7 @@ actor PersistentBlockStorage: BlockStorage {
         }
         let block: Block
         do {
-            block = try Block(blockData, encoding: encoding)
+            block = try Block(Data(blockData), binaryFormat: format)
         } catch {
             logger.error("There was an issue attempting to decode block from file's contents.")
             throw .corruptedBlockData
@@ -458,7 +458,7 @@ actor PersistentBlockStorage: BlockStorage {
 
         let blockUndo: BlockUndo
         do {
-            blockUndo = try BlockUndo(blockUndoData)
+            blockUndo = try BlockUndo(Data(blockUndoData))
         } catch {
             logger.error("There was an issue attempting to decode block revert information from file's contents.")
             throw .corruptedBlockData

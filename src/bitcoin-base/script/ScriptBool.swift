@@ -41,15 +41,15 @@ extension ScriptBool: BinaryEncodable {
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         if value {
-            encoder.encode(Data([1]))
+            counter.countSize(1)
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
         if value {
-            counter.countSize(1)
+            out.append(1) // UInt8
         }
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 extension Transaction {
@@ -40,22 +41,23 @@ extension Transaction {
 
 /// Data extensions.
 extension Transaction.Input: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
-        outpoint = try decoder.decode()
-        script = try Script(prefixedFrom: &decoder)
-        sequence = try decoder.decode()
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        outpoint = try Outpoint(parsing: &input)
+        script = try Script(parsing: &input, format: .prefixed)
+        sequence = try Sequence(parsing: &input)
         witness = []
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(outpoint)
-        script.encodePrefixed(to: &encoder)
-        encoder.encode(sequence)
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(outpoint)
+        script.countBytes(into: &counter, format: .prefixed)
+        counter.count(sequence)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(outpoint)
-        script.encodingSizePrefixed(&counter)
-        counter.count(sequence)
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try outpoint.encode(into: &out)
+        try script.encode(into: &out, format: .prefixed)
+        try sequence.encode(into: &out)
     }
 }

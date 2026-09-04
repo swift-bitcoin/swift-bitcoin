@@ -85,7 +85,7 @@ extension ScriptRuntime {
         let (sig, nData, pubkeyData) = try getTernaryParams()
 
         var n = try ScriptNumber(nData, minimal: config.contains(.minimalData))
-        guard n.dataSize <= 4 else {
+        guard n.binarySize <= 4 else {
             // - If n is larger than 4 bytes, the script MUST fail and terminate immediately.
             throw ScriptError.invalidCheckSigAddArgument
         }

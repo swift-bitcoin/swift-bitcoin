@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public struct DifficultyTarget: Comparable, Sendable {
@@ -261,20 +262,20 @@ public struct DifficultyTarget: Comparable, Sendable {
 
 extension DifficultyTarget: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
         n = .init(repeating: 0, count: Self.width)
         for i in n.indices {
-            n[i] = try decoder.decode()
+            n[i] = try .init(parsingLittleEndian: &input)
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
-        for value in n {
-            encoder.encode(value)
-        }
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.countSize(Self.bytes)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        for value in n {
+            out.append(value, as: UInt32.self, .littleEndian)
+        }
     }
 }

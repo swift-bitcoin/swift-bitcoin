@@ -1,9 +1,10 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 extension PSBTMap {
 
-    struct Key: Equatable, Hashable, CustomBinaryCodable {
+    struct Key: Equatable, Hashable, BinaryCodable {
 
         init<K: KeyType>(_ type: K, data: Data = .init()) where K.RawValue == Int {
             self.type = type.rawValue
@@ -15,13 +16,13 @@ extension PSBTMap {
             self.data = data
         }
 
-        init(from decoder: inout BinaryDecoder, encoding: Never?) throws(PSBTMapError) {
+        init(parsing input: inout ParserSpan, format: Never?)  throws(PSBTMapError) {
             do {
-                let keySize = try VarInt(from: &decoder)
-                let type = try VarInt(from: &decoder)
-                let dataSize = keySize.value - type.dataSize
+                let keySize = try VarInt(parsing: &input)
+                let type = try VarInt(parsing: &input)
+                let dataSize = keySize.value - type.binarySize
                 self.type = type.value
-                data = try decoder.decode(dataSize)
+                data = try Data(parsing: &input, byteCount: dataSize)
             } catch {
                 throw .invalidKeyEncoding
             }
@@ -30,20 +31,20 @@ extension PSBTMap {
         let type: Int
         let data: Data
 
-        func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
+        func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
             let type = VarInt(type)
-            let keySize = VarInt(type.dataSize + data.count)
+            let keySize = VarInt(type.binarySize + data.count)
             counter.count(keySize)
             counter.count(type)
             counter.count(data)
         }
 
-        func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
+        func encode(into out: inout OutputRawSpan, format: Never?) throws {
             let type = VarInt(type)
-            let keySize = VarInt(type.dataSize + data.count)
-            encoder.encode(keySize)
-            encoder.encode(type)
-            encoder.encode(data)
+            let keySize = VarInt(type.binarySize + data.count)
+            try keySize.encode(into: &out)
+            try type.encode(into: &out)
+            out.append(contentsOf: data)
         }
     }
 }

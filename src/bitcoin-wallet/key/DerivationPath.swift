@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public struct DerivationPath: Equatable, Sendable {
@@ -22,30 +23,40 @@ public struct DerivationPath: Equatable, Sendable {
     public let indices: [Int]
 }
 
-extension DerivationPath: CustomBinaryCodable {
+extension DerivationPath: BinaryCodable {
 
     public enum DecodingError: Error {
         case invalidFingerprint, invalidIndex
     }
 
-    public init(from decoder: inout BinaryDecoder, encoding: Never?) throws(DecodingError) {
-        guard let fingerprintRaw = try? decoder.decode() as UInt32 else {
+    public init(parsing input: inout ParserSpan, format: Never?) throws(DecodingError) {
+        guard let fingerprintRaw = try? UInt32(parsingLittleEndian: &input) else {
             throw .invalidFingerprint
         }
         fingerprint = Int(fingerprintRaw)
-        guard let indicesRaw: [UInt32] = try? decoder.decodeArray() else {
-            throw .invalidIndex
+        var indicesRaw = [UInt32]()
+        while !input.isEmpty {
+            let indexElement: UInt32
+            do {
+                indexElement = try .init(parsingLittleEndian: &input)
+            } catch {
+                throw .invalidIndex
+            }
+            indicesRaw.append(indexElement)
+
         }
         indices = indicesRaw.map { Int($0) }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter, encoding: Never?) {
-        counter.count(UInt32(fingerprint))
-        counter.countArray(indices.map { UInt32($0) })
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt32.self)
+        counter.countSize(MemoryLayout<UInt32>.size * indices.count)
     }
 
-    public func encode(to encoder: inout BinaryEncoder, encoding: Never?) {
-        encoder.encode(UInt32(fingerprint))
-        encoder.encodeArray(indices.map { UInt32($0) })
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt32(fingerprint), as: UInt32.self, .littleEndian)
+        for i in indices.map(UInt32.init) {
+            out.append(i, as: UInt32.self, .littleEndian)
+        }
     }
 }

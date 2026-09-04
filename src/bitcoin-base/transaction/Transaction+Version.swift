@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 extension Transaction {
@@ -47,17 +48,18 @@ extension Transaction {
 
 /// Binary data extensions.
 extension Transaction.Version: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder) throws {
-        let rawValue: UInt32 = try decoder.decode()
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let rawValue = try UInt32(parsingLittleEndian: &input)
         self.init(Int(rawValue))
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(UInt32(versionValue))
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt32.self)
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
-        counter.count(UInt32.self)
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt32(versionValue), as: UInt32.self, .littleEndian)
     }
 }
 

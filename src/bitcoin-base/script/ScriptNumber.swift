@@ -107,37 +107,37 @@ extension ScriptNumber: BinaryEncodable {
         value = (negative ? -1 : 1) * magnitude
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
         guard value != 0 else { return }
         let magnitude = value.magnitude
         if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
             let signMask = UInt8(isNegative ? 0b10000000 : 0)
             let withSign = UInt8(magnitude) | signMask
-            encoder.encode(withSign)
+            out.append(withSign)
         } else if magnitude < Int(pow(Double(2), 8 * 2 - 1)) {
             let signMask = UInt16(isNegative ? 0x8000 : 0)
             let withSign = UInt16(magnitude) | signMask
-            encoder.encode(withSign)
+            out.append(withSign, as: UInt16.self, .littleEndian)
         } else if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
             let signMask = UInt32(isNegative ? 0x00800000 : 0)
             let withSign = UInt32(magnitude) | signMask
-            encoder.encode(UInt16(withSign & 0x0000ffff))
-            encoder.encode(UInt8(withSign >> 16))
+            out.append(UInt16(withSign & 0x0000ffff), as: UInt16.self, .littleEndian)
+            out.append(UInt8(withSign >> 16))
         } else if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
             let signMask = UInt32(isNegative ? 0x80000000 : 0)
             let withSign = UInt32(magnitude) | signMask
-            encoder.encode(withSign)
+            out.append(withSign, as: UInt32.self, .littleEndian)
         } else if magnitude <= Self.maxValue {
             let signMask = UInt(isNegative ? 0x0000008000000000 : 0)
             let withSign = UInt(magnitude) | signMask
-            encoder.encode(UInt32(withSign & 0x00000000ffffffff))
-            encoder.encode(UInt8(withSign >> 32))
+            out.append(UInt32(withSign & 0x00000000ffffffff), as: UInt32.self, .littleEndian)
+            out.append(UInt8(withSign >> 32))
         } else {
-            preconditionFailure()
+            fatalError("Magnitude cannot be higher than max value.")
         }
     }
 
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         guard value != 0 else { return }
         let magnitude = value.magnitude
         let size = if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
@@ -151,7 +151,7 @@ extension ScriptNumber: BinaryEncodable {
         } else if magnitude <= Self.maxValue {
             5
         } else {
-            preconditionFailure() // Should never reach here
+            fatalError("Magnitude cannot be higher than max value.")
         }
         counter.countSize(size)
     }

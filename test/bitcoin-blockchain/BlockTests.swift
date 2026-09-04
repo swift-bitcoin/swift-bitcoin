@@ -21,10 +21,10 @@ struct BlockTests {
         #expect(genesisTx == genesisTx2)
         #expect(genesisTx.idHex == expectedGenesisTxHash)
 
-        let genesisBlockData = genesisBlock.data(encoding: .file(magicBytes: ConsensusParams.mainnet.magicBytes))
+        let genesisBlockData = genesisBlock.data(binaryFormat: .file(magicBytes: ConsensusParams.mainnet.magicBytes))
         #expect(genesisBlockData.hex == expectedBlockData)
 
-        let genesisBlockRedeserialized = try Block(genesisBlockData, encoding: .file(magicBytes: ConsensusParams.mainnet.magicBytes))
+        let genesisBlockRedeserialized = try Block(genesisBlockData, binaryFormat: .file(magicBytes: ConsensusParams.mainnet.magicBytes))
         #expect(genesisBlockRedeserialized == genesisBlock)
         #expect(genesisBlock.idHex == expectedBlockHash)
     }

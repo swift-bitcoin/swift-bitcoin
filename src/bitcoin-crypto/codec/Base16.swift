@@ -34,7 +34,7 @@ public struct Base16Decoder: Sendable {
             throw .invalidString
         }
 
-        let stringBytes: [UInt8] = Array(hexString.lowercased().data(using: String.Encoding.utf8)!)
+        let stringBytes: [UInt8] = Array(hexString.lowercased().data(using: .utf8)!)
 
         var data = Data()
         for i in stride(from: stringBytes.startIndex, to: stringBytes.endIndex - 1, by: 2) {

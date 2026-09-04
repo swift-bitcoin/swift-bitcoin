@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 import BitcoinBase
 
@@ -24,50 +25,53 @@ public struct UnspentOutput: Equatable, Sendable {
 
 extension UnspentOutput: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder) throws {
-        out = try decoder.decode()
-        height = try decoder.decode()
-        isCoinbase = try decoder.decode()
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        // Reading isCoinbase first to allow for a null marker (UInt8.max) without possible conflict of values
+        isCoinbase = try UInt8(parsing: &input) != 0
+        out = try .init(parsing: &input)
+        height = try Int(UInt32(parsingLittleEndian: &input))
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
-        encoder.encode(out)
-        encoder.encode(height)
-        encoder.encode(isCoinbase)
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.countSize(1) // Bool -> UInt8
         counter.count(out)
-        counter.count(Int.self)
-        counter.count(Bool.self)
+        counter.count(UInt32.self)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        // Saving isCoinbase first to allow for a null marker (UInt8.max) without possible conflict of values
+        out.append(isCoinbase ? 1 : 0) // TODO: Check this is how encoder was handling boolens (UInt8)
+        try self.out.encode(into: &out)
+        out.append(UInt32(height), as: UInt32.self, .littleEndian)
     }
 }
 
 extension Optional: BinaryCodable where Wrapped == UnspentOutput {
-    public init(from decoder: inout BinaryDecoder) throws {
-        let intData = decoder.peek(MemoryLayout<Int>.size)
-        if intData == Data([UInt8](repeating: 0xff, count: MemoryLayout<Int>.size)) {
-            let decoded: Int = try decoder.decode()
-            precondition(decoded == -1)
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let previousRange = input.parserRange
+        let noneMarker = try UInt8(parsing: &input)
+        if noneMarker == .max {
             self = nil
         } else {
-            self = try UnspentOutput(from: &decoder)
+            try input.seek(toRange: previousRange)
+            self = try UnspentOutput(parsing: &input)
         }
     }
 
-    public func encode(to encoder: inout BinaryEncoder) {
-        if let self {
-            encoder.encode(self)
-        } else {
-            encoder.encode(-1)
-        }
-    }
-
-    public func encodingSize(_ counter: inout BinaryEncodingSizeCounter) {
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         if let self {
             counter.count(self)
         } else {
-            counter.count(Int.self)
+            counter.countSize(1)
+        }
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        if let self {
+            try self.encode(into: &out)
+        } else {
+            out.append(UInt8.max)
         }
     }
 }
