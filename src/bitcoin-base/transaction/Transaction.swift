@@ -163,46 +163,37 @@ extension Transaction: BinaryCodable {
 
     //public typealias DecodingError = BinaryDecodingError
 
-    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
-        version = try decoder.decode()
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
+        version = try .init(parsing: &input)
 
         // BIP144 - Check for marker and segwit flag
+        let preCheckRange = input.parserRange
+        let maybeSegwitMarkerAndFlag = try Data(parsing: &input, byteCount: 2)
+
         let isSegwit: Bool
-        if decoder.peek(2) == Transaction.segwitMarkerAndFlag {
-            try decoder.decode(2)
+        if maybeSegwitMarkerAndFlag == Transaction.segwitMarkerAndFlag {
             isSegwit = true
         } else {
             isSegwit = false
+            try input.seek(toRange: preCheckRange)
         }
 
         if isSegwit && format == .noWitness {
             throw DecodingError.witnessEncoded
         }
 
-        // var ins: [Input] = try decoder.decode()
-        let insCount: VarInt = try decoder.decode()
-        var ins = [Input]()
-        for _ in 0 ..< insCount.value {
-            ins.append(try decoder.decode())
-        }
-
-        // outs = try decoder.decode()
-        let outsCount: VarInt = try decoder.decode()
-        var outs = [TransactionOutput]()
-        for _ in 0 ..< outsCount.value {
-            outs.append(try decoder.decode())
-        }
-        self.outs = outs
+        var ins = try [Input](parsing: &input)
+        outs = try [TransactionOutput](parsing: &input)
 
         // BIP144
         if isSegwit {
             for i in ins.indices {
-                ins[i].witness = try decoder.decode()
+                ins[i].witness = try .init(parsing: &input)
             }
         }
         self.ins = ins
 
-        locktime = try decoder.decode()
+        locktime = try .init(parsing: &input)
     }
 
     public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
@@ -239,23 +230,4 @@ extension Transaction: BinaryCodable {
         }
         try locktime.encode(into: &out)
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
-        encoder.encode(version)
-        // BIP144
-        if format != .noWitness, hasWitness {
-            encoder.encode(Transaction.segwitMarkerAndFlag)
-        }
-        encoder.encode(ins)
-        encoder.encode(outs)
-        // BIP144
-        if format != .noWitness, hasWitness {
-            for witness in ins.map(\.witness) {
-                encoder.encode(witness)
-            }
-        }
-        encoder.encode(locktime)
-    }
-    */
 }

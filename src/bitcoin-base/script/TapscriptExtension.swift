@@ -30,12 +30,4 @@ extension TapscriptExtension: BinaryEncodable {
         out.append(keyVersion)
         out.append(codesepPos, as: UInt32.self, .littleEndian)
     }
-
-    /*
-    public func encode(into encoder: inout BitcoinCrypto.BinaryEncoder, format: Never?) {
-        encoder.encode(tapLeafHash)
-        encoder.encode(keyVersion)
-        encoder.encode(codesepPos)
-    }
-    */
 }

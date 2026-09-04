@@ -1,7 +1,7 @@
 import Foundation
 import BinaryParsing
 
-extension Array: BinaryEncodable where Element: BinaryCodable {
+extension Array: BinaryCodable where Element: BinaryCodable {
 
     public enum ArrayBinaryFormat {
         case unprefixed
@@ -9,18 +9,17 @@ extension Array: BinaryEncodable where Element: BinaryCodable {
 
     public typealias BinaryFormat = (arrayBinaryFormat: ArrayBinaryFormat?, elementBinaryFormat: Element.BinaryFormat?)
 
-    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
         guard format?.arrayBinaryFormat == nil else {
             preconditionFailure("Cannot decode an unprefixed array.")
         }
 
-        // let count: VarInt = try decoder.decode()
-        let count: VarInt = try VarInt(decoder.peek(VarInt(.max).binarySize))
-        try decoder.decode(count.binarySize)
+        let count = try VarInt(parsing: &input)
 
         self.init()
         for _ in 0 ..< count.value {
-            append(try decoder.decode(format: format?.elementBinaryFormat))
+            let element = try Element(parsing: &input, format: format?.elementBinaryFormat)
+            append(element)
         }
     }
 
@@ -41,14 +40,4 @@ extension Array: BinaryEncodable where Element: BinaryCodable {
             try e.encode(into: &out, format: format?.elementBinaryFormat)
         }
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
-        //encoder.encode(VarInt(count))
-        encoder.encode(VarInt(count).data)
-        for e in self {
-            e.encode(into: &encoder, format: format)
-        }
-    }
-    */
 }

@@ -8,7 +8,13 @@ struct InvalidTxTests {
     @Test("Bitcoin Core Invalid Transactions")
     func invalidTx() throws {
         for vector in testVectors {
-            let tx = try Transaction(Data(vector.serializedTx))
+            let tx: Transaction
+            do {
+                tx = try Transaction(Data(vector.serializedTx))
+            } catch {
+                Issue.record("Could not decode transaction \(vector.serializedTx.hex)")
+                return
+            }
             let prevouts = vector.prevouts.map { prevout in
                 TransactionOutput(value: prevout.amount, script: Script(prevout.ops))
             }

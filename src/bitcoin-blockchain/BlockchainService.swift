@@ -878,7 +878,7 @@ public actor BlockchainService: Sendable {
 
         let data = params.chainData
 
-        if block.chainTxCount == -1 {
+        if block.chainTxCount == 0 {
             logger.debug("Block \(block.header.idHex) has unset m_chain_tx_count. Unable to estimate verification progress.")
             return 0
         }
@@ -1153,7 +1153,7 @@ extension BlockchainService {
         var prevHeights = await calculatePrevHeights(tx, tip: tip, excludeCoins: mempoolExclude, auxCoins: mempoolCoins)
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
+        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
 
         // When SequenceLocks() is called within ConnectBlock(), the height
         // of the block *being* evaluated is what is used.
@@ -1283,7 +1283,7 @@ extension BlockchainService {
         // Thus if we want to know if a transaction can be part of the *next* block, we need to use one more than chainActive.Height()
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: -1)
+        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
 
         try await evaluateSequenceLocks(nextBlockPlaceholder, previous: tip, lockPair: (lockPoints.height, lockPoints.time))
     }

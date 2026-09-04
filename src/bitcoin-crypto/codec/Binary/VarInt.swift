@@ -2,7 +2,6 @@ import BinaryParsing
 
 /// A Bitcoin protocol variable integer – sometimes referred to as compact integer.
 ///
-/// In many cases ``BinaryEncoder`` and ``BinaryDecoder`` can handle variable integer prefixes automatically via a `variable` boolean parameter like in ``BinaryEncoder/encode(_:variable:byteSwapped:)`` or ``BinaryDecoder/decode(variable:byteSwapped:)``.
 /// The default behavior when working with `Array<BinaryCodable>` is to prefix all arrays with their count encoded a `VarInt`.
 public struct VarInt: Equatable, Sendable {
 
@@ -10,7 +9,12 @@ public struct VarInt: Equatable, Sendable {
         rawValue = .init(value)
     }
 
-    private var rawValue: UInt64
+    // TODO: Currently only for transport messges, evaluate if ok to lower the upper bount to just Int64.max for those values.
+    package init(rawValue: UInt64) {
+        self.rawValue = rawValue
+    }
+
+    package private(set) var rawValue: UInt64
 
     public var value: Int {
         get { Int(rawValue) }
@@ -33,21 +37,6 @@ extension VarInt: BinaryCodable {
             rawValue = UInt64(value)
         } else {
             rawValue = try UInt64(parsingLittleEndian: &input)
-        }
-    }
-
-    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
-        let firstByte = try decoder.decode() as UInt8
-        if firstByte < 0xfd {
-            rawValue = UInt64(firstByte)
-        } else if firstByte == 0xfd {
-            let value = try decoder.decode() as UInt16
-            rawValue = UInt64(value)
-        } else if firstByte == 0xfe {
-            let value = try decoder.decode() as UInt32
-            rawValue = UInt64(value)
-        } else {
-            rawValue = try decoder.decode() as UInt64
         }
     }
 
@@ -78,21 +67,4 @@ extension VarInt: BinaryCodable {
             out.append(rawValue, as: UInt64.self, .littleEndian)
         }
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        if rawValue < 0xfd {
-            encoder.encode(UInt8(rawValue))
-        } else if rawValue <= UInt16.max {
-            encoder.encode(UInt8(0xfd))
-            encoder.encode(UInt16(rawValue))
-        } else if rawValue <= UInt32.max {
-            encoder.encode(UInt8(0xfe))
-            encoder.encode(UInt32(rawValue))
-        } else {
-            encoder.encode(UInt8(0xff))
-            encoder.encode(rawValue)
-        }
-    }
-    */
 }

@@ -7,34 +7,7 @@ import BinaryParsing
 ///
 /// If the Swift Language changes in the future to allow for different `BinaryFormat` types to be defined, this protocol can also be declared as `protocol BinaryCodable<BinaryFormat>: BinaryEncodable, BinaryDecodable {}`.
 ///
-public typealias BinaryCodable = BinaryEncodable & BinaryDecodableLegacy // Temporarilly mixing *Legacy and new protocol
-
-/// Legacy decodable protocol based on BinaryDecoder instead of ParserSpan
-public protocol BinaryDecodableLegacy {
-    associatedtype BinaryFormat
-
-    init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws
-}
-
-public extension BinaryDecodableLegacy {
-
-    init(from decoder: inout BinaryDecoder) throws {
-        try self.init(from: &decoder, format: nil)
-    }
-
-    init<D: DataProtocol>(_ data:D, binaryFormat: BinaryFormat?) throws {
-        var decoder = BinaryDecoder(data)
-        try self.init(from: &decoder, format: binaryFormat)
-    }
-
-    /// Creates a new instance from an external binary representation.
-    /// - Parameter data: The binary representation to decode.
-    ///
-    /// This initializer is generic over `DataProtocol`  meaning it can be passed a `Data` instance or a `UInt8` array.
-    init<D: DataProtocol>(_ data: D) throws {
-        try self.init(data, binaryFormat: nil)
-    }
-}
+public typealias BinaryCodable = BinaryEncodable & BinaryDecodable
 
 public protocol BinaryEncodable {
 
@@ -78,7 +51,7 @@ public extension BinaryEncodable {
     }
 }
 
-public protocol BinaryDecodable: ExpressibleByParsing {
+public protocol BinaryDecodable {
     associatedtype BinaryFormat
 
     init(parsing input: inout ParserSpan, format: BinaryFormat?) throws
@@ -92,7 +65,7 @@ public extension BinaryDecodable {
 
     init(_ data: Data, binaryFormat: BinaryFormat?) throws {
         var input = ParserSpan(data.bytes)
-        try self.init(parsing: &input)
+        try self.init(parsing: &input, format: binaryFormat)
     }
 
     /// Creates a new instance from an external binary representation.

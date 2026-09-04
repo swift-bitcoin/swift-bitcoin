@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
@@ -172,7 +173,7 @@ extension ExtendedKey: BinaryCodable {
         case versionOnly
     }
 
-    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws(Error) {
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws(Error) {
 
         guard format == nil else {
             preconditionFailure("Cannot decode an extended key from only a version.")
@@ -180,7 +181,7 @@ extension ExtendedKey: BinaryCodable {
 
         let version: UInt32
         do {
-             version = try decoder.decode()
+            version = try .init(parsingLittleEndian: &input)
         } catch {
             throw .binaryDecodingError
         }
@@ -196,10 +197,10 @@ extension ExtendedKey: BinaryCodable {
         let keyIndex: Int
         let chaincode: Data
         do {
-            depth = Int(try decoder.decode() as UInt8)
-            parentFingerprint = Int(try decoder.decode() as UInt32)
-            keyIndex = Int((try decoder.decode() as UInt32).byteSwapped)
-            chaincode = try decoder.decode(32)
+            depth = Int(try UInt8(parsing: &input))
+            parentFingerprint = Int(try UInt32(parsingLittleEndian: &input))
+            keyIndex = Int(try UInt32(parsingBigEndian: &input))
+            chaincode = try Data(parsing: &input, byteCount: 32)
         } catch {
             throw .binaryDecodingError
         }
@@ -207,18 +208,19 @@ extension ExtendedKey: BinaryCodable {
         var secretKey = SecretKey?.none
         var pubkey = PublicKey?.none
         if isPrivate {
-            guard let len = decoder.peek(), len == 0 else {
-                throw Error.invalidPrivateKeyLength
-            }
+            let len: UInt8
             do {
-                try decoder.decode(1)
+                len = try UInt8(parsing: &input)
             } catch {
                 throw .binaryDecodingError
+            }
+            guard len == 0 else {
+                throw Error.invalidPrivateKeyLength
             }
 
             let secretKeyData: Data
             do {
-                secretKeyData = try decoder.decode(SecretKey.keyLength)
+                secretKeyData = try Data(parsing: &input, byteCount: SecretKey.keyLength)
             } catch {
                 throw .binaryDecodingError
             }
@@ -229,7 +231,8 @@ extension ExtendedKey: BinaryCodable {
         } else {
             let pubkeyData: Data
             do {
-                pubkeyData = try decoder.decode(PublicKey.compressedLength)
+                pubkeyData = try Data(parsing: &input, byteCount: PublicKey.compressedLength)
+
             } catch {
                 throw .binaryDecodingError
             }
@@ -277,33 +280,6 @@ extension ExtendedKey: BinaryCodable {
             fatalError()
         }
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
-        let version = if hasSecretKey {
-            isMainnet ? mainHDKeyVersionPrivate : testHDKeyVersionPrivate
-        } else {
-            isMainnet ? mainHDKeyVersionPublic : testHDKeyVersionPublic
-        }
-        encoder.encode(version)
-        guard format != .versionOnly else {
-            return
-        }
-
-        encoder.encode(UInt8(depth))
-        encoder.encode(UInt32(parentFingerprint))
-        encoder.encode(UInt32(keyIndex).bigEndian)
-        encoder.encode(chaincode)
-        if let secretKey {
-            encoder.encode(Data([0]))
-            encoder.encode(secretKey.data)
-        } else if let pubkey {
-            encoder.encode(pubkey.data)
-        } else {
-            fatalError()
-        }
-    }
-    */
 
     private static let versionSize = MemoryLayout<UInt32>.size
 }

@@ -29,7 +29,7 @@ extension TransactionOutput: BinaryCodable {
     }
 
     public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
-        value = try Int(parsing: &input, storedAsLittleEndian: UInt64.self)
+        value = try Int(parsing: &input, storedAsLittleEndian: Int64.self)
         if format == .valueOnly {
             preconditionFailure("Cannot parse an amount into a transaction output without a script.")
         } else {
@@ -37,33 +37,17 @@ extension TransactionOutput: BinaryCodable {
         }
     }
 
-    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
-        value = try decoder.decode()
-        if format == .valueOnly {
-            preconditionFailure("Cannot parse an amount into a transaction output without a script.")
-        } else {
-            script = try Script(from: &decoder, format: .prefixed)
-        }
-    }
-
     public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
-        counter.count(UInt64.self)
+        counter.count(Int64.self)
         if format != .valueOnly {
             script.countBytes(into: &counter, format: .prefixed)
         }
     }
 
     public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
-        out.append(value == -1 ? UInt64.max : UInt64(value), as: UInt64.self, .littleEndian)
+        out.append(Int64(value), as: Int64.self, .littleEndian)
         if format != .valueOnly {
             try script.encode(into: &out, format: .prefixed)
         }
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(value)
-        script.encodePrefixed(to: &encoder)
-    }
-    */
 }

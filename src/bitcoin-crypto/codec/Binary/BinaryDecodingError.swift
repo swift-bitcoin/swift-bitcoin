@@ -9,5 +9,11 @@ public enum BinaryDecodingError: Error {
     /// The explicitly set limit was exceeded.
     case limitExceeded
 
+    /// Invalid magic number
+    case invalidMessageStart
+
+    /// Invalid enum case
+    case invalidEnumCase
+
     case arrayElementError
 }

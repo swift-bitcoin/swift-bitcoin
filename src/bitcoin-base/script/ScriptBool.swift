@@ -52,12 +52,4 @@ extension ScriptBool: BinaryEncodable {
             out.append(1) // UInt8
         }
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        if value {
-            encoder.encode(Data([1]))
-        }
-    }
-    */
 }

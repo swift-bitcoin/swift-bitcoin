@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 public struct SighashType: Equatable, Sendable {
@@ -73,12 +74,12 @@ extension SighashType: BinaryCodable {
         case invalidData, undefinedSighashType
     }
 
-    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws(DecodingError) {
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws(DecodingError) {
         switch format {
         case nil:
             let value: UInt8
             do {
-                value = try decoder.decode()
+                value = try UInt8(parsing: &input)
             } catch {
                 throw .invalidData
             }
@@ -91,7 +92,7 @@ extension SighashType: BinaryCodable {
             case .fullLength:
                 let rawValue: Int32
                 do {
-                    rawValue = try decoder.decode()
+                    rawValue = try Int32(parsingLittleEndian: &input)
                 } catch {
                     throw .invalidData
                 }
@@ -125,19 +126,6 @@ extension SighashType: BinaryCodable {
             }
         }
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
-        switch format {
-        case nil: encoder.encode(value)
-        case .some(let format):
-            switch format {
-            case .fullLength:
-                encoder.encode(rawValue)
-            }
-        }
-    }
-    */
 }
 
 /// BIP341: Used to represent the `default` signature hash type.

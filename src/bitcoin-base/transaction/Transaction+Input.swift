@@ -41,10 +41,11 @@ extension Transaction {
 
 /// Data extensions.
 extension Transaction.Input: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
-        outpoint = try decoder.decode()
-        script = try Script(from: &decoder, format: .prefixed)
-        sequence = try decoder.decode()
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        outpoint = try Outpoint(parsing: &input)
+        script = try Script(parsing: &input, format: .prefixed)
+        sequence = try Sequence(parsing: &input)
         witness = []
     }
 
@@ -59,12 +60,4 @@ extension Transaction.Input: BinaryCodable {
         try script.encode(into: &out, format: .prefixed)
         try sequence.encode(into: &out)
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(outpoint)
-        script.encode(into: &encoder, format: .prefixed)
-        encoder.encode(sequence)
-    }
-    */
 }

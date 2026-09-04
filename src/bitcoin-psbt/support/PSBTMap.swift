@@ -12,16 +12,23 @@ struct PSBTMap: BinaryCodable {
         self.entries = entries
     }
 
-    init(from decoder: inout BinaryDecoder, format: Never?) throws(PSBTMapError) {
-        guard let maybeDelimiter = decoder.peek() else {
+    init(parsing input: inout ParserSpan, format: Never?) throws(PSBTMapError) {
+        var lookAhead = input.parserRange
+        guard let maybeDelimiter = try? UInt8(parsing: &input) else {
             throw .missingDelimiter
         }
+        do {
+            try input.seek(toRange: lookAhead)
+        } catch {
+            throw .missingDelimiter
+        }
+
         var entries = [Key : Data]()
         var foundDelimiter = maybeDelimiter == Self.delimiter
         while !foundDelimiter {
             let keypair: Keypair
             do {
-                keypair = try decoder.decode()
+                keypair = try Keypair(parsing: &input)
             } catch let error as PSBTMapError {
                 throw error
             } catch {
@@ -31,12 +38,24 @@ struct PSBTMap: BinaryCodable {
                 throw .duplicateKey
             }
             entries[keypair.key] = keypair.value
-            guard let maybeDelimiter = decoder.peek() else {
+
+            lookAhead = input.parserRange
+            guard let maybeDelimiter = try? UInt8(parsing: &input) else {
                 throw .missingDelimiter
             }
+            do {
+                try input.seek(toRange: lookAhead)
+            } catch {
+                throw .missingDelimiter
+            }
+
             foundDelimiter = maybeDelimiter == Self.delimiter
         }
-        _ = try! decoder.decode() as UInt8 // Consume delimiter
+        do {
+            _ = try UInt8(parsing: &input) // Consume delimiter
+        } catch {
+            throw .missingDelimiter
+        }
         self.entries = entries
     }
 
@@ -59,15 +78,6 @@ struct PSBTMap: BinaryCodable {
         }
         out.append(Self.delimiter)
     }
-
-    /*
-    func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        for keypair in keypairs {
-            encoder.encode(keypair)
-        }
-        encoder.encode(Self.delimiter)
-    }
-    */
 
     static let delimiter = UInt8(0x00)
 }

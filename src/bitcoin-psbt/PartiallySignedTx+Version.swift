@@ -6,10 +6,10 @@ public extension PartiallySignedTx {
 
     enum Version: Int, Equatable, Sendable, BinaryCodable {
 
-        public init(from decoder: inout BinaryDecoder, format: Never?) throws(PartiallySignedTxError) {
+        public init(parsing input: inout ParserSpan, format: Never?) throws(PartiallySignedTxError) {
             let value: UInt32
             do {
-                value = try decoder.decode()
+                value = try .init(parsingLittleEndian: &input)
             } catch {
                 throw .invalidVersionEncoding
             }
@@ -33,11 +33,5 @@ public extension PartiallySignedTx {
         public func encode(into out: inout OutputRawSpan, format: Never?) throws {
             out.append(value, as: UInt32.self, .littleEndian)
         }
-
-        /*
-        public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-            encoder.encode(value)
-        }
-        */
     }
 }

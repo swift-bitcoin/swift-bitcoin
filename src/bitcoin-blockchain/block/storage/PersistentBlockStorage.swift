@@ -418,7 +418,7 @@ actor PersistentBlockStorage: BlockStorage {
         }
         let block: Block
         do {
-            block = try Block(blockData, binaryFormat: format)
+            block = try Block(Data(blockData), binaryFormat: format)
         } catch {
             logger.error("There was an issue attempting to decode block from file's contents.")
             throw .corruptedBlockData
@@ -458,7 +458,7 @@ actor PersistentBlockStorage: BlockStorage {
 
         let blockUndo: BlockUndo
         do {
-            blockUndo = try BlockUndo(blockUndoData)
+            blockUndo = try BlockUndo(Data(blockUndoData))
         } catch {
             logger.error("There was an issue attempting to decode block revert information from file's contents.")
             throw .corruptedBlockData

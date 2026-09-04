@@ -1,4 +1,5 @@
 import Testing
+import BinaryParsing
 import BitcoinCrypto
 import SystemPackage
 import Foundation
@@ -269,11 +270,13 @@ struct LMDBTests {
 }
 
 /// Inserts a value and reads it back, verifying that the two values match.
-private func putGetValue<T>(value: T, key: String, in db: borrowing Database) throws where T: BinaryCodable & Equatable {
+private func putGetValue<T>(value: T, key: String, in db: borrowing Database) throws where T: BinaryEncodable & ExpressibleByParsing & Equatable {
     let keyData = key.data(using: .utf8)!
     try db.put(value.data, key: keyData)
     let valueData2 = try #require(try db.get(keyData))
     #expect(value.data == valueData2)
-    let fetchedValue = try T(valueData2)
+    let fetchedValue = try valueData2.withParserSpan { input in
+        try T(parsing: &input)
+    }
     #expect(value == fetchedValue, "The returned value does not match the one that was set.")
 }

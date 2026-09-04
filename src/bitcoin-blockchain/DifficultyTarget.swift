@@ -262,10 +262,10 @@ public struct DifficultyTarget: Comparable, Sendable {
 
 extension DifficultyTarget: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
         n = .init(repeating: 0, count: Self.width)
         for i in n.indices {
-            n[i] = try decoder.decode()
+            n[i] = try .init(parsingLittleEndian: &input)
         }
     }
 
@@ -278,12 +278,4 @@ extension DifficultyTarget: BinaryCodable {
             out.append(value, as: UInt32.self, .littleEndian)
         }
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        for value in n {
-            encoder.encode(value)
-        }
-    }
-    */
 }

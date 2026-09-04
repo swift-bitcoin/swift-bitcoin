@@ -38,7 +38,7 @@ import BinaryParsing
     // var input = ParserSpan(dataPlus.bytes)
     // let varInt3 = try VarInt(parsing: &input)
     let varInt3 = try dataPlus.withParserSpan { input in
-        try VarInt(parsing: &input, format: nil) // TODO: Remove format nil
+        try VarInt(parsing: &input) // TODO: Remove format nil
     }
     #expect(varInt == varInt3)
 

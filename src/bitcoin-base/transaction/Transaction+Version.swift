@@ -48,8 +48,9 @@ extension Transaction {
 
 /// Binary data extensions.
 extension Transaction.Version: BinaryCodable {
-    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
-        let rawValue: UInt32 = try decoder.decode()
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let rawValue = try UInt32(parsingLittleEndian: &input)
         self.init(Int(rawValue))
     }
 
@@ -60,11 +61,5 @@ extension Transaction.Version: BinaryCodable {
     public func encode(into out: inout OutputRawSpan, format: Never?) throws {
         out.append(UInt32(versionValue), as: UInt32.self, .littleEndian)
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(UInt32(versionValue))
-    }
-    */
 }
 

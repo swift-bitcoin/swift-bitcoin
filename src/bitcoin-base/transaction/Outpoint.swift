@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 /// A reference to a specific ``TransactionOutput`` of a particular ``Transaction`` which is stored in a ``Transaction/Input``.
@@ -30,9 +31,9 @@ public struct Outpoint: Equatable, Hashable, Sendable {
 /// Data extensions.
 extension Outpoint: BinaryCodable {
 
-    public init(from decoder: inout BinaryDecoder, format: Never?) throws {
-        let tx = try decoder.decode(Transaction.idLength)
-        let out = Int(try decoder.decode() as UInt32)
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let tx: Transaction.ID = try Data(parsing: &input, byteCount: Transaction.idLength)
+        let out = Int(try UInt32(parsingLittleEndian: &input))
         self.init(tx: tx, out: out)
     }
 
@@ -45,11 +46,4 @@ extension Outpoint: BinaryCodable {
         out.append(contentsOf: txID)
         out.append(UInt32(self.out), as: UInt32.self, .littleEndian)
     }
-
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: Never?) {
-        encoder.encode(txID)
-        encoder.encode(UInt32(out))
-    }
-    */
 }

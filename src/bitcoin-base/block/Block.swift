@@ -98,32 +98,32 @@ extension Block: BinaryCodable {
         case file(magicBytes: Int)
     }
 
-    public init(from decoder: inout BinaryDecoder, format: BinaryFormat?) throws {
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
         switch format {
         case nil, .headerOnly, .noWitness:
-            let version = Int(try decoder.decode() as Int32)
-            let previous = try decoder.decode(Block.idLength)
-            let merkleRoot = try decoder.decode(Block.idLength)
-            let time = Date(timeIntervalSince1970: TimeInterval(try decoder.decode() as UInt32))
-            let target = Int(try decoder.decode() as UInt32)
-            let nonce = Int(try decoder.decode() as UInt32)
+            let version = Int(try Int32(parsingLittleEndian: &input))
+            let previous = try Data(parsing: &input, byteCount: Block.idLength)
+            let merkleRoot = try Data(parsing: &input, byteCount: Block.idLength)
+            let time = Date(timeIntervalSince1970: TimeInterval(try UInt32(parsingLittleEndian: &input)))
+            let target = Int(try UInt32(parsingLittleEndian: &input))
+            let nonce = Int(try UInt32(parsingLittleEndian: &input))
+
             let txs: [Transaction] = if format == .headerOnly {
                 []
             } else {
-                // try decoder.decode(format: format == .noWitness ? (nil, .noWitness) : nil)
-                try [Transaction](from: &decoder, format: format == .noWitness ? (nil, .noWitness) : nil)
+                try [Transaction](parsing: &input, format: format == .noWitness ? (nil, .noWitness) : nil)
             }
             self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
         case .signet: fatalError("Signet encoding is for use with encoder only.")
         case .file(let magicBytes):
-            let magic = Int(try decoder.decode() as UInt32)
+            let magic = Int(try UInt32(parsingLittleEndian: &input))
             guard magic == magicBytes else {
-                throw BinaryDecodingError.limitExceeded
-            } // TODO: Replace error for something appropriate
-            let length = Int(try decoder.decode() as UInt32)
-            decoder.setLimit(length)
-            try self.init(from: &decoder)
-            decoder.resetLimit()
+                throw BinaryDecodingError.invalidMessageStart
+            }
+            let length = Int(try UInt32(parsingLittleEndian: &input))
+            var trimmedInput = try input.sliceSpan(byteCount: length)
+            try self.init(parsing: &trimmedInput)
+            try input.seek(toAbsoluteOffset: trimmedInput.endPosition)
         }
     }
 
@@ -174,29 +174,5 @@ extension Block: BinaryCodable {
             countBytes(into: &counter)
         }
     }
-    /*
-    public func encode(into encoder: inout BinaryEncoder, format: BinaryFormat?) {
-        switch format {
-        case nil, .headerOnly, .noWitness:
-            encoder.encode(Int32(version))
-            encoder.encode(previous)
-            encoder.encode(merkleRoot)
-            encoder.encode(UInt32(time.timeIntervalSince1970))
-            encoder.encode(UInt32(target))
-            encoder.encode(UInt32(nonce))
-            if format != .headerOnly {
-                encoder.encode(txs, format: format == .noWitness ? .noWitness : nil)
-            }
-        case .signet:
-            encoder.encode(Int32(version))
-            encoder.encode(previous)
-            encoder.encode(merkleRoot)
-            encoder.encode(UInt32(time.timeIntervalSince1970))
-        case .file(let magicBytes):
-            encoder.encode(UInt32(magicBytes))
-            encoder.encode(UInt32(binarySize))
-            encode(into: &encoder)
-        }
-    }
-    */
 }
+

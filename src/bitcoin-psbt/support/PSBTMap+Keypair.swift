@@ -26,16 +26,17 @@ extension PSBTMap {
             self.value = value
         }
 
-        init(from decoder: inout BinaryDecoder, format: Never?) throws(PSBTMapError) {
+        init(parsing input: inout ParserSpan, format: Never?) throws(PSBTMapError) {
             do {
-                key = try decoder.decodeExplicit()
+                key = try Key(parsing: &input)
             } catch let error as PSBTMapError {
                 throw error
             } catch {
                 throw .invalidKeyEncoding
             }
             do {
-                value = try decoder.decode(variable: true)
+                let length = try VarInt(parsing: &input)
+                value = try Data(parsing: &input, byteCount: length.value)
             } catch let error as PSBTMapError {
                 throw error
             } catch {
@@ -56,12 +57,5 @@ extension PSBTMap {
             try VarInt(value.count).encode(into: &out)
             out.append(contentsOf: value)
         }
-
-        /*
-        func encode(into encoder: inout BinaryEncoder, format: Never?) {
-            encoder.encode(key)
-            encoder.encode(value, variable: true)
-        }
-        */
     }
 }
