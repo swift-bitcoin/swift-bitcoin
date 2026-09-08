@@ -20,7 +20,10 @@ public struct SighashType: Equatable, Sendable {
     private let rawValue: Int32
 
     public var value: UInt8 {
-        withUnsafeBytes(of: rawValue) { $0[0] }
+        let data = Data(capacity: MemoryLayout<Int32>.size) { out in
+            out.append(rawValue, as: Int32.self, .littleEndian)
+        }
+        return data[0]
     }
 
     public var isAll: Bool {

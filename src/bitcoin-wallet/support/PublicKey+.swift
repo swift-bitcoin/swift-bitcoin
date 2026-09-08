@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 extension PublicKey {
@@ -19,8 +20,8 @@ extension PublicKey {
     }
 
     package var fingerprint: Int {
-        let fingerprint32 = id.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
+        let fingerprint32 = try! id.withParserSpan { input in
+            try UInt32(parsingLittleEndian: &input)
         }
         return Int(fingerprint32)
     }

@@ -52,7 +52,10 @@ extension SignatureMessage.Segwit {
 
         let outpointData = tx.ins[inputIndex].outpoint.data
         let scriptCodeData = VarInt(scriptCode.count).data + scriptCode
-        let amountData = withUnsafeBytes(of: amount) { Data($0) }
+        let amountData = Data(capacity: MemoryLayout<Int64>.size) { out in
+            out.append(Int64(amount), as: Int64.self, .littleEndian)
+        }
+
         let sequenceData = tx.ins[inputIndex].sequence.data
 
         let remainingData = sequenceData + hashOuts + tx.locktime.data + sighashType.data(binaryFormat: .fullLength)

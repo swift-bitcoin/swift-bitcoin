@@ -22,6 +22,15 @@ struct BIP39Tests {
             #expect(xpriv.serialized == expectedXPriv)
         }
     }
+
+    @Test func simple() throws {
+        #expect(throws: Never.self) {
+            _ = try MnemonicPhrase("abandon abandon about")
+        }
+        #expect(throws: MnemonicPhrase.Error.invalidMnemonicChecksum) {
+            _ = try MnemonicPhrase("about abandon abandon")
+        }
+    }
 }
 
 // TODO: Replace hex strings with byte array literals

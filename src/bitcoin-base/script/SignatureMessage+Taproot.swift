@@ -27,7 +27,7 @@ extension SignatureMessage.Taproot {
 
         // Epoch:
         // epoch (0).
-        let epochData = withUnsafeBytes(of: UInt8(0)) { Data($0) }
+        let epochData = Data([0])
 
         // Control:
         // hash_type (1).
@@ -131,7 +131,9 @@ extension SignatureMessage.Taproot {
             inputData.append(sequence)
         } else { // If hash_type & 0x80 does not equal SIGHASH_ANYONECANPAY:
             // input_index (4): index of this input in the transaction input vector. Index of the first input is 0.
-            let inputIndexData = withUnsafeBytes(of: UInt32(inputIndex)) { Data($0) }
+            let inputIndexData = Data(capacity: MemoryLayout<UInt32>.size) { out in
+                out.append(UInt32(inputIndex), as: UInt32.self, .littleEndian)
+            }
             inputData.append(inputIndexData)
         }
         // If an annex is present (the lowest bit of spend_type is set):

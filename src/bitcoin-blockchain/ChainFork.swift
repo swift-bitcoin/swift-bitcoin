@@ -15,6 +15,8 @@ struct ChainFork: Equatable, Comparable {
     }
 }
 
+// Commenting out the playground macro as it contains memory "unsafe" code.
+/*
 #if canImport(Playgrounds)
 
 import Playgrounds
@@ -31,3 +33,4 @@ import Playgrounds
 }
 
 #endif
+*/

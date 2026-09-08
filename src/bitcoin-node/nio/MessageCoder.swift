@@ -17,9 +17,9 @@ struct MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
         }
 
         let peek = buffer.readableBytesView.dropFirst(NetworkMessage.payloadSizeStartIndex)
-        let payloadLength = Int(peek.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        })
+        let payloadLength = try Int(peek.withParserSpanIfAvailable { input in
+            try UInt32(parsingLittleEndian: &input)
+        }!)
 
         let messageLength = NetworkMessage.baseSize + payloadLength
         guard let messageData = buffer.readData(length: messageLength) else {

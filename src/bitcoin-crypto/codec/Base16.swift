@@ -5,16 +5,13 @@ public struct Base16Encoder: Sendable {
 
     public init() { }
 
-    public func encode<D: ContiguousBytes>(_ d: D) -> String {
+    public func encode<D: DataProtocol>(_ d: D) -> String {
         var offset = 0
-        let count = d.withUnsafeBytes { $0.count }
-        var hexChars = [UInt8](repeating: 0, count: count * 2)
-        d.withUnsafeBytes {
-            for i in $0 {
-                hexChars[Int(offset * 2)] = itoh((i >> 4) & 0xF)
-                hexChars[Int(offset * 2 + 1)] = itoh(i & 0xF)
-                offset += 1
-            }
+        var hexChars = [UInt8](repeating: 0, count: d.count * 2)
+        for i in d {
+            hexChars[Int(offset * 2)] = itoh((i >> 4) & 0xF)
+            hexChars[Int(offset * 2 + 1)] = itoh(i & 0xF)
+            offset += 1
         }
         return String(bytes: hexChars, encoding: .utf8)!
     }
@@ -78,7 +75,7 @@ package extension Data {
     }
 }
 
-package extension ContiguousBytes {
+package extension DataProtocol {
 
     /// Hexadecimal (Base-16) string representation of data.
     var hex: String { Base16Encoder().encode(self) }

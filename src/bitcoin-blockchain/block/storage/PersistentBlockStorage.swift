@@ -406,9 +406,9 @@ actor PersistentBlockStorage: BlockStorage {
                 var buffer = try await reader.read(.bytes(maxBlockSize))
 
                 let lengthBytes = buffer.viewBytes(at: MemoryLayout<UInt32>.size, length: MemoryLayout<UInt32>.size)! // `at:` value accounts for network magic bytes
-                let length = lengthBytes.withUnsafeBytes {
-                    $0.loadUnaligned(as: UInt32.self)
-                }
+                let length = try lengthBytes.withParserSpanIfAvailable { input in
+                    try UInt32(parsingLittleEndian: &input)
+                }!
                 return buffer.readBytes(length: Int(length) +  MemoryLayout<UInt32>.size * 2)!
                 // `Int(length) +  MemoryLayout<UInt32>.size * 2` could also be `newFileInfo.size - offset` which will be higher.
             }
@@ -446,9 +446,9 @@ actor PersistentBlockStorage: BlockStorage {
                 var reader = handle.bufferedReader(startingAtAbsoluteOffset: Int64(locator.undoOffset), capacity: .bytes(maxBlockSize))
                 var buffer = try await reader.read(.bytes(maxBlockSize))
                 let lengthBytes = buffer.viewBytes(at: 0, length: MemoryLayout<UInt32>.size)!
-                let length = lengthBytes.withUnsafeBytes {
-                    $0.loadUnaligned(as: UInt32.self)
-                }
+                let length = try lengthBytes.withParserSpanIfAvailable { input in
+                    try UInt32(parsingLittleEndian: &input)
+                }!
                 return buffer.readBytes(length: Int(length))!
             }
         } catch {
@@ -472,7 +472,7 @@ private let undoFilePrefix = "rev"
 private let digits = 5 // Warning: If this value changes, also must the `regex` local variable
 
 private func filePath(_ base: FilePath, for number: Int, undo: Bool = false) -> FilePath {
-    let formatted = String(format: "%0\(digits)d", number)
+    let formatted = number.formatted(.number.precision(.integerLength(digits)).grouping(.never))
     return base.appending("\(undo ? undoFilePrefix : blockFilePrefix)\(formatted).dat")
 }
 
