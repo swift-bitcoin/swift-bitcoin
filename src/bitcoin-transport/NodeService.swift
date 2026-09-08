@@ -388,9 +388,9 @@ public actor NodeService: Sendable {
         case .version:
             try await processVersion(message, from: id)
         case .wtxidrelay:
-            try await processWTXIDRelay(message, from: id)
+            try processWTXIDRelay(message, from: id)
         case .sendaddrv2:
-            try await processSendAddrV2(message, from: id)
+            try processSendAddrV2(message, from: id)
         case .verack:
             try await processVerack(message, from: id)
         case .sendcmpct:
@@ -639,9 +639,10 @@ public actor NodeService: Sendable {
             throw .unsupportedVersion
         }
 
-        state.peers[id]?.version = peerVersion
-        state.peers[id]?.timeDiff = Int(ourTime.timeIntervalSince1970) - Int(peerVersion.timestamp.timeIntervalSince1970)
-        state.peers[id]?.reportedHeight = peerVersion.startHeight
+        var peerRef = MutableRef(&state.peers[id]!)
+        peerRef.value.version = peerVersion
+        peerRef.value.timeDiff = Int(ourTime.timeIntervalSince1970) - Int(peerVersion.timestamp.timeIntervalSince1970)
+        peerRef.value.reportedHeight = peerVersion.startHeight
 
         // Outbound connection. Version message is a response to our version.
         if peer.outgoing && peerVersion.protocolVersion > config.version {
@@ -657,7 +658,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP339
-    private func processWTXIDRelay(_ message: NetworkMessage, from id: PeerID) async throws {
+    private func processWTXIDRelay(_ message: NetworkMessage, from id: PeerID) throws {
         guard let peer = state.peers[id] else { return }
 
         // Disconnect state.peers that send a WTXIDRELAY message after VERACK.
@@ -666,7 +667,7 @@ public actor NodeService: Sendable {
             throw Error.requestedWTXIDRelayAfterVerack
         }
 
-        state.peers[id]?.witnessRelayPreferenceReceived = true
+        state.peers[id]!.witnessRelayPreferenceReceived = true
 
         if peer.v2AddressPreferenceReceived {
             enqueue(.verack, to: id)
@@ -674,7 +675,7 @@ public actor NodeService: Sendable {
     }
 
     /// BIP155
-    private func processSendAddrV2(_ message: NetworkMessage, from id: PeerID) async throws {
+    private func processSendAddrV2(_ message: NetworkMessage, from id: PeerID) throws {
         guard let peer = state.peers[id] else { return }
 
         // Disconnect state.peers that send a SENDADDRV2 message after VERACK.
@@ -683,7 +684,7 @@ public actor NodeService: Sendable {
             throw Error.requestedV2AddrAfterVerack
         }
 
-        state.peers[id]?.v2AddressPreferenceReceived = true
+        state.peers[id]!.v2AddressPreferenceReceived = true
 
         if peer.witnessRelayPreferenceReceived {
             enqueue(.verack, to: id)
@@ -708,9 +709,29 @@ public actor NodeService: Sendable {
             throw Error.missingV2AddrPreference
         }
 
-        state.peers[id]?.versionAckReceived = true
+        var sendPong = PongMessage?.none
+        var handshakeComplete = false
+        {
+            var peerRef = MutableRef(&state.peers[id]!)
+            peerRef.value.versionAckReceived = true
+            peerRef.value.compactBlocksPreferenceSent = true
+            if let pong = peerRef.value.pongOnHoldUntilCompactBlocksPreference {
+                peerRef.value.pongOnHoldUntilCompactBlocksPreference = nil
+                sendPong = pong
+            }
+            handshakeComplete = peerRef.value.handshakeComplete
+            //peerRef = nil
+        }()
 
-        if state.peers[id]!.handshakeComplete {
+        // BIP152 send a burst of supported compact block versions followed by a ping to lock it down.
+        enqueue(.sendcmpct, payload: SendCompactMessage(highBandwidth: config.highBandwidthCompactBlocks).data, to: id)
+
+        if let sendPong {
+            enqueue(.pong, payload: sendPong.data, to: id)
+        }
+        await sendPingTo(id, useQueue: true)
+
+        if handshakeComplete {
             // Notify subscriber that this connection has become stable
             await withDiscardingTaskGroup { g in
                 for channel in connectionChannels {
@@ -722,18 +743,11 @@ public actor NodeService: Sendable {
             logger.info("Handshake successful.")
         }
 
-        // BIP152 send a burst of supported compact block versions followed by a ping to lock it down.
-        enqueue(.sendcmpct, payload: SendCompactMessage(highBandwidth: config.highBandwidthCompactBlocks).data, to: id)
-        state.peers[id]?.compactBlocksPreferenceSent = true
-        if let pong = peer.pongOnHoldUntilCompactBlocksPreference {
-            enqueue(.pong, payload: pong.data, to: id)
-            state.peers[id]?.pongOnHoldUntilCompactBlocksPreference = nil
-        }
-        await sendPingTo(id, useQueue: true)
         await requestHeaders(id)
 
         // TODO: During IBD set the fee filter to max money. Reset after IBD.
         enqueue(.feefilter, payload: FeeFilterMessage(feeRate: state.feeFilterRate).data, to: id)
+
     }
 
     private func processPing(_ message: NetworkMessage, from id: PeerID) async throws {
