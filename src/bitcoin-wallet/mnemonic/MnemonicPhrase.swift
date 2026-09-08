@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 private let bitsPerByte = UInt8.bitWidth
@@ -50,9 +51,11 @@ public struct MnemonicPhrase {
             let endIndex = startIndex.advanced(by: bytes)
             let paddingBytes = MemoryLayout<UInt32>.size - bytes
             let paddedChunk = Data(repeating: 0x00, count: paddingBytes) + entropyChecksumed[startIndex ..< endIndex]
-            let wordWithGarbage = paddedChunk.withUnsafeBytes {
-                $0.loadUnaligned(as: UInt32.self)
-            }.byteSwapped
+
+            let wordWithGarbage = try paddedChunk.withParserSpan { input in
+                try UInt32(parsingBigEndian: &input)
+            }
+
             let dropBitsBegin = (bitsPerByte - bitsInFirstByte) + paddingBytes * bitsPerByte
             let dropBitsEnd = bitsPerByte - bitsInLastByte
             let wordIndex = (wordWithGarbage << dropBitsBegin) >> (dropBitsBegin + dropBitsEnd)
@@ -120,8 +123,8 @@ public struct MnemonicPhrase {
                     wordBitsIn = 0
                 }
             }
-            checksumedEntropy += withUnsafeBytes(of: buffer.bigEndian) {
-                Data($0)
+            checksumedEntropy += Data(capacity: MemoryLayout<UInt16>.size) { out in
+                out.append(buffer, as: UInt16.self, .bigEndian)
             }
             bits += bufferLevel
         }

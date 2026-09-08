@@ -54,8 +54,8 @@ let package = Package(
         // Exposed libraries
         .target(name: "Bitcoin",
             dependencies: ["BitcoinRPC", "BitcoinTransport", "BitcoinBlockchain", "BitcoinPSBT", "BitcoinWallet", "BitcoinMiniscript", "BitcoinBase", "BitcoinCrypto"],
-            path: "src/bitcoin"),
-        .target(name: "BitcoinRPC", dependencies: ["BitcoinTransport", "BitcoinBlockchain", "BitcoinPSBT", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "JSONRPC"], path: "src/bitcoin-rpc"),
+            path: "src/bitcoin", swiftSettings: [.strictMemorySafety()]),
+        .target(name: "BitcoinRPC", dependencies: ["BitcoinTransport", "BitcoinBlockchain", "BitcoinPSBT", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "JSONRPC"], path: "src/bitcoin-rpc", swiftSettings: [.strictMemorySafety()]),
         .target(
             name: "BitcoinTransport",
             dependencies: ["BitcoinBlockchain", "BitcoinBase", "BitcoinCrypto",
@@ -71,17 +71,17 @@ let package = Package(
                 .product(name: "Algorithms", package: "swift-algorithms"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "_NIOFileSystem", package: "swift-nio")],
-            path: "src/bitcoin-blockchain"),
+            path: "src/bitcoin-blockchain", swiftSettings: [.strictMemorySafety()]),
         .target(
             name: "BitcoinPSBT",
             dependencies: ["BitcoinWallet", "BitcoinBase", "BitcoinCrypto"],
-            path: "src/bitcoin-psbt"),
-        .target(name: "BitcoinWallet", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-wallet"),
-        .target(name: "BitcoinMiniscript", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-miniscript"),
+            path: "src/bitcoin-psbt", swiftSettings: [.strictMemorySafety()]),
+        .target(name: "BitcoinWallet", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-wallet", swiftSettings: [.strictMemorySafety()]),
+        .target(name: "BitcoinMiniscript", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-miniscript", swiftSettings: [.strictMemorySafety()]),
         .target(name: "BitcoinBase", dependencies: [
             "BitcoinCrypto",
             .product(name: "BinaryParsing", package: "swift-binary-parsing")
-        ], path: "src/bitcoin-base"),
+        ], path: "src/bitcoin-base", swiftSettings: [.strictMemorySafety()]),
         .target(name: "BitcoinCrypto", dependencies: ["ECCHelper",
                 .product(name: "LibSECP256k1", package: "secp256k1"),
                 .product(name: "Crypto", package: "swift-crypto"),
@@ -105,17 +105,19 @@ let package = Package(
         .target(name: "ECCHelper", dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")], path: "src/ecc-helper"/*, swiftSettings: [.strictMemorySafety()]*/),
 
         // Tests
-        .testTarget(name: "BitcoinTests", dependencies: ["Bitcoin"], path: "test/bitcoin"),
-        .testTarget(name: "BitcoinRPCTests", dependencies: ["BitcoinRPC"], path: "test/bitcoin-rpc"),
-        .testTarget(name: "BitcoinTransportTests", dependencies: ["BitcoinTransport", "BitcoinWallet"], path: "test/bitcoin-transport"),
-        .testTarget(name: "BitcoinBlockchainTests", dependencies: ["BitcoinBlockchain"], path: "test/bitcoin-blockchain"),
-        .testTarget(name: "BitcoinPSBTTests", dependencies: ["BitcoinPSBT", "BitcoinWallet", "BitcoinBase"], path: "test/bitcoin-psbt"),
-        .testTarget(name: "BitcoinWalletTests", dependencies: ["BitcoinWallet"], path: "test/bitcoin-wallet"),
-        .testTarget(name: "BitcoinMiniscriptTests", dependencies: ["BitcoinMiniscript", "BitcoinBase", "BitcoinCrypto"], path: "test/bitcoin-miniscript"),
-        .testTarget(name: "LMDBTests", dependencies: ["LMDB", "BitcoinCrypto"], path: "test/lmdb"),
-        .testTarget(name: "BitcoinCryptoTests", dependencies: ["BitcoinCrypto"], path: "test/bitcoin-crypto"),
+        .testTarget(name: "BitcoinUtilityTests", dependencies: ["BitcoinUtility"], path: "test/bitcoin-utility", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinNodeTests", dependencies: ["BitcoinNode"], path: "test/bitcoin-node", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinTests", dependencies: ["Bitcoin"], path: "test/bitcoin", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinRPCTests", dependencies: ["BitcoinRPC"], path: "test/bitcoin-rpc", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinTransportTests", dependencies: ["BitcoinTransport", "BitcoinWallet"], path: "test/bitcoin-transport", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinBlockchainTests", dependencies: ["BitcoinBlockchain"], path: "test/bitcoin-blockchain", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinPSBTTests", dependencies: ["BitcoinPSBT", "BitcoinWallet", "BitcoinBase"], path: "test/bitcoin-psbt", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinWalletTests", dependencies: ["BitcoinWallet"], path: "test/bitcoin-wallet", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinMiniscriptTests", dependencies: ["BitcoinMiniscript", "BitcoinBase", "BitcoinCrypto"], path: "test/bitcoin-miniscript", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "LMDBTests", dependencies: ["LMDB", "BitcoinCrypto"], path: "test/lmdb", swiftSettings: [.strictMemorySafety()]),
+        .testTarget(name: "BitcoinCryptoTests", dependencies: ["BitcoinCrypto"], path: "test/bitcoin-crypto", swiftSettings: [.strictMemorySafety()]),
         .testTarget(name: "BitcoinBaseTests", dependencies: ["BitcoinBase"], path: "test/bitcoin-base",
-            resources: [.copy("data")]),
+            resources: [.copy("data")], swiftSettings: [.strictMemorySafety()]),
 
         // Plugins
         .plugin(
@@ -168,7 +170,7 @@ let package = Package(
                 .product(name: "NIOExtras", package: "swift-nio-extras"),
                 .product(name: "_NIOFileSystem", package: "swift-nio")],
             path: "src/bitcoin-node",
-            resources: [.copy("dummy")], plugins: [.plugin(name: "CopyConfigSources")]),
+            resources: [.copy("dummy")], swiftSettings: [.strictMemorySafety()], plugins: [.plugin(name: "CopyConfigSources")]),
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
                 "BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC", "JSONRPC", "LMDB",
@@ -176,7 +178,7 @@ let package = Package(
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio")],
-            path: "src/bitcoin-utility")
+            path: "src/bitcoin-utility", swiftSettings: [.strictMemorySafety()])
     ],
     cLanguageStandard: .c2x
 )

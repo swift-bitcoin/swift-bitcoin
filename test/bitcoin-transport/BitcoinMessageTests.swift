@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import BinaryParsing
 import BitcoinBase
 import BitcoinBlockchain
 @testable import BitcoinTransport
@@ -28,14 +29,14 @@ struct BitcoinMessageTests {
     func compactBlock() throws {
         // Check 6-byte integer conversion first
         let val = UInt64(0x0000ffffffffffff)
-        let data = withUnsafeBytes(of: val) {
-            Data($0)
+        let data = Data(capacity: MemoryLayout<UInt64>.size) { out in
+            out.append(val, as: UInt64.self, .littleEndian)
         }
         // Keep only 6 less significant bytes.
         var ret = Data(repeating: 0xff, count: 8)
         let _ = ret.addData(data.prefix(6))
-        let val1 = (ret.prefix(6) + Data(count: 2)).withUnsafeBytes {
-            $0.loadUnaligned(as: UInt64.self)
+        let val1 = try! (ret.prefix(6) + Data(count: 2)).withParserSpan { input in
+            try UInt64(parsingLittleEndian: &input)
         }
         #expect(val == val1)
 

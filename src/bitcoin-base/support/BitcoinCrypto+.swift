@@ -59,7 +59,10 @@ extension PublicKey {
     private func computeControlBlock(merkleRoot: Data, leafVersion: Int, path: Data) -> Data {
         let outputKey = taprootOutputKey(merkleRoot: merkleRoot)
         let outputKeyYParityBit = UInt8(outputKey.hasEvenY ? 0 : 1)
-        let controlByte = withUnsafeBytes(of: UInt8(leafVersion) + outputKeyYParityBit) { Data($0) }
+        let controlByte = Data(capacity: MemoryLayout<UInt8>.size) { out in
+            out.append(UInt8(leafVersion) + outputKeyYParityBit)
+        }
+
         return controlByte + xOnlyData + path
     }
 }

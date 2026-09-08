@@ -120,7 +120,10 @@ public indirect enum TapscriptTree: Equatable, Sendable {
         guard case .leaf(let version, let scriptData) = self else {
             preconditionFailure("Needs to be a leaf.")
         }
-        let leafVersionData = withUnsafeBytes(of: UInt8(version)) { Data($0) }
+        let leafVersionData = Data(capacity: MemoryLayout<UInt8>.size) { out in
+            out.append(UInt8(version))
+        }
+
         return Data(SHA256.hash(data: leafVersionData + VarInt(scriptData.count).data + scriptData, tag: "TapLeaf"))
     }
 

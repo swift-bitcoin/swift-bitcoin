@@ -11,7 +11,7 @@ extension Transaction {
     func shortID(nonce: UInt64, first: UInt64, second: UInt64) -> UInt64 {
         var hasher = SipHash(k0: first, k1: second)
         let txID = witnessID
-        txID.withUnsafeBytes { hasher.update(bufferPointer: $0) }
+        hasher.update(data: txID)
         let sipHash = hasher.finalize().value
 
         // Dropping the 2 most significant bytes from the SipHash output to make it 6 bytes.

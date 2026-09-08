@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 import BitcoinBase
 
@@ -32,9 +33,9 @@ extension Block {
         let headerHash = Data(SHA256.hash(data: headerData))
 
         // Running SipHash-2-4 with the input being the transaction ID and the keys (k0/k1) set to the first two little-endian 64-bit integers from the above hash, respectively.
-        let first = headerHash.withUnsafeBytes { $0.loadUnaligned(as: UInt64.self) }
-        let second = headerHash.dropFirst(MemoryLayout.size(ofValue: first)).withUnsafeBytes { $0.loadUnaligned(as: UInt64.self) }
-        return (first, second)
+        return try! headerHash.withParserSpan { input in
+            try (UInt64(parsingLittleEndian: &input), UInt64(parsingLittleEndian: &input))
+        }
     }
 
     public func shortTransactionIDs(nonce: UInt64, dropIndices: [Int]) -> [UInt64] {
