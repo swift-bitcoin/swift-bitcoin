@@ -1,6 +1,5 @@
 import Foundation
-import LibSECP256k1
-import func ECCHelper.ecdsa_signature_parse_der_lax
+import CSECP256K1
 
 extension ECDSASignature {
     /// Supported ECDSA serialization formats.
@@ -207,37 +206,45 @@ private func getMessageHash(messageData: Data) -> Data {
 /// - Returns: 64-byte compact signature data.
 ///
 private func signCompact(hash: Data, secretKey: SecretKey, requireLowR: Bool = true) -> Data {
-    let hash = [UInt8](hash)
+    let testCase = UInt32(0) // Private function not being tested currently
+
     let secretKeyBytes = [UInt8](secretKey.data)
 
     precondition(hash.count == ECDSASignature.hashLength)
     precondition(secretKeyBytes.count == SecretKey.keyLength)
 
-    let testCase = UInt32(0)
     var extraEntropy = [UInt8](repeating: 0, count: 32)
     writeLE32(&extraEntropy, testCase)
-    var sig = secp256k1_ecdsa_signature()
+
+    var sig = CollectionOfOne(CSECP256K1::ECDSASignature())
     var counter = UInt32(0)
-    var success = secp256k1_ecdsa_sign(eccSigningContext, &sig, hash, secretKeyBytes, secp256k1_nonce_function_rfc6979, (requireLowR && testCase != 0) ? extraEntropy : nil) != 0
-    // Grind for low R
-    while success && !isLowR(sig: &sig) {
+
+    var done = false
+    repeat {
+        if counter > 0 {
+            writeLE32(&extraEntropy, counter)
+        }
+        var sigSpan = sig.mutableSpan
+        guard eccSigningContext.ecdsaSign(&sigSpan, messageHash: hash.span, secretKey: secretKeyBytes.span, nonceFunction: NonceFunction.rfc6979, nonce: counter > 1 || (requireLowR && testCase != 0) ? extraEntropy : nil) != 0 else {
+            preconditionFailure()
+        }
         counter += 1
-        writeLE32(&extraEntropy, counter)
-        success = secp256k1_ecdsa_sign(eccSigningContext,  &sig, hash, secretKeyBytes, secp256k1_nonce_function_rfc6979, extraEntropy) != 0
-    }
-    precondition(success)
+        done = !requireLowR || isLowR(sig)
+    } while !done
 
     // Additional verification step to prevent using a potentially corrupted signature
-    var pubkey = secp256k1_pubkey()
-    guard secp256k1_ec_pubkey_create(eccSigningContext, &pubkey, secretKeyBytes) != 0 else {
+    var pubkey = CollectionOfOne(Pubkey())
+    var pubkeySpan = pubkey.mutableSpan
+    guard eccSigningContext.ecPubkeyCreate(&pubkeySpan, secretKey: secretKeyBytes.span) != 0 else {
         preconditionFailure()
     }
-    guard secp256k1_ecdsa_verify(secp256k1_context_static, &sig, hash, &pubkey) != 0 else {
+    guard SECP256K1Context.shared.ecdsaVerify(sig.span, messageHash: hash.span, publicKey: pubkey.span) != 0 else {
         preconditionFailure()
     }
 
     var sigBytes = [UInt8](repeating: 0, count: ECDSASignature.compactSignatureLength)
-    guard secp256k1_ecdsa_signature_serialize_compact(secp256k1_context_static, &sigBytes, &sig) != 0 else {
+    var sigBytesSpan = sigBytes.mutableSpan
+    guard SECP256K1Context.shared.ecdsaSignatureSerializeCompact(into: &sigBytesSpan, sig.span) != 0 else {
         preconditionFailure()
     }
 
@@ -253,59 +260,68 @@ private func verifyCompact(sigData: Data, hash: Data, pubkey: PublicKey) -> Bool
     precondition(sigData.count == ECDSASignature.compactSignatureLength)
     precondition(hash.count == ECDSASignature.hashLength)
 
-    var sig = secp256k1_ecdsa_signature()
-    guard secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, &sig, sigBytes) != 0 else {
+    var sig = CollectionOfOne(CSECP256K1::ECDSASignature())
+    var sigSpan = sig.mutableSpan
+    guard SECP256K1Context.shared.ecdsaSignatureParseCompact(&sigSpan, compact: sigBytes.span) != 0 else {
         preconditionFailure()
     }
 
-    var pubkey = secp256k1_pubkey()
-    guard secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, pubkeyBytes, pubkeyBytes.count) != 0 else {
+    var pubkey = CollectionOfOne(Pubkey())
+    var pubkeySpan = pubkey.mutableSpan
+    guard SECP256K1Context.shared.ecPubkeyParse(&pubkeySpan, from: pubkeyBytes.span) != 0 else {
         preconditionFailure()
     }
 
-    return secp256k1_ecdsa_verify(secp256k1_context_static, &sig, hash, &pubkey) != 0
+    return  SECP256K1Context.shared.ecdsaVerify(sig.span, messageHash: hash.span, publicKey: pubkey.span) != 0
 }
 
 // MARK: - ECDSA
 
 /// Requires global signing context to be initialized.
 private func signECDSA(hash: Data, secretKey: SecretKey, requireLowR: Bool = true) -> Data {
+    let testCase = UInt32(0) // Private function not being tested currently
 
     precondition(hash.count == ECDSASignature.hashLength)
+    let secretKeyBytes = secretKey.data
 
-    let hashBytes = [UInt8](hash)
-    let secretKeyBytes = [UInt8](secretKey.data)
-
-    let testCase = UInt32(0)
     var extraEntropy = [UInt8](repeating: 0, count: 32)
     writeLE32(&extraEntropy, testCase)
-    var sig = secp256k1_ecdsa_signature()
+    var sig = CollectionOfOne(CSECP256K1::ECDSASignature())
     var counter = UInt32(0)
-    var success = secp256k1_ecdsa_sign(eccSigningContext, &sig, hashBytes, secretKeyBytes, secp256k1_nonce_function_rfc6979, (requireLowR && testCase != 0) ? extraEntropy : nil) != 0
-    // Grind for low R
-    while (success && !isLowR(sig: &sig) && requireLowR) {
+
+    var done = false
+    repeat {
+        if counter > 0 {
+            writeLE32(&extraEntropy, counter)
+        }
+        var sigSpan = sig.mutableSpan
+        guard eccSigningContext.ecdsaSign(&sigSpan, messageHash: hash.span, secretKey: secretKeyBytes.span, nonceFunction: NonceFunction.rfc6979, nonce: counter > 1 || (requireLowR && testCase != 0) ? extraEntropy : nil) != 0 else {
+            preconditionFailure()
+        }
         counter += 1
-        writeLE32(&extraEntropy, counter)
-        success = secp256k1_ecdsa_sign(eccSigningContext,  &sig, hashBytes, secretKeyBytes, secp256k1_nonce_function_rfc6979, extraEntropy) != 0
-    }
-    precondition(success)
+        done = !requireLowR || isLowR(sig)
+    } while !done
 
     var sigBytes = [UInt8](repeating: 0, count: ECDSASignature.ecdsaSignatureMaxLength)
-    var sigBytesCount = sigBytes.count
-    guard secp256k1_ecdsa_signature_serialize_der(secp256k1_context_static, &sigBytes, &sigBytesCount, &sig) != 0 else {
+    var sigBytesCount = CollectionOfOne(sigBytes.count)
+    var sigBytesSpan  = sigBytes.mutableSpan
+    var sigBytesCountSpan = sigBytesCount.mutableSpan
+
+    guard SECP256K1Context.shared.ecdsaSignatureSerializeDER(output: &sigBytesSpan, outputlen: &sigBytesCountSpan, sig: sig.span) != 0 else {
         preconditionFailure()
     }
 
     // Resize (shrink) if necessary
-    let sigShrunken = Data(sigBytes[sigBytes.startIndex ..< sigBytes.startIndex.advanced(by: sigBytesCount)])
+    let sigShrunken = Data(sigBytes[sigBytes.startIndex ..< sigBytes.startIndex.advanced(by: sigBytesCount[0])])
 
     // Additional verification step to prevent using a potentially corrupted signature
-    var pubkey = secp256k1_pubkey()
-    guard secp256k1_ec_pubkey_create(eccSigningContext, &pubkey, secretKeyBytes) != 0 else {
+    var pubkey = CollectionOfOne(Pubkey())
+    var pubkeySpan = pubkey.mutableSpan
+    guard eccSigningContext.ecPubkeyCreate(&pubkeySpan, secretKey: secretKeyBytes.span) != 0 else {
         preconditionFailure()
     }
 
-    guard secp256k1_ecdsa_verify(secp256k1_context_static, &sig, hashBytes, &pubkey) != 0 else {
+    guard SECP256K1Context.shared.ecdsaVerify(sig.span, messageHash: hash.span, publicKey: pubkey.span) != 0 else {
         preconditionFailure()
     }
 
@@ -321,35 +337,32 @@ private func verifyECDSA(sigData: Data, hash: Data, pubkey: PublicKey) -> Bool {
     let pubkeyBytes = [UInt8](pubkey.data)
     let hashBytes = [UInt8](hash)
 
-    var sig = secp256k1_ecdsa_signature()
+    // var sig = ECDSASignature()
 
-// Swift Static Linux SDK crashes with `sigData.span`. See #552
-#if canImport(Musl)
-    let sigBytes = [UInt8](sigData)
-    guard ECCHelper.ecdsa_signature_parse_der_lax(&sig, sigBytes, sigBytes.count) != 0 else {
-        preconditionFailure()
-    }
-#else
-    guard unsafe ecdsa_signature_parse_der_lax(&sig, sigData.span) != 0 else {
-        preconditionFailure()
-    }
-#endif
-
-    var sigNormalized = secp256k1_ecdsa_signature()
-    secp256k1_ecdsa_signature_normalize(secp256k1_context_static, &sigNormalized, &sig)
-
-    var pubkey = secp256k1_pubkey()
-    guard secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, pubkeyBytes, pubkeyBytes.count) != 0 else {
+    guard let sig = ecdsaSignatureParseDERLax(sigData) else {
         preconditionFailure()
     }
 
-    return secp256k1_ecdsa_verify(secp256k1_context_static, &sigNormalized, hashBytes, &pubkey) != 0
+    var sigNormalized = CollectionOfOne(CSECP256K1::ECDSASignature())
+    var sigNormalizedSpan: MutableSpan<CSECP256K1::ECDSASignature>? = sigNormalized.mutableSpan
+    _ = SECP256K1Context.shared.ecdsaSignatureNormalize(sigout: &sigNormalizedSpan, sigin: CollectionOfOne(sig).span)
+
+    var pubkey = CollectionOfOne(Pubkey())
+    var pubkeySpan = pubkey.mutableSpan
+    guard SECP256K1Context.shared.ecPubkeyParse(&pubkeySpan, from: pubkeyBytes.span) != 0 else {
+        preconditionFailure()
+    }
+
+    return SECP256K1Context.shared.ecdsaVerify(sigNormalized.span, messageHash: hashBytes.span, publicKey: pubkey.span) != 0
 }
 
 // Check that the sig has a low R value and will be less than 71 bytes
-private func isLowR(sig: inout secp256k1_ecdsa_signature) -> Bool {
+private func isLowR(_ sig: CollectionOfOne<CSECP256K1::ECDSASignature>) -> Bool {
     var compactSig = [UInt8](repeating: 0, count: 64)
-    secp256k1_ecdsa_signature_serialize_compact(secp256k1_context_static, &compactSig, &sig);
+    var compactSigSpan = compactSig.mutableSpan
+    guard SECP256K1Context.shared.ecdsaSignatureSerializeCompact(into: &compactSigSpan, sig.span)  != 0 else {
+        preconditionFailure()
+    }
 
     // In DER serialization, all values are interpreted as big-endian, signed integers. The highest bit in the integer indicates
     // its signed-ness; 0 is positive, 1 is negative. When the value is interpreted as a negative integer, it must be converted
@@ -359,29 +372,37 @@ private func isLowR(sig: inout secp256k1_ecdsa_signature) -> Bool {
 }
 
 private func internalIsLowS(compactSignatureData: Data) -> Bool {
-    let sigBytes = [UInt8](compactSignatureData)
-    var sig = secp256k1_ecdsa_signature()
-    guard secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, &sig, sigBytes) != 0 else {
+    var sig = CollectionOfOne(CSECP256K1::ECDSASignature())
+    var sigSpan = sig.mutableSpan
+    guard SECP256K1Context.shared.ecdsaSignatureParseCompact(&sigSpan, compact: compactSignatureData.span) != 0 else {
         preconditionFailure()
     }
-    let normalizationOccurred = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, nil, &sig)
+
+    var emptySpan = MutableSpan<CSECP256K1::ECDSASignature>?.none
+    let normalizationOccurred = SECP256K1Context.shared.ecdsaSignatureNormalize(sigout: &emptySpan, sigin: sig.span)
     return normalizationOccurred == 0
 }
 
 private func internalIsLowS(laxSignatureData: Data) -> Bool {
-    var sig = secp256k1_ecdsa_signature()
-
-#if canImport(Musl)
-    let sigBytes = [UInt8](laxSignatureData)
-    guard ecdsa_signature_parse_der_lax(&sig, sigBytes, sigBytes.count) != 0 else {
+    guard let sig = ecdsaSignatureParseDERLax(laxSignatureData) else {
         preconditionFailure()
     }
-#else
-    guard unsafe ecdsa_signature_parse_der_lax(&sig, laxSignatureData.span) != 0 else {
-        preconditionFailure()
-    }
-#endif
-
-    let normalizationOccurred = secp256k1_ecdsa_signature_normalize(secp256k1_context_static, nil, &sig)
+    let sigCollection = CollectionOfOne(sig)
+    var emptySpan = MutableSpan<CSECP256K1::ECDSASignature>?.none
+    let normalizationOccurred = SECP256K1Context.shared.ecdsaSignatureNormalize(sigout: &emptySpan, sigin: sigCollection.span)
     return normalizationOccurred == 0
+}
+
+private func writeLE32(_ destination: inout [UInt8], _ x: UInt32) {
+    precondition(destination.count >= 4)
+    var extraEntropySpan = destination.mutableSpan
+    var extraEntropyBytes = extraEntropySpan.mutableBytes
+    extraEntropyBytes.storeBytes(of: x.littleEndian, toByteOffset: 0, as: UInt32.self, .littleEndian)
+}
+
+
+private extension SECP256K1Context {
+    func ecdsaSign(_ sig: inout MutableSpan<CSECP256K1::ECDSASignature>, messageHash msghash32: Span<UInt8>, secretKey seckey: Span<UInt8>, nonceFunction noncefp: NonceFunction?, nonce ndata: [UInt8]?) -> Int32 {
+        unsafe self.ecdsaSign(&sig, messageHash: msghash32, secretKey: seckey, nonceFunction: noncefp, nonceData: ndata)
+    }
 }

@@ -2,12 +2,12 @@
 
 # Get the latest Static Linux `swift sdk install` command from https://www.swift.org/install/linux/#swift-sdk-bundles
 
-FROM --platform=$BUILDPLATFORM swift:6.3.3 AS builder
+FROM --platform=$BUILDPLATFORM swift:6.4 AS builder
 ARG TARGETARCH
 COPY . /opt/swift-bitcoin
 WORKDIR /opt/swift-bitcoin
 RUN \
-    swift sdk install https://download.swift.org/swift-6.3.3-release/static-sdk/swift-6.3.3-RELEASE/swift-6.3.3-RELEASE_static-linux-0.1.0.artifactbundle.tar.gz --checksum 87c3eaf908e67c0e13a84367119e12273cec1d2cd3d81f7d74bb36722d6b607b && \
+    swift sdk install https://download.swift.org/swift-6.4.0-release/static-sdk/swift-6.4.0-RELEASE/swift-6.4.0-RELEASE_static-linux-0.1.0.artifactbundle.tar.gz --checksum 47d2fd89eebfdf9eb4d536b6710414297f755c17926cdebc4742c08982b40a9e && \
     if [  $TARGETARCH = arm64 ]; then export ARCH=aarch64; elif [ $TARGETARCH = amd64 ]; then export ARCH=x86_64; else export ARCH=$TARGETARCH; fi && \
     swift build -c release --swift-sdk $ARCH-swift-linux-musl -Xswiftc -Osize -Xlinker --strip-all -Xlinker --gc-sections && \
     mkdir /out && \

@@ -1,5 +1,5 @@
 import Foundation
-import LibSECP256k1
+import CSECP256K1
 
 /// Elliptic curve SECP256K1 signature supporting Schnorr algorithm.
 public struct SchnorrSignature: Equatable, Sendable, CustomStringConvertible {
@@ -76,29 +76,30 @@ private func getMessageHash(messageData: Data) -> Data {
 private func signSchnorr(hash: Data, secretKey: SecretKey, additionalEntropy: Data?) -> Data {
     precondition(hash.count == ECDSASignature.hashLength)
 
-    let hashBytes = [UInt8](hash)
-    let secretKeyBytes = [UInt8](secretKey.data)
-    let auxBytes = if let additionalEntropy { [UInt8](additionalEntropy) } else { [UInt8]?.none }
-
-    var keypair = secp256k1_keypair()
-    guard secp256k1_keypair_create(eccSigningContext, &keypair, secretKeyBytes) != 0 else {
+    var keypair = CollectionOfOne(Keypair())
+    var keypairSpan = keypair.mutableSpan
+    guard eccSigningContext.keypairCreate(keypair: &keypairSpan, seckey: secretKey.data.span) != 0 else {
         preconditionFailure()
     }
 
     // Do the signing.
     var sigOut = [UInt8](repeating: 0, count: 64)
-    guard secp256k1_schnorrsig_sign32(eccSigningContext, &sigOut, hashBytes, &keypair, auxBytes) != 0 else {
+    var sigOutSpan = sigOut.mutableSpan
+    let rand = if let additionalEntropy { [UInt8](additionalEntropy) } else { [UInt8]?.none }
+    guard eccSigningContext.schnorrsigSign32(sig64: &sigOutSpan, msg32: hash.span, keypair: keypair.span, auxRand32: rand?.span) != 0 else {
         preconditionFailure()
     }
 
     // Additional verification step to prevent using a potentially corrupted signature.
     // This public key will be tweaked if a tweak was added to the keypair earlier.
-    var xonlyPubkey = secp256k1_xonly_pubkey()
-    guard secp256k1_keypair_xonly_pub(secp256k1_context_static, &xonlyPubkey, nil, &keypair) != 0 else {
+    var xonlyPubkey = CollectionOfOne(XOnlyPubkey())
+    var xonlyPubkeySpan = xonlyPubkey.mutableSpan
+    var paritySpan = MutableSpan<Int32>?.none
+    guard SECP256K1Context.shared.keypairXOnlyPub(pubkey: &xonlyPubkeySpan, pkParity: &paritySpan, keypair: keypair.span) != 0 else {
         preconditionFailure()
     }
 
-    guard secp256k1_schnorrsig_verify(secp256k1_context_static, sigOut, hashBytes, ECDSASignature.hashLength, &xonlyPubkey) != 0 else {
+    guard SECP256K1Context.shared.schnorrsigVerify(sig64: sigOut.span, msg: hash.span, pubkey: xonlyPubkey.span) != 0 else {
         preconditionFailure()
     }
 
@@ -106,18 +107,14 @@ private func signSchnorr(hash: Data, secretKey: SecretKey, additionalEntropy: Da
 }
 
 private func verifySchnorr(sigData: Data, hash: Data, pubkey: PublicKey) -> Bool {
-
     precondition(sigData.count == SchnorrSignature.schnorrSignatureLength)
     precondition(hash.count == ECDSASignature.hashLength)
     // guard !pubkeyData.isEmpty else { return false }
 
-    let sigBytes = [UInt8](sigData)
-    let pubkeyBytes = [UInt8](pubkey.xOnlyData)
-    let hashBytes = [UInt8](hash)
-
-    var xonlyPubkey = secp256k1_xonly_pubkey()
-    guard secp256k1_xonly_pubkey_parse(secp256k1_context_static, &xonlyPubkey, pubkeyBytes) != 0 else {
+    var xonlyPubkey = CollectionOfOne(XOnlyPubkey())
+    var xonlyPubkeySpan = xonlyPubkey.mutableSpan
+    guard SECP256K1Context.shared.xonlyPubkeyParse(pubkey: &xonlyPubkeySpan, input32: pubkey.xOnlyData.span) != 0 else {
         return false
     }
-    return secp256k1_schnorrsig_verify(secp256k1_context_static, sigBytes, hashBytes, hashBytes.count, &xonlyPubkey) != 0
+    return SECP256K1Context.shared.schnorrsigVerify(sig64: sigData.span, msg: hash.span, pubkey: xonlyPubkey.span) != 0
 }

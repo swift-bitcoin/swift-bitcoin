@@ -1,5 +1,5 @@
 import Foundation
-import LibSECP256k1
+import CSECP256K1
 
 /// Elliptic curve SECP256K1 public key.
 public struct PublicKey: Equatable, Hashable, Sendable, CustomStringConvertible {
@@ -11,36 +11,42 @@ public struct PublicKey: Equatable, Hashable, Sendable, CustomStringConvertible 
     ///
     ///   Requires global signing context to be initialized.
     public init(_ secretKey: SecretKey, requireEvenY: Bool = false) {
-        let secretKeyBytes = [UInt8](secretKey.data)
-
         if requireEvenY {
-            var keypair = secp256k1_keypair()
-            guard secp256k1_keypair_create(eccSigningContext, &keypair, secretKeyBytes) != 0 else {
+            var keypair = CollectionOfOne(Keypair())
+            var keypairSpan = keypair.mutableSpan
+            guard eccSigningContext.keypairCreate(keypair: &keypairSpan, seckey: secretKey.data.span) != 0 else {
                 preconditionFailure()
             }
-            var xonlyPubkey = secp256k1_xonly_pubkey()
-            guard secp256k1_keypair_xonly_pub(secp256k1_context_static, &xonlyPubkey, nil, &keypair) != 0 else {
+            var xonlyPubkey = CollectionOfOne(XOnlyPubkey())
+            var xonlyPubkeySpan = xonlyPubkey.mutableSpan
+            var paritySpan = MutableSpan<Int32>?.none
+            guard SECP256K1Context.shared.keypairXOnlyPub(pubkey: &xonlyPubkeySpan, pkParity: &paritySpan, keypair: keypair.span) != 0 else {
                 preconditionFailure()
             }
             var xonlyPubkeyBytes = [UInt8](repeating: 0, count: PublicKey.xOnlyLength)
-            guard secp256k1_xonly_pubkey_serialize(secp256k1_context_static, &xonlyPubkeyBytes, &xonlyPubkey) != 0 else {
+            var xonlyPubkeyBytesSpan = xonlyPubkeyBytes.mutableSpan
+            guard SECP256K1Context.shared.xonlyPubkeySerialize(output32: &xonlyPubkeyBytesSpan, pubkey: xonlyPubkey.span) != 0 else {
                 preconditionFailure()
             }
             data = Data([Self.pubkeySerializationTagEven] + xonlyPubkeyBytes)
             return
         }
 
-        var pubkey = secp256k1_pubkey()
-        guard secp256k1_ec_pubkey_create(eccSigningContext, &pubkey, secretKeyBytes) != 0 else {
+        var pubkey = CollectionOfOne(Pubkey())
+        var pubkeySpan = pubkey.mutableSpan
+        guard eccSigningContext.ecPubkeyCreate(&pubkeySpan, secretKey: secretKey.data.span) != 0 else {
             preconditionFailure()
         }
-        var pubkeyBytes = [UInt8](repeating: 0, count: Self.compressedLength)
-        var pubkeyBytesCount = pubkeyBytes.count
-        guard secp256k1_ec_pubkey_serialize(secp256k1_context_static, &pubkeyBytes, &pubkeyBytesCount, &pubkey, UInt32(SECP256K1_EC_COMPRESSED)) != 0 else {
+        var pubkeyBytes = [UInt8](repeating: 0, count: Self.uncompressedLength)
+        var length = CollectionOfOne(pubkeyBytes.count)
+        var pubkeyBytesSpan = pubkeyBytes.mutableSpan
+        var lengthSpan = length.mutableSpan
+
+        guard SECP256K1Context.shared.ecPubkeySerialize(output: &pubkeyBytesSpan, outputlen: &lengthSpan, pubkey: pubkey.span, flags: UInt32(SECP256K1_EC_COMPRESSED)) != 0 else {
             preconditionFailure()
         }
-        assert(pubkeyBytesCount == Self.compressedLength)
-        data = Data(pubkeyBytes)
+        assert(length[0] == Self.compressedLength)
+        data = Data(pubkeyBytes.prefix(length[0]))
     }
 
     public init?(_ hex: String, skipCheck: Bool = false) {
@@ -99,13 +105,13 @@ public struct PublicKey: Equatable, Hashable, Sendable, CustomStringConvertible 
     public func check(useXOnly: Bool = false) -> Bool {
         // Alternatively `pubkeyData.withContiguousStorageIfAvailable { … }` can be used.
         if useXOnly {
-            let pubkeyBytes = [UInt8](xOnlyData)
-            var xonlyPubkey = secp256k1_xonly_pubkey()
-            return  secp256k1_xonly_pubkey_parse(secp256k1_context_static, &xonlyPubkey, pubkeyBytes) != 0
+            var xonlyPubkey = CollectionOfOne(XOnlyPubkey())
+            var xonlyPubkeySpan = xonlyPubkey.mutableSpan
+            return SECP256K1Context.shared.xonlyPubkeyParse(pubkey: &xonlyPubkeySpan, input32: xOnlyData.span) != 0
         } else {
-            let pubkeyBytes = [UInt8](data)
-            var pubkey = secp256k1_pubkey()
-            return secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, pubkeyBytes, pubkeyBytes.count) != 0
+            var pubkey = CollectionOfOne(Pubkey())
+            var pubkeySpan = pubkey.mutableSpan
+            return SECP256K1Context.shared.ecPubkeyParse(&pubkeySpan, from: data.span) != 0
         }
     }
 
@@ -124,27 +130,29 @@ public struct PublicKey: Equatable, Hashable, Sendable, CustomStringConvertible 
     public var xOnlyData: Data { data.dropFirst() }
 
     private var xOnlyDataChecked: (x: Data, parity: Bool) {
-        let pubkeyBytes = [UInt8](data)
-
-        var pubkey = secp256k1_pubkey()
-        guard secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, pubkeyBytes, pubkeyBytes.count) != 0 else {
+        var pubkey = CollectionOfOne(Pubkey())
+        var pubkeySpan = pubkey.mutableSpan
+        guard SECP256K1Context.shared.ecPubkeyParse(&pubkeySpan, from: data.span) != 0 else {
             preconditionFailure()
         }
 
-        var parity: Int32 = -1
-        var xonlyPubkey = secp256k1_xonly_pubkey()
-        guard secp256k1_xonly_pubkey_from_pubkey(secp256k1_context_static, &xonlyPubkey, &parity, &pubkey) != 0 else {
+        var xonlyPubkey = CollectionOfOne(XOnlyPubkey())
+        var xonlyPubkeySpan = xonlyPubkey.mutableSpan
+        var parity = CollectionOfOne(Int32(-1))
+        var paritySpan: MutableSpan<Int32>? = parity.mutableSpan
+        guard SECP256K1Context.shared.xonlyPubkeyFromPubkey(xonlyPubkey: &xonlyPubkeySpan, pkParity: &paritySpan, pubkey: pubkey.span) != 0 else {
             preconditionFailure()
         }
 
         var xOnlyPubkeyBytes = [UInt8](repeating: 0, count: PublicKey.xOnlyLength)
-        guard secp256k1_xonly_pubkey_serialize(secp256k1_context_static, &xOnlyPubkeyBytes, &xonlyPubkey) != 0 else {
+        var xOnlyPubkeyBytesSpan = xOnlyPubkeyBytes.mutableSpan
+        guard SECP256K1Context.shared.xonlyPubkeySerialize(output32: &xOnlyPubkeyBytesSpan, pubkey: xonlyPubkey.span) != 0 else {
             preconditionFailure()
         }
 
         return (
             x: Data(xOnlyPubkeyBytes),
-            parity: parity == 1
+            parity: parity[0] == 1
         )
     }
 
@@ -182,63 +190,60 @@ public struct PublicKey: Equatable, Hashable, Sendable, CustomStringConvertible 
 
     /// BIP32: Used to derive public keys.
     public func tweak(_ tweak: Data) -> PublicKey {
-        var pubkeyBytes = [UInt8](data)
-        var tweak = [UInt8](tweak)
-
-        var pubkey: secp256k1_pubkey = .init()
-        var result = secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, &pubkeyBytes, pubkeyBytes.count)
+        var pubkey = CollectionOfOne(Pubkey())
+        var pubkeySpan = pubkey.mutableSpan
+        var result = SECP256K1Context.shared.ecPubkeyParse(&pubkeySpan, from: data.span)
         assert(result != 0)
 
-        result = secp256k1_ec_pubkey_tweak_add(secp256k1_context_static, &pubkey, &tweak)
+        result = SECP256K1Context.shared.ecPubkeyTweakAdd(pubkey: &pubkeySpan, tweak32: tweak.span)
         assert(result != 0)
 
-        let tweakedKey: [UInt8] = .init(unsafeUninitializedCapacity: PublicKey.compressedLength) { buf, len in
-            len = Self.compressedLength
-            result = secp256k1_ec_pubkey_serialize(secp256k1_context_static, buf.baseAddress!, &len, &pubkey, UInt32(SECP256K1_EC_COMPRESSED))
-            assert(result != 0)
-            assert(len == PublicKey.compressedLength)
-        }
-        return PublicKey(Data(tweakedKey))!
+        var tweakedKey = [UInt8](repeating: 0, count: PublicKey.uncompressedLength)
+        var outputLen = CollectionOfOne(tweakedKey.count)
+        var tweakedKeySpan = tweakedKey.mutableSpan
+        var outputLenSpan = outputLen.mutableSpan
+        result = SECP256K1Context.shared.ecPubkeySerialize(output: &tweakedKeySpan, outputlen: &outputLenSpan, pubkey: pubkey.span, flags: UInt32(SECP256K1_EC_COMPRESSED))
+        assert(result != 0)
+        assert(outputLen[0] == PublicKey.compressedLength)
+        return PublicKey(Data(tweakedKey.prefix(outputLen[0])))!
     }
 
     /// Internal key is an x-only public key.
     public func tweakXOnly(_ tweak: Data) -> PublicKey {
-        let xOnlyPubkeyBytes = [UInt8](xOnlyData)
-        let tweakBytes = [UInt8](tweak)
-
         // Base point (x)
-        var xonlyPubkey = secp256k1_xonly_pubkey()
-        guard secp256k1_xonly_pubkey_parse(secp256k1_context_static, &xonlyPubkey, xOnlyPubkeyBytes) != 0 else {
+        var xonlyPubkey = CollectionOfOne(XOnlyPubkey())
+        var xonlyPubkeySpan = xonlyPubkey.mutableSpan
+        guard SECP256K1Context.shared.xonlyPubkeyParse(pubkey: &xonlyPubkeySpan, input32: xOnlyData.span) != 0 else {
             preconditionFailure()
         }
 
-        var pubkey = secp256k1_pubkey()
-        guard secp256k1_xonly_pubkey_tweak_add(secp256k1_context_static, &pubkey, &xonlyPubkey, tweakBytes) != 0 else {
+        var pubkey = CollectionOfOne(Pubkey())
+        var pubkeySpan = pubkey.mutableSpan
+        guard SECP256K1Context.shared.xonlyPubkeyTweakAdd(outputPubkey: &pubkeySpan, internalPubkey: xonlyPubkey.span, tweak32: tweak.span) != 0 else {
             preconditionFailure()
         }
 
-        let pubkeyBytes: [UInt8] = .init(unsafeUninitializedCapacity: PublicKey.compressedLength) { buf, len in
-            len = Self.compressedLength
-            let result = secp256k1_ec_pubkey_serialize(secp256k1_context_static, buf.baseAddress!, &len, &pubkey, UInt32(SECP256K1_EC_COMPRESSED))
-            assert(result != 0)
-            assert(len == PublicKey.compressedLength)
+        var pubkeyBytes = [UInt8](repeating: 0, count: PublicKey.uncompressedLength)
+        var outputLen = CollectionOfOne(pubkeyBytes.count)
+        var pubkeyBytesSpan = pubkeyBytes.mutableSpan
+        var outputLenSpan = outputLen.mutableSpan
 
-        }
-        return PublicKey(Data(pubkeyBytes))!
+        let result = SECP256K1Context.shared.ecPubkeySerialize(output: &pubkeyBytesSpan, outputlen: &outputLenSpan, pubkey: pubkey.span, flags: UInt32(SECP256K1_EC_COMPRESSED))
+        assert(result != 0)
+        assert(outputLen[0] == PublicKey.compressedLength)
+
+        return PublicKey(Data(pubkeyBytes.prefix(outputLen[0])))!
     }
 
     package func checkTweak(_ tweakData: Data, outputKey: PublicKey) -> Bool {
-        let internalKeyBytes = [UInt8](xOnlyData)
-        let outputKeyBytes = [UInt8](outputKey.xOnlyData)
-        let tweakBytes = [UInt8](tweakData)
-
-        var xonlyPubkey = secp256k1_xonly_pubkey()
-        guard secp256k1_xonly_pubkey_parse(secp256k1_context_static, &xonlyPubkey, internalKeyBytes) != 0 else {
+        var xonlyPubkey = CollectionOfOne(XOnlyPubkey())
+        var xonlyPubkeySpan = xonlyPubkey.mutableSpan
+        guard SECP256K1Context.shared.xonlyPubkeyParse(pubkey: &xonlyPubkeySpan, input32: xOnlyData.span) != 0 else {
             preconditionFailure()
         }
 
         let parity = Int32(outputKey.hasOddY ? 1 : 0)
-        return secp256k1_xonly_pubkey_tweak_add_check(secp256k1_context_static, outputKeyBytes, parity, &xonlyPubkey, tweakBytes) != 0
+        return SECP256K1Context.shared.xonlyPubkeyTweakAddCheck(tweakedPubkey32: outputKey.xOnlyData.span, tweakedPkParity: parity, internalPubkey: xonlyPubkey.span, tweak32: tweakData.span) != 0
     }
 
     public static let uncompressedLength = 65
@@ -253,33 +258,38 @@ public struct PublicKey: Equatable, Hashable, Sendable, CustomStringConvertible 
 }
 
 private func compressedToUncompressed(_ pubkeyData: Data) -> Data? {
-    let pubkeyBytes = [UInt8](pubkeyData)
-    var pubkey = secp256k1_pubkey()
-    guard secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, pubkeyBytes, pubkeyBytes.count) != 0 else {
+    var pubkey = CollectionOfOne(Pubkey())
+    var pubkeySpan = pubkey.mutableSpan
+    guard SECP256K1Context.shared.ecPubkeyParse(&pubkeySpan, from: pubkeyData.span) != 0 else {
         return nil
     }
     var uncompressedPubkeyBytes = [UInt8](repeating: 0, count: PublicKey.uncompressedLength)
-    var uncompressedPubkeyBytesCount = uncompressedPubkeyBytes.count
-    guard secp256k1_ec_pubkey_serialize(secp256k1_context_static, &uncompressedPubkeyBytes, &uncompressedPubkeyBytesCount, &pubkey, UInt32(SECP256K1_EC_UNCOMPRESSED)) != 0 else {
+    var length = CollectionOfOne(uncompressedPubkeyBytes.count)
+    var uncompressedPubkeyBytesSpan = uncompressedPubkeyBytes.mutableSpan
+    var lengthSpan = length.mutableSpan
+
+    guard SECP256K1Context.shared.ecPubkeySerialize(output: &uncompressedPubkeyBytesSpan, outputlen: &lengthSpan, pubkey: pubkey.span, flags: UInt32(SECP256K1_EC_UNCOMPRESSED)) != 0 else {
         preconditionFailure()
     }
-    assert(uncompressedPubkeyBytesCount == PublicKey.uncompressedLength)
+    assert(length[0] == PublicKey.uncompressedLength)
     return Data(uncompressedPubkeyBytes)
 }
 
 private func uncompressedToCompressed(_ pubkeyData: Data) -> Data? {
-    let pubkeyBytes = [UInt8](pubkeyData)
-
-    var pubkey = secp256k1_pubkey()
-    guard secp256k1_ec_pubkey_parse(secp256k1_context_static, &pubkey, pubkeyBytes, pubkeyBytes.count) != 0 else {
+    var pubkey = CollectionOfOne(Pubkey())
+    var pubkeySpan = pubkey.mutableSpan
+    guard SECP256K1Context.shared.ecPubkeyParse(&pubkeySpan, from: pubkeyData.span) != 0 else {
         return nil
     }
-    var compressedPubkeyBytes = [UInt8](repeating: 0, count: PublicKey.compressedLength)
-    var compressedPubkeyBytesCount = compressedPubkeyBytes.count
-    guard secp256k1_ec_pubkey_serialize(secp256k1_context_static, &compressedPubkeyBytes, &compressedPubkeyBytesCount, &pubkey, UInt32(SECP256K1_EC_COMPRESSED)) != 0 else {
+    var compressedPubkeyBytes = [UInt8](repeating: 0, count: PublicKey.uncompressedLength)
+    var length = CollectionOfOne(compressedPubkeyBytes.count)
+    var compressedPubkeyBytesSpan = compressedPubkeyBytes.mutableSpan
+    var lengthSpan = length.mutableSpan
+
+    guard SECP256K1Context.shared.ecPubkeySerialize(output: &compressedPubkeyBytesSpan, outputlen: &lengthSpan, pubkey: pubkey.span, flags: UInt32(SECP256K1_EC_COMPRESSED)) != 0 else {
         preconditionFailure()
     }
-    assert(compressedPubkeyBytesCount == PublicKey.compressedLength)
+    assert(length[0] == PublicKey.compressedLength)
 
-    return Data(compressedPubkeyBytes)
+    return Data(compressedPubkeyBytes.prefix(length[0]))
 }
