@@ -30,7 +30,6 @@ let package = Package(
         .package(url: "https://github.com/swift-otel/swift-otel", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-profile-recorder.git", .upToNextMinor(from: "0.3.0")),
         .package(url: "https://github.com/swift-bitcoin/secp256k1", from: "0.0.0"),
-        //.package(path: "/Users/swiftbitcoin/Developer/secp256k1"),
         .package(url: "https://github.com/swift-bitcoin/swift-lmdb", from: "6.2.1"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
@@ -82,8 +81,7 @@ let package = Package(
             "BitcoinCrypto",
             .product(name: "BinaryParsing", package: "swift-binary-parsing")
         ], path: "src/bitcoin-base", swiftSettings: [.strictMemorySafety()]),
-        .target(name: "BitcoinCrypto", dependencies: ["ECCHelper",
-                .product(name: "LibSECP256k1", package: "secp256k1"),
+        .target(name: "BitcoinCrypto", dependencies: [.product(name: "CSECP256K1", package: "secp256k1"),
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "BinaryParsing", package: "swift-binary-parsing")
         ], path: "src/bitcoin-crypto",
@@ -102,7 +100,6 @@ let package = Package(
             .product(name: "CLMDB", package: "swift-lmdb"),
             .product(name: "SystemPackage", package: "swift-system"),
         ], path: "src/lmdb"),
-        .target(name: "ECCHelper", dependencies: [.product(name: "LibSECP256k1", package: "secp256k1")], path: "src/ecc-helper"/*, swiftSettings: [.strictMemorySafety()]*/),
 
         // Tests
         .testTarget(name: "BitcoinUtilityTests", dependencies: ["BitcoinUtility"], path: "test/bitcoin-utility", swiftSettings: [.strictMemorySafety()]),

@@ -1,5 +1,5 @@
 import Foundation
-import LibSECP256k1
+import CSECP256K1
 
 /// Elliptic curve SECP256K1 secret key.
 public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible {
@@ -9,7 +9,7 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
         var bytes: [UInt8]
         repeat {
             bytes = getRandomBytes(32)
-        } while secp256k1_ec_seckey_verify(eccSigningContext, bytes) == 0
+        } while eccSigningContext.ecSeckeyVerify(bytes.span) == 0
         self.data = Data(bytes)
     }
 
@@ -18,7 +18,7 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
         guard data.count == Self.keyLength else {
             return nil
         }
-        guard secp256k1_ec_seckey_verify(eccSigningContext, [UInt8](data)) != 0 else {
+        guard eccSigningContext.ecSeckeyVerify(data.span) != 0 else {
             return nil
         }
         self.data = data
@@ -28,7 +28,7 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
         guard data.count == Self.keyLength else {
             return nil
         }
-        guard secp256k1_ec_seckey_verify(eccSigningContext, data) != 0 else {
+        guard eccSigningContext.ecSeckeyVerify(data.span) != 0 else {
             return nil
         }
         self.data = Data(data)
@@ -72,9 +72,8 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
     /// BIP32: Used to derive private keys. Requires global signing context to be initialized.
     public func tweak(_ tweak: Data) -> SecretKey {
         var secretKeyBytes = [UInt8](data)
-        var tweak = [UInt8](tweak)
-
-        let result = secp256k1_ec_seckey_tweak_add(eccSigningContext, &secretKeyBytes, &tweak)
+        var secretKeyBytesSpan = secretKeyBytes.mutableSpan
+        let result = eccSigningContext.ecSeckeyTweakAdd(seckey: &secretKeyBytesSpan, tweak32: tweak.span)
         assert(result != 0)
 
         return SecretKey(Data(secretKeyBytes))!
@@ -85,21 +84,22 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
     /// Requires global signing context to be initialized.
     ///
     public func tweakXOnly(_ tweak: Data) -> SecretKey {
-        let secretKeyBytes = [UInt8](data)
         let tweak = [UInt8](tweak)
 
-        var keypair = secp256k1_keypair()
-        guard secp256k1_keypair_create(eccSigningContext, &keypair, secretKeyBytes) != 0 else {
+        var keypair = CollectionOfOne(Keypair())
+        var keypairSpan = keypair.mutableSpan
+        guard eccSigningContext.keypairCreate(keypair: &keypairSpan, seckey: data.span) != 0 else {
             preconditionFailure()
         }
 
         // Tweak the keypair
-        guard secp256k1_keypair_xonly_tweak_add(secp256k1_context_static, &keypair, tweak) != 0 else {
+        guard SECP256K1Context.shared.keypairXOnlyTweakAdd(keypair: &keypairSpan, tweak32: tweak.span) != 0 else {
             preconditionFailure()
         }
 
         var tweakedSecretKey = [UInt8](repeating: 0, count: 32)
-        guard secp256k1_keypair_sec(secp256k1_context_static, &tweakedSecretKey, &keypair) != 0 else {
+        var tweakedSecretKeySpan = tweakedSecretKey.mutableSpan
+        guard SECP256K1Context.shared.keypairSec(seckey: &tweakedSecretKeySpan, keypair: keypair.span) != 0 else {
             preconditionFailure()
         }
         // Result output
