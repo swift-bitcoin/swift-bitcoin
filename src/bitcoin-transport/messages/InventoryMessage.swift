@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 /// Allows a node to advertise its knowledge of one or more objects. It can be received unsolicited, or in reply to `getblocks`. Payload (maximum 50,000 entries, which is just over 1.8 megabytes).
 public struct InventoryMessage: Equatable {
@@ -10,34 +12,38 @@ public struct InventoryMessage: Equatable {
     public let items: [InventoryItem]
 }
 
-extension InventoryMessage {
+extension InventoryMessage: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= 1 else { return nil }
-        var data = data
+    public enum ParseError: Error {
+        /// Maximum inventory items is 50,000.
+        case tooManyItems
+    }
 
-        guard let itemCount = data.varInt, itemCount <= 50_000 else { return nil }
-        data = data.dropFirst(itemCount.varIntSize)
-
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let itemCount = try VarInt(parsing: &input).value
+        guard itemCount <= 50_000 else {
+            throw ParsingError(userError: ParseError.tooManyItems)
+        }
         var items = [InventoryItem]()
         for _ in 0 ..< itemCount {
-            guard let item = InventoryItem(data) else { return nil }
+            let item = try InventoryItem(parsing: &input)
             items.append(item)
-            data = data.dropFirst(InventoryItem.size)
         }
         self.items = items
     }
 
-    var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(Data(varInt: UInt64(items.count)))
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(VarInt(items.count))
+        // TODO: Figure out a protocol for types with a fixed binary encoding size with propagation so we can do optimizations like `counter.countSize(InventoryItem.fixedSize * items.count)`.
         for item in items {
-            offset = ret.addData(item.data, at: offset)
+            counter.count(item)
         }
-        return ret
     }
 
-    var size: Int {
-        UInt64(items.count).varIntSize + InventoryItem.size * items.count
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try VarInt(items.count).encode(into: &out)
+        for item in items {
+            try item.encode(into: &out)
+        }
     }
 }

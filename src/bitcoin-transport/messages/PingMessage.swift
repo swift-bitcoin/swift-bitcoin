@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 public struct PingMessage: Equatable, Sendable {
 
@@ -7,20 +9,19 @@ public struct PingMessage: Equatable, Sendable {
     }
 
     public let nonce: UInt64
-
-    static let size = MemoryLayout<UInt64>.size
 }
 
-extension PingMessage {
+extension PingMessage: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-        nonce = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt64.self)
-        }
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        nonce = try .init(parsingLittleEndian: &input)
     }
 
-    var data: Data {
-        Data(value: nonce)
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt64.self)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(nonce, as: UInt64.self, .littleEndian)
     }
 }

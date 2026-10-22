@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 /// The object type is currently defined as one of the following possibilities: `ERROR`, `MSG_TX`, `MSG_BLOCK`, `MSG_FILTERED_BLOCK`, `MSG_CMPCT_BLOCK`, `MSG_WITNESS_TX`, `MSG_WITNESS_BLOCK`, `MSG_FILTERED_WITNESS_BLOCK`.
 public enum InventoryType: Int {
@@ -31,19 +33,26 @@ public enum InventoryType: Int {
     case filteredWitnessBlock = 0x40000003
 }
 
-extension InventoryType {
+extension InventoryType: BinaryCodable {
 
-    init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-        let value = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
+    public enum ParseError: Error {
+        /// Invalid inventory type.
+        case invalidInventoryType(Int)
+    }
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let value = Int(try UInt32(parsingLittleEndian: &input))
+        guard let type = InventoryType(rawValue: value) else {
+            throw ParseError.invalidInventoryType(value)
         }
-        self.init(rawValue: Int(value))
+        self = type
     }
 
-    var data: Data {
-        Data(value: UInt32(rawValue))
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt32.self)
     }
 
-    static var size: Int { MemoryLayout<UInt32>.size }
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt32(rawValue), as: UInt32.self, .littleEndian)
+    }
 }

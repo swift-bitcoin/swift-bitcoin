@@ -46,7 +46,7 @@ struct NodeBootstrapTests {
         let messageAB0_ping = try #require(await aliceToBob.next())
         #expect(messageAB0_ping.command == .ping)
 
-        let ping0 = try #require(PingMessage(messageAB0_ping.payload))
+        let ping0 = try PingMessage(messageAB0_ping.payload)
         var lastPingNonce = await alice.state.peers[peerB]!.lastPingNonce
         #expect(lastPingNonce != nil)
 
@@ -57,7 +57,7 @@ struct NodeBootstrapTests {
         let messageBA0_pong = try #require(await bob.popMessage(peerA))
         #expect(messageBA0_pong.command == .pong)
 
-        let pong0 = try #require(PongMessage(messageBA0_pong.payload))
+        let pong0 = try PongMessage(messageBA0_pong.payload)
         #expect(ping0.nonce == pong0.nonce)
 
         // … --(pong)->> Alice
@@ -100,7 +100,7 @@ struct NodeBootstrapTests {
         let messageAB0_cmpctblock = try #require(await aliceToBob.next())
         #expect(messageAB0_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock0 = try #require(CompactBlockMessage(messageAB0_cmpctblock.payload))
+        let cmpctblock0 = try CompactBlockMessage(messageAB0_cmpctblock.payload)
         #expect(cmpctblock0.header == block0.header)
 
         // … --(cmpctblock)->> Bob
@@ -110,7 +110,7 @@ struct NodeBootstrapTests {
         let messageBC0_cmpctblock = try #require(await bobToCarol.next())
         #expect(messageBC0_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock1 = try #require(CompactBlockMessage(messageBC0_cmpctblock.payload))
+        let cmpctblock1 = try CompactBlockMessage(messageBC0_cmpctblock.payload)
         #expect(cmpctblock1.header == block0.header)
 
         // … --(cmpctblock)->> Carol
@@ -127,7 +127,7 @@ struct NodeBootstrapTests {
         let messageAB1_cmpctblock = try #require(await aliceToBob.next())
         #expect(messageAB1_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock2 = try #require(CompactBlockMessage(messageAB1_cmpctblock.payload))
+        let cmpctblock2 = try CompactBlockMessage(messageAB1_cmpctblock.payload)
         #expect(cmpctblock2.header == block1.header)
 
         // … --(cmpctblock)->> Bob
@@ -140,7 +140,7 @@ struct NodeBootstrapTests {
         let messageBC1_cmpctblock = try #require(await bobToCarol.next())
         #expect(messageBC1_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock3 = try #require(CompactBlockMessage(messageBC1_cmpctblock.payload))
+        let cmpctblock3 = try CompactBlockMessage(messageBC1_cmpctblock.payload)
         #expect(cmpctblock3.header == block1.header)
 
         // … --(cmpctblock)->> Carol
@@ -185,7 +185,7 @@ struct NodeBootstrapTests {
         let messageAB0_cmpctblock = try #require(await aliceToBob.next())
         #expect(messageAB0_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock0 = try #require(CompactBlockMessage(messageAB0_cmpctblock.payload))
+        let cmpctblock0 = try CompactBlockMessage(messageAB0_cmpctblock.payload)
         #expect(cmpctblock0.header == aliceBlock1.header)
 
         // … --(cmpctblock)->> Bob
@@ -195,7 +195,7 @@ struct NodeBootstrapTests {
         let messageBC0_cmpctblock = try #require(await bobToCarol.next())
         #expect(messageBC0_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock1 = try #require(CompactBlockMessage(messageBC0_cmpctblock.payload))
+        let cmpctblock1 = try CompactBlockMessage(messageBC0_cmpctblock.payload)
         #expect(cmpctblock1.header == aliceBlock1.header)
 
         // … --(cmpctblock)->> Carol
@@ -234,7 +234,7 @@ struct NodeBootstrapTests {
         let messageAB1_inv = try #require(await aliceToBob.next())
         #expect(messageAB1_inv.command == .inv)
 
-        let inv0 = try #require(InventoryMessage(messageAB1_inv.payload))
+        let inv0 = try InventoryMessage(messageAB1_inv.payload)
         #expect(inv0.items == [.init(type: .witnessTx, hash: tx.id)])
 
         // … --(inv)->> Bob
@@ -244,7 +244,7 @@ struct NodeBootstrapTests {
         let messageBA0_getdata = try #require(await bob.popMessage(peerA))
         #expect(messageBA0_getdata.command == .getdata)
 
-        let getData0 = try #require(GetDataMessage(messageBA0_getdata.payload))
+        let getData0 = try GetDataMessage(messageBA0_getdata.payload)
         #expect(getData0.items == [.init(type: .witnessTx, hash: tx.id)])
 
         // … --(getdata)->> Alice
@@ -264,7 +264,7 @@ struct NodeBootstrapTests {
         let messageBC1_inv = try #require(await bobToCarol.next())
         #expect(messageBC1_inv.command == .inv)
 
-        let inv1 = try #require(InventoryMessage(messageBC1_inv.payload))
+        let inv1 = try InventoryMessage(messageBC1_inv.payload)
         #expect(inv1.items == [.init(type: .witnessTx, hash: tx.id)])
 
         // … --(inv)->> Carol
@@ -274,7 +274,7 @@ struct NodeBootstrapTests {
         let messageCB0_getdata = try #require(await carol.popMessage(carolPeerB))
         #expect(messageCB0_getdata.command == .getdata)
 
-        let getData1 = try #require(GetDataMessage(messageCB0_getdata.payload))
+        let getData1 = try GetDataMessage(messageCB0_getdata.payload)
         #expect(getData1.items == [.init(type: .witnessTx, hash: tx.id)])
 
         // … --(getdata)->> Bob
@@ -330,7 +330,7 @@ struct NodeBootstrapTests {
         let messageAB0_cmpctblock = try #require(await aliceToBob.next())
         #expect(messageAB0_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock0 = try #require(CompactBlockMessage(messageAB0_cmpctblock.payload))
+        let cmpctblock0 = try CompactBlockMessage(messageAB0_cmpctblock.payload)
         #expect(cmpctblock0.header == block0.header)
 
         // … --(cmpctblock)->> Bob
@@ -340,7 +340,7 @@ struct NodeBootstrapTests {
         let messageBC0_cmpctblock = try #require(await bobToCarol.next())
         #expect(messageBC0_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock1 = try #require(CompactBlockMessage(messageBC0_cmpctblock.payload))
+        let cmpctblock1 = try CompactBlockMessage(messageBC0_cmpctblock.payload)
         #expect(cmpctblock1.header == block0.header)
 
         // … --(cmpctblock)->> Carol
@@ -360,7 +360,7 @@ struct NodeBootstrapTests {
         let messageAB1_cmpctblock = try #require(await aliceToBob.next())
         #expect(messageAB1_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock2 = try #require(CompactBlockMessage(messageAB1_cmpctblock.payload))
+        let cmpctblock2 = try CompactBlockMessage(messageAB1_cmpctblock.payload)
         #expect(cmpctblock2.header == aliceBlock1.header)
 
         // … --(cmpctblock)->> Bob
@@ -370,7 +370,7 @@ struct NodeBootstrapTests {
         let messageBC1_cmpctblock = try #require(await bobToCarol.next())
         #expect(messageBC1_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock3 = try #require(CompactBlockMessage(messageBC1_cmpctblock.payload))
+        let cmpctblock3 = try CompactBlockMessage(messageBC1_cmpctblock.payload)
         #expect(cmpctblock3.header == aliceBlock1.header)
 
         // … --(cmpctblock)->> Carol
@@ -402,7 +402,7 @@ struct NodeBootstrapTests {
         let messageAB2_inv = try #require(await aliceToBob.next())
         #expect(messageAB2_inv.command == .inv)
 
-        let inv0 = try #require(InventoryMessage(messageAB2_inv.payload))
+        let inv0 = try InventoryMessage(messageAB2_inv.payload)
         #expect(inv0.items == [.init(type: .witnessTx, hash: tx.id)])
 
         // … --(inv)->> Bob
@@ -413,13 +413,13 @@ struct NodeBootstrapTests {
         let messageBA0_inv = try #require(await bobToAlice.next())
         #expect(messageBA0_inv.command == .inv)
 
-        let inv1 = try #require(InventoryMessage(messageBA0_inv.payload))
+        let inv1 = try InventoryMessage(messageBA0_inv.payload)
         #expect(inv1.items == [.init(type: .witnessTx, hash: tx.id)])
 
         let messageBC2_inv = try #require(await bobToCarol.next())
         #expect(messageBC2_inv.command == .inv)
 
-        let inv2 = try #require(InventoryMessage(messageBC2_inv.payload))
+        let inv2 = try InventoryMessage(messageBC2_inv.payload)
         #expect(inv2.items == [.init(type: .witnessTx, hash: tx.id)])
 
         // … --(inv)->> Carol
@@ -433,7 +433,7 @@ struct NodeBootstrapTests {
         let messageAB3_cmpctblock = try #require(await aliceToBob.next())
         #expect(messageAB3_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock4 = try #require(CompactBlockMessage(messageAB3_cmpctblock.payload))
+        let cmpctblock4 = try CompactBlockMessage(messageAB3_cmpctblock.payload)
         #expect(cmpctblock4.header == aliceBlock2.header)
 
         // … --(cmpctblock)->> Bob
@@ -443,7 +443,7 @@ struct NodeBootstrapTests {
         let messageBC3_cmpctblock = try #require(await bobToCarol.next())
         #expect(messageBC3_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock5 = try #require(CompactBlockMessage(messageBC3_cmpctblock.payload))
+        let cmpctblock5 = try CompactBlockMessage(messageBC3_cmpctblock.payload)
         #expect(cmpctblock5.header == aliceBlock2.header)
 
         // … --(cmpctblock)->> Carol
@@ -453,7 +453,7 @@ struct NodeBootstrapTests {
         let messageCB0_getblocktxn = try #require(await carol.popMessage(carolPeerB))
         #expect(messageCB0_getblocktxn.command == .getblocktxn)
 
-        let getblocktxn0 = try #require(GetBlockTransactionsMessage(messageCB0_getblocktxn.payload))
+        let getblocktxn0 = try GetBlockTransactionsMessage(messageCB0_getblocktxn.payload)
         #expect(getblocktxn0.blockHash == aliceBlock2.id)
         #expect(getblocktxn0.txIndices == [1])
 
@@ -464,7 +464,7 @@ struct NodeBootstrapTests {
         let messageBC4_blocktxn = try #require(await bob.popMessage(peerC))
         #expect(messageBC4_blocktxn.command == .blocktxn)
 
-        let blocktxn0 = try #require(BlockTransactionsMessage(messageBC4_blocktxn.payload))
+        let blocktxn0 = try BlockTransactionsMessage(messageBC4_blocktxn.payload)
         #expect(blocktxn0.txs == [tx])
 
         // … --(blocktxn)->> Carol
@@ -511,7 +511,7 @@ struct NodeBootstrapTests {
         let messageAB0_headers = try #require(await aliceToBob.next())
         #expect(messageAB0_headers.command == .headers)
 
-        let headers0 = try #require(HeadersMessage(messageAB0_headers.payload))
+        let headers0 = try HeadersMessage(messageAB0_headers.payload)
         #expect(headers0.items == [block0.header])
 
         // … --(headers)->> Bob
@@ -528,7 +528,7 @@ struct NodeBootstrapTests {
         let messageBA1_getdata = try #require(await bob.popMessage(peerA))
         #expect(messageBA1_getdata.command == .getdata)
 
-        let getData0 = try #require(GetDataMessage(messageBA1_getdata.payload))
+        let getData0 = try GetDataMessage(messageBA1_getdata.payload)
         #expect(getData0.items == [.init(type: .witnessBlock, hash: block0.id)])
 
         // … --(getdata)->> Alice
@@ -548,7 +548,7 @@ struct NodeBootstrapTests {
         let messageBC0_headers = try #require(await bobToCarol.next())
         #expect(messageBC0_headers.command == .headers)
 
-        let headers1 = try #require(HeadersMessage(messageBC0_headers.payload))
+        let headers1 = try HeadersMessage(messageBC0_headers.payload)
         #expect(headers1.items == [block0.header])
 
         // … --(headers)->> Carol
@@ -565,7 +565,7 @@ struct NodeBootstrapTests {
         let messageCB1_getdata = try #require(await carol.popMessage(carolPeerB))
         #expect(messageCB1_getdata.command == .getdata)
 
-        let getData1 = try #require(GetDataMessage(messageCB1_getdata.payload))
+        let getData1 = try GetDataMessage(messageCB1_getdata.payload)
         #expect(getData1.items == [.init(type: .witnessBlock, hash: block0.id)])
 
         // … --(getdata)->> Bob
@@ -595,7 +595,7 @@ struct NodeBootstrapTests {
         let messageAB2_headers = try #require(await aliceToBob.next())
         #expect(messageAB2_headers.command == .headers)
 
-        let headers2 = try #require(HeadersMessage(messageAB2_headers.payload))
+        let headers2 = try HeadersMessage(messageAB2_headers.payload)
         #expect(headers2.items == [aliceBlock1.header])
 
         // … --(headers)->> Bob
@@ -612,7 +612,7 @@ struct NodeBootstrapTests {
         let messageBA3_getdata = try #require(await bob.popMessage(peerA))
         #expect(messageBA3_getdata.command == .getdata)
 
-        let getData2 = try #require(GetDataMessage(messageBA3_getdata.payload))
+        let getData2 = try GetDataMessage(messageBA3_getdata.payload)
         #expect(getData2.items == [.init(type: .compactBlock, hash: aliceBlock1.id)])
 
         // … --(getdata)->> Alice
@@ -623,7 +623,7 @@ struct NodeBootstrapTests {
 
         #expect(messageAB3_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock0 = try #require(CompactBlockMessage(messageAB3_cmpctblock.payload))
+        let cmpctblock0 = try CompactBlockMessage(messageAB3_cmpctblock.payload)
         #expect(cmpctblock0.header == aliceBlock1.header)
 
         // … --(cmpctblock)->> Bob
@@ -633,7 +633,7 @@ struct NodeBootstrapTests {
         let messageBC2_headers = try #require(await bobToCarol.next())
         #expect(messageBC2_headers.command == .headers)
 
-        let headers3 = try #require(HeadersMessage(messageBC2_headers.payload))
+        let headers3 = try HeadersMessage(messageBC2_headers.payload)
         #expect(headers3.items == [aliceBlock1.header])
 
         // … --(headers)->> Carol
@@ -650,7 +650,7 @@ struct NodeBootstrapTests {
         let messageCB3_getdata = try #require(await carol.popMessage(carolPeerB))
         #expect(messageCB3_getdata.command == .getdata)
 
-        let getData3 = try #require(GetDataMessage(messageCB3_getdata.payload))
+        let getData3 = try GetDataMessage(messageCB3_getdata.payload)
         #expect(getData3.items == [.init(type: .compactBlock, hash: aliceBlock1.id)])
 
         // … --(getdata)->> Bob
@@ -660,7 +660,7 @@ struct NodeBootstrapTests {
         let messageBC3_cmpctblock = try #require(await bob.popMessage(peerC))
         #expect(messageBC3_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock1 = try #require(CompactBlockMessage(messageBC3_cmpctblock.payload))
+        let cmpctblock1 = try CompactBlockMessage(messageBC3_cmpctblock.payload)
         #expect(cmpctblock1.header == aliceBlock1.header)
 
         // … --(cmpctblock)->> Carol
@@ -696,7 +696,7 @@ struct NodeBootstrapTests {
         let messageAB4_inv = try #require(await aliceToBob.next())
         #expect(messageAB4_inv.command == .inv)
 
-        let inv4 = try #require(InventoryMessage(messageAB4_inv.payload))
+        let inv4 = try InventoryMessage(messageAB4_inv.payload)
         #expect(inv4.items == [.init(type: .witnessTx, hash: tx.id)])
 
         // … --(inv)->> Bob
@@ -707,13 +707,13 @@ struct NodeBootstrapTests {
         let messageBA5_inv = try #require(await bobToAlice.next())
         #expect(messageBA5_inv.command == .inv)
 
-        let inv5 = try #require(InventoryMessage(messageBA5_inv.payload))
+        let inv5 = try InventoryMessage(messageBA5_inv.payload)
         #expect(inv5.items == [.init(type: .witnessTx, hash: tx.id)])
 
         let messageBC5_inv = try #require(await bobToCarol.next())
         #expect(messageBC5_inv.command == .inv)
 
-        let inv6 = try #require(InventoryMessage(messageBC5_inv.payload))
+        let inv6 = try InventoryMessage(messageBC5_inv.payload)
         #expect(inv6.items == [.init(type: .witnessTx, hash: tx.id)])
 
         // … --(inv)->> Carol
@@ -729,7 +729,7 @@ struct NodeBootstrapTests {
         let messageAB5_headers = try #require(await aliceToBob.next())
         #expect(messageAB5_headers.command == .headers)
 
-        let headers4 = try #require(HeadersMessage(messageAB5_headers.payload))
+        let headers4 = try HeadersMessage(messageAB5_headers.payload)
         #expect(headers4.items == [aliceBlock2.header])
 
         // … --(header)->> Bob
@@ -748,7 +748,7 @@ struct NodeBootstrapTests {
         let messageBA7_getdata = try #require(await bob.popMessage(peerA))
         #expect(messageBA7_getdata.command == .getdata)
 
-        let getData4 = try #require(GetDataMessage(messageBA7_getdata.payload))
+        let getData4 = try GetDataMessage(messageBA7_getdata.payload)
         #expect(getData4.items == [.init(type: .compactBlock, hash: aliceBlock2.id)])
 
         // … --(getdata)->> Alice
@@ -758,7 +758,7 @@ struct NodeBootstrapTests {
         let messageAB6_cmpctblock = try #require(await alice.popMessage(peerB))
         #expect(messageAB6_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock6 = try #require(CompactBlockMessage(messageAB6_cmpctblock.payload))
+        let cmpctblock6 = try CompactBlockMessage(messageAB6_cmpctblock.payload)
         #expect(cmpctblock6.header == aliceBlock2.header)
 
         // … --(cmpctblock)->> Bob
@@ -770,7 +770,7 @@ struct NodeBootstrapTests {
         let messageBC6_headers = try #require(await bobToCarol.next())
         #expect(messageBC6_headers.command == .headers)
 
-        let headers5 = try #require(HeadersMessage(messageBC6_headers.payload))
+        let headers5 = try HeadersMessage(messageBC6_headers.payload)
         #expect(headers5.items == [aliceBlock2.header])
 
         // … --(headers)->> Carol
@@ -787,7 +787,7 @@ struct NodeBootstrapTests {
         let messageCB7_getdata = try #require(await carol.popMessage(carolPeerB))
         #expect(messageCB7_getdata.command == .getdata)
 
-        let getData5 = try #require(GetDataMessage(messageCB7_getdata.payload))
+        let getData5 = try GetDataMessage(messageCB7_getdata.payload)
         #expect(getData5.items == [.init(type: .compactBlock, hash: aliceBlock2.id)])
 
         // … --(getdata)->> Bob
@@ -797,7 +797,7 @@ struct NodeBootstrapTests {
         let messageBC7_cmpctblock = try #require(await bob.popMessage(peerC))
         #expect(messageBC7_cmpctblock.command == .cmpctblock)
 
-        let cmpctblock7 = try #require(CompactBlockMessage(messageBC7_cmpctblock.payload))
+        let cmpctblock7 = try CompactBlockMessage(messageBC7_cmpctblock.payload)
         #expect(cmpctblock7.header == aliceBlock2.header)
 
         // … --(cmpctblock)->> Carol
@@ -807,7 +807,7 @@ struct NodeBootstrapTests {
         let messageCB8_getblocktxn = try #require(await carol.popMessage(carolPeerB))
         #expect(messageCB8_getblocktxn.command == .getblocktxn)
 
-        let getblocktxn1 = try #require(GetBlockTransactionsMessage(messageCB8_getblocktxn.payload))
+        let getblocktxn1 = try GetBlockTransactionsMessage(messageCB8_getblocktxn.payload)
         #expect(getblocktxn1.blockHash == aliceBlock2.id)
         #expect(getblocktxn1.txIndices == [1])
 
@@ -818,7 +818,7 @@ struct NodeBootstrapTests {
         let messageBC8_blocktxn = try #require(await bob.popMessage(peerC))
         #expect(messageBC8_blocktxn.command == .blocktxn)
 
-        let blocktxn1 = try #require(BlockTransactionsMessage(messageBC8_blocktxn.payload))
+        let blocktxn1 = try BlockTransactionsMessage(messageBC8_blocktxn.payload)
         #expect(blocktxn1.txs == [tx])
 
         // … --(blocktxn)->> Carol

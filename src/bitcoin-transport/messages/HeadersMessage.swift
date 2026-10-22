@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
 
@@ -23,35 +25,44 @@ public struct HeadersMessage: Equatable {
     }
 }
 
-extension HeadersMessage {
+extension HeadersMessage: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= 1 else { return nil }
-        var data = data
+    public enum ParseError: Error {
+        /// Maximum headers is 2000.
+        case tooManyHeaders
 
-        guard let itemCount = data.varInt, itemCount <= 2_000 else { return nil }
-        data = data.dropFirst(itemCount.varIntSize)
+        /// Headers are encoded as blocks without transactions.
+        case transactionInHeader
+    }
 
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let itemCount = try VarInt(parsing: &input).value
+        guard itemCount <= 2_000 else {
+            throw ParsingError(userError: ParseError.tooManyHeaders)
+        }
         var items = [Block]()
         for _ in 0 ..< itemCount {
-            guard let block = try? Block(data), block.txs.isEmpty else { return nil }
+            let block = try Block(parsing: &input)
+
+            guard block.txs.isEmpty else {
+                throw ParsingError(userError: ParseError.tooManyHeaders)
+            }
             items.append(block)
-            data = data.dropFirst(block.binarySize)
         }
         self.items = items
     }
 
-    public var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(Data(varInt: UInt64(items.count)))
-        for header in items {
-            precondition(header.txs.isEmpty)
-            offset = ret.addData(header.data, at: offset)
-        }
-        return ret
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(VarInt(items.count))
+        counter.countSize(Block.minSize * items.count)
     }
 
-    var size: Int {
-        UInt64(items.count).varIntSize + Block.minSize * items.count
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try VarInt(items.count).encode(into: &out)
+        for header in items {
+            precondition(header.txs.isEmpty)
+            try header.encode(into: &out)
+        }
     }
 }
+

@@ -52,6 +52,8 @@ extension IPv4Address {
     }
 }
 
+/*
+ Commenting out while the #Playground macro gives unsafe warnings.
 #if canImport(Playgrounds)
 import Playgrounds
 #Playground {
@@ -66,3 +68,4 @@ import Playgrounds
     _ = IPv4Address.parse(ipv6p)
 }
 #endif
+*/

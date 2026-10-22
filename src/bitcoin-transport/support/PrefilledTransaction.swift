@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 import BitcoinBase
 
 /// BIP152: A `PrefilledTransaction` structure is used in `HeaderAndShortIDs` to provide a list of a few transactions explicitly.
@@ -22,36 +24,35 @@ public struct PrefilledTransaction: Equatable {
     public let tx: Transaction
 }
 
-extension PrefilledTransaction {
+extension PrefilledTransaction: BinaryCodable {
 
-    public init?(_ data: Data, previousIndex: Int) {
-        guard data.count >= 1 else { return nil }
-        var data = data
-
-        guard let indexDiff = data.varInt else { return nil }
-        let index = Int(indexDiff) + previousIndex + 1
-        self.index = index
-        data = data.dropFirst(indexDiff.varIntSize)
-
-        guard let tx = try? Transaction(data) else { return nil }
-        self.tx = tx
-        data = data.dropFirst(tx.binarySize)
+    public struct BinaryFormat {
+        let previousIndex: Int
     }
 
-    func getData(previousIndex: Int?) -> Data {
-        var ret = Data(count: size)
+    public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws {
+        let indexDiff = try VarInt(parsing: &input).value
+        index = indexDiff + (format?.previousIndex ?? -1) + 1
+        tx = try Transaction(parsing: &input)
+    }
 
-        let indexDiff = if let previousIndex {
+    public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
+        let indexDiff = if let previousIndex = format?.previousIndex {
             index - previousIndex - 1
         } else {
             index
         }
-        var offset = ret.addData(Data(varInt: UInt64(indexDiff)))
-        offset = ret.addData(tx.data, at: offset)
-        return ret
+        counter.count(VarInt(indexDiff))
+        counter.count(tx)
     }
 
-    var size: Int {
-        UInt64(index).varIntSize + tx.binarySize
+    public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
+        let indexDiff = if let previousIndex = format?.previousIndex {
+            index - previousIndex - 1
+        } else {
+            index
+        }
+        try VarInt(indexDiff).encode(into: &out)
+        try tx.encode(into: &out)
     }
 }

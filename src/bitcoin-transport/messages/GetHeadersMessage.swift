@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 
 fileprivate let hashLength = SHA256.Digest.byteCount // 32 bytes
@@ -22,49 +23,45 @@ public struct GetHeadersMessage: Equatable {
     public let stopHash: Data
 }
 
-extension GetHeadersMessage {
+extension GetHeadersMessage: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= 1 else { return nil }
-        var data = data
+    public enum ParseError: Error {
+        /// Maximum hashes is 2000.
+        case tooManyHashes
+    }
 
-        guard let protocolVersion = ProtocolVersion(data) else { return nil }
-        self.protocolVersion = protocolVersion
-        data = data.dropFirst(ProtocolVersion.size)
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        protocolVersion = try ProtocolVersion(parsing: &input)
 
         // number of block locator hash entries
-        guard let hashCount = data.varInt, hashCount <= 2_000 else { return nil }
-        data = data.dropFirst(hashCount.varIntSize)
+        let hashCount = try VarInt(parsing: &input).value
+        guard hashCount <= 2_000 else {
+            throw ParsingError(userError: ParseError.tooManyHashes)
+        }
 
         var locatorHashes = [Data]()
         for _ in 0 ..< hashCount {
-            guard data.count >= hashLength else { return nil }
-            let hash = data.prefix(hashLength)
+            let hash = try Data([UInt8](parsing: &input, byteCount: hashLength))
             locatorHashes.append(hash)
-            data = data.dropFirst(hashLength)
         }
         self.locatorHashes = locatorHashes
 
-        guard data.count >= hashLength else { return nil }
-        self.stopHash = data.prefix(hashLength)
-
+        stopHash = try Data([UInt8](parsing: &input, byteCount: hashLength))
     }
 
-    var data: Data {
-        var ret = Data(count: size)
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        protocolVersion.countBytes(into: &counter)
+        counter.count(VarInt(locatorHashes.count))
+        counter.countSize(hashLength * locatorHashes.count)
+        counter.countSize(hashLength)
+    }
 
-        var offset = ret.addData(protocolVersion.data)
-
-        offset = ret.addData(Data(varInt: UInt64(locatorHashes.count)), at: offset)
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try protocolVersion.encode(into: &out)
+        try VarInt(locatorHashes.count).encode(into: &out)
         for hash in locatorHashes {
-            offset = ret.addData(hash, at: offset)
+            out.append(contentsOf: hash)
         }
-
-        ret.addData(stopHash, at: offset)
-        return ret
-    }
-
-    var size: Int {
-        ProtocolVersion.size + UInt64(locatorHashes.count).varIntSize + hashLength * locatorHashes.count + hashLength
+        out.append(contentsOf: stopHash)
     }
 }

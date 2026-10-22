@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 public enum ProtocolVersion: Int, Sendable, Comparable {
 
@@ -19,19 +21,18 @@ public enum ProtocolVersion: Int, Sendable, Comparable {
     }
 }
 
-extension ProtocolVersion {
+extension ProtocolVersion: BinaryCodable {
 
-    init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-        let value = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        }
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let value: UInt32 = try .init(parsingLittleEndian: &input)
         self.init(Int(value))
     }
 
-    var data: Data {
-        Data(value: UInt32(rawValue))
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt32.self)
     }
 
-    static var size: Int { MemoryLayout<UInt32>.size }
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt32(rawValue), as: UInt32.self, .littleEndian)
+    }
 }
