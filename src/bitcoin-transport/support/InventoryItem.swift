@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 /// Inventory vectors are used for notifying other nodes about objects they have or data which is being requested.
 public struct InventoryItem: Equatable {
@@ -13,28 +15,24 @@ public struct InventoryItem: Equatable {
 
     /// Hash of the object.
     public let hash: Data
-
-    static let size = InventoryType.size + 32
 }
 
-extension InventoryItem {
+extension InventoryItem: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-        var data = data
-
-        guard let type = InventoryType(data) else { return nil }
-        self.type = type
-        data = data.dropFirst(InventoryType.size)
-
-        guard data.count >= 32 else { return nil }
-        self.hash = data.prefix(32)
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        type = try InventoryType(parsing: &input)
+        hash = try Data([UInt8](parsing: &input, byteCount: hashLength))
     }
 
-    var data: Data {
-        var ret = Data(count: Self.size)
-        let offset = ret.addData(type.data)
-        ret.addData(hash, at: offset)
-        return ret
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(type)
+        counter.countSize(hashLength)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try type.encode(into: &out)
+        out.append(contentsOf: hash)
     }
 }
+
+fileprivate let hashLength = SHA256.Digest.byteCount // 32 bytes

@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 /// The message command represents the different kinds of message on the peer-to-peer network.
 public enum MessageCommand: String, RawRepresentable, Sendable {
@@ -95,30 +97,31 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
 
     case unknown
 
-    static let size = 12 // Data size
-
     init(tentativeRawValue: String) {
         // Messages received after connection to server: version, wtxidrelay sendaddrv2, verack, sendcmpct, ping, getheaders, feefilter
         self = Self(rawValue: tentativeRawValue) ?? .unknown
     }
 }
 
-extension MessageCommand {
+extension MessageCommand: BinaryCodable {
 
-    init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-        let commandDataUntrimmed = data.prefix(Self.size)
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let commandDataUntrimmed = try [UInt8](parsing: &input, byteCount: fullLength)
         let commandData = commandDataUntrimmed.reversed().trimmingPrefix(while: { $0 == 0x00 }).reversed()
         let commandRawValue = String(decoding: commandData, as: Unicode.ASCII.self)
         self.init(tentativeRawValue: commandRawValue)
     }
 
-    var data: Data {
-        var ret = Data(count: Self.size)
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.countSize(fullLength)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
         let commandData = rawValue.data(using: .ascii)!
-        let offset = ret.addData(commandData)
-        let commandPaddingData = Data(repeating: 0, count: Self.size - commandData.count)
-        ret.addData(commandPaddingData, at: offset)
-        return ret
+        out.append(contentsOf: commandData)
+        let commandPaddingData = Data(repeating: 0, count: fullLength - commandData.count)
+        out.append(contentsOf: commandPaddingData)
     }
 }
+
+private let fullLength = 12

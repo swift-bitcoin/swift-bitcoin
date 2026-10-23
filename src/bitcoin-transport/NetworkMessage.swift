@@ -1,4 +1,5 @@
 import Foundation
+import BinaryParsing
 import BitcoinCrypto
 import BitcoinBlockchain
 
@@ -10,10 +11,9 @@ public struct NetworkMessage: Equatable, Sendable {
 
         self.magicBytes = magicBytes
         self.command = command
-        self.payloadSize = payload.count
         let payloadHash = Data(Hash256.hash(data: payload))
-        self.checksum = payloadHash.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
+        self.checksum = payloadHash.withParserSpan { input in
+            try! UInt32(parsingLittleEndian: &input)
         }
         self.payload = payload
     }
@@ -24,14 +24,13 @@ public struct NetworkMessage: Equatable, Sendable {
     /// The message's command which also determines the type of payload – if any – that the message will carry.
     public let command: MessageCommand
 
-    private let payloadSize: Int
     public let checksum: UInt32
     public let payload: Data
 
     public var isChecksumOk: Bool {
         let hash = Data(Hash256.hash(data: payload))
-        let realChecksum = hash.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
+        let realChecksum = hash.withParserSpan { input in
+            try! UInt32(parsingLittleEndian: &input)
         }
         return checksum == realChecksum
     }
@@ -41,52 +40,29 @@ public struct NetworkMessage: Equatable, Sendable {
     public static let payloadSizeEndIndex = 20
 }
 
-extension NetworkMessage {
+extension NetworkMessage: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= Self.baseSize else { return nil }
-        var data = data
-        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
-        let magicBytes = Int(data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        })
-        self.magicBytes = magicBytes
-        data = data.dropFirst(MemoryLayout<UInt32>.size)
-        guard let command = MessageCommand(data) else { return nil }
-        self.command = command
-        data = data.dropFirst(MessageCommand.size)
-
-        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
-        let payloadSize = Int(data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        })
-        self.payloadSize = payloadSize
-        data = data.dropFirst(MemoryLayout<UInt32>.size)
-
-        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
-        self.checksum = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self)
-        }
-        data = data.dropFirst(MemoryLayout<UInt32>.size)
-
-        guard data.count >= payloadSize else { return nil }
-        self.payload = data.prefix(payloadSize)
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        magicBytes = Int(try UInt32(parsingLittleEndian: &input))
+        command = try MessageCommand(parsing: &input)
+        let payloadSize = Int(try UInt32(parsingLittleEndian: &input))
+        checksum = try UInt32(parsingLittleEndian: &input)
+        payload = Data(try [UInt8](parsing: &input, byteCount: payloadSize))
     }
 
-    var size: Int {
-        Self.baseSize + payload.count
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt32.self)
+        counter.count(command)
+        counter.count(UInt32.self)
+        counter.count(UInt32.self)
+        counter.countSize(payload.count)
     }
 
-    public var data: Data {
-        var ret = Data(count: size)
-        let magicBytesData = Data(capacity: MemoryLayout<UInt32>.size) { out in
-            out.append(UInt32(magicBytes), as: UInt32.self, .littleEndian)
-        }
-        var offset = ret.addData(magicBytesData)
-        offset = ret.addData(command.data, at: offset)
-        offset = ret.addBytes(UInt32(payloadSize), at: offset)
-        offset = ret.addBytes(checksum, at: offset)
-        ret.addData(payload, at: offset)
-        return ret
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt32(magicBytes), as: UInt32.self, .littleEndian)
+        try command.encode(into: &out)
+        out.append(UInt32(payload.count), as: UInt32.self, .littleEndian)
+        out.append(checksum, as: UInt32.self, .littleEndian)
+        out.append(contentsOf: payload)
     }
 }

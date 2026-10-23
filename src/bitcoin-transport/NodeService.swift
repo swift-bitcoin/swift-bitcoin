@@ -363,7 +363,7 @@ public actor NodeService: Sendable {
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
     public func processMessage(_ message: NetworkMessage, from id: PeerID) async throws {
-        logger.info("Received \(message.command) (\(message.size)) from \(id)")
+        logger.info("Received \(message.command) (\(message.binarySize)) from \(id)")
         metrics.messagesReceived.increment()
         // Postpone the next ping
         state.peers[id]?.nextPingTask?.cancel()
@@ -618,7 +618,7 @@ public actor NodeService: Sendable {
 
         let ourTime = Date.now
 
-        guard let peerVersion = VersionMessage(message.payload) else {
+        guard let peerVersion = try? VersionMessage(message.payload) else {
             preconditionFailure()
         }
 
@@ -753,7 +753,7 @@ public actor NodeService: Sendable {
     private func processPing(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let peer = state.peers[id] else { return }
 
-        guard let ping = PingMessage(message.payload) else {
+        guard let ping = try? PingMessage(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -771,7 +771,7 @@ public actor NodeService: Sendable {
 
         guard let peer = state.peers[id] else { return }
 
-        guard let pong = PongMessage(message.payload) else {
+        guard let pong = try? PongMessage(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -796,7 +796,7 @@ public actor NodeService: Sendable {
     private func processSendCompact(_ message: NetworkMessage, from id: PeerID) throws {
         guard let peer = state.peers[id] else { return }
 
-        guard let sendCompact = SendCompactMessage(message.payload) else {
+        guard let sendCompact = try? SendCompactMessage(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -809,7 +809,7 @@ public actor NodeService: Sendable {
 
     /// BIP133
     private func processFeeFilter(_ message: NetworkMessage, from id: PeerID) throws {
-        guard let feeFilter = FeeFilterMessage(message.payload) else {
+        guard let feeFilter = try? FeeFilterMessage(message.payload) else {
             logger.error("Could not parse fee filter message")
             throw Error.invalidPayload
         }
@@ -820,7 +820,7 @@ public actor NodeService: Sendable {
     private func processGetHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { return }
 
-        guard let getHeaders = GetHeadersMessage(message.payload) else {
+        guard let getHeaders = try? GetHeadersMessage(message.payload) else {
             logger.error("Could not parse get headers message")
             throw Error.invalidPayload
         }
@@ -834,7 +834,7 @@ public actor NodeService: Sendable {
     private func processHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { return }
 
-        guard let headersMessage = HeadersMessage(message.payload) else {
+        guard let headersMessage = try? HeadersMessage(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -988,7 +988,7 @@ public actor NodeService: Sendable {
     private func processGetData(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        guard let getDataMessage = GetDataMessage(message.payload) else {
+        guard let getDataMessage = try? GetDataMessage(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -1025,7 +1025,7 @@ public actor NodeService: Sendable {
     private func processInventory(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        guard let inventoryMessage = InventoryMessage(message.payload) else {
+        guard let inventoryMessage = try? InventoryMessage(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -1078,7 +1078,7 @@ public actor NodeService: Sendable {
     private func processCompactBlock(_ message: NetworkMessage, from id: PeerID) async throws {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        guard let compactBlockMessage = CompactBlockMessage(message.payload) else {
+        guard let compactBlockMessage = try? CompactBlockMessage(message.payload) else {
             throw Error.invalidPayload
         }
 
@@ -1126,7 +1126,7 @@ public actor NodeService: Sendable {
 
     private func processGetBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
         guard let _ = state.peers[id] else { preconditionFailure() }
-        guard let getBlockTxsMessage = GetBlockTransactionsMessage(message.payload) else {
+        guard let getBlockTxsMessage = try? GetBlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
         }
         guard let block = await blockchain.block(for: getBlockTxsMessage.blockHash) else {
@@ -1143,7 +1143,7 @@ public actor NodeService: Sendable {
     private func processBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
         guard let _ = state.peers[id] else { preconditionFailure() }
 
-        guard let blockTxsMessage = BlockTransactionsMessage(message.payload) else {
+        guard let blockTxsMessage = try? BlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
         }
 

@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 import BitcoinBase
 
 /// BIP133 - https://github.com/bitcoin/bips/blob/master/bip-0133.mediawiki
@@ -14,18 +16,17 @@ public struct FeeFilterMessage: Equatable {
     static let size = MemoryLayout<UInt64>.size
 }
 
-extension FeeFilterMessage {
+extension FeeFilterMessage: BinaryCodable {
 
-    var data: Data {
-        Data(value: UInt64(feeRate))
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        feeRate = Amount(try UInt64(parsingLittleEndian: &input))
     }
 
-    public init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-        let feeRateRaw = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt64.self)
-        }
-        guard feeRateRaw <= Amount.max else { return nil }
-        feeRate = Amount(feeRateRaw)
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt64.self)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt64(feeRate), as: UInt64.self, .littleEndian)
     }
 }

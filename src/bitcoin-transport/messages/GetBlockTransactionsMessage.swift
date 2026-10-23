@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 /// BIP152: A `BlockTransactionsRequest` structure is used to list transaction indexes in a block being requested.
 ///
@@ -26,36 +28,26 @@ public struct GetBlockTransactionsMessage: Equatable {
     public let txIndices: [Int]
 }
 
-extension GetBlockTransactionsMessage {
+extension GetBlockTransactionsMessage: BinaryCodable {
 
-    public init?(_ data: Data) {
-        var data = data
-
-        guard data.count >= 32 else { return nil }
-        let blockHash = data.prefix(32)
-        self.blockHash = Data(blockHash)
-        data = data.dropFirst(blockHash.count)
-
-        guard let txCount = data.varInt else { return nil }
-        data = data.dropFirst(txCount.varIntSize)
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        blockHash = try Data([UInt8](parsing: &input, byteCount: Int(hashLength)))
+        let txCount = try VarInt(parsing: &input).value
 
         var txIndices = [Int]()
         var previousIndex = -1
         for _ in 0 ..< txCount {
-            guard let indexDiff = data.varInt else { return nil }
-            let index = Int(indexDiff) + previousIndex + 1
+            let indexDiff = try VarInt(parsing: &input).value
+            let index = indexDiff + previousIndex + 1
             txIndices.append(index)
-            data = data.dropFirst(indexDiff.varIntSize)
             previousIndex = index
         }
         self.txIndices = txIndices
     }
 
-    var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(blockHash)
-        offset = ret.addData(Data(varInt: UInt64(txIndices.count)), at: offset)
-
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.countSize(hashLength)
+        counter.count(VarInt(txIndices.count))
         var previousIndex = Int?.none
         for index in txIndices {
             let indexDiff = if let previousIndex {
@@ -64,12 +56,24 @@ extension GetBlockTransactionsMessage {
                 index
             }
             previousIndex = index
-            offset = ret.addData(Data(varInt: UInt64(indexDiff)), at: offset)
+            counter.count(VarInt(indexDiff))
         }
-        return ret
     }
 
-    var size: Int {
-        32 + UInt64(txIndices.count).varIntSize + txIndices.reduce(0) { $0 + UInt64($1).varIntSize }
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(contentsOf: blockHash)
+        try VarInt(txIndices.count).encode(into: &out)
+        var previousIndex = Int?.none
+        for index in txIndices {
+            let indexDiff = if let previousIndex {
+                index - previousIndex - 1
+            } else {
+                index
+            }
+            previousIndex = index
+            try VarInt(indexDiff).encode(into: &out)
+        }
     }
 }
+
+fileprivate let hashLength = SHA256.Digest.byteCount // 32 bytes

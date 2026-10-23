@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 /// BIP152
 public struct SendCompactMessage: Equatable {
@@ -10,32 +12,22 @@ public struct SendCompactMessage: Equatable {
 
     public let highBandwidth: Bool
     public let version: Int
-
-    static let size = MemoryLayout<UInt8>.size + MemoryLayout<UInt64>.size
 }
 
-extension SendCompactMessage {
+extension SendCompactMessage: BinaryCodable {
 
-    var data: Data {
-        var ret = Data(count: Self.size)
-        let offset = ret.addBytes(UInt8(highBandwidth ? 1 : 0))
-        ret.addBytes(UInt64(version), at: offset)
-        return ret
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        highBandwidth = try Int8(parsing: &input) != 0
+        version = Int(try UInt64(parsingLittleEndian: &input))
     }
 
-    public init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-        var data = data
-        let highBandwidth = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt8.self)
-        }
-        self.highBandwidth = highBandwidth == 1 ? true : false
-        data = data.dropFirst(MemoryLayout<UInt8>.size)
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt8.self)
+        counter.count(UInt64.self)
+    }
 
-        guard data.count >= MemoryLayout<UInt64>.size else { return nil }
-        let version = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt64.self)
-        }
-        self.version = Int(version)
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(highBandwidth ? 1 : 0, as: UInt8.self)
+        out.append(UInt64(version), as: UInt64.self, .littleEndian)
     }
 }

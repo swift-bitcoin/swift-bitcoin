@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 public enum TransportNetwork: Int {
 
@@ -39,17 +41,26 @@ public enum TransportNetwork: Int {
     }
 }
 
-extension TransportNetwork {
+extension TransportNetwork: BinaryCodable {
 
-    init?(_ data: Data) {
-        guard data.count >= Self.size else { return nil }
-        let value = data.withUnsafeBytes { $0.loadUnaligned(as: UInt8.self) }
-        self.init(rawValue: Int(value))
+    public enum ParseError: Error {
+        /// Invalid network identifier value.
+        case invalidNetworkIdentified(Int)
     }
 
-    var data: Data {
-        Data(value: UInt8(rawValue))
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        let value = Int(try UInt8(parsing: &input))
+        guard let network = TransportNetwork(rawValue: value) else {
+            throw ParseError.invalidNetworkIdentified(value)
+        }
+        self = network
     }
 
-    static var size: Int { MemoryLayout<UInt8>.size }
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt8.self)
+    }
+
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt8(rawValue))
+    }
 }

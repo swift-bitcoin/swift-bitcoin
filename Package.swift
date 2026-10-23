@@ -59,7 +59,7 @@ let package = Package(
             name: "BitcoinTransport",
             dependencies: ["BitcoinBlockchain", "BitcoinBase", "BitcoinCrypto",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")],
-            path: "src/bitcoin-transport"),
+            path: "src/bitcoin-transport", swiftSettings: [.strictMemorySafety()]),
         .target(
             name: "BitcoinBlockchain",
             dependencies: ["BitcoinBase", "BitcoinCrypto", "LMDB",

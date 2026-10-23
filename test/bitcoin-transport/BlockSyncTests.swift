@@ -176,7 +176,7 @@ struct BlockSyncTests {
         let mAB6_getheaders = try #require(await alice.popMessage(peerB))
         #expect(mAB6_getheaders.command == .getheaders)
 
-        let aliceGetHeaders = try #require(GetHeadersMessage(mAB6_getheaders.payload))
+        let aliceGetHeaders = try GetHeadersMessage(mAB6_getheaders.payload)
         #expect(aliceGetHeaders.locatorHashes.count == 1)
 
         let mAB7_feefilter = try #require(await alice.popMessage(peerB))
@@ -198,7 +198,7 @@ struct BlockSyncTests {
         let mBA6_getheaders = try #require(await bob.popMessage(peerA))
         #expect(mBA6_getheaders.command == .getheaders)
 
-        let bobGetHeaders = try #require(GetHeadersMessage(mBA6_getheaders.payload))
+        let bobGetHeaders = try GetHeadersMessage(mBA6_getheaders.payload)
         #expect(bobGetHeaders.locatorHashes.count == 4)
 
         let mBA7_feefilter = try #require(await bob.popMessage(peerA))
@@ -220,7 +220,7 @@ struct BlockSyncTests {
         let mBA9_headers = try #require(await bob.popMessage(peerA))
         #expect(mBA9_headers.command == .headers)
 
-        let bobHeaders = try #require(HeadersMessage(mBA9_headers.payload))
+        let bobHeaders = try HeadersMessage(mBA9_headers.payload)
         #expect(bobHeaders.items.count == 3)
         await #expect(aliceChain.genesisBlock.id == bobHeaders.items[0].previous)
         #expect(bobHeaders.items[0].id == bobHeaders.items[1].previous)
@@ -244,7 +244,7 @@ struct BlockSyncTests {
         let mAB9_headers = try #require(await alice.popMessage(peerB))
         #expect(mAB9_headers.command == .headers)
 
-        let aliceHeaders = try #require(HeadersMessage(mAB9_headers.payload))
+        let aliceHeaders = try HeadersMessage(mAB9_headers.payload)
         #expect(aliceHeaders.items.count == 0)
 
         // … --(feefilter)->> Alice
@@ -264,7 +264,7 @@ struct BlockSyncTests {
         let mAB11_getdata = try #require(await alice.popMessage(peerB))
         #expect(mAB11_getdata.command == .getdata)
 
-        let aliceGetData = try #require(GetDataMessage(mAB11_getdata.payload))
+        let aliceGetData = try GetDataMessage(mAB11_getdata.payload)
         #expect(aliceGetData.items.count == 2)
 
         // … --(pong)->> Bob
@@ -341,7 +341,7 @@ struct BlockSyncTests {
         let mAB12_getdata = try #require(await alice.popMessage(peerB))
         #expect(mAB12_getdata.command == .getdata)
 
-        let aliceGetData1 = try #require(GetDataMessage(mAB12_getdata.payload))
+        let aliceGetData1 = try GetDataMessage(mAB12_getdata.payload)
         #expect(aliceGetData1.items.count == 1)
 
         // … --(getdata)->> Bob

@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 public struct NetworkAddress: Equatable {
 
@@ -17,53 +19,29 @@ public struct NetworkAddress: Equatable {
     public let port: Int
 }
 
-extension NetworkAddress {
+extension NetworkAddress: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= Self.baseSize else { return nil }
-        var data = data
-
-        guard data.count >= MemoryLayout<UInt32>.size else { return nil }
-        let time = data.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
-        self.time = Date(timeIntervalSince1970: TimeInterval(time))
-        data = data.dropFirst(MemoryLayout<UInt32>.size)
-
-        guard let servicesValue = data.varInt else { return nil }
-        self.services = ProtocolServices(rawValue: servicesValue)
-        data = data.dropFirst(servicesValue.varIntSize)
-
-        guard let networkID = TransportNetwork(data) else { return nil }
-        self.networkID = networkID
-        data = data.dropFirst(TransportNetwork.size)
-
-        guard data.count >= networkID.addressLength else { return nil }
-        addressData = data.prefix(networkID.addressLength)
-        data = data.dropFirst(networkID.addressLength)
-
-        guard data.count >= MemoryLayout<UInt16>.size else { return nil }
-        let port = data.withUnsafeBytes { $0.loadUnaligned(as: UInt16.self) }
-        self.port = Int(port)
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        time = Date(timeIntervalSince1970: TimeInterval(try Int64(parsingLittleEndian: &input)))
+        services = ProtocolServices(rawValue: try VarInt(parsing: &input).rawValue)
+        networkID = try TransportNetwork(parsing: &input)
+        addressData = try Data([UInt8](parsing: &input, byteCount: networkID.addressLength))
+        port = Int(try UInt16(parsingLittleEndian: &input))
     }
 
-    var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addBytes(UInt32(time.timeIntervalSince1970))
-        offset = ret.addData(Data(varInt: services.rawValue), at: offset)
-        offset = ret.addData(networkID.data, at: offset)
-        offset = ret.addData(addressData, at: offset)
-        ret.addBytes(UInt16(port), at: offset)
-        return ret
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(UInt32.self)
+        counter.count(VarInt(rawValue: services.rawValue))
+        counter.count(networkID)
+        counter.countSize(networkID.addressLength)
+        counter.count(UInt16.self)
     }
 
-    var size: Int {
-        Self.baseSize +
-            services.rawValue.varIntSize +
-            networkID.addressLength
-    }
-
-    static var baseSize: Int {
-        MemoryLayout<UInt32>.size +
-            TransportNetwork.size +
-            MemoryLayout<UInt16>.size
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(UInt32(time.timeIntervalSince1970), as: UInt32.self, .littleEndian)
+        try VarInt(rawValue: services.rawValue).encode(into: &out)
+        try networkID.encode(into: &out)
+        out.append(contentsOf: addressData)
+        out.append(UInt16(port), as: UInt16.self, .littleEndian)
     }
 }

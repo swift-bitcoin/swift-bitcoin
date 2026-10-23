@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 import BitcoinBase
 
 /// BIP152: A `BlockTransactions` structure is used to provide some of the transactions in a block, as requested.
@@ -27,39 +29,32 @@ public struct BlockTransactionsMessage: Equatable {
     public let txs: [Transaction]
 }
 
-extension BlockTransactionsMessage {
+extension BlockTransactionsMessage: BinaryCodable {
 
-    public init?(_ data: Data) {
-        var data = data
-
-        guard data.count >= 32 else { return nil }
-        let blockHash = data.prefix(32)
-        self.blockHash = Data(blockHash)
-        data = data.dropFirst(blockHash.count)
-
-        guard let txCount = data.varInt else { return nil }
-        data = data.dropFirst(txCount.varIntSize)
-
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        blockHash = try Data([UInt8](parsing: &input, byteCount: Block.idLength))
+        let txCount = try VarInt(parsing: &input).value
         var txs = [Transaction]()
         for _ in 0 ..< txCount {
-            guard let tx = try? Transaction(data) else { return nil }
+            let tx = try Transaction(parsing: &input)
             txs.append(tx)
-            data = data.dropFirst(tx.binarySize)
         }
         self.txs = txs
     }
 
-    var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(blockHash)
-        offset = ret.addData(Data(varInt: UInt64(txs.count)), at: offset)
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.countSize(Block.idLength)
+        counter.count(VarInt(txs.count))
         for tx in txs {
-            offset = ret.addData(tx.data, at: offset)
+            tx.countBytes(into: &counter)
         }
-        return ret
     }
 
-    var size: Int {
-        32 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.binarySize }
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        out.append(contentsOf: blockHash)
+        try VarInt(txs.count).encode(into: &out)
+        for tx in txs {
+            try tx.encode(into: &out)
+        }
     }
 }

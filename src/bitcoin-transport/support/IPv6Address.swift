@@ -125,6 +125,8 @@ public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomD
             .unspecified
         }
     }
+
+    public static let size = length
 }
 
 extension IPv6Address {
@@ -141,6 +143,8 @@ extension IPv6Address {
     }
 }
 
+/*
+ Commenting out while the #Playground macro gives unsafe warnings.
 #if canImport(Playgrounds)
 import Playgrounds
 #Playground {
@@ -155,3 +159,4 @@ import Playgrounds
     _ = IPv6Address.parse(ipv4p)
 }
 #endif
+*/

@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
 
@@ -41,75 +43,63 @@ public struct CompactBlockMessage: Equatable {
     public let txs: [PrefilledTransaction]
 }
 
-extension CompactBlockMessage {
+extension CompactBlockMessage: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= 1 else { return nil }
-        var data = data
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
+        header = try Block(parsing: &input, format: .headerOnly)
+        nonce = try UInt64(parsingLittleEndian: &input)
 
-        guard let header = try? Block(data, binaryFormat: .headerOnly) else { return nil }
-        self.header = header
-        data = data.dropFirst(Block.headerSize) // Data does not include the empty transaction array
-
-        guard data.count >= MemoryLayout<UInt64>.size else { return nil }
-        let nonce = data.withUnsafeBytes {
-            $0.loadUnaligned(as: UInt64.self)
-        }
-        self.nonce = nonce
-        data = data.dropFirst(MemoryLayout<UInt64>.size)
-
-        guard let txIDCount = data.varInt else { return nil }
-        data = data.dropFirst(txIDCount.varIntSize)
+        let txIDCount = try VarInt(parsing: &input).value
         var txIDs = [UInt64]()
         for _ in 0 ..< txIDCount {
-            guard data.count >= 6 else { return nil }
-            let identifier = (data.prefix(6) + Data(count: 2)).withUnsafeBytes {
-                $0.loadUnaligned(as: UInt64.self)
-            }
+            let part1 = try UInt32(parsingLittleEndian: &input)
+            let part2 = try UInt16(parsingLittleEndian: &input)
+            let identifier = (UInt64(part2) << 32) | UInt64(part1)
             txIDs.append(identifier)
-            data = data.dropFirst(6)
         }
         self.txIDs = txIDs
 
-        guard let txCount = data.varInt else { return nil }
-        data = data.dropFirst(txCount.varIntSize)
+        let txCount = try VarInt(parsing: &input).value
         var txs = [PrefilledTransaction]()
         var previousIndex = -1
         for _ in 0 ..< txCount {
-            guard let tx = PrefilledTransaction(data, previousIndex: previousIndex) else { return nil }
+            let tx = try PrefilledTransaction(parsing: &input, format: .init(previousIndex: previousIndex))
             previousIndex = tx.index
             txs.append(tx)
-            data = data.dropFirst(tx.size)
         }
         self.txs = txs
     }
 
-    var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(header.data(binaryFormat: .headerOnly))
-        offset = ret.addBytes(nonce, at: offset)
-
-        offset = ret.addData(Data(varInt: UInt64(txIDs.count)), at: offset)
-        for identifier in txIDs {
-            let data = withUnsafeBytes(of: UInt64(identifier)) {
-                Data($0)
-            }
-            // Keep only 6 less significant bytes.
-            offset = ret.addData(data.prefix(6), at: offset)
-        }
-
-        offset = ret.addData(Data(varInt: UInt64(txs.count)), at: offset)
-
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(header, format: .headerOnly)
+        counter.count(UInt64.self)
+        counter.count(VarInt(txIDs.count))
+        counter.countSize((MemoryLayout<UInt32>.size + MemoryLayout<UInt16>.size) * txIDs.count)
+        counter.count(VarInt(txs.count))
         var previousIndex = Int?.none
         for tx in txs {
-            offset = ret.addData(tx.getData(previousIndex: previousIndex), at: offset)
+            counter.count(tx, format: previousIndex == nil ? nil : .init(previousIndex: previousIndex!))
             previousIndex = tx.index
         }
-
-        return ret
     }
 
-    var size: Int {
-        Block.headerSize + MemoryLayout<UInt64>.size + UInt64(txIDs.count).varIntSize + txIDs.count * 6 + UInt64(txs.count).varIntSize + txs.reduce(0) { $0 + $1.size }
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try header.encode(into: &out, format: .headerOnly)
+        out.append(nonce, as: UInt64.self, .littleEndian)
+
+        try VarInt(txIDs.count).encode(into: &out)
+        for identifier in txIDs {
+            let part1 = UInt32(truncatingIfNeeded: identifier & 0xFFFFFFFF) // lower 4 bytes
+            let part2 = UInt16(truncatingIfNeeded: (identifier >> 32) & 0xFFFF) // next 2 bytes
+            out.append(part1, as: UInt32.self, .littleEndian)
+            out.append(part2, as: UInt16.self, .littleEndian)
+        }
+
+        try VarInt(txs.count).encode(into: &out)
+        var previousIndex = Int?.none
+        for tx in txs {
+            try tx.encode(into: &out, format: previousIndex == nil ? nil : .init(previousIndex: previousIndex!))
+            previousIndex = tx.index
+        }
     }
 }

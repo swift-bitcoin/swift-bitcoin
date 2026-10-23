@@ -191,14 +191,14 @@ struct NodeServiceTests: ~Copyable {
         let messageHS6_getheaders = try #require(await hal.popMessage(satoshiPeer))
         #expect(messageHS6_getheaders.command == .getheaders)
 
-        let halGetHeaders = try #require(GetHeadersMessage(messageHS6_getheaders.payload))
+        let halGetHeaders = try GetHeadersMessage(messageHS6_getheaders.payload)
         #expect(halGetHeaders.locatorHashes.count == 1)
 
         // Hal --(feefilter)->> …
         let messageHS7_feefilter = try #require(await hal.popMessage(satoshiPeer))
         #expect(messageHS7_feefilter.command == .feefilter)
 
-        let halFeeRate = try #require(FeeFilterMessage(messageHS7_feefilter.payload))
+        let halFeeRate = try FeeFilterMessage(messageHS7_feefilter.payload)
         halState = await hal.state
         #expect(halFeeRate.feeRate == halState.feeFilterRate)
         #expect(halState.peers[satoshiPeer]!.versionAckReceived)
@@ -219,14 +219,14 @@ struct NodeServiceTests: ~Copyable {
         let messageSH6_getheaders = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH6_getheaders.command == .getheaders)
 
-        let satoshiGetHeaders = try #require(GetHeadersMessage(messageSH6_getheaders.payload))
+        let satoshiGetHeaders = try GetHeadersMessage(messageSH6_getheaders.payload)
         #expect(satoshiGetHeaders.locatorHashes.count == 2)
 
         // Satoshi --(feefilter)->> …
         let messageSH7_feefilter = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH7_feefilter.command == .feefilter)
 
-        let satoshiFeeRate = try #require(FeeFilterMessage(messageSH7_feefilter.payload))
+        let satoshiFeeRate = try FeeFilterMessage(messageSH7_feefilter.payload)
         satoshiState = await satoshi.state
         #expect(satoshiFeeRate.feeRate == satoshiState.feeFilterRate)
         #expect(satoshiState.peers[halPeer]!.versionAckReceived)
@@ -251,7 +251,7 @@ struct NodeServiceTests: ~Copyable {
         let messageSH9_headers = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH9_headers.command == .headers)
 
-        let satoshiHeaders = try #require(HeadersMessage(messageSH9_headers.payload))
+        let satoshiHeaders = try HeadersMessage(messageSH9_headers.payload)
         #expect(satoshiHeaders.items.count == 1)
 
         // … --(feefilter)->> Satoshi
@@ -278,7 +278,7 @@ struct NodeServiceTests: ~Copyable {
         let messageHS8_headers = try #require(await hal.popMessage(satoshiPeer))
         #expect(messageHS8_headers.command == .headers)
 
-        let halHeaders = try #require(HeadersMessage(messageHS8_headers.payload))
+        let halHeaders = try HeadersMessage(messageHS8_headers.payload)
         #expect(halHeaders.items.count == 0)
 
         // … --(feefilter)->> Hal
@@ -306,7 +306,7 @@ struct NodeServiceTests: ~Copyable {
         let messageHS10_getdata = try #require(await hal.popMessage(satoshiPeer))
         #expect(messageHS10_getdata.command == .getdata)
 
-        let halGetData = try #require(GetDataMessage(messageHS10_getdata.payload))
+        let halGetData = try GetDataMessage(messageHS10_getdata.payload)
         #expect(halGetData.items.count == 1)
 
         // … --(pong)->> Satoshi
@@ -528,7 +528,7 @@ struct NodeServiceTests: ~Copyable {
         await Task.yield()
         #expect(messageHS0_ping.command == .ping)
 
-        let ping = try #require(PingMessage(messageHS0_ping.payload))
+        let ping = try PingMessage(messageHS0_ping.payload)
         var lastPingNonce = await hal.state.peers[satoshiPeer]!.lastPingNonce
         #expect(lastPingNonce != nil)
 
@@ -538,7 +538,7 @@ struct NodeServiceTests: ~Copyable {
         let messageSH0_pong = try #require(await satoshi.popMessage(halPeer))
         #expect(messageSH0_pong.command == .pong)
 
-        let pong = try #require(PongMessage(messageSH0_pong.payload))
+        let pong = try PongMessage(messageSH0_pong.payload)
         #expect(ping.nonce == pong.nonce)
 
         // … --(pong)->> Hal

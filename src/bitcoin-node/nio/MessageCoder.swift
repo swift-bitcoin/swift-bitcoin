@@ -26,7 +26,7 @@ struct MessageCoder: ByteToMessageDecoder, MessageToByteEncoder {
             return .needMoreData
         }
 
-        guard let message = NetworkMessage(messageData) else {
+        guard let message = try? NetworkMessage(messageData) else {
             print("Malformed message")
             // TODO: Throw corresponding errors.
             return .continue

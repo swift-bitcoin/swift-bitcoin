@@ -1,4 +1,6 @@
 import Foundation
+import BinaryParsing
+import BitcoinCrypto
 
 /// BIP155
 public struct AddrV2Message: Equatable {
@@ -10,30 +12,38 @@ public struct AddrV2Message: Equatable {
     public let addresses: [NetworkAddress]
 }
 
-extension AddrV2Message {
+extension AddrV2Message: BinaryCodable {
 
-    public init?(_ data: Data) {
-        guard data.count >= 1 else { return nil }
+    public enum ParseError: Error {
+        /// Maximum address count is 1000.
+        case tooManyAddresses
+    }
+
+    public init(parsing input: inout ParserSpan, format: Never?) throws {
         // BIP155: One message can contain up to 1,000 addresses. Clients SHOULD reject messages with more addresses.
-        guard let addressesCount = data.varInt, addressesCount <= 1_000 else { return nil }
+        let addressesCount = try VarInt(parsing: &input).value
+        guard addressesCount <= 1_000 else {
+            throw ParsingError(userError: ParseError.tooManyAddresses)
+        }
         var addresses = [NetworkAddress]()
         for _ in 0 ..< addressesCount {
-            guard let address = NetworkAddress(data) else { return nil }
+            let address = try NetworkAddress(parsing: &input)
             addresses.append(address)
         }
         self.addresses = addresses
     }
 
-    var data: Data {
-        var ret = Data(count: size)
-        var offset = ret.addData(Data(varInt: UInt64(addresses.count)))
+    public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
+        counter.count(VarInt(addresses.count))
         for address in addresses {
-            offset = ret.addData(address.data, at: offset)
+            counter.count(address)
         }
-        return ret
     }
 
-    var size: Int {
-        UInt64(addresses.count).varIntSize + addresses.reduce(0) { $0 + $1.size }
+    public func encode(into out: inout OutputRawSpan, format: Never?) throws {
+        try VarInt(addresses.count).encode(into: &out)
+        for address in addresses {
+            try address.encode(into: &out)
+        }
     }
 }
