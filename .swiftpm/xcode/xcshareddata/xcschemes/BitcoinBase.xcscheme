@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "2620"
+   LastUpgradeVersion = "2710"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -17,7 +17,6 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "BitcoinBase"
                BuildableName = "BitcoinBase"
-               BlueprintName = "BitcoinBase"
                ReferencedContainer = "container:">
             </BuildableReference>
          </BuildActionEntry>
@@ -39,7 +38,8 @@
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
-      allowLocationSimulation = "YES">
+      allowLocationSimulation = "YES"
+      queueDebuggingEnabled = "No">
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -52,7 +52,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BitcoinBase"
             BuildableName = "BitcoinBase"
-            BlueprintName = "BitcoinBase"
             ReferencedContainer = "container:">
          </BuildableReference>
       </MacroExpansion>
