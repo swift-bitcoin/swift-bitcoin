@@ -76,7 +76,7 @@ struct BitcoinCryptoTests {
         #expect(valid)
 
         // Tweak
-        let tweak = Data(Hash256.hash(data: "I am Satoshi.".data(using: .utf8)!))
+        let tweak = Data(SHA256d.hash(data: "I am Satoshi.".data(using: .utf8)!))
         let tweakedSecretKey = secretKey.tweakXOnly(tweak)
         let sig2 = try #require(tweakedSecretKey.signSchnorr(message))
 

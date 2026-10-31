@@ -26,7 +26,7 @@ public struct BlockRef: Equatable, Hashable, Sendable {
     public internal(set) var status: ValidationStatus
     var locator: BlockStorageLocator?
 
-    var skip: Block.ID? = nil
+    var skip: BlockHash? = nil
 
     // MARK: - Computed Properties
 

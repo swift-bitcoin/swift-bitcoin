@@ -26,7 +26,7 @@ struct ChainTips: AsyncParsableCommand {
             case .header: .headersOnly
             case .invalid: .invalid
             }
-            return GetChainTipsRPC.Tip(height: $0.height, hash: $0.tip.reversed().hex, branchlen: $0.branchLength, status: status)
+            return GetChainTipsRPC.Tip(height: $0.height, hash: $0.tip.displayHex, branchlen: $0.branchLength, status: status)
         }
 
         let encoder = JSONEncoder()

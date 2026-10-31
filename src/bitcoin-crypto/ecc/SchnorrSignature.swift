@@ -62,14 +62,14 @@ public struct SchnorrSignature: Equatable, Sendable, CustomStringConvertible {
     }
 
     /// Actually hash256
-    static let hashLength = Hash256.Digest.byteCount
+    static let hashLength = SHA256d.Digest.byteCount
 
     /// Standard Schnorr signature extended with the sighash type byte.
     public static let schnorrSignatureLength = 64
 }
 
 private func getMessageHash(messageData: Data) -> Data {
-    Data(Hash256.hash(data: messageData))
+    Data(SHA256d.hash(data: messageData))
 }
 
 /// Requires global signing context to be initialized.

@@ -176,7 +176,7 @@ public struct ECDSASignature: Equatable, Sendable, CustomStringConvertible {
 
 
     /// Actually hash256
-    static let hashLength = Hash256.Digest.byteCount
+    static let hashLength = SHA256d.Digest.byteCount
 
     /// Non-canonical ECDSA signature serializations can grow up to 72 bytes without the sighash type 1-byte extension.
     public static let ecdsaSignatureMaxLength = 72
@@ -189,7 +189,7 @@ public struct ECDSASignature: Equatable, Sendable, CustomStringConvertible {
 // MARK: - Some helper functions
 
 private func getMessageHash(messageData: Data) -> Data {
-    Data(Hash256.hash(data: messageData))
+    Data(SHA256d.hash(data: messageData))
 }
 
 // MARK: - ECDSA Compact

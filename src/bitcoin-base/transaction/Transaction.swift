@@ -45,23 +45,25 @@ public struct Transaction: Equatable, Sendable {
     // MARK: - Computed Properties
 
     /// The transaction's identifier. More [here](https://learnmeabitcoin.com/technical/txid). Serialized as big-endian.
-    public var id: Data { Data(Hash256.hash(data: data(binaryFormat: .noWitness))) }
+    public var id: TransactionIdentifier {
+        TransactionIdentifier(Hash256(SHA256d.hash(data: data(binaryFormat: .noWitness))))
+    }
 
-    public var idHex: String { id.reversed().hex }
+    public var idHex: String { id.displayHex }
 
     /// BIP141
     /// The transaction's witness identifier as defined in BIP141. More [here](https://river.com/learn/terms/w/wtxid/). Serialized as big-endian.
-    public var witnessID: Data {
+    public var witnessID: WitnessTransactionIdentifier {
         guard hasWitness else {
-            return id
+            return WitnessTransactionIdentifier(Hash256(SHA256d.hash(data: data(binaryFormat: .noWitness))))
         }
         if isCoinbase {
             return Self.coinbaseWitnessID
         }
-        return Data(Hash256.hash(data: data))
+        return WitnessTransactionIdentifier(Hash256(SHA256d.hash(data: data)))
     }
 
-    public var witnessIDHex: String { witnessID.reversed().hex }
+    public var witnessIDHex: String { witnessID.displayHex }
 
     /// BIP141: Transaction weight is defined as Base transaction size * 3 + Total transaction size (ie. the same method as calculating Block weight from Base size and Total size).
     public var weight: Int { binarySize(format: .noWitness) * 3 + binarySize }
@@ -113,7 +115,7 @@ public struct Transaction: Equatable, Sendable {
         return genesisTx
     }
 
-    public static func coinbase(version: Version? = nil, blockHeight: Int, out: TransactionOutput, witnessMerkleRoot: Data, tag: String? = nil) -> Self {
+    public static func coinbase(version: Version? = nil, blockHeight: Int, out: TransactionOutput, witnessMerkleRoot: WitnessMerkleRoot, tag: String? = nil) -> Self {
 
         var ops = [Script.Operation.encodeMinimally(blockHeight), .zero]
         if let tag, let utf8Data = tag.data(using: .utf8) {
@@ -143,9 +145,7 @@ extension Transaction {
         hasWitness ? Transaction.segwitMarkerAndFlag.count + ins.reduce(0) { $0 + $1.witness.binarySize } : 0
     }
 
-    public static let idLength = Hash256.Digest.byteCount
-
-    public static let coinbaseWitnessID = Data(count: idLength)
+    public static let coinbaseWitnessID = WitnessTransactionIdentifier.zero
 
     /// BIP141
     private static let segwitMarkerAndFlag = Data([0, 1])

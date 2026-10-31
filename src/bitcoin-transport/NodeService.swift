@@ -136,7 +136,7 @@ public actor NodeService: Sendable {
     private var blockChannels = [AsyncChannel<Block>]()
 
     /// BIP152
-    private var pendingBlockTxs: [Block.ID : [Transaction?]] = [:]
+    private var pendingBlockTxs: [BlockHash : [Transaction?]] = [:]
 
     /// The peer currently downloading headers from; `nil` means the peer has not been selected yet or we are close to the tip and accepting headers from all peers.
     private var headersSyncPeerID: PeerID?
@@ -144,7 +144,7 @@ public actor NodeService: Sendable {
     private var maxPeerID = 0
 
     // Blocks downloaded and being processed
-    private var processingBlocks = Set<Block.ID>()
+    private var processingBlocks = Set<BlockHash>()
 
     private func startSubscriptions() async {
         await withDiscardingTaskGroup { group in
@@ -428,7 +428,7 @@ public actor NodeService: Sendable {
 
     private func sendTx(_ tx: Transaction, to id: PeerID) async {
         guard let _ = state.peers[id] else { return }
-        let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTx, hash: tx.witnessID)])
+        let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTx, hash: tx.witnessID.hash)])
         await send(.inv, payload: inventoryMessage.data, to: id)
     }
 
@@ -473,7 +473,7 @@ public actor NodeService: Sendable {
         let numberOfBlocksToRequest = config.maxInTransitBlocks - peer.inTransitBlocks.count
         guard numberOfBlocksToRequest > 0 else { return }
 
-        let allInTransitBlocks = state.peers.values.reduce(Set<Block.ID>()) {
+        let allInTransitBlocks = state.peers.values.reduce(Set<BlockHash>()) {
             $0.union($1.inTransitBlocks)
         }
 
@@ -487,7 +487,7 @@ public actor NodeService: Sendable {
 
         let ibd = await blockchain.isInitialBlockDownload
         let getData = GetDataMessage(
-            items: blockIDs.map { .init(type: ibd ? .witnessBlock : .compactBlock, hash: $0) }
+            items: blockIDs.map { .init(type: ibd ? .witnessBlock : .compactBlock, hash: $0.hash) }
         )
         enqueue(.getdata, payload: getData.data, to: id)
     }
@@ -499,7 +499,7 @@ public actor NodeService: Sendable {
         let numberOfBlocksToRequest = config.maxInTransitBlocks - peer.inTransitBlocks.count
         guard numberOfBlocksToRequest > 0 else { return }
 
-        let allInTransitBlocks = state.peers.values.reduce(Set<Block.ID>()) {
+        let allInTransitBlocks = state.peers.values.reduce(Set<BlockHash>()) {
             $0.union($1.inTransitBlocks)
         }
 
@@ -559,7 +559,7 @@ public actor NodeService: Sendable {
                         if peer.prefersHeaders {
                             await self.send(.headers, payload: headersMessage.data, to: id)
                         } else {
-                            let inventoryMessage = InventoryMessage(items: [.init(type: .block, hash:  block.id)]
+                            let inventoryMessage = InventoryMessage(items: [.init(type: .block, hash:  block.id.hash)]
                             )
                             await self.send(.inv, payload: inventoryMessage.data, to: id)
                         }
@@ -825,7 +825,7 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
-        logger.info("getheaders: \(getHeaders.locatorHashes.first?.hex ?? "-")")
+        logger.info("getheaders: \(getHeaders.locatorHashes.first?.displayHex ?? "-")")
         let headers = await blockchain.headers(matching: getHeaders.locatorHashes)
         let headersMessage = HeadersMessage(items: headers)
         enqueue(.headers, payload: headersMessage.data, to: id)
@@ -996,7 +996,7 @@ public actor NodeService: Sendable {
             return
         }
 
-        let compactBlockHashes = getDataMessage.items.filter { $0.type == .compactBlock }.map { $0.hash }
+        let compactBlockHashes = getDataMessage.items.filter { $0.type == .compactBlock }.map { BlockHash($0.hash) }
         if !compactBlockHashes.isEmpty {
             let blocks = await blockchain.blocks(matching: compactBlockHashes)
             for block in blocks {
@@ -1004,7 +1004,7 @@ public actor NodeService: Sendable {
             }
         }
 
-        let blockHashes = getDataMessage.items.filter { $0.type == .witnessBlock }.map { $0.hash }
+        let blockHashes = getDataMessage.items.filter { $0.type == .witnessBlock }.map { BlockHash($0.hash) }
         if !blockHashes.isEmpty {
             let blocks = await blockchain.blocks(matching: blockHashes)
 
@@ -1013,7 +1013,7 @@ public actor NodeService: Sendable {
             }
         }
 
-        let txHashes = getDataMessage.items.filter { $0.type == .witnessTx }.map { $0.hash }
+        let txHashes = getDataMessage.items.filter { $0.type == .witnessTx }.map { TransactionIdentifier($0.hash) }
         if !txHashes.isEmpty {
             let txs = await blockchain.transactions(matching: txHashes)
             for tx in txs {
@@ -1029,14 +1029,14 @@ public actor NodeService: Sendable {
             throw Error.invalidPayload
         }
 
-        var blockIDs = [Block.ID]()
-        var txIDs = [Transaction.ID]()
+        var blockIDs = [BlockHash]()
+        var txIDs = [TransactionIdentifier]()
         for item in inventoryMessage.items {
             switch item.type {
             case .witnessBlock, .block:
-                blockIDs.append(item.hash)
+                blockIDs.append(BlockHash(item.hash))
             case .witnessTx, .transaction, .legacyWitnessTx:
-                txIDs.append(item.hash)
+                txIDs.append(TransactionIdentifier(item.hash))
             default:
                 preconditionFailure("Received unknown inventory type \(item.type)")
             }
@@ -1044,11 +1044,11 @@ public actor NodeService: Sendable {
         var items = [InventoryItem]()
         if await !blockchain.isInitialBlockDownload {
             for txID in await blockchain.missingTransactions(matching: txIDs) {
-                items.append(.init(type: .witnessTx, hash: txID))
+                items.append(.init(type: .witnessTx, hash: txID.hash))
             }
         }
         for blockID in await blockchain.missingBlocks(matching: blockIDs) {
-            items.append(.init(type: .witnessBlock, hash: blockID))
+            items.append(.init(type: .witnessBlock, hash: blockID.hash))
         }
         guard !items.isEmpty else { return }
         let getData = GetDataMessage(items: items)

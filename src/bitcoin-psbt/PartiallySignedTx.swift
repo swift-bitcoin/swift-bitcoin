@@ -200,7 +200,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                 case PSBTInputKeyType.hash256Preimage.rawValue:
                     let hash = k.data
                     let preimage = v
-                    guard Data(Hash256.hash(data: preimage)) == hash else {
+                    guard Data(SHA256d.hash(data: preimage)) == hash else {
                         throw .hashPreimageMismatch
                     }
                     hash256Preimages.insert(preimage)
@@ -331,7 +331,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                 entries[.init(PSBTInputKeyType.hash160Preimage, data: Data(Hash160.hash(data: preimage)))] = preimage
             }
             for preimage in hash256Preimages {
-                entries[.init(PSBTInputKeyType.hash256Preimage, data: Data(Hash256.hash(data: preimage)))] = preimage
+                entries[.init(PSBTInputKeyType.hash256Preimage, data: Data(SHA256d.hash(data: preimage)))] = preimage
             }
             var proprietaryTypes: KeyedValues = [:]
             for (id, subkey) in proprietaryInfo {

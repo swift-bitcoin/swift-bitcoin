@@ -114,7 +114,7 @@ extension ScriptRuntime {
     /// The input is hashed twice with SHA-256.
     mutating func opHash256() throws {
         let first = try getUnaryParam()
-        stack.append(Data(Hash256.hash(data: first)))
+        stack.append(Data(SHA256d.hash(data: first)))
     }
 
     /// The input is hashed using RIPEMD-160.

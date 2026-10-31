@@ -15,7 +15,7 @@ extension GetChainTipsRPC {
             case .header: .headersOnly
             case .invalid: .invalid
             }
-            return Tip(height: $0.height, hash: $0.tip.reversed().hex, branchlen: $0.branchLength, status: status)
+            return Tip(height: $0.height, hash: $0.tip.displayHex, branchlen: $0.branchLength, status: status)
         }
     }
 }

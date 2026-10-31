@@ -8,10 +8,9 @@ extension GetBlockRPC {
 
     public func run(blockchain: BlockchainService) async throws(JSONRPCResponse.Error) -> Result {
 
-        guard let blockIDByteSwapped = Data(hex: params.blockID), blockIDByteSwapped.count == Block.idLength else {
+        guard let blockID = BlockHash(displayHex: params.blockID) else {
             throw .init(.invalidParams, "Invalid block hash.")
         }
-        let blockID = Data(blockIDByteSwapped.reversed())
         guard let block = await blockchain.block(for: blockID) else {
             throw .init(.invalidParams, "Block not found.")
         }
@@ -34,7 +33,7 @@ extension GetBlockRPC {
             height: info.height,
             version: block.version,
             versionHex: blockVersionData.hex, // verion as hex string
-            merkleRoot: block.merkleRoot.reversed().hex,
+            merkleRoot: block.merkleRoot.displayHex,
             time: Int(block.time.timeIntervalSince1970),
             medianTime: Int(info.medianTime.timeIntervalSince1970),
             nonce: block.nonce,
@@ -42,8 +41,8 @@ extension GetBlockRPC {
             difficulty: info.difficulty, // block.difficulty as double
             chainwork: info.chainwork.reversed().hex,
             transactionCount: txs.count,
-            previous: block.previous.reversed().hex,
-            nextBlock: info.next?.reversed().hex,
+            previous: block.previous.displayHex,
+            nextBlock: info.next?.displayHex,
             strippedsize: block.binarySize(format: .noWitness),
             size: block.binarySize,
             weight: block.weight,

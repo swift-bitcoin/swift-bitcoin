@@ -129,7 +129,7 @@ public struct SHA256: ExpB, ModO, ModN, ModD, ModU {
 public struct Hash256: ExpB, ModO, ModN, ModD, ModU {
 
     public init(_ h: Data) {
-        precondition(h.count == BitcoinCrypto.Hash256.Digest.byteCount)
+        precondition(h.count == BitcoinCrypto.SHA256d.Digest.byteCount)
         self.h = h
     }
 

@@ -47,6 +47,20 @@ package struct Database: ~Copyable {
         }
     }
 
+    package func get(_ key: inout MutableSpan<UInt8>) throws(AccessError) -> Data? {
+        //var mutableKey = key
+        var data: Data?
+        do {
+            data = try key.withUnsafeMutableBytes {
+                var keyData = MDB_val(mv_size: $0.count, mv_data: $0.baseAddress)
+                return try get(&keyData)
+            }
+        } catch {
+            throw error as! AccessError
+        }
+        return data
+    }
+
     package func get(_ key: Data) throws(AccessError) -> Data? {
         var mutableKey = key
         var data: Data?

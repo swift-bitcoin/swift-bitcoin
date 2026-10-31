@@ -235,7 +235,7 @@ struct NodeBootstrapTests {
         #expect(messageAB1_inv.command == .inv)
 
         let inv0 = try InventoryMessage(messageAB1_inv.payload)
-        #expect(inv0.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(inv0.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         // … --(inv)->> Bob
         try await bob.processMessage(messageAB1_inv, from: peerA)
@@ -245,7 +245,7 @@ struct NodeBootstrapTests {
         #expect(messageBA0_getdata.command == .getdata)
 
         let getData0 = try GetDataMessage(messageBA0_getdata.payload)
-        #expect(getData0.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(getData0.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         // … --(getdata)->> Alice
         try await alice.processMessage(messageBA0_getdata, from: peerB)
@@ -265,7 +265,7 @@ struct NodeBootstrapTests {
         #expect(messageBC1_inv.command == .inv)
 
         let inv1 = try InventoryMessage(messageBC1_inv.payload)
-        #expect(inv1.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(inv1.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         // … --(inv)->> Carol
         try await carol.processMessage(messageBC1_inv, from: carolPeerB)
@@ -275,7 +275,7 @@ struct NodeBootstrapTests {
         #expect(messageCB0_getdata.command == .getdata)
 
         let getData1 = try GetDataMessage(messageCB0_getdata.payload)
-        #expect(getData1.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(getData1.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         // … --(getdata)->> Bob
         try await bob.processMessage(messageCB0_getdata, from: peerC)
@@ -403,7 +403,7 @@ struct NodeBootstrapTests {
         #expect(messageAB2_inv.command == .inv)
 
         let inv0 = try InventoryMessage(messageAB2_inv.payload)
-        #expect(inv0.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(inv0.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         // … --(inv)->> Bob
         // try await bob.processMessage(messageAB2_inv, from: peerA)
@@ -414,13 +414,13 @@ struct NodeBootstrapTests {
         #expect(messageBA0_inv.command == .inv)
 
         let inv1 = try InventoryMessage(messageBA0_inv.payload)
-        #expect(inv1.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(inv1.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         let messageBC2_inv = try #require(await bobToCarol.next())
         #expect(messageBC2_inv.command == .inv)
 
         let inv2 = try InventoryMessage(messageBC2_inv.payload)
-        #expect(inv2.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(inv2.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         // … --(inv)->> Carol
         // Carol will not have a copy of the transaction therefore will have to request it
@@ -529,7 +529,7 @@ struct NodeBootstrapTests {
         #expect(messageBA1_getdata.command == .getdata)
 
         let getData0 = try GetDataMessage(messageBA1_getdata.payload)
-        #expect(getData0.items == [.init(type: .witnessBlock, hash: block0.id)])
+        #expect(getData0.items == [.init(type: .witnessBlock, hash: block0.id.hash)])
 
         // … --(getdata)->> Alice
         try await alice.processMessage(messageBA1_getdata, from: peerB)
@@ -566,7 +566,7 @@ struct NodeBootstrapTests {
         #expect(messageCB1_getdata.command == .getdata)
 
         let getData1 = try GetDataMessage(messageCB1_getdata.payload)
-        #expect(getData1.items == [.init(type: .witnessBlock, hash: block0.id)])
+        #expect(getData1.items == [.init(type: .witnessBlock, hash: block0.id.hash)])
 
         // … --(getdata)->> Bob
         try await bob.processMessage(messageCB1_getdata, from: peerC)
@@ -613,7 +613,7 @@ struct NodeBootstrapTests {
         #expect(messageBA3_getdata.command == .getdata)
 
         let getData2 = try GetDataMessage(messageBA3_getdata.payload)
-        #expect(getData2.items == [.init(type: .compactBlock, hash: aliceBlock1.id)])
+        #expect(getData2.items == [.init(type: .compactBlock, hash: aliceBlock1.id.hash)])
 
         // … --(getdata)->> Alice
         try await alice.processMessage(messageBA3_getdata, from: peerB)
@@ -651,7 +651,7 @@ struct NodeBootstrapTests {
         #expect(messageCB3_getdata.command == .getdata)
 
         let getData3 = try GetDataMessage(messageCB3_getdata.payload)
-        #expect(getData3.items == [.init(type: .compactBlock, hash: aliceBlock1.id)])
+        #expect(getData3.items == [.init(type: .compactBlock, hash: aliceBlock1.id.hash)])
 
         // … --(getdata)->> Bob
         try await bob.processMessage(messageCB3_getdata, from: peerC)
@@ -697,7 +697,7 @@ struct NodeBootstrapTests {
         #expect(messageAB4_inv.command == .inv)
 
         let inv4 = try InventoryMessage(messageAB4_inv.payload)
-        #expect(inv4.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(inv4.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         // … --(inv)->> Bob
         // try await bob.processMessage(messageAB4_inv, from: peerA)
@@ -708,13 +708,13 @@ struct NodeBootstrapTests {
         #expect(messageBA5_inv.command == .inv)
 
         let inv5 = try InventoryMessage(messageBA5_inv.payload)
-        #expect(inv5.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(inv5.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         let messageBC5_inv = try #require(await bobToCarol.next())
         #expect(messageBC5_inv.command == .inv)
 
         let inv6 = try InventoryMessage(messageBC5_inv.payload)
-        #expect(inv6.items == [.init(type: .witnessTx, hash: tx.id)])
+        #expect(inv6.items == [.init(type: .witnessTx, hash: tx.id.hash)])
 
         // … --(inv)->> Carol
         // Carol will not have a copy of the transaction therefore will have to request it
@@ -749,7 +749,7 @@ struct NodeBootstrapTests {
         #expect(messageBA7_getdata.command == .getdata)
 
         let getData4 = try GetDataMessage(messageBA7_getdata.payload)
-        #expect(getData4.items == [.init(type: .compactBlock, hash: aliceBlock2.id)])
+        #expect(getData4.items == [.init(type: .compactBlock, hash: aliceBlock2.id.hash)])
 
         // … --(getdata)->> Alice
         try await alice.processMessage(messageBA7_getdata, from: peerB)
@@ -788,7 +788,7 @@ struct NodeBootstrapTests {
         #expect(messageCB7_getdata.command == .getdata)
 
         let getData5 = try GetDataMessage(messageCB7_getdata.payload)
-        #expect(getData5.items == [.init(type: .compactBlock, hash: aliceBlock2.id)])
+        #expect(getData5.items == [.init(type: .compactBlock, hash: aliceBlock2.id.hash)])
 
         // … --(getdata)->> Bob
         try await bob.processMessage(messageCB7_getdata, from: peerC)

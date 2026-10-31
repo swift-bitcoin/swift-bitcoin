@@ -1,6 +1,7 @@
 import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import BitcoinBase
 
 /// BIP152: A `BlockTransactionsRequest` structure is used to list transaction indexes in a block being requested.
 ///
@@ -8,7 +9,7 @@ import BitcoinCrypto
 ///
 public struct GetBlockTransactionsMessage: Equatable {
 
-    public init(blockHash: Data, txIndices: [Int]) {
+    public init(blockHash: BlockHash, txIndices: [Int]) {
         self.blockHash = blockHash
         self.txIndices = txIndices
     }
@@ -17,7 +18,7 @@ public struct GetBlockTransactionsMessage: Equatable {
     ///
     /// The output from a double-SHA256 of the block header, as used elsewhere. 32 bytes.
     ///
-    public let blockHash: Data
+    public let blockHash: BlockHash
 
     /// The indexes of the transactions being requested in the block.
     ///
@@ -31,7 +32,7 @@ public struct GetBlockTransactionsMessage: Equatable {
 extension GetBlockTransactionsMessage: BinaryCodable {
 
     public init(parsing input: inout ParserSpan, format: Never?) throws {
-        blockHash = try Data([UInt8](parsing: &input, byteCount: Int(hashLength)))
+        blockHash = try BlockHash(parsing: &input)
         let txCount = try VarInt(parsing: &input).value
 
         var txIndices = [Int]()
@@ -61,7 +62,7 @@ extension GetBlockTransactionsMessage: BinaryCodable {
     }
 
     public func encode(into out: inout OutputRawSpan, format: Never?) throws {
-        out.append(contentsOf: blockHash)
+        blockHash.encode(into: &out)
         try VarInt(txIndices.count).encode(into: &out)
         var previousIndex = Int?.none
         for index in txIndices {

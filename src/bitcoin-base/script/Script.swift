@@ -212,10 +212,14 @@ public struct Script: Equatable, Sendable {
     static let witnessCommitmentTag = Data([0xaa, 0x21, 0xa9, 0xed])
 
     /// BIP141 witness commitment script
-    public static func witnessCommitment(witnessMerkleRoot: Data, witnessReservedValue: Data) -> Script {
+    public static func witnessCommitment(witnessMerkleRoot: WitnessMerkleRoot, witnessReservedValue: Data) -> Script {
         precondition(witnessReservedValue.count == 32)
         // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
-        let witnessCommitmentHash = Data(Hash256.hash(data: witnessMerkleRoot + witnessReservedValue))
+        var hasher = SHA256d()
+        hasher.update(bytes: witnessMerkleRoot.hash.bytes.span.bytes)
+        hasher.update(data: witnessReservedValue)
+        let witnessCommitmentHash = hasher.finalize()
+        // let witnessCommitmentHash = Data(SHA256d.hash(data: witnessMerkleRoot + witnessReservedValue))
 
         return Script([
             .return,
@@ -225,7 +229,7 @@ public struct Script: Equatable, Sendable {
 
     /// Is this a BIP141 witness commitment script
     public var isWitnessCommitment: Bool {
-        guard ops.count >= 2, ops[0] == .return, case let .pushBytes(data) = ops[1], data.count == Self.witnessCommitmentTag.count + Hash256.Digest.byteCount, data.starts(with: Self.witnessCommitmentTag) else { return false }
+        guard ops.count >= 2, ops[0] == .return, case let .pushBytes(data) = ops[1], data.count == Self.witnessCommitmentTag.count + SHA256d.Digest.byteCount, data.starts(with: Self.witnessCommitmentTag) else { return false }
         return true
     }
 }

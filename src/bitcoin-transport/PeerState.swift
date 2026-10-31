@@ -1,6 +1,6 @@
+import Foundation
 import BitcoinBase
 import BitcoinBlockchain
-import Foundation
 
 /// Information about a node's remote peer.
 public struct PeerState: Sendable {
@@ -67,10 +67,10 @@ public struct PeerState: Sendable {
     /// Difference between the time reported by the peer and our time at the time we receive the version message.
     var timeDiff = 0
 
-    var inTransitBlocks: Set<Block.ID> = []
+    var inTransitBlocks: Set<BlockHash> = []
 
     /// Headers that could not yet connect to our header chain because its parent was not yet processed.
-    var heldHeaders: Set<Block.ID> = []
+    var heldHeaders: Set<BlockHash> = []
 
     // MARK: - Status
 
@@ -78,8 +78,8 @@ public struct PeerState: Sendable {
     public internal(set) var lastCommonBlock = BlockRef?.none
     public internal(set) var reportedHeight = 0
     public internal(set) var lastPingNonce = UInt64?.none
-    public private(set) var knownBlocks = [Block.ID]()
-    public private(set) var knownTxs = [Transaction.ID]()
+    public private(set) var knownBlocks = [BlockHash]()
+    public private(set) var knownTxs = [TransactionIdentifier]()
 
     var nextPingTask: Task<(), Never>?
     var checkPongTask: Task<(), Never>?
@@ -97,7 +97,7 @@ public struct PeerState: Sendable {
         versionAckReceived
     }
 
-    mutating func registerKnownBlocks(_ ids: [Block.ID]) {
+    mutating func registerKnownBlocks(_ ids: [BlockHash]) {
         let count = knownBlocks.count + ids.count
         if count > maxKnownBlocks {
             knownBlocks.removeFirst(count - maxKnownBlocks)
@@ -105,7 +105,7 @@ public struct PeerState: Sendable {
         knownBlocks += ids
     }
 
-    mutating func registerKnownTxs(_ ids: [Transaction.ID]) {
+    mutating func registerKnownTxs(_ ids: [TransactionIdentifier]) {
         let count = knownTxs.count + ids.count
         if count > maxKnownTxs {
             knownTxs.removeFirst(count - maxKnownTxs)

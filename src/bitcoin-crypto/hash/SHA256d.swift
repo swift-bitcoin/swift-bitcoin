@@ -2,7 +2,7 @@ import Foundation
 import Crypto
 
 /// Hashes first using ``SHA256`` and applies `SHA256` again on finalize.
-public struct Hash256: HashFunction {
+public struct SHA256d: HashFunction {
 
     public typealias Digest = SHA256.Digest
     public static let blockByteCount = SHA256.blockByteCount

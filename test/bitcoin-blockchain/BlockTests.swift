@@ -176,8 +176,8 @@ struct BlockTests {
     @Test("Block date/time nanoseconds")
     func blockDateNanoseconds() throws {
         let emptyBlock = Block(
-            previous: Data(repeating: 0, count: 32),
-            merkleRoot:  Data(repeating: 0, count: 32),
+            previous: .zero,
+            merkleRoot: .zero,
             target: 0x207fffff,
             nonce: 2,
             txs: []

@@ -30,11 +30,11 @@ struct TxTests {
             let expectedLocktime = txInfo.locktime
             #expect(tx.locktime.locktimeValue == expectedLocktime)
 
-            guard let expectedID = Data(hex: txInfo.txid), let expectedWitnessID = Data(hex: txInfo.hash) else {
+            guard let expectedID = TransactionIdentifier(displayHex: txInfo.txid)  /* Data(hex: txInfo.txid) */, let expectedWitnessID = WitnessTransactionIdentifier(displayHex: txInfo.hash) /* Data(hex: txInfo.hash) */ else {
                 Issue.record("Transaction ID data could not be decoded."); continue
             }
-            #expect(tx.id == Data(expectedID.reversed()))
-            #expect(tx.witnessID == Data(expectedWitnessID.reversed()))
+            #expect(tx.id == expectedID)
+            #expect(tx.witnessID == expectedWitnessID)
 
             let expectedSize = txInfo.size
             #expect(tx.binarySize == expectedSize)
@@ -63,11 +63,11 @@ struct TxTests {
                     #expect(input.script == expectedScript)
 
                 } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig, let expectedScriptData = Data(hex: scriptSig.hex) {
-                    guard let expectedTxByteSwapped = Data(hex: txid) else {
+                    guard let expectedTx = TransactionIdentifier(displayHex: txid) else {
                         Issue.record("Transaction input \(i) transaction ID data could not be decoded."); continue
                     }
 
-                    let expectedTx = Data(expectedTxByteSwapped.reversed())
+                    //let expectedTx = Data(expectedTxByteSwapped.reversed())
                     #expect(input.outpoint.txID == expectedTx)
                     #expect(input.outpoint.out == expectedOutput)
                     let expectedScript = try Script(expectedScriptData)
