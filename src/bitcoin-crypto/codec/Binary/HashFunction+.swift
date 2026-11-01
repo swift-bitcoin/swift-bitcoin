@@ -10,5 +10,13 @@ extension HashFunction {
             self.update(bufferPointer: bufferPointer)
         }
     }
+
+    /// 2. Static polyfill for one-shot hashing
+    @inlinable
+    public static func hash(bytes: RawSpan) -> Self.Digest {
+        var hasher = Self()
+        hasher.update(bytes: bytes)
+        return hasher.finalize()
+    }
 }
 #endif
