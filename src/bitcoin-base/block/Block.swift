@@ -9,7 +9,7 @@ public struct Block: Equatable, Sendable {
 
     // MARK: - Initializers
 
-    public init(version: Int = Self.versionBitsTopBits, previous: Data, merkleRoot: Data, time: Date = .now, target: Int, nonce: Int = 0, txs: [Transaction] = []) {
+    public init(version: Int = Self.versionBitsTopBits, previous: BlockHash, merkleRoot: MerkleRoot, time: Date = .now, target: Int, nonce: Int = 0, txs: [Transaction] = []) {
         self.version = version
         self.previous = previous
         self.merkleRoot = merkleRoot
@@ -29,8 +29,8 @@ public struct Block: Equatable, Sendable {
 
     // Header
     public var version: Int
-    public var previous: Block.ID
-    public var merkleRoot: Data
+    public var previous: BlockHash
+    public var merkleRoot: MerkleRoot
     public var time: Date
 
     /// Difficulty bits.
@@ -42,11 +42,11 @@ public struct Block: Equatable, Sendable {
 
     // MARK: - Computed Properties
 
-    public var id: Block.ID {
-        Data(Hash256.hash(data: data(binaryFormat: .headerOnly)))
+    public var id: BlockHash {
+        BlockHash(Hash256(SHA256d.hash(data: data(binaryFormat: .headerOnly))))
     }
 
-    public var idHex: String { id.reversed().hex }
+    public var idHex: String { id.displayHex }
 
     /// Returns a copy of self without the transactions – i.e. header only.
     public var header: Self {
@@ -67,9 +67,6 @@ public struct Block: Equatable, Sendable {
     }
 
     // MARK: - Type Properties
-
-    public static let idLength = Hash256.Digest.byteCount
-    public static let nullParent = Block.ID(count: 32)
 
     /// BIP9 version bits prefix `0b001…`
     public static let versionBitsTopBits = 0x20000000
@@ -102,8 +99,8 @@ extension Block: BinaryCodable {
         switch format {
         case nil, .headerOnly, .noWitness:
             let version = Int(try Int32(parsingLittleEndian: &input))
-            let previous = try Data(parsing: &input, byteCount: Block.idLength)
-            let merkleRoot = try Data(parsing: &input, byteCount: Block.idLength)
+            let previous = try BlockHash(parsing: &input)
+            let merkleRoot = try MerkleRoot(parsing: &input)
             let time = Date(timeIntervalSince1970: TimeInterval(try UInt32(parsingLittleEndian: &input)))
             let target = Int(try UInt32(parsingLittleEndian: &input))
             let nonce = Int(try UInt32(parsingLittleEndian: &input))
@@ -131,8 +128,10 @@ extension Block: BinaryCodable {
         switch format {
         case nil, .headerOnly, .noWitness:
             out.append(Int32(version), as: Int32.self, .littleEndian)
-            out.append(contentsOf: previous)
-            out.append(contentsOf: merkleRoot)
+            //out.append(contentsOf: previous)
+            previous.encode(into: &out)
+            //out.append(contentsOf: merkleRoot)
+            merkleRoot.encode(into: &out)
             out.append(UInt32(time.timeIntervalSince1970), as: UInt32.self, .littleEndian)
             out.append(UInt32(target), as: UInt32.self, .littleEndian)
             out.append(UInt32(nonce), as: UInt32.self, .littleEndian)
@@ -141,8 +140,10 @@ extension Block: BinaryCodable {
             }
         case .signet:
             out.append(Int32(version), as: Int32.self, .littleEndian)
-            out.append(contentsOf: previous)
-            out.append(contentsOf: merkleRoot)
+            //out.append(contentsOf: previous)
+            previous.encode(into: &out)
+            //out.append(contentsOf: merkleRoot)
+            merkleRoot.encode(into: &out)
             out.append(UInt32(time.timeIntervalSince1970), as: UInt32.self, .littleEndian)
         case .file(let magicBytes):
             out.append(UInt32(magicBytes), as: UInt32.self, .littleEndian)
@@ -155,8 +156,8 @@ extension Block: BinaryCodable {
         switch format {
         case nil, .headerOnly, .noWitness:
             counter.count(Int32.self)
-            counter.count(previous)
-            counter.count(merkleRoot)
+            counter.countSize(Hash256.byteCount)
+            counter.countSize(Hash256.byteCount)
             counter.count(UInt32.self)
             counter.count(UInt32.self)
             counter.count(UInt32.self)
@@ -165,8 +166,8 @@ extension Block: BinaryCodable {
             }
         case .signet:
             counter.count(Int32.self)
-            counter.count(previous)
-            counter.count(merkleRoot)
+            counter.countSize(Hash256.byteCount)
+            counter.countSize(Hash256.byteCount)
             counter.count(UInt32.self)
         case .file(_):
             counter.count(UInt32.self)

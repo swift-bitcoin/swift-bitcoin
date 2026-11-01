@@ -19,7 +19,7 @@ protocol BlockIndex: Sendable {
 
     func lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef) async -> BlockRef
 
-    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<Block.ID>) async -> [Block.ID]
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<BlockHash>) async -> [BlockHash]
 
     mutating func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) async throws(BlockIndexError) -> BlockRef
 
@@ -29,7 +29,7 @@ protocol BlockIndex: Sendable {
 
     mutating func updateHeader(_ ref: BlockRef, locator: BlockStorageLocator) async -> BlockRef
 
-    func get(_ id: Block.ID) async -> BlockRef?
+    func get(_ id: BlockHash) async -> BlockRef?
 
     /// Gets the block reference at the specified height which is part of the active chain.
     func get(at height: Int) async -> BlockRef
@@ -43,7 +43,7 @@ protocol BlockIndex: Sendable {
     func get(from header: BlockRef, count: Int) async -> [BlockRef]
 
     /// To check which inventory block items we don't have.
-    func calculateMissingBlocks(_ ids: [Block.ID]) async -> [Block.ID]
+    func calculateMissingBlocks(_ ids: [BlockHash]) async -> [BlockHash]
 
     /// Find all known chain forks (tips) and return a their start and end block references
     func findChainForks() async -> [ChainFork]
@@ -62,7 +62,7 @@ protocol BlockIndex: Sendable {
     /// - Returns: The reactivated blocks in ascending height order. Use this to reapply changes to chainstate (coins) one by one.
     mutating func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) async -> [BlockRef]
 
-    func makeBlockLocator(from tip: BlockRef) async -> [Block.ID]
+    func makeBlockLocator(from tip: BlockRef) async -> [BlockHash]
 
     mutating func undoLastBlock() async -> BlockRef
 

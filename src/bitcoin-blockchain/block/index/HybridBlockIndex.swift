@@ -1,10 +1,11 @@
-import BitcoinBase
 import LMDB
 import _NIOFileSystem
 import struct SystemPackage.FilePath
 import Foundation
 import Logging
 import Collections
+import BitcoinCrypto
+import BitcoinBase
 
 /// Hybrid in-memory / database block index service implementation.
 actor HybridBlockIndex: BlockIndex {
@@ -14,23 +15,26 @@ actor HybridBlockIndex: BlockIndex {
         self.logger = logger
         env = initEnv(path: self.path)
 
-        var cache = [Block.ID : BlockRef]()
-        var heightsCache = [[Block.ID]]()
+        var cache = [BlockHash : BlockRef]()
+        var heightsCache = [[BlockHash]]()
 
         try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
             try! byHeight.withCursor(readOnly: true) { cursor in
                 var maybeID = try! cursor.get(.first)
                 while let id = maybeID {
+                    let hash = BlockHash(Hash256(bytes: id.span.bytes)!)
                     var ref = try! _get(id, byID: byID)!
                     ref.skip = _ancestor(of: ref, at: skipHeight(from: ref.height), refs: cache).header.id
                     if ref.height < heightsCache.count {
-                        heightsCache[ref.height].append(id)
+                        heightsCache[ref.height].append(hash)
+                        //heightsCache[ref.height].append(id)
                     } else if ref.height == heightsCache.count {
-                        heightsCache.append([id])
+                        heightsCache.append([hash])
+                        // heightsCache.append([id])
                     } else {
                         fatalError("Height higher than cache size")
                     }
-                    cache[id] = ref
+                    cache[hash] = ref
                     // Move backwards
                     if let nextID = try! cursor.get(.nextDup) {
                         // If no more duplicates for this height, move to previous height
@@ -50,10 +54,10 @@ actor HybridBlockIndex: BlockIndex {
     private var env: Environment!
 
     // By id cache
-    private var cache = [Block.ID : BlockRef]()
+    private var cache = [BlockHash : BlockRef]()
 
     /// Either the ID of the Block at each height in the active chain. Or additionally, the IDs of blocks at that height not on the active chain.
-    private var heightsCache = [[Block.ID]]()
+    private var heightsCache = [[BlockHash]]()
 
     var bestHeader: BlockRef? {
         var header: BlockRef? = nil
@@ -108,14 +112,14 @@ actor HybridBlockIndex: BlockIndex {
         _lastCommonAncestor(blockA, blockB, refs: cache)
     }
 
-    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<Block.ID>) -> [Block.ID] {
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<BlockHash>) -> [BlockHash] {
         precondition(max >= 0)
 
         // TODO: Test this out:
         // let max = min(max, tip.height - stop.height)
 
         var current = tip
-        var blocks = Deque<Block.ID>(minimumCapacity: max)
+        var blocks = Deque<BlockHash>(minimumCapacity: max)
         // TODO: It has occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
         while current.height > stop.height /* current.header.id != stop.header.id */ {
             if current.status == .header, !exclude.contains(current.header.id) {
@@ -149,7 +153,7 @@ actor HybridBlockIndex: BlockIndex {
 
     func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) throws(BlockIndexError) -> BlockRef {
         precondition(cache.isEmpty)
-        precondition(genesisBlock.previous == Block.nullParent)
+        precondition(genesisBlock.previous == BlockHash.zero)
         return try add(genesisBlock, locator: locator, status: .active, chainTxCount: genesisBlock.txs.count)
     }
 
@@ -158,7 +162,7 @@ actor HybridBlockIndex: BlockIndex {
         // We can only add a block with locator if it is the genesis block and we have no other blocks
         precondition(locator == nil || cache.isEmpty)
 
-        let previous = if block.previous != Block.nullParent {
+        let previous = if block.previous != BlockHash.zero {
             get(block.previous)
         } else {
             BlockRef?.none
@@ -189,8 +193,8 @@ actor HybridBlockIndex: BlockIndex {
     private func addPersistent(_ newRef: BlockRef) {
         // Add
         try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
-            try byID.put(newRef.data, key: newRef.header.id)
-            try byHeight.put(newRef.header.id, key: newRef.height)
+            try byID.put(newRef.data, key: newRef.header.id.hash.data)
+            try byHeight.put(newRef.header.id.hash.data, key: newRef.height)
         }
     }
 
@@ -221,11 +225,11 @@ actor HybridBlockIndex: BlockIndex {
 
     private func updatePersistent(_ newRef: BlockRef) {
         try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
-            try byID.put(newRef.data, key: newRef.header.id)
+            try byID.put(newRef.data, key: newRef.header.id.hash.data)
         }
     }
 
-    func get(_ id: Block.ID) -> BlockRef? { // TODO: Probably should throw
+    func get(_ id: BlockHash) -> BlockRef? { // TODO: Probably should throw
         cache[id]
     }
 
@@ -244,7 +248,7 @@ actor HybridBlockIndex: BlockIndex {
         var ref = ref
         repeat {
             refs.append(ref)
-            guard ref.header.previous != Block.nullParent else {
+            guard ref.header.previous != BlockHash.zero else {
                 break
             }
             i += 1
@@ -253,8 +257,8 @@ actor HybridBlockIndex: BlockIndex {
         return refs
     }
 
-    func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
-        var missing = [Block.ID]()
+    func calculateMissingBlocks(_ ids: [BlockHash]) -> [BlockHash] {
+        var missing = [BlockHash]()
         for id in ids {
             guard let ref = cache[id] else {
                 missing.append(id)
@@ -290,7 +294,7 @@ actor HybridBlockIndex: BlockIndex {
                 var ref = try _get(id, byID: byID)!
                 precondition(ref.status == .active)
                 ref.status = .stale
-                try byID.put(ref.data, key: id)
+                try byID.put(ref.data, key: id.hash.data)
                 refs.append(ref)
                 id = ref.header.previous
             } while id != ancestor.header.id
@@ -326,19 +330,19 @@ actor HybridBlockIndex: BlockIndex {
                     continue
                 }
                 ref.status = .active
-                try byID.put(ref.data, key: ref.header.id)
+                try byID.put(ref.data, key: ref.header.id.hash.data)
                 refs.insert(ref, at: 0)
             } while id != ancestor.header.id
             return refs
         }
     }
 
-    func makeBlockLocator(from tip: BlockRef) -> [Block.ID] {
-        var have = [Block.ID]()
+    func makeBlockLocator(from tip: BlockRef) -> [BlockHash] {
+        var have = [BlockHash]()
         var step = 1
         var count = step
         var current = tip
-        while current.header.previous != Block.nullParent {
+        while current.header.previous != BlockHash.zero {
             count -= 1
             if count == 0 {
                 have.append(current.header.id)
@@ -368,8 +372,8 @@ actor HybridBlockIndex: BlockIndex {
         precondition(ref.status == .active)
         return try! env.withTransaction(db: byID) { _, byID in
             ref.status = .stale
-            try byID.put(ref.header.id, key: ref.data)
-            let previousData = try byID.get(ref.header.previous)!
+            try byID.put(ref.header.id.hash.data, key: ref.data)
+            let previousData = try byID.get(ref.header.previous.hash.data)!
             return try BlockRef(previousData)
         }
     }
@@ -421,7 +425,7 @@ actor HybridBlockIndex: BlockIndex {
         findActiveRef(heightsCache[height])
     }
 
-    private func findActiveRef(_ ids: [Block.ID]) -> BlockRef? {
+    private func findActiveRef(_ ids: [BlockHash]) -> BlockRef? {
         for id in ids {
             guard let ref = cache[id] else {
                 fatalError("Missing block ref")
@@ -440,7 +444,11 @@ private let byID = Database.Descriptor(byIDName)
 private let byHeight = Database.Descriptor(byHeightName)
 
 
-private func _get(_ id: Block.ID, byID: borrowing LMDB.Database) throws(CoinsError) -> BlockRef? {
+private func _get(_ id: BlockHash, byID: borrowing LMDB.Database) throws(CoinsError) -> BlockRef? {
+    return try _get(id.hash.data, byID: byID)
+}
+
+private func _get(_ id: Data, byID: borrowing LMDB.Database) throws(CoinsError) -> BlockRef? {
     let data: Data?
     do {
         data = try byID.get(id)
@@ -498,7 +506,7 @@ private func skipHeight(from height: Int) -> Int {
     return height & 1 != 0 ? invertLowestOne(invertLowestOne(height - 1)) + 1 : invertLowestOne(height)
 }
 
-private func _ancestor(of tip: BlockRef, at height: Int, refs: [Block.ID : BlockRef]) -> BlockRef {
+private func _ancestor(of tip: BlockRef, at height: Int, refs: [BlockHash : BlockRef]) -> BlockRef {
     precondition(height <= tip.height)
     var indexWalk = tip // const CBlockIndex* pindexWalk = this;
     var heightWalk = tip.height
@@ -521,7 +529,7 @@ private func _ancestor(of tip: BlockRef, at height: Int, refs: [Block.ID : Block
 }
 
 /// Find the last common ancestor two blocks have.
-private func _lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef, refs: [Block.ID : BlockRef]) -> BlockRef {
+private func _lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef, refs: [BlockHash : BlockRef]) -> BlockRef {
     var pa: BlockRef
     var pb: BlockRef
     // First rewind to the last common height (the forking point cannot be past one of the two).

@@ -9,21 +9,20 @@ public struct Outpoint: Equatable, Hashable, Sendable {
     /// - Parameters:
     ///   - tx: The identifier for the previous transaction being referenced.
     ///   - out: The index within the previous transaction corresponding to the desired output.
-    public init(tx: Transaction.ID, out: Int) {
-        precondition(tx.count == Transaction.idLength)
+    public init(tx: TransactionIdentifier, out: Int) {
         self.txID = tx
         self.out = out
     }
 
     // The identifier for the transaction containing the referenced output.
-    public var txID: Transaction.ID
+    public var txID: TransactionIdentifier
 
     /// The index of an output in the referenced transaction.
     public var out: Int
 
     /// The outpoint meant for the single coinbase transaction input. Also known as _null_ outpoint or _null prevout_.
     public static let coinbase = Self(
-        tx: .init(count: Transaction.idLength), // All zeroes
+        tx: TransactionIdentifier(Hash256(.init(repeating: 0))), // All zeroes
         out: 0xffffffff // or `UInt32.max`
     )
 }
@@ -32,18 +31,18 @@ public struct Outpoint: Equatable, Hashable, Sendable {
 extension Outpoint: BinaryCodable {
 
     public init(parsing input: inout ParserSpan, format: Never?) throws {
-        let tx: Transaction.ID = try Data(parsing: &input, byteCount: Transaction.idLength)
+        let tx = try TransactionIdentifier(parsing: &input)
         let out = Int(try UInt32(parsingLittleEndian: &input))
         self.init(tx: tx, out: out)
     }
 
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        counter.countSize(Transaction.idLength)
+        counter.countSize(Hash256.byteCount)
         counter.count(UInt32.self)
     }
 
     public func encode(into out: inout OutputRawSpan, format: Never?) throws {
-        out.append(contentsOf: txID)
+        txID.encode(into: &out)
         out.append(UInt32(self.out), as: UInt32.self, .littleEndian)
     }
 }

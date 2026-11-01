@@ -8,7 +8,7 @@ extension GetMempoolRPC {
         let mempool = await blockchain.mempool
         return .init(
             size: mempool.count,
-            txs: mempool.map(\.id.hex)
+            txs: mempool.map(\.id.displayHex)
         )
     }
 }

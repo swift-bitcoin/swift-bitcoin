@@ -418,7 +418,7 @@ indirect enum ASTNode {
                 }
                 return [.size, .encodeMinimally(0x20), .equalVerify, .ripemd160, .pushBytes(h), .equal]
             case "hash256":
-                guard case let .arg(v) = args[0], let h = Data(hex: v), h.count == BitcoinCrypto.Hash256.Digest.byteCount else {
+                guard case let .arg(v) = args[0], let h = Data(hex: v), h.count == BitcoinCrypto.SHA256d.Digest.byteCount else {
                     throw .invalidArgumentValue
                 }
                 return [.size, .encodeMinimally(0x20), .equalVerify, .hash256, .pushBytes(h), .equal]

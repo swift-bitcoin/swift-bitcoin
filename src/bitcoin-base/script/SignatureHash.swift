@@ -15,7 +15,7 @@ public struct SignatureHash: Equatable, Sendable {
             return
         }
         let message = SignatureMessage(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode/* ?? prevout.script.data*/)
-        data = Data(Hash256.hash(data: message.data))
+        data = Data(SHA256d.hash(data: message.data))
     }
 
     public let data: Data

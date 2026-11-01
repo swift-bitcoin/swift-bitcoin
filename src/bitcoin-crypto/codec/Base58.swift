@@ -121,5 +121,5 @@ private func base58Decode(_ string: String) -> Data? {
 }
 
 private func calculateChecksum(_ data: Data) -> Data {
-    Data(Hash256.hash(data: data)).prefix(checksumLength)
+    Data(SHA256d.hash(data: data)).prefix(checksumLength)
 }

@@ -9,7 +9,7 @@ public extension Block {
         let target = params.genesisBlockTarget
         let genesisBlock = Block(
             version: 1,
-            previous: Block.nullParent,
+            previous: BlockHash.zero,
             merkleRoot: calculateMerkleRoot([genesisTx]),
             time: Date(timeIntervalSince1970: TimeInterval(params.genesisBlockTime)),
             target: target,

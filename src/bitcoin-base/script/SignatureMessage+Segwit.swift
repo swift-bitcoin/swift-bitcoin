@@ -22,7 +22,7 @@ extension SignatureMessage.Segwit {
             hashPrevouts = Data(repeating: 0, count: 32)
         } else {
             let prevouts = tx.ins.reduce(Data()) { $0 + $1.outpoint.data }
-            hashPrevouts = Data(Hash256.hash(data: prevouts))
+            hashPrevouts = Data(SHA256d.hash(data: prevouts))
         }
 
         // If none of the ANYONECANPAY, SINGLE, NONE sighash type is set, hashSequence is the double SHA256 of the serialization of nSequence of all inputs;
@@ -32,7 +32,7 @@ extension SignatureMessage.Segwit {
             let sequence = tx.ins.reduce(Data()) {
                 $0 + $1.sequence.data
             }
-            hashSequence = Data(Hash256.hash(data: sequence))
+            hashSequence = Data(SHA256d.hash(data: sequence))
         } else {
             hashSequence = Data(repeating: 0, count: 32)
         }
@@ -43,9 +43,9 @@ extension SignatureMessage.Segwit {
         let hashOuts: Data
         if !sighashType.isSingle && !sighashType.isNone {
             let outsData = tx.outs.reduce(Data()) { $0 + $1.data }
-            hashOuts = Data(Hash256.hash(data: outsData))
+            hashOuts = Data(SHA256d.hash(data: outsData))
         } else if sighashType.isSingle && inputIndex < tx.outs.count {
-            hashOuts = Data(Hash256.hash(data: tx.outs[inputIndex].data))
+            hashOuts = Data(SHA256d.hash(data: tx.outs[inputIndex].data))
         } else {
             hashOuts = Data(repeating: 0, count: 32)
         }

@@ -11,7 +11,7 @@ public struct NetworkMessage: Equatable, Sendable {
 
         self.magicBytes = magicBytes
         self.command = command
-        let payloadHash = Data(Hash256.hash(data: payload))
+        let payloadHash = Data(SHA256d.hash(data: payload))
         self.checksum = payloadHash.withParserSpan { input in
             try! UInt32(parsingLittleEndian: &input)
         }
@@ -28,7 +28,7 @@ public struct NetworkMessage: Equatable, Sendable {
     public let payload: Data
 
     public var isChecksumOk: Bool {
-        let hash = Data(Hash256.hash(data: payload))
+        let hash = Data(SHA256d.hash(data: payload))
         let realChecksum = hash.withParserSpan { input in
             try! UInt32(parsingLittleEndian: &input)
         }

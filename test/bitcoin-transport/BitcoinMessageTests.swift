@@ -17,9 +17,9 @@ struct BitcoinMessageTests {
 
     @Test("Headers roundtrip")
     func headersRoundtrip() throws {
-        let header = Block(previous: .init(count: 32), merkleRoot: .init(count: 32), time: .now, target: 0)
-        let header1 = Block(previous: .init(count: 32), merkleRoot: .init(count: 32), time: .now, target: 0, nonce: 1)
-        let header2 = Block(previous: .init(count: 32), merkleRoot: .init(count: 32), time: .now, target: 0, nonce: 2)
+        let header = Block(previous: .zero, merkleRoot: .zero, time: .now, target: 0)
+        let header1 = Block(previous: .zero, merkleRoot: .zero, time: .now, target: 0, nonce: 1)
+        let header2 = Block(previous: .zero, merkleRoot: .zero, time: .now, target: 0, nonce: 2)
         let headers = HeadersMessage(items: [header, header1, header2])
         let headersData = headers.data
         let headers2 = try HeadersMessage(headersData)
@@ -37,7 +37,7 @@ struct BitcoinMessageTests {
         #expect(val == val1)
 
         let tx = Transaction(ins: [.init(outpoint: .coinbase)], outs: [.init(value: 100)])
-        let header = Block(previous: .init(count: 32), merkleRoot: .init(count: 32), target: 0)
+        let header = Block(previous: .zero, merkleRoot: .zero, target: 0)
         let message = CompactBlockMessage(header: header, nonce: 0, txIDs: [val], txs: [.init(index: 0, tx: tx)])
         let messageData = message.data
         let message2 = try CompactBlockMessage(messageData)

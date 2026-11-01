@@ -1,3 +1,4 @@
+/*
 import BitcoinBase
 import LMDB
 import _NIOFileSystem
@@ -94,7 +95,7 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<Block.ID>) -> [Block.ID] {
+    func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<BlockHash>) -> [BlockHash] {
         precondition(max >= 0)
 
         // TODO: Test this out:
@@ -102,7 +103,7 @@ actor PersistentBlockIndex: BlockIndex {
 
         return try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             var current = tip
-            var blocks = Deque<Block.ID>(minimumCapacity: max)
+            var blocks = Deque<BlockHash>(minimumCapacity: max)
             // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
             while current.height > stop.height /* current.header.id != stop.header.id */ {
                 if current.status == .header, !exclude.contains(current.header.id) {
@@ -123,7 +124,7 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) throws(BlockIndexError) -> BlockRef {
-        precondition(genesisBlock.previous == Block.nullParent)
+        precondition(genesisBlock.previous == BlockHash.zero)
         return try add(genesisBlock, locator: locator, status: .active, chainTxCount: genesisBlock.txs.count)
     }
 
@@ -132,7 +133,7 @@ actor PersistentBlockIndex: BlockIndex {
         let count: Int
         (previous, count) = try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             let previous: BlockRef?
-            if block.previous != Block.nullParent, let previousBlock = try byID.get(block.previous) {
+            if block.previous != BlockHash.zero, let previousBlock = try byID.get(block.previous) {
                 previous = try! BlockRef(previousBlock)
             } else {
                 previous = nil
@@ -186,7 +187,7 @@ actor PersistentBlockIndex: BlockIndex {
         return blockRef
     }
 
-    func get(_ id: Block.ID) -> BlockRef? { // TODO: Probably should throw
+    func get(_ id: BlockHash) -> BlockRef? { // TODO: Probably should throw
         let data = try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             try byID.get(id)
         }
@@ -242,7 +243,7 @@ actor PersistentBlockIndex: BlockIndex {
             var ref = ref
             repeat {
                 refs.append(ref)
-                guard ref.header.previous != Block.nullParent else {
+                guard ref.header.previous != BlockHash.zero else {
                     break
                 }
                 i += 1
@@ -277,8 +278,8 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    func calculateMissingBlocks(_ ids: [Block.ID]) -> [Block.ID] {
-        var missing = [Block.ID]()
+    func calculateMissingBlocks(_ ids: [BlockHash]) -> [BlockHash] {
+        var missing = [BlockHash]()
         try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             for id in ids {
                 if try byID.get(id) == nil {
@@ -323,13 +324,13 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    func makeBlockLocator(from tip: BlockRef) -> [Block.ID] {
+    func makeBlockLocator(from tip: BlockRef) -> [BlockHash] {
         try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            var have = [Block.ID]()
+            var have = [BlockHash]()
             var step = 1
             var count = step
             var current = tip
-            while current.header.previous != Block.nullParent {
+            while current.header.previous != BlockHash.zero {
                 count -= 1
                 if count == 0 {
                     have.append(current.header.id)
@@ -415,11 +416,11 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    func getParent(for childID: Block.ID) -> BlockRef? {
+    func getParent(for childID: BlockHash) -> BlockRef? {
         try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
             let childData = try byID.get(childID)!
             let child = try BlockRef(childData)
-            if child.previous == Block.nullParent {
+            if child.previous == BlockHash.zero {
                 return BlockRef?.none
             }
             let previousData = try byID.get(child.previous)!
@@ -467,7 +468,7 @@ private let byID = Database.Descriptor(byIDName)
 private let byHeight = Database.Descriptor(byHeightName)
 
 
-private func _get(_ id: Block.ID, byID: borrowing LMDB.Database) throws(CoinsError) -> BlockRef? {
+private func _get(_ id: BlockHash, byID: borrowing LMDB.Database) throws(CoinsError) -> BlockRef? {
     let data: Data?
     do {
         data = try byID.get(id)
@@ -513,3 +514,4 @@ private func initEnv(path: FilePath) -> Environment {
     try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey, .duplicateSort, .duplicateFixed])) { _, _ in }
     return env
 }
+*/

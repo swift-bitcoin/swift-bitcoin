@@ -129,7 +129,7 @@ public actor BlockchainService: Sendable {
     /// The best header may be a fork of the active chain which might not include the best block.
     private var bestHeader: BlockRef
 
-    private var heldBlocks = [Block.ID : (Block, BlockStorageLocator?)]()
+    private var heldBlocks = [BlockHash : (Block, BlockStorageLocator?)]()
 
     /// The memory pool of transactions of _mempool_.
     ///
@@ -154,7 +154,7 @@ public actor BlockchainService: Sendable {
     /// Cache of initial block download status, uses Swift Atomics to copy the behavior of `m_cached_finished_ibd` in Bitcoin Core.
     private var finishedIDB = ManagedAtomic<Bool>(false)
 
-    private var currentlyValidating: Block.ID?
+    private var currentlyValidating: BlockHash?
     private var validationTask: Task<(), Swift.Error>? = nil // TODO: Use custom error once `Swift.Task` supports typed throws
 
     private var reindexing = false
@@ -173,7 +173,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// The identifier (hash) of the best known block. Also referred to as the tip of the blockchain.
-    public var chainTip: Block.ID {
+    public var chainTip: BlockHash {
         activeTip.header.id
     }
 
@@ -324,7 +324,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Gets a fully validated block by height complete with transactions.
-    public func blockID(at height: Int) async -> Block.ID? {
+    public func blockID(at height: Int) async -> BlockHash? {
         guard height >= 0, activeTip.height >= height else {
             return nil
         }
@@ -332,7 +332,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Returns a block header, meaning a block without it's transactions.
-    public func header(for id: Block.ID) async -> Block? {
+    public func header(for id: BlockHash) async -> Block? {
         guard let blockRef = await blockIndex.get(id) else {
             return nil
         }
@@ -356,7 +356,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Gets a fully validated block by ID complete with transactions.
-    public func block(for id: Block.ID) async -> Block? {
+    public func block(for id: BlockHash) async -> Block? {
         guard let blockRef = await blockIndex.get(id), let locator = blockRef.locator, activeTip.height >= blockRef.height else {
             return nil
         }
@@ -366,7 +366,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Gets a fully validated block by ID complete with transactions.
-    public func height(for id: Block.ID) async -> Int? {
+    public func height(for id: BlockHash) async -> Int? {
         guard let blockRef = await blockIndex.get(id) else {
             return nil
         }
@@ -374,7 +374,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Summarized information about a block.
-    public func blockInfo(for id: Block.ID) async -> BlockInfo? {
+    public func blockInfo(for id: BlockHash) async -> BlockInfo? {
         guard let ref = await blockIndex.get(id) else {
             return nil
         }
@@ -422,12 +422,12 @@ public actor BlockchainService: Sendable {
     }
 
     /// Produces a discontinuous list of block hashes in descending height order that may be used to request missing headers from a peer.
-    public func blockLocator() async -> [Data] {
+    public func blockLocator() async -> [BlockHash] {
         await blockIndex.makeBlockLocator(from: bestHeader)
     }
 
     /// Finds headers using a discontinuous list of block hashes ordered by descending height.
-    public func headers(matching locator: [Data]) async -> [Block] {
+    public func headers(matching locator: [BlockHash]) async -> [Block] {
         // TODO: Migrate to traversing by `block.previous` as it would be more robust towards reorgs.
         var hitHeight = Int?.none
         for blockID in locator {
@@ -453,13 +453,13 @@ public actor BlockchainService: Sendable {
     }
 
     /// Returns the IDs of the headers missing transactions up to a maximum defined by the function argument.
-    public func nextMissingBlocks(max numberOfBlocks: Int, exclude: Set<Block.ID> = []) async -> [Block.ID] {
+    public func nextMissingBlocks(max numberOfBlocks: Int, exclude: Set<BlockHash> = []) async -> [BlockHash] {
         precondition(numberOfBlocks > 0 && numberOfBlocks <= Self.blockDownloadWindow)
         return await blockIndex.missingBlocks(tip: bestHeader, stop: activeTip, max: numberOfBlocks, exclude: exclude)
     }
 
     /// Returns multiple fully validated blocks matching the provided IDs.
-    public func blocks(matching blockIDs: [Block.ID]) async -> [Block] {
+    public func blocks(matching blockIDs: [BlockHash]) async -> [Block] {
         var ret = [Block]()
         for blockID in blockIDs {
             guard let blockRef = await blockIndex.get(blockID), let locator = blockRef.locator, blockRef.status == .active else {
@@ -644,7 +644,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Searches the mempool for missing transactions from the provided list.
-    public func missingTransactions(matching ids: [Transaction.ID]) async -> [Transaction.ID] {
+    public func missingTransactions(matching ids: [TransactionIdentifier]) async -> [TransactionIdentifier] {
         var newIDs = ids
         for tx in mempool {
             if ids.contains(tx.id) {
@@ -668,12 +668,12 @@ public actor BlockchainService: Sendable {
     }
 
     /// Finds out which of the blocks/headers from the provided list are not yet in the blockchain.
-    public func missingBlocks(matching ids: [Block.ID]) async -> [Block.ID] {
+    public func missingBlocks(matching ids: [BlockHash]) async -> [BlockHash] {
         await blockIndex.calculateMissingBlocks(ids)
     }
 
     /// Gets a transaction by ID looking into mempool and blocks.
-    public func transaction(identifiedBy id: Transaction.ID) async -> Transaction? {
+    public func transaction(identifiedBy id: TransactionIdentifier) async -> Transaction? {
         for tx in mempool {
             if id == tx.id {
                 return tx
@@ -693,7 +693,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Finds transactions in mempool which match any of the provided IDs.
-    public func transactions(matching ids: [Transaction.ID]) async -> [Transaction] {
+    public func transactions(matching ids: [TransactionIdentifier]) async -> [Transaction] {
         var ret = [Transaction]()
         for tx in mempool {
             if ids.contains(tx.id) {
@@ -716,7 +716,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Logic for calculating which blocks to download from a given peer, given our current tip.
-    public func findNextBlocksToDownload(bestKnownBlock: BlockRef?, lastCommonBlock: BlockRef?, count: Int, exclude: Set<Block.ID>) async -> (blocksToDownload: [Block.ID], updatedLastCommonBlock: BlockRef?) {
+    public func findNextBlocksToDownload(bestKnownBlock: BlockRef?, lastCommonBlock: BlockRef?, count: Int, exclude: Set<BlockHash>) async -> (blocksToDownload: [BlockHash], updatedLastCommonBlock: BlockRef?) {
 
         if count == 0 {
             return ([], lastCommonBlock)
@@ -773,14 +773,14 @@ public actor BlockchainService: Sendable {
         return (nextBlocks, updatedLastCommonBlock)
     }
 
-    private func findNextBlocks(bestKnownBlock: BlockRef, lastCommonBlock: inout BlockRef, walk: BlockRef, count: Int, windowEnd: Int, exclude: Set<Block.ID>) async -> [Block.ID] {
-        var blocks = [Block.ID]()
+    private func findNextBlocks(bestKnownBlock: BlockRef, lastCommonBlock: inout BlockRef, walk: BlockRef, count: Int, windowEnd: Int, exclude: Set<BlockHash>) async -> [BlockHash] {
+        var blocks = [BlockHash]()
         var walk = walk
         
         var toFetch: [BlockRef?]
         let maxHeight = min(bestKnownBlock.height, windowEnd + 1)
         // let isLimitedPeer = peer.isLimitedPeer
-        // var waitingfor = Block.ID?.none
+        // var waitingfor = BlockHash?.none
         while walk.height < maxHeight {
             // Read up to 128 (or more, if more blocks than that are needed) successors of pindexWalk (towards
             // pindexBestKnownBlock) into vToFetch. We fetch 128, because CBlockIndex::GetAncestor may be as expensive
@@ -962,7 +962,7 @@ extension BlockchainService {
         }
 
         // Check that we have at leat one non-genesis block
-        guard activeTip.header.previous != Block.nullParent else {
+        guard activeTip.header.previous != BlockHash.zero else {
             logger.warning("Only genesis block exists")
             return
         }
@@ -1153,7 +1153,7 @@ extension BlockchainService {
         var prevHeights = await calculatePrevHeights(tx, tip: tip, excludeCoins: mempoolExclude, auxCoins: mempoolCoins)
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
+        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .zero, time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
 
         // When SequenceLocks() is called within ConnectBlock(), the height
         // of the block *being* evaluated is what is used.
@@ -1283,7 +1283,7 @@ extension BlockchainService {
         // Thus if we want to know if a transaction can be part of the *next* block, we need to use one more than chainActive.Height()
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .init(), time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
+        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .zero, time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
 
         try await evaluateSequenceLocks(nextBlockPlaceholder, previous: tip, lockPair: (lockPoints.height, lockPoints.time))
     }
@@ -1300,7 +1300,7 @@ extension BlockchainService {
     @discardableResult public func processHeaders(_ headers: [Block]) async throws(Error) -> MultipleHeadersProcessingResult {
         var headerRefs = Set<BlockRef>()
         var connectedHeaders = Set<BlockRef>()
-        var heldHeaders = Set<Block.ID>()
+        var heldHeaders = Set<BlockHash>()
         for header in headers {
             let result = try await processHeader(header)
             if let processedHeader = result.headerAndPrevious?.header {
@@ -1343,7 +1343,7 @@ extension BlockchainService {
     private func checkConnectivity(_ block: Block, locator: BlockStorageLocator? = nil) async -> BlockRef? {
         guard let previousHeader = await blockIndex.get(block.previous) else {
             heldBlocks[block.id] = (block, locator) // Save header/block for later
-            logger.debug("Header \(block.idHex); Previous header not found (holding) \(block.previous.reversed().hex); Held blocks: \(heldBlocks.count)")
+            logger.debug("Header \(block.idHex); Previous header not found (holding) \(block.previous.displayHex); Held blocks: \(heldBlocks.count)")
             return nil
         }
         return previousHeader
@@ -1442,7 +1442,8 @@ extension BlockchainService {
             throw .invalidDifficultyTarget
         }
 
-        guard try! DifficultyTarget(header.id) <= DifficultyTarget(compact: header.target) else {
+        guard Target(header.id.hash)! <= Target(compact: header.target)! else {
+        //guard try! DifficultyTarget(header.id) <= DifficultyTarget(compact: header.target) else {
             logger.error("Header \(header.idHex) - insufficient proof of work \(header.target)")
             throw .insuficientProofOfWork
         }
@@ -1840,7 +1841,7 @@ extension BlockchainService {
     }
 
     private func checkSignetBlockSolution(_ block: Block, challenge: Script) throws(Error) {
-        if block.previous == Block.nullParent {
+        if block.previous == BlockHash.zero {
             return
         }
         //static constexpr script_verify_flags BLOCK_SCRIPT_VERIFY_FLAGS = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_NULLDUMMY;
@@ -1979,7 +1980,7 @@ extension BlockchainService {
     private func connectBlock(_ blockRef: BlockRef) async throws(Error) {
 
         // Can't be genesis block
-        precondition(blockRef.header.previous != Block.nullParent)
+        precondition(blockRef.header.previous != BlockHash.zero)
 
         // Always connect to the active chain
         precondition(blockRef.header.previous == activeTip.header.id)
@@ -2265,8 +2266,8 @@ extension BlockchainService {
 extension BlockchainService {
 
     /// Generates a number of new blocks with the coinbase transaction going to the specified script.
-    @discardableResult public func generateToScript(_ script: Script, signetSecretKey: SecretKey? = nil, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = nil) async -> [Block.ID] {
-        var ids = [Block.ID]()
+    @discardableResult public func generateToScript(_ script: Script, signetSecretKey: SecretKey? = nil, blocks: Int = 1, maxTries: Int = Config.defaultMaxTries, blockTime: Date? = nil) async -> [BlockHash] {
+        var ids = [BlockHash]()
         for _ in 0 ..< blocks {
             if let block = await generateTo(script, signetSecretKey: signetSecretKey, maxTries: maxTries, blockTime: blockTime ?? .now) {
                 ids.append(block.id)
@@ -2333,9 +2334,9 @@ extension BlockchainService {
             )
             nonce += 1
             tries -= 1
-        } while tries > 0 && (try! DifficultyTarget(block.id) > DifficultyTarget(compact: target))
+        } while tries > 0 && (Target(block.id.hash)! > Target(compact: target)!)
 
-        guard try! DifficultyTarget(block.id) <= DifficultyTarget(compact: target) else {
+        guard Target(block.id.hash)! <= Target(compact: target)! else {
             logger.error("Difficulty target not met")
             return nil
         }
@@ -2356,7 +2357,7 @@ extension BlockchainService {
     /// Signs a signet block by adding the signature to the coinbase as challenge solution.
     ///
     /// BIP325
-    private func signCoinbase(_ coinbaseTx: inout Transaction, signetChallenge challenge: Script, signetSecretKey: SecretKey? = nil, previousBlockHash: Data, blockTime: Date, txs: [Transaction]) throws(Error) {
+    private func signCoinbase(_ coinbaseTx: inout Transaction, signetChallenge challenge: Script, signetSecretKey: SecretKey? = nil, previousBlockHash: BlockHash, blockTime: Date, txs: [Transaction]) throws(Error) {
         guard let commitIndex = witnessCommitmentOutputIndex(in: coinbaseTx) else {
             // We created the witness coinbase transaction in this function.
             preconditionFailure()
@@ -2463,11 +2464,11 @@ extension BlockchainService {
 public struct SingleHeaderProcessingResult: Sendable {
     public let headerAndPrevious: (header: BlockRef, previous: BlockRef)?
     public let connectedHeaders: Set<BlockRef>
-    public let heldHeaders: Set<Block.ID>
+    public let heldHeaders: Set<BlockHash>
 }
 
 public struct MultipleHeadersProcessingResult: Sendable {
-    package init(headerRefs: Set<BlockRef>, connectedHeaders: Set<BlockRef>, heldHeaders: Set<Block.ID>) {
+    package init(headerRefs: Set<BlockRef>, connectedHeaders: Set<BlockRef>, heldHeaders: Set<BlockHash>) {
         self.headerRefs = headerRefs
         self.connectedHeaders = connectedHeaders
         self.heldHeaders = heldHeaders
@@ -2475,7 +2476,7 @@ public struct MultipleHeadersProcessingResult: Sendable {
     
     public let headerRefs: Set<BlockRef>
     public let connectedHeaders: Set<BlockRef>
-    public let heldHeaders: Set<Block.ID>
+    public let heldHeaders: Set<BlockHash>
 }
 
 private func nowSeconds() -> TimeInterval {

@@ -1,4 +1,5 @@
 import ArgumentParser
+import BitcoinCrypto
 import BitcoinBase
 import BitcoinWallet
 import Foundation
@@ -34,11 +35,8 @@ struct CreateTransaction: ParsableCommand {
 
         let ins = try outpoints.map {
             let (inputTx, out) = $0
-            guard let txID = Transaction.ID(hex: inputTx) else {
+            guard let txID = TransactionIdentifier(displayHex: inputTx) else {
                 throw ValidationError("Invalid input transaction hex: \(inputTx)")
-            }
-            guard txID.count == Transaction.idLength else {
-                throw ValidationError("Invalid transaction identtifier length: \(inputTx)")
             }
             return Transaction.Input(outpoint: .init(tx: txID, out: out))
         }

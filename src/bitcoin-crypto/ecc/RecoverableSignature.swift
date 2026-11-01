@@ -76,7 +76,7 @@ public struct RecoverableSignature: Equatable, Sendable, CustomStringConvertible
     }
 
     /// Actually hash256
-    static let hashLength = Hash256.Digest.byteCount
+    static let hashLength = SHA256d.Digest.byteCount
 
     /// ECDSA Compact Signature with recoverable public key
     public static let recoverableSignatureLength = 65
@@ -85,7 +85,7 @@ public struct RecoverableSignature: Equatable, Sendable, CustomStringConvertible
 // MARK: - Some helper functions
 
 private func getMessageHash(messageData: Data) -> Data {
-    Data(Hash256.hash(data: compactRecoverableMessage(messageData)))
+    Data(SHA256d.hash(data: compactRecoverableMessage(messageData)))
 }
 
 /// Text used to signify that a signed message follows and to prevent inadvertently signing a transaction.

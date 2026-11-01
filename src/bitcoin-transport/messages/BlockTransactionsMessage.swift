@@ -9,7 +9,7 @@ import BitcoinBase
 ///
 public struct BlockTransactionsMessage: Equatable {
 
-    public init(blockHash: Data, txs: [Transaction]) {
+    public init(blockHash: BlockHash, txs: [Transaction]) {
         self.blockHash = blockHash
         self.txs = txs
     }
@@ -18,7 +18,7 @@ public struct BlockTransactionsMessage: Equatable {
     ///
     /// The output from a double-SHA256 of the block header, as used elsewhere. 32 bytes.
     ///
-    public let blockHash: Data
+    public let blockHash: BlockHash
 
     /// The transactions provided.
     ///
@@ -32,7 +32,7 @@ public struct BlockTransactionsMessage: Equatable {
 extension BlockTransactionsMessage: BinaryCodable {
 
     public init(parsing input: inout ParserSpan, format: Never?) throws {
-        blockHash = try Data([UInt8](parsing: &input, byteCount: Block.idLength))
+        blockHash = try BlockHash(parsing: &input)
         let txCount = try VarInt(parsing: &input).value
         var txs = [Transaction]()
         for _ in 0 ..< txCount {
@@ -43,7 +43,7 @@ extension BlockTransactionsMessage: BinaryCodable {
     }
 
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
-        counter.countSize(Block.idLength)
+        counter.countSize(Hash256.byteCount)
         counter.count(VarInt(txs.count))
         for tx in txs {
             tx.countBytes(into: &counter)
@@ -51,7 +51,7 @@ extension BlockTransactionsMessage: BinaryCodable {
     }
 
     public func encode(into out: inout OutputRawSpan, format: Never?) throws {
-        out.append(contentsOf: blockHash)
+        blockHash.encode(into: &out)
         try VarInt(txs.count).encode(into: &out)
         for tx in txs {
             try tx.encode(into: &out)

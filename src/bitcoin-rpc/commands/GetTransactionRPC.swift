@@ -1,5 +1,6 @@
 import Foundation
 import JSONRPC
+import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
 
@@ -7,17 +8,16 @@ extension GetTransactionRPC {
 
     public func run(blockchain: BlockchainService) async throws(JSONRPCResponse.Error) -> Result {
 
-        guard let txIDByteSwapped = Data(hex: params.transactionID), txIDByteSwapped.count == Transaction.idLength else {
+        guard let txID = TransactionIdentifier(displayHex: params.transactionID) else {
             throw .init(.invalidParams, "Transaction ID hex encoding or length is invalid.")
         }
-        let txID = Data(txIDByteSwapped.reversed())
         guard let tx = await blockchain.transaction(identifiedBy: txID) else {
             throw .init(.invalidParams, "Transaction not found.")
         }
 
         let ins = tx.ins.map {
             Result.Input(
-                tx: $0.outpoint.txID.reversed().hex, // We display hashes in big endian
+                tx: $0.outpoint.txID.displayHex, // We display hashes in big endian
                 output: $0.outpoint.out
             )
         }
@@ -32,7 +32,7 @@ extension GetTransactionRPC {
 
         return .init(
             id: tx.idHex,
-            witnessID: tx.witnessID.reversed().hex,
+            witnessID: tx.witnessID.displayHex,
             inputs: ins,
             outputs: outs
         )
