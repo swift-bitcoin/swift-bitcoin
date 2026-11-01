@@ -1,5 +1,5 @@
 import BinaryParsing
-import CryptoKit
+import Crypto
 import Foundation
 
 /// A 32-byte hash (Bitcoin's double SHA-256, `HASH256`), stored as `InlineArray<32, UInt8>`:

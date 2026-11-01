@@ -1,5 +1,5 @@
 import BinaryParsing
-import CryptoKit
+import Crypto
 import Foundation
 import BitcoinBase
 import Testing
