@@ -1,6 +1,7 @@
 import BinaryParsing
 import Crypto
 import Foundation
+import BitcoinCrypto
 
 /// A 32-byte hash (Bitcoin's double SHA-256, `HASH256`), stored as `InlineArray<32, UInt8>`:
 /// bytes in wire order, alignment 1, no conversion.
