@@ -1,98 +1,127 @@
-/*
-import BitcoinBase
 import LMDB
+import BinaryParsing
 import _NIOFileSystem
-import struct SystemPackage.FilePath
 import Foundation
 import Logging
 import Collections
+import BitcoinCrypto
+import BitcoinBase
 
-/// Database block index service implementation.
+/// Hybrid in-memory / database block index service implementation.
 actor PersistentBlockIndex: BlockIndex {
 
-    // TODO: Get rid of the entire PersistentBlockIndex implementation as it was superseeded by the HybridBlockIndex which is persistent but also has an in-memory cache.
-    func lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef) async -> BlockRef {
-        fatalError("Not implemented")
+    enum InitError: Error {
+        case missingBlockHash
     }
 
-    init(path: FilePath, logger: Logger) {
+    init(path: FilePath, logger: Logger) throws/*(InitError)*/ {
         self.path = path.appending("block-index")
         self.logger = logger
-        env = initEnv(path: self.path)
-    }
 
-    private let path: FilePath
-    private let logger: Logger
-    private var env: Environment!
+        // Perform all throwing calls into locals before assigning stored properties:
+        // a ~Copyable struct cannot be left partially initialized on a throwing path.
+        let env = try initBlockIndexEnv(path: self.path)
 
-    var bestHeader: BlockRef? {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            try! byHeight.withCursor(readOnly: true) { cursor in
-                var header: BlockRef? = nil
-                var maybeID = try! cursor.get(.last)
-                var maxSteps = 144 // Blocks in a period
-                while let id = maybeID, maxSteps > 0 {
-                    let ref = try! _get(id, byID: byID)!
-                    // Move backwards
-                    if let nextID = try! cursor.get(.prevDup) {
-                        // If no more duplicates for this height, move to previous height
-                        maybeID = nextID
-                    } else {
-                        maybeID = try! cursor.get(.prevNodup)
-                        maxSteps -= 1
-                    }
-                    guard ref.status != .invalid else {
-                        continue
-                    }
-                    if header == nil || header!.chainwork < ref.chainwork {
-                        header = ref
-                    }
-                }
-                return header
+        let byID = try env.openDatabase(named: "by-id")
+        let byHeight = try env.openDatabase(named: "by-height", options: [.duplicateSort, .duplicateFixed])
+
+        var cache = [BlockHash : BlockRef]()
+        var heightsCache = [[BlockHash]]()
+
+        let txn = try ReadTransaction(env)
+        let cursor = try Cursor(txn, database: byHeight)
+        var maybeHash = try cursor.first()?.value(as: BlockHash.self)
+        while let hash = maybeHash {
+            guard var ref = try txn.value(forKey: hash, in: byID, as: BlockRef.self) else {
+                throw InitError.missingBlockHash
+            }
+            ref.skip = _ancestor(of: ref, at: skipHeight(from: ref.height), refs: cache).header.id
+            if ref.height < heightsCache.count {
+                heightsCache[ref.height].append(hash)
+            } else if ref.height == heightsCache.count {
+                heightsCache.append([hash])
+            } else {
+                fatalError("Height higher than cache size")
+            }
+            cache[hash] = ref
+            // Move backwards
+            if let nextHash = try cursor.nextDuplicate()?.value(as: BlockHash.self) /*try! cursor.get(.nextDup)*/ {
+                // If no more duplicates for this height, move to previous height
+                maybeHash = nextHash
+            } else {
+                maybeHash = try cursor.next()?.value(as: BlockHash.self) /*try! cursor.get(.nextNodup)*/
             }
         }
+        self.env = env
+        self.byID = byID
+        self.byHeight = byHeight
+        self.cache = cache
+        self.heightsCache = heightsCache
+    }
+
+    let path: FilePath
+    private let logger: Logger
+    private let env: Environment
+    private let byID: Database
+    private let byHeight: Database
+
+    // By id cache
+    private var cache = [BlockHash : BlockRef]()
+
+    /// Either the ID of the Block at each height in the active chain. Or additionally, the IDs of blocks at that height not on the active chain.
+    private var heightsCache = [[BlockHash]]()
+
+    var bestHeader: BlockRef? {
+        var header: BlockRef? = nil
+        for ids in heightsCache.reversed().prefix(144) {
+            for id in ids {
+                let ref = cache[id]!
+                guard ref.status != .invalid else {
+                    continue
+                }
+                if header == nil || header!.chainwork < ref.chainwork {
+                    header = ref
+                }
+            }
+        }
+        return header
     }
 
     var bestBlock: BlockRef {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            try! byHeight.withCursor(readOnly: true) { cursor in
-                var id = try! cursor.get(.last)!
-                var found = BlockRef?.none
-                repeat {
-                    let ref = try! _get(id, byID: byID)!
-                    if ref.status == .active {
-                        found = ref
-                    } else if let maybeID = try! cursor.get(.prevDup) { // Move backwards
-                        // If no more duplicates for this height, move to previous height
-                        id = maybeID
-                    } else {
-                        id = try! cursor.get(.prevNodup)!
-                    }
-                } while found == nil
-                return found!
+        for ids in heightsCache.reversed() {
+            for id in ids {
+                let ref = cache[id]!
+                if ref.status == .active {
+                    return ref
+                }
             }
         }
+        fatalError("Missing genesis block")
     }
 
-    func ancestor(of tip: BlockRef, at height: Int) async -> BlockRef {
-        precondition(height <= tip.height)
-        return try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            var candidate = tip
-            while candidate.height > height {
-                candidate = try! _get(candidate.header.previous, byID: byID)!
+    var bestHeader2: BlockRef? {
+        for ids in heightsCache.reversed() {
+            if let ref = findActiveRef(ids) {
+                return ref
             }
-            return candidate
         }
+        return nil
+    }
+
+    func ancestor(of tip: BlockRef, at height: Int) -> BlockRef {
+        _ancestor(of: tip, at: height, refs: cache)
     }
 
     func bestAncestor(of header: BlockRef) -> BlockRef {
-        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            var candidate = header
-            while candidate.status != .active {
-                candidate = try! _get(candidate.header.previous, byID: byID)!
-            }
-            return candidate
+        var candidate = header
+        while candidate.status != .active {
+            candidate = cache[candidate.header.previous]!
         }
+        return candidate
+    }
+
+    func lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef) -> BlockRef {
+        _lastCommonAncestor(blockA, blockB, refs: cache)
     }
 
     func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<BlockHash>) -> [BlockHash] {
@@ -101,21 +130,32 @@ actor PersistentBlockIndex: BlockIndex {
         // TODO: Test this out:
         // let max = min(max, tip.height - stop.height)
 
-        return try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            var current = tip
-            var blocks = Deque<BlockHash>(minimumCapacity: max)
-            // TODO: It occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
-            while current.height > stop.height /* current.header.id != stop.header.id */ {
-                if current.status == .header, !exclude.contains(current.header.id) {
-                    if blocks.count == max {
-                        _ = blocks.popLast()
-                    }
-                    blocks.prepend(current.header.id)
+        var current = tip
+        var blocks = Deque<BlockHash>(minimumCapacity: max)
+        // TODO: It has occurred in the past that the stop was not an ancestor of the tip for some reason that neeeds to be looked into
+        while current.height > stop.height /* current.header.id != stop.header.id */ {
+            if current.status == .header, !exclude.contains(current.header.id) {
+                if blocks.count == max {
+                    _ = blocks.popLast()
                 }
-                current = try! _get(current.header.previous, byID: byID)!
+                blocks.prepend(current.header.id)
             }
-            return .init(blocks)
+            current = cache[current.header.previous]!
         }
+        return .init(blocks)
+    }
+
+    /// All block storage locators in reverse height order, including those for stale/invalid blocks.
+    var storageLocators: [BlockStorageLocator] {
+        var locators = [BlockStorageLocator]()
+        for ids in heightsCache.reversed() {
+            for id in ids {
+                if let locator = cache[id]!.locator {
+                    locators.append(locator)
+                }
+            }
+        }
+        return locators
     }
 
     func addHeader(_ header: Block) throws(BlockIndexError) -> BlockRef {
@@ -124,39 +164,51 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) throws(BlockIndexError) -> BlockRef {
+        precondition(cache.isEmpty)
         precondition(genesisBlock.previous == BlockHash.zero)
         return try add(genesisBlock, locator: locator, status: .active, chainTxCount: genesisBlock.txs.count)
     }
 
     private func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus, chainTxCount: Int) throws(BlockIndexError) -> BlockRef {
-        let previous: BlockRef?
-        let count: Int
-        (previous, count) = try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            let previous: BlockRef?
-            if block.previous != BlockHash.zero, let previousBlock = try byID.get(block.previous) {
-                previous = try! BlockRef(previousBlock)
-            } else {
-                previous = nil
-            }
-            return (previous, try byID.count)
+
+        // We can only add a block with locator if it is the genesis block and we have no other blocks
+        precondition(locator == nil || cache.isEmpty)
+
+        let previous = if block.previous != BlockHash.zero {
+            get(block.previous)
+        } else {
+            BlockRef?.none
         }
 
-        // We can only add the genesis block if the database is empty
-        precondition(locator == nil || count == 0)
-
-        guard count == 0 || previous != nil else {
+        guard cache.isEmpty || previous != nil else {
             throw BlockIndexError.parentMissing
         }
+
         let height = if let previous { previous.height + 1 } else { 0 }
         let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
-        let blockRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
+        var newRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
+        newRef.skip = ancestor(of: newRef, at: skipHeight(from: height)).header.id
+        cache[newRef.header.id] = newRef
 
-        // Add
-        try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
-            try byID.put(blockRef.data, key: blockRef.header.id)
-            try byHeight.put(blockRef.header.id, key: blockRef.height)
+        // We might have some previous forks at this height
+        if height < heightsCache.count {
+            heightsCache[height].append(newRef.header.id)
+        } else if height == heightsCache.count {
+            heightsCache.append([newRef.header.id])
+        } else {
+            fatalError("Height higher than cache size")
         }
-        return blockRef
+        addPersistent(newRef)
+        return newRef
+    }
+
+    private func addPersistent(_ newRef: BlockRef) {
+        // var txn = try! WriteTransaction(env)
+        try! env.write { txn in
+            try txn.put(newRef, forKey: newRef.header.id, in: byID)
+            try txn.put(newRef.header.id, forKey: newRef.height, in: byHeight)
+            //try txn.commit()
+        }
     }
 
     func updateBlock(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
@@ -171,226 +223,236 @@ actor PersistentBlockIndex: BlockIndex {
     }
 
     private func update(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?) -> BlockRef {
-        var blockRef = ref
 
         // Valid transitions header -> merkle; merkle -> active/stale
-        precondition(blockRef.status == .header && status == .merkle || (blockRef.status == .merkle && [.active, .stale].contains(status)))
+        precondition(ref.status == .header && status == .merkle || (ref.status == .merkle && [.active, .stale].contains(status)))
 
-        blockRef.locator = locator
-        blockRef.status = status
-        if let chainTxCount { blockRef.chainTxCount = chainTxCount }
+        var newRef = ref
+        newRef.locator = locator
+        newRef.status = status
+        if let chainTxCount { newRef.chainTxCount = chainTxCount }
+        cache[ref.header.id] = newRef
+        updatePersistent(newRef)
+        return newRef
+    }
 
-        try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
-            try byID.put(blockRef.data, key: blockRef.header.id)
-            // try byHeight.put(blockRef.header.id, key: blockRef.height)
+    private func updatePersistent(_ newRef: BlockRef) {
+        // var txn = try! WriteTransaction(env)
+        try! env.write { txn in
+            try txn.put(newRef, forKey: newRef.header.id, in: byID)
+            // try! txn.commit()
         }
-        return blockRef
     }
 
     func get(_ id: BlockHash) -> BlockRef? { // TODO: Probably should throw
-        let data = try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            try byID.get(id)
-        }
-        return if let data {
-            try! BlockRef(data)
-        } else {
-            nil
-        }
+        cache[id]
     }
 
     func get(at height: Int) -> BlockRef {
-        // guard height < byHeight.endIndex else { return nil }
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            try byHeight.withCursor(readOnly: true) { cursor in
-                try cursor.set(key: height)
-                var maybeBlockID = try cursor.get(.firstDup)
-                var found: BlockRef? = nil
-                while found == nil, let blockID = maybeBlockID {
-                    let refData = try byID.get(blockID)!
-                    let ref = try BlockRef(refData)
-                    if ![.stale, .invalid].contains(ref.status) {
-                        found = ref
-                    }
-                    maybeBlockID = try cursor.get(.nextDup)
-                }
-                return found!
-            }
-        }
+        // guard height < byHeightCache.endIndex else { return nil }
+        findActiveRef(height)!
     }
 
     func getAll(at height: Int) -> [BlockRef] {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            var all = [BlockRef]()
-            try byHeight.withCursor(readOnly: true) { cursor in
-                try cursor.set(key: height)
-                var maybeBlockID = try cursor.get(.firstDup)
-                while let blockID = maybeBlockID {
-                    let refData = try byID.get(blockID)!
-                    let ref = try BlockRef(refData)
-                    all.append(ref)
-                    maybeBlockID = try cursor.get(.nextDup)
-                }
-            }
-            return all
-        }
+        heightsCache[height].map { id in cache[id]! }
     }
 
     func get(from ref: BlockRef, count: Int) -> [BlockRef] {
-        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-
-            var refs = [BlockRef]()
-            var i = 0
-            var ref = ref
-            repeat {
-                refs.append(ref)
-                guard ref.header.previous != BlockHash.zero else {
-                    break
-                }
-                i += 1
-                ref = try _get(ref.header.previous, byID: byID)!
-            } while i < count
-            return refs
-        }
-    }
-
-    /// All block storage locators in reverse height order including those for stale/invalid blocks.
-    var storageLocators: [BlockStorageLocator] {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            try! byHeight.withCursor(readOnly: true) { cursor in
-                var id = try! cursor.get(.last)
-                var locators = [BlockStorageLocator]()
-                repeat {
-                    let ref = try! _get(id!, byID: byID)!
-                    if let locator = ref.locator {
-                        locators.append(locator)
-                    }
-                    // Move backwards
-                    let maybeID = try! cursor.get(.prevDup)
-                    // If no more duplicates for this height, move to previous height
-                    if let maybeID {
-                        id = maybeID
-                    } else {
-                        id = try! cursor.get(.prevNodup)
-                    }
-                } while id != nil
-                return locators
+        var refs = [BlockRef]()
+        var i = 0
+        var ref = ref
+        repeat {
+            refs.append(ref)
+            guard ref.header.previous != BlockHash.zero else {
+                break
             }
-        }
+            i += 1
+            ref = cache[ref.header.previous]!
+        } while i < count
+        return refs
     }
 
     func calculateMissingBlocks(_ ids: [BlockHash]) -> [BlockHash] {
         var missing = [BlockHash]()
-        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            for id in ids {
-                if try byID.get(id) == nil {
-                    missing.append(id)
-                }
+        for id in ids {
+            guard let ref = cache[id] else {
+                missing.append(id)
+                continue
+            }
+            if ref.status == .header {
+                missing.append(id)
             }
         }
         return missing
     }
 
     func undo(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
-        try! env.withTransaction(db: byID) { _, byID in
-            var id = tip.header.id
-            var refs = [BlockRef]()
+        var id = tip.header.id
+        var refs = [BlockRef]()
+        repeat {
+            let ref = cache[id]!
+            precondition(ref.status == .active)
+            cache[id]!.status = .stale
+            refs.append(cache[id]!)
+            id = ref.header.previous
+        } while id != ancestor.header.id
+        let refs2 = undoPersistent(from: tip, backTo: ancestor)
+        assert(refs == refs2) // TODO: Remove for efficiency
+        return refs
+    }
+
+    private func undoPersistent(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
+        var id = tip.header.id
+        var refs = [BlockRef]()
+        // var txn = try! WriteTransaction(env)
+        try! env.write { txn in
             repeat {
-                var ref = try _get(id, byID: byID)!
+                var ref = try txn.value(forKey: id, in: byID, as: BlockRef.self)!
                 precondition(ref.status == .active)
                 ref.status = .stale
-                try byID.put(ref.data, key: id)
+                try txn.put(ref, forKey: id, in: byID)
                 refs.append(ref)
                 id = ref.header.previous
             } while id != ancestor.header.id
-            return refs
+            // try! txn.commit()
         }
+        return refs
     }
 
     func reactivate(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
-        try! env.withTransaction(db: byID) { _, byID in
-            var id = tip.header.id
-            var refs = [BlockRef]()
+        var id = tip.header.id
+        var refs = [BlockRef]()
+        repeat {
+            let ref = cache[id]!
+            id = ref.header.previous
+            if ref.status != .stale {
+                continue
+            }
+            cache[ref.header.id]!.status = .active
+            refs.insert(cache[ref.header.id]!, at: 0)
+        } while id != ancestor.header.id
+        let refs2 = reactivatePersistent(from: tip, backTo: ancestor)
+        assert(refs == refs2) // TODO: Remove for efficiency
+        return refs
+    }
+
+    private func reactivatePersistent(from tip: BlockRef, backTo ancestor: BlockRef) -> [BlockRef] {
+        var id = tip.header.id
+        var refs = [BlockRef]()
+        //var txn = try! WriteTransaction(env)
+        try! env.write { txn in
             repeat {
-                var ref = try _get(id, byID: byID)!
+                var ref = try txn.value(forKey: id, in: byID, as: BlockRef.self)!
                 id = ref.header.previous
                 if ref.status != .stale {
                     continue
                 }
                 ref.status = .active
-                try byID.put(ref.data, key: ref.header.id)
+                try txn.put(ref, forKey: ref.header.id, in: byID)
                 refs.insert(ref, at: 0)
             } while id != ancestor.header.id
-            return refs
+            // try! txn.commit()
         }
+        return refs
     }
 
     func makeBlockLocator(from tip: BlockRef) -> [BlockHash] {
-        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            var have = [BlockHash]()
-            var step = 1
-            var count = step
-            var current = tip
-            while current.header.previous != BlockHash.zero {
-                count -= 1
-                if count == 0 {
-                    have.append(current.header.id)
-                    if have.count >= 10 { step *= 2 }
-                    count = step
-                }
-                current = try! _get(current.header.previous, byID: byID)!
+        var have = [BlockHash]()
+        var step = 1
+        var count = step
+        var current = tip
+        while current.header.previous != BlockHash.zero {
+            count -= 1
+            if count == 0 {
+                have.append(current.header.id)
+                if have.count >= 10 { step *= 2 }
+                count = step
             }
-            have.append(current.header.id)
-            return have
+            current = cache[current.header.previous]!
         }
+        have.append(current.header.id)
+        return have
     }
 
     func undoLastBlock() -> BlockRef {
-        var ref = try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            findBestBlock(byID: byID, byHeight: byHeight)
-        }
-        precondition(ref.status == .active)
-        return try! env.withTransaction(db: byID) { _, byID in
-            ref.status = .stale
-            try byID.put(ref.header.id, key: ref.data)
-            let previousData = try byID.get(ref.header.previous)!
-            return try BlockRef(previousData)
-        }
+        let ref = bestHeader!
+        precondition(ref.status == .active) // The chain is fully sync'ed
+        cache[ref.header.id]!.status = .stale
+        let result = cache[ref.header.previous]!
+        let result2 = undoLastBlockPersistent()
+        assert(result == result2) // TODO: Remove for efficiency
+        return result
     }
 
-    func findChainForks() async -> [ChainFork] {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            try! byHeight.withCursor(readOnly: true) { cursor in
-                var forks = [ChainFork]()
-                var maybeID = try! cursor.get(.last)
-                while let id = maybeID {
-                    let ref = try! _get(id, byID: byID)!
-                    var foundBestChild = false
-                    for (i, fork) in forks.enumerated() {
-                        if fork.start.header.previous == id {
-                            forks[i].start = ref
-                            foundBestChild = true
-                            break
-                        }
-                    }
-                    if !foundBestChild {
-                        forks.append(.init(ref))
-                        forks.sort { $0 > $1 }
-                    }
+    private func undoLastBlockPersistent() -> BlockRef {
+        // let readTxn = try! ReadTransaction(env)
+        var found = BlockRef?.none
+        try! env.read { readTxn in
+            let cursor = try! Cursor(readTxn, database: byHeight)
 
+            // Find the best block
+            var id = try! cursor.last()!.value(as: BlockHash.self)
+            repeat {
+                let ref = try! readTxn.value(forKey: id, in: byID, as: BlockRef.self)!
+                if ref.status == .active {
+                    found = ref
+                } else {
                     // Move backwards
-                    if let nextID = try! cursor.get(.prevDup) {
-                        // If no more duplicates for this height, move to previous height
-                        maybeID = nextID
+                    let maybeID = try! cursor.previousDuplicate()?.value(as: BlockHash.self)
+                    // If no more duplicates for this height, move to previous height
+                    if let maybeID {
+                        id = maybeID
                     } else {
-                        maybeID = try! cursor.get(.prevNodup)
+                        id = try! cursor.previous()!.value(as: BlockHash.self)
                     }
                 }
-                return forks
+            } while found == nil
+        }
+        var ref = found!
+
+        precondition(ref.status == .active)
+        // var txn = try! WriteTransaction(env)
+        var previous: BlockRef?
+        try! env.write { txn in
+            ref.status = .stale
+            try! txn.put(ref, forKey: ref.header.id, in: byID)
+            // try byID.put(ref.header.id.hash.data, key: ref.data)
+            previous = try! txn.value(forKey: ref.header.previous, in: byID, as: BlockRef.self)!
+            // try! txn.commit()
+        }
+        return previous!
+    }
+
+    func findChainForks() -> [ChainFork] {
+        var forks = [ChainFork]()
+        for blockIDs in heightsCache.reversed() {
+            for blockID in blockIDs {
+                let ref = cache[blockID]!
+                var foundBestChild = false
+                for (i, fork) in forks.enumerated() {
+                    if fork.start.header.previous == blockID {
+                        forks[i].start = ref
+                        foundBestChild = true
+                        break
+                    }
+                }
+                if !foundBestChild {
+                    forks.append(.init(ref))
+                    forks.sort { $0 > $1 }
+                }
             }
         }
+        return forks
     }
 
     func clear() async {
+        heightsCache = .init()
+        cache = .init()
+       // await clearPersistent()
+    }
+
+    /*
+    private func clearPersistent() async {
         env = nil // closes env
 
         // Removes directory
@@ -404,114 +466,132 @@ actor PersistentBlockIndex: BlockIndex {
 
         env = initEnv(path: path)
     }
+*/
+    private func findActiveRef(_ height: Int) -> BlockRef? {
+        findActiveRef(heightsCache[height])
+    }
 
-    /*
-    func get(from startHeight: Int, to endHeight: Int) -> [BlockRef] {
-        try! env.withTransaction(db: byID, byHeight, options: .readOnly) { _, byID, byHeight in
-            try (startHeight...endHeight).map { height in
-                let blockID = try byHeight.get(height)!
-                let data = try byID.get(blockID)!
-                return try! BlockRef(data)
+    private func findActiveRef(_ ids: [BlockHash]) -> BlockRef? {
+        for id in ids {
+            guard let ref = cache[id] else {
+                fatalError("Missing block ref")
+            }
+            if ref.status != .invalid || ref.status != .stale {
+                return ref
             }
         }
-    }
-
-    func getParent(for childID: BlockHash) -> BlockRef? {
-        try! env.withTransaction(db: byID, options: .readOnly) { _, byID in
-            let childData = try byID.get(childID)!
-            let child = try BlockRef(childData)
-            if child.previous == BlockHash.zero {
-                return BlockRef?.none
-            }
-            let previousData = try byID.get(child.previous)!
-            return try BlockRef(previousData)
-        }
-    }
-
-    /// Either removes (if header-only) or marks block as invalid
-    func removeAll(from height: Int) -> BlockRef {
-        let bestHeaderData = try! env.withTransaction(db: byID, byHeight) { _, byID, byHeight in
-        let bestHeight = try byHeight.count - 1
-        var refs = [BlockRef]()
-            for h in height ... bestHeight {
-                let blockID = try byHeight.get(h)!
-                let refData = try byID.get(blockID)!
-                refs.append(try BlockRef(refData))
-            }
-            for var ref in refs {
-                guard ref.status != .invalid && ref.status != .stale else {
-                    continue
-                }
-                if ref.status == .header {
-                    try! byID.delete(ref.header.id)
-                } else {
-                    // guard let data = try byID.get(ref.blockID) else { return }
-                    // var blockRef = try! BlockRef(data)
-                    ref.status = .invalid
-                    try byID.put(ref.data, key: ref.header.id)
-                }
-            }
-            for h in height ... bestHeight {
-                try! byHeight.delete(h)
-            }
-            let id = try byHeight.get(height - 1)!
-            return try byID.get(id)!
-        }
-        return try! BlockRef(bestHeaderData)
-    }
-    */
-}
-
-private let byIDName = "by-id"
-private let byHeightName = "by-height"
-private let byID = Database.Descriptor(byIDName)
-private let byHeight = Database.Descriptor(byHeightName)
-
-
-private func _get(_ id: BlockHash, byID: borrowing LMDB.Database) throws(CoinsError) -> BlockRef? {
-    let data: Data?
-    do {
-        data = try byID.get(id)
-    } catch {
-        throw .databaseError(error)
-    }
-    guard let data else {
         return nil
     }
-    do {
-        return try BlockRef(data)
-    } catch {
-        throw .corruptedCoinData
+}
+
+/// Turns the lowest `1` bit in the binary representation of a number into a `0`.
+private func invertLowestOne(_ n: Int) -> Int { n & (n - 1) }
+
+/// Compute what height to jump back to with the `BlockRef.previous` pointer.
+private func skipHeight(from height: Int) -> Int {
+    if height < 2 { return 0 }
+
+    // Determine which height to jump back to. Any number strictly lower than height is acceptable, but the following expression seems to perform well in simulations (max 110 steps to go back up to 2**18 blocks).
+    return height & 1 != 0 ? invertLowestOne(invertLowestOne(height - 1)) + 1 : invertLowestOne(height)
+}
+
+private func _ancestor(of tip: BlockRef, at height: Int, refs: [BlockHash : BlockRef]) -> BlockRef {
+    precondition(height <= tip.height)
+    var indexWalk = tip // const CBlockIndex* pindexWalk = this;
+    var heightWalk = tip.height
+    while (heightWalk > height) {
+        let heightSkip = skipHeight(from: heightWalk)
+        let heightSkipPrev = skipHeight(from: heightWalk - 1)
+        if let skip = indexWalk.skip, heightSkip == height || (
+            heightSkip > height && !(
+                heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height))
+        {
+            // Only follow skip if previous->skip isn't better than skip->previous.
+            indexWalk = refs[skip]!
+            heightWalk = heightSkip
+        } else {
+            indexWalk = refs[indexWalk.header.previous]!
+            heightWalk -= 1
+        }
+    }
+    return indexWalk
+}
+
+/// Find the last common ancestor two blocks have.
+private func _lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef, refs: [BlockHash : BlockRef]) -> BlockRef {
+    var pa: BlockRef
+    var pb: BlockRef
+    // First rewind to the last common height (the forking point cannot be past one of the two).
+    if blockA.height > blockB.height {
+        pb = blockB
+        pa = _ancestor(of: blockA, at: blockB.height, refs: refs)
+    } else if blockB.height > blockA.height {
+        pa = blockA
+        pb = _ancestor(of: blockB, at: blockA.height, refs: refs)
+    } else {
+        pa = blockA
+        pb = blockB
+    }
+    while pa.header.id != pb.header.id {
+        // Jump back until pa and pb have a common "skip" ancestor.
+        assert(pa.skip != nil && pb.skip != nil)
+        while pa.skip != pb.skip { // TODO: check what happens when skip is null for one of them
+            // This logic relies on the property that equal-height blocks have equal-height skip
+            // pointers.
+            assert(pa.height == pb.height)
+            //assert(pa->pskip->nHeight == pb->pskip->nHeight); // check moved down 2 lines
+            pa = refs[pa.skip!]!
+            pb = refs[pb.skip!]!
+            assert(pa.height == pb.height)
+            assert(pa.skip != nil && pb.skip != nil)
+        }
+        // At this point, pa and pb are different, but have equal pskip. The forking point lies in
+        // between pa/pb on the one end, and pa->pskip/pb->pskip on the other end.
+        pa = refs[pa.header.previous]!
+        pb = refs[pb.header.previous]!
+    }
+    return pa
+}
+
+extension BlockHash: LMDBCodable {
+
+    public init(lmdbBytes bytes: RawSpan) throws(LMDBDecodingError) {
+        guard let hash = Hash256(bytes: bytes) else {
+            throw .init(BlockHash.self, byteCount: bytes.byteCount, reason: "Bad byte count")
+        }
+        self.init(hash)
+    }
+
+    public var encodedByteCount: Int {
+        Hash256.byteCount
     }
 }
 
-private func findBestBlock(byID: borrowing LMDB.Database, byHeight: borrowing LMDB.Database) -> BlockRef {
-    try! byHeight.withCursor(readOnly: true) { cursor in
-        var id = try! cursor.get(.last)!
-        var found = BlockRef?.none
-        repeat {
-            let ref = try! _get(id, byID: byID)!
-            if ref.status == .active {
-                found = ref
-            } else {
-                // Move backwards
-                let maybeID = try! cursor.get(.prevDup)
-                // If no more duplicates for this height, move to previous height
-                if let maybeID {
-                    id = maybeID
-                } else {
-                    id = try! cursor.get(.prevNodup)!
-                }
-            }
-        } while found == nil
-        return found!
+extension BlockRef: LMDBCodable {
+
+    public init(lmdbBytes bytes: RawSpan) throws(LMDBDecodingError) {
+        var input = ParserSpan.init(bytes)
+        do {
+            try self.init(parsing: &input)
+        } catch {
+            throw .init(BlockRef.self, byteCount: bytes.byteCount, reason: "Malformed")
+        }
+    }
+
+    public var encodedByteCount: Int {
+        self.binarySize
+    }
+
+    public func encode(into out: inout OutputRawSpan) {
+        try! self.encode(into: &out, format: nil)
     }
 }
 
-private func initEnv(path: FilePath) -> Environment {
-    let env = try! Environment(at: URL(filePath: path.string), maxDBs: 2, pages: 50_000, options: [.noSubDir])
-    try! env.createDB(byID)
-    try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey, .duplicateSort, .duplicateFixed])) { _, _ in }
-    return env
+package func initBlockIndexEnv(path: FilePath) throws -> Environment {
+    try Environment(
+        path: path.string,
+        options: [.noSubdirectory],
+        maxDatabases: 2,
+        mapSize: 50_000 * Int(getpagesize()) // , fileMode: 0x755 // S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH
+    )
 }
-*/

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.4
+// swift-tools-version: 6.4.2
 import PackageDescription
 
 let package = Package(
@@ -39,7 +39,6 @@ let package = Package(
             traits: [.defaults, "CommandLineArguments"]
         ),
         .package(url: "https://github.com/apple/swift-binary-parsing", .upToNextMinor(from: "0.0.1")),
-        .package(url: "https://github.com/apple/swift-system.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-algorithms", from: "1.0.0"),
@@ -62,7 +61,8 @@ let package = Package(
             path: "src/bitcoin-transport", swiftSettings: [.strictMemorySafety()]),
         .target(
             name: "BitcoinBlockchain",
-            dependencies: ["BitcoinBase", "BitcoinCrypto", "LMDB",
+            dependencies: ["BitcoinBase", "BitcoinCrypto",
+                .product(name: "LMDB", package: "swift-lmdb"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Metrics", package: "swift-metrics"),
                 .product(name: "Atomics", package: "swift-atomics"),
@@ -96,10 +96,6 @@ let package = Package(
                 .product(name: "NIOCore", package: "swift-nio")],
             path: "src/nio-json-rpc"),
         .target(name: "JSONRPC", path: "src/json-rpc"),
-        .target(name: "LMDB", dependencies: [
-            .product(name: "CLMDB", package: "swift-lmdb"),
-            .product(name: "SystemPackage", package: "swift-system"),
-        ], path: "src/lmdb"),
 
         // Tests
         .testTarget(name: "BitcoinUtilityTests", dependencies: ["BitcoinUtility"], path: "test/bitcoin-utility", swiftSettings: [.strictMemorySafety()]),
@@ -111,7 +107,6 @@ let package = Package(
         .testTarget(name: "BitcoinPSBTTests", dependencies: ["BitcoinPSBT", "BitcoinWallet", "BitcoinBase"], path: "test/bitcoin-psbt", swiftSettings: [.strictMemorySafety()]),
         .testTarget(name: "BitcoinWalletTests", dependencies: ["BitcoinWallet"], path: "test/bitcoin-wallet", swiftSettings: [.strictMemorySafety()]),
         .testTarget(name: "BitcoinMiniscriptTests", dependencies: ["BitcoinMiniscript", "BitcoinBase", "BitcoinCrypto"], path: "test/bitcoin-miniscript", swiftSettings: [.strictMemorySafety()]),
-        .testTarget(name: "LMDBTests", dependencies: ["LMDB", "BitcoinCrypto"], path: "test/lmdb", swiftSettings: [.strictMemorySafety()]),
         .testTarget(name: "BitcoinCryptoTests", dependencies: ["BitcoinCrypto"], path: "test/bitcoin-crypto", swiftSettings: [.strictMemorySafety()]),
         .testTarget(name: "BitcoinBaseTests", dependencies: ["BitcoinBase"], path: "test/bitcoin-base",
             resources: [.copy("data")], swiftSettings: [.strictMemorySafety()]),
@@ -170,12 +165,13 @@ let package = Package(
             resources: [.copy("dummy")], swiftSettings: [.strictMemorySafety()], plugins: [.plugin(name: "CopyConfigSources")]),
         .executableTarget(
             name: "BitcoinUtility", dependencies: [
-                "BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC", "JSONRPC", "LMDB",
+                "BitcoinTransport", "BitcoinBlockchain", "BitcoinWallet", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC", "JSONRPC",
+                .product(name: "LMDB", package: "swift-lmdb"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
-                .product(name: "NIOFoundationCompat", package: "swift-nio")],
+                .product(name: "NIOFoundationCompat", package: "swift-nio"),
+                .product(name: "_NIOFileSystem", package: "swift-nio")],
             path: "src/bitcoin-utility", swiftSettings: [.strictMemorySafety()])
-    ],
-    cLanguageStandard: .c2x
+    ]
 )

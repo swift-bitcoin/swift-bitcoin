@@ -49,8 +49,8 @@ public actor BlockchainService: Sendable {
             }
         }
 
-        blockIndex = if let dataDir { HybridBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
-        coinIndex = if let dataDir { HybridCoinIndex(path: dataDir, logger: logger) } else { TransientCoinIndex() }
+        blockIndex = if let dataDir { try! PersistentBlockIndex(path: dataDir, logger: logger) } else { TransientBlockIndex() }
+        coinIndex = if let dataDir { try! PersistentCoinIndex(path: dataDir, logger: logger) } else { TransientCoinIndex() }
 
         let config = BlockStorageConfig(path: dataDir, magic: params.magicBytes, maxBlock: Block.maxSerializedSize)
         do {
@@ -116,7 +116,7 @@ public actor BlockchainService: Sendable {
     /// The index also tracks validation status as well as some calculated fields like chainwork.
     ///
     /// Typically the block index is implemented over a key-value storage or database but the blockchain can also be configured to use a transient in-memory version for regression testing, etc.
-    private var blockIndex: BlockIndex
+    private var blockIndex: BlockIndex!
 
     /// The block disk or transient storage which includes block undo (reversal) data.
     private var blockStorage: BlockStorage
@@ -580,8 +580,33 @@ public actor BlockchainService: Sendable {
         validationTask?.cancel()
         _ = try? await validationTask?.value
 
-        await coinIndex.clear()
-        await blockIndex.clear()
+        // Remove directory
+        if let path = await coinIndex.path, let dataDir {
+            coinIndex = try! PersistentCoinIndex(path: dataDir, logger: logger)
+            // Removes directory
+            do {
+                try await FileSystem.shared.removeItem(at: path)
+            } catch {
+                //logger.error("Issue removing block index directory: \(error.localizedDescription)")
+                //return // TODO: Probably throw here
+                fatalError("Issue removing coin index directory: \(error.localizedDescription)")
+            }
+        } else {
+            coinIndex = TransientCoinIndex()
+        }
+
+        // Remove directory
+        if let path = await blockIndex.path, let dataDir {
+            blockIndex = try! PersistentBlockIndex(path: dataDir, logger: logger)
+            do {
+                try await FileSystem.shared.removeItem(at: path)
+            } catch {
+                fatalError("Issue removing block index directory: \(error.localizedDescription)")
+            }
+        } else {
+            blockIndex = TransientBlockIndex()
+        }
+
         await blockStorage.clearUndo()
 
         let clock = ContinuousClock()

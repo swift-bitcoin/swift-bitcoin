@@ -267,8 +267,9 @@ struct BlockchainIntegrationTests {
         let disambiguator = UInt.random(in: UInt.min ... UInt.max)
 
         func dataDir(_ index: Int) throws -> FilePath {
-            let url = fm.temporaryDirectory.appendingPathComponent(disambiguator.description).appendingPathComponent(#fileID).appendingPathComponent(#function).appendingPathComponent(index.description)
-            let path = FilePath(url.relativePath)
+            let url = fm.temporaryDirectory.appendingPathComponent(disambiguator.description)/*.appendingPathComponent(#fileID).appendingPathComponent(#function)*/.appendingPathComponent(index.description)
+            let path = FilePath(stringLiteral: url.relativePath)
+            // print("FilePath string: \(path.string)") // Careful LLDB truncates this
             try? fm.removeItem(atPath: path.string)
             try fm.createDirectory(at: url, withIntermediateDirectories: true)
             return path

@@ -69,7 +69,7 @@ extension Optional: BinaryCodable where Wrapped == UnspentOutput {
 
     public func encode(into out: inout OutputRawSpan, format: Never?) throws {
         if let self {
-            try self.encode(into: &out)
+            try self.encode(into: &out, format: nil)
         } else {
             out.append(UInt8.max)
         }
