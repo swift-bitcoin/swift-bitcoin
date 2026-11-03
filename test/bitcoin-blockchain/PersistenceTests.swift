@@ -3,7 +3,8 @@ import Foundation
 import BitcoinBlockchain
 import BitcoinCrypto
 import BitcoinBase
-import SystemPackage
+//import SystemPackage
+import struct _NIOFileSystem.FilePath
 
 struct PersistenceTests {
 

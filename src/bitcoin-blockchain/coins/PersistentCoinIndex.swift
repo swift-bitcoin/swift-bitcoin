@@ -1,78 +1,78 @@
 import LMDB
+import BinaryParsing
 import _NIOFileSystem
 import Foundation
-import struct SystemPackage.FilePath
 import Logging
 import BitcoinBase
 
-/// An index plus on-disk LMDB storage for coins.
+/// An index plus in-memory storage for coins.
 actor PersistentCoinIndex: CoinIndex {
 
     enum Error: Swift.Error {
         case deletionIssue
     }
 
-    init(path: FilePath, logger: Logger) {
+    init(path: FilePath, logger: Logger) throws {
         self.path = path.appending("coins")
         self.logger = logger
-        env = initEnv(path: self.path)
+
+        let env = try initCoinIndexEnv(path: self.path)
+        let byID = try env.openDatabase(named: "by-id")
+
+        var coins = [Outpoint : UnspentOutput]()
+        try env.read { txn in
+            let cursor = try Cursor(txn, database: byID)
+
+            var maybeKv = try cursor.first()
+            while let kv = maybeKv {
+                let outpoint = try kv.key(as: Outpoint.self)
+                let coin = try kv.value(as: UnspentOutput.self)
+                coins[outpoint] = coin
+                maybeKv = try cursor.next()
+            }
+        }
+        self.env = env
+        self.byID = byID
+        self.coins = coins
     }
 
-    private let path: FilePath
+    let path: FilePath
     private let logger: Logger
-    private var env: Environment!
+    private let env: Environment
+    private let byID: Database
+    private(set) var coins: [Outpoint: UnspentOutput]
 
-    var coins: [Outpoint : UnspentOutput] { get {
-        var unordered = [Outpoint : UnspentOutput]()
-        do {
-            try env.withTransaction(db: byID, options: .readOnly) { _, byID in
-                try byID.withCursor(readOnly: true) { cursor in
-                    var maybeKv = try cursor.getPair()
-                    while let kv = maybeKv {
-                        let (outpointData, coinData) = kv
-                        let outpoint = try Outpoint(outpointData)
-                        let coin = try UnspentOutput(coinData)
-                        unordered[outpoint] = coin
-                        maybeKv = try cursor.getPair(.next)
-                    }
-                }
-            }
-        } catch {
-            return [ : ]
-        }
-        return unordered
-    } }
-
-    func get(_ outpoint: Outpoint) throws(CoinsError) -> UnspentOutput? {
-        let result: UnspentOutput?
-        do {
-            result = try env.withTransaction(db: byID, options: .readOnly) { _, byID  throws(CoinsError) in
-                try _get(outpoint, byID: byID)
-            }
-        } catch {
-            switch error {
-            case let .handlerIssue(nestedError):
-                throw nestedError
-            default:
-                throw .databaseError(error)
-            }
-        }
-        return result
+    func get(_ outpoint: Outpoint) -> UnspentOutput? {
+        coins[outpoint]
     }
 
     func update(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) throws(CoinsError) -> [UnspentOutput?] {
+        var removedOutpoints = [Outpoint]()
         var removedCoins = [UnspentOutput?]()
+        for outpoint in outpointsToRemove {
+            guard let coin = coins[outpoint] else {
+                removedCoins.append(nil)
+                continue // Some coins may be spends from within the block
+            }
+            removedOutpoints.append(outpoint)
+            removedCoins.append(coin)
+            coins[outpoint] = nil
+        }
+        for (outpoint, coin) in coinsToAdd {
+            coins[outpoint] = coin
+        }
+        try! updatePersistent(remove: removedOutpoints, add: coinsToAdd)
+        return removedCoins
+    }
+
+    private func updatePersistent(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) throws/*(CoinsError)*/ {
         do {
-            try env.withTransaction(db: byID) { _, byID throws(CoinsError) in
+            try env.write{ txn /*throws(CoinsError)*/ in
                 for outpoint in outpointsToRemove {
-                    guard let coin = try _get(outpoint, byID: byID) else {
-                        removedCoins.append(nil)
-                        continue // Some coins may be spends from within the block
-                    }
-                    removedCoins.append(coin)
                     let deleted: Bool
                     do {
-                        deleted = try byID.delete(outpoint.data)
+                        deleted = try txn.delete(forKey: outpoint, in: byID)
+                        // deleted = try byID.delete(outpoint.data)
                     } catch {
                         throw CoinsError.databaseError(error)
                     }
@@ -82,77 +82,67 @@ actor PersistentCoinIndex: CoinIndex {
                 }
                 for (outpoint, coin) in coinsToAdd {
                     do {
-                        try byID.put(coin.data, key: outpoint.data)
+                        try txn.put(coin, forKey: outpoint, in: byID)
+                        // try byID.put(coin.data, key: outpoint.data)
                     } catch {
                         throw CoinsError.databaseError(error)
                     }
                 }
             }
         } catch {
-            switch error {
-            case let .handlerIssue(nestedError):
-                throw nestedError
-            default:
-                throw .databaseError(error)
-            }
+//            switch error {
+//            case let .handlerIssue(nestedError):
+//                throw nestedError
+//            default:
+                throw CoinsError.databaseError(error)
+//            }
         }
-        return removedCoins
-    }
-
-    func add(_ coin: UnspentOutput, for outpoint: Outpoint) {
-        try! env.withTransaction(db: byID) { _, byID in
-            try byID.put(coin.data, key: outpoint.data)
-        }
-    }
-
-    func remove(_ outpoint: Outpoint) throws(Error) {
-        do {
-            try env.withTransaction(db: byID) { _, byID in
-                try byID.delete(outpoint.data)
-            }
-        } catch {
-            logger.error("Problem removing coin.")
-            throw .deletionIssue
-        }
-    }
-
-    func clear() async {
-        env = nil // closes env
-
-        // Removes directory
-        let fs = FileSystem.shared
-        do {
-            try await fs.removeItem(at: path)
-        } catch {
-            logger.error("Issue removing block index directory: \(error.localizedDescription)")
-            return // TODO: Probably throw here
-        }
-
-        env = initEnv(path: path)
     }
 }
 
-private let byID = Database.Descriptor("by-id")
+package func initCoinIndexEnv(path: FilePath) throws -> Environment {
+    try Environment(
+        path: path.string,
+        options: .noSubdirectory,
+        maxDatabases: 1,
+        mapSize: 400_000 * Int(getpagesize()) // , fileMode: 0x755 // S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH
+    )
+}
 
-private func _get(_ outpoint: Outpoint, byID: borrowing LMDB.Database) throws(CoinsError) -> UnspentOutput? {
-    let data: Data?
-    do {
-        data = try byID.get(outpoint.data)
-    } catch {
-        throw .databaseError(error)
+extension Outpoint: LMDBCodable {
+    public init(lmdbBytes bytes: RawSpan) throws(LMDBDecodingError) {
+        var input = ParserSpan.init(bytes)
+        do {
+            try self.init(parsing: &input)
+        } catch {
+            throw .init(Outpoint.self, byteCount: bytes.byteCount, reason: "Malformed")
+        }
     }
-    guard let data else {
-        return nil
+
+    public var encodedByteCount: Int {
+        binarySize
     }
-    do {
-        return try UnspentOutput(data)
-    } catch {
-        throw .corruptedCoinData
+
+    public func encode(into out: inout OutputRawSpan) {
+        try! self.encode(into: &out, format: nil)
     }
 }
 
-private func initEnv(path: FilePath) -> Environment {
-    let env = try! Environment(at: URL(filePath: path.string), maxDBs: 1, pages: 400_000, options: [.noSubDir])
-    try! env.createDB(byID)
-    return env
+extension UnspentOutput: LMDBCodable {
+    public init(lmdbBytes bytes: RawSpan) throws(LMDBDecodingError) {
+        var input = ParserSpan.init(bytes)
+        do {
+            try self.init(parsing: &input)
+        } catch {
+            throw .init(UnspentOutput.self, byteCount: bytes.byteCount, reason: "Malformed")
+        }
+    }
+
+    public var encodedByteCount: Int {
+        binarySize
+    }
+
+    public func encode(into out: inout OutputRawSpan) {
+        try! self.encode(into: &out, format: nil)
+    }
 }

@@ -2,6 +2,7 @@ import ArgumentParser
 import LMDB
 import Foundation
 import _NIOFileSystem
+import func BitcoinBlockchain.initCoinIndexEnv
 
 struct Duplicate: AsyncParsableCommand {
 
@@ -16,15 +17,12 @@ struct Duplicate: AsyncParsableCommand {
         if let p = parent.path {
             path = FilePath(p)
         } else {
-            path = try await FileSystem.shared.homeDirectory.appending(".swift-bitcoin/data").appending("coins")
+            path = try await FileSystem.shared.homeDirectory.appending([".swift-bitcoin/data", "coins"])
         }
-        let env = try! Environment(at: URL(filePath: path.string), maxDBs: 2, pages: 3_000, options: [.noSubDir])
-        //try! env.createDB(byID)
-        //try! env.withTransaction(db: .init(byHeightName, options: [.create, .integerKey, .duplicateSort, .duplicateFixed])) { _, _ in }
-        try env.copy(options: .compact)
+        let env = try initCoinIndexEnv(path: path)
+        // let byID = try env.openDatabase(named: "by-id")
+        var destinationPath = path
+        destinationPath.extension = "copy"
+        try env.copy(to: destinationPath.string, compact: true)
     }
 }
-private let byIDName = "by-id"
-private let byHeightName = "by-height"
-private let byID = Database.Descriptor(byIDName)
-private let byHeight = Database.Descriptor(byHeightName)
