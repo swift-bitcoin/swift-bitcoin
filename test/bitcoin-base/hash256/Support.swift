@@ -197,6 +197,16 @@ func addOne(_ a: [UInt64]) -> [UInt64] {
     }
 }
 
+/// Short division of a little-endian limb array by a 64-bit divisor (remainder discarded).
+func divide(_ a: [UInt64], by divisor: UInt64) -> [UInt64] {
+    var result = a
+    var remainder: UInt64 = 0
+    for i in result.indices.reversed() {
+        (result[i], remainder) = divisor.dividingFullWidth((high: remainder, low: result[i]))
+    }
+    return result
+}
+
 /// Compares a little-endian limb array with 2²⁵⁶.
 func compareToTwoTo256(_ a: [UInt64]) -> Int {
     let above = a.count > 5 && a[5...].contains { $0 != 0 }

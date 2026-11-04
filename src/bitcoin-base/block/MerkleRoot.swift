@@ -21,7 +21,7 @@ extension MerkleRoot {
     /// `isMutated` is true when two identical hashes are paired at any level (CVE-2012-2459): a
     /// transaction list with duplicates appended can produce the same root as the honest one. When
     /// validating a received block, treat either a root mismatch or `isMutated` as a mutated block:
-    /// discard that copy without marking the header invalid. See <doc:MerkleRoots>.
+    /// discard that copy without marking the header invalid.
     ///
     /// An empty list gives the all-zero root, as in Bitcoin Core; it can never match a real header.
     public static func compute(

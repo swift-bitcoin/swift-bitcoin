@@ -185,7 +185,11 @@ actor PersistentBlockIndex: BlockIndex {
         }
 
         let height = if let previous { previous.height + 1 } else { 0 }
-        let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
+
+        let target = Target(compact: block.target)!
+        let chainwork = if let previous { previous.chainwork + target.work } else { target.work }
+        // let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
+
         var newRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
         newRef.skip = ancestor(of: newRef, at: skipHeight(from: height)).header.id
         cache[newRef.header.id] = newRef

@@ -108,31 +108,33 @@ struct IdentifierTests {
     }
 }
 
-/// An 80-byte block header, parsed with the identifier types as components.
+/// An 80-byte block header, parsed with the identifier types as components. Like swift-bitcoin,
+/// the 32-bit fields are `UInt32` only on the wire and `Int` once parsed.
 private struct Header: ExpressibleByParsing, Equatable {
-    var version: UInt32
+    var version: Int
     var previousBlock: BlockHash
     var merkleRoot: MerkleRoot
-    var time: UInt32
-    var bits: UInt32
-    var nonce: UInt32
+    var time: Int
+    var bits: Int
+    var nonce: Int
 
     init(parsing input: inout ParserSpan) throws(ParsingError) {
-        version = try UInt32(parsingLittleEndian: &input)
+        version = Int(try Int32(parsingLittleEndian: &input))  // signed, as in Bitcoin Core
         previousBlock = try BlockHash(parsing: &input)
         merkleRoot = try MerkleRoot(parsing: &input)
-        time = try UInt32(parsingLittleEndian: &input)
-        bits = try UInt32(parsingLittleEndian: &input)
-        nonce = try UInt32(parsingLittleEndian: &input)
+        time = Int(try UInt32(parsingLittleEndian: &input))
+        bits = Int(try UInt32(parsingLittleEndian: &input))
+        nonce = Int(try UInt32(parsingLittleEndian: &input))
     }
 
+    /// Traps if a field doesn't fit its 32 bits.
     func encode(into output: inout OutputRawSpan) {
-        output.append(version, as: UInt32.self, .littleEndian)
+        output.append(Int32(version), as: Int32.self, .littleEndian)
         previousBlock.encode(into: &output)
         merkleRoot.encode(into: &output)
-        output.append(time, as: UInt32.self, .littleEndian)
-        output.append(bits, as: UInt32.self, .littleEndian)
-        output.append(nonce, as: UInt32.self, .littleEndian)
+        output.append(UInt32(time), as: UInt32.self, .littleEndian)
+        output.append(UInt32(bits), as: UInt32.self, .littleEndian)
+        output.append(UInt32(nonce), as: UInt32.self, .littleEndian)
     }
 }
 

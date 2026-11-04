@@ -244,11 +244,7 @@ public actor BlockchainService: Sendable {
     }
 
     /// Accumulated proof-of-work by the block which has the most.
-    public var chainwork: Data {
-        Data(activeTip.chainwork.data.reversed())
-    }
-
-    public var currentChainwork: DifficultyTarget {
+    public var currentChainwork: Chainwork {
         activeTip.chainwork
     }
 
@@ -392,7 +388,7 @@ public actor BlockchainService: Sendable {
             confirmations: activeTip.height - ref.height + 1,
             status: ref.status,
             difficulty: ref.difficulty,
-            chainwork: ref.chainwork.data,
+            chainwork: ref.chainwork.description,
             medianTime: medianTime
         )
     }
@@ -1178,7 +1174,7 @@ extension BlockchainService {
         var prevHeights = await calculatePrevHeights(tx, tip: tip, excludeCoins: mempoolExclude, auxCoins: mempoolCoins)
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .zero, time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
+        let nextTip = BlockRef(.init(previous: tip.header.id, merkleRoot: .zero, time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .zero, chainTxCount: 0)
 
         // When SequenceLocks() is called within ConnectBlock(), the height
         // of the block *being* evaluated is what is used.
@@ -1308,7 +1304,7 @@ extension BlockchainService {
         // Thus if we want to know if a transaction can be part of the *next* block, we need to use one more than chainActive.Height()
 
         /// TODO: this relies on `BlockIndex.get(count:)` and `BlockIndex.ancestor(at:)` not looking up the tip parameter within the index as it will not be found there, being a dummy placeholder. Possible fix is to pass only the next height and previous block ID to `calculateSequenceLocks()`
-        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .zero, time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .init(), chainTxCount: 0)
+        let nextBlockPlaceholder = BlockRef(.init(previous: tip.header.id, merkleRoot: .zero, time: Date(timeIntervalSince1970: 0), target: 0), height: tip.height + 1, chainwork: .zero, chainTxCount: 0)
 
         try await evaluateSequenceLocks(nextBlockPlaceholder, previous: tip, lockPair: (lockPoints.height, lockPoints.time))
     }
@@ -1467,10 +1463,11 @@ extension BlockchainService {
             throw .invalidDifficultyTarget
         }
 
-        guard Target(header.id.hash)! <= Target(compact: header.target)! else {
+        guard header.id
+            .satisfiesProofOfWork(compact: header.target, powLimit: params.powLimit) else {
         //guard try! DifficultyTarget(header.id) <= DifficultyTarget(compact: header.target) else {
             logger.error("Header \(header.idHex) - insufficient proof of work \(header.target)")
-            throw .insuficientProofOfWork
+            throw .insufficientProofOfWork
         }
 
         // Testnet4 and regtest only: Check timestamp against prev for difficulty-adjustment blocks to prevent timewarp attacks (see https://github.com/bitcoin/bitcoin/pull/15482).
@@ -1497,8 +1494,8 @@ extension BlockchainService {
     private func getNextWorkRequired(lastHeader: BlockRef, newBlockTime: Date, params: ConsensusParams) async -> Int {
         let heightLast = lastHeader.height
         precondition(heightLast >= 0)
-        let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
-        let proofOfWorkLimit = powLimitTarget.toCompact()
+
+        let proofOfWorkLimit = params.powLimit.compact
 
         // Only change once per difficulty adjustment interval
         if (heightLast + 1) % params.difficultyAdjustmentInterval != 0 {
@@ -1543,19 +1540,7 @@ extension BlockchainService {
             return lastHeader.header.target
         }
 
-        // Limit adjustment step
-        var actualTimespan = Int(lastHeader.header.time.timeIntervalSince1970) - Int(firstBlockTime.timeIntervalSince1970)
-        if actualTimespan < params.powTargetTimespan / 4 {
-            actualTimespan = params.powTargetTimespan / 4
-        }
-        if actualTimespan > params.powTargetTimespan * 4 {
-            actualTimespan = params.powTargetTimespan * 4
-        }
-
-        // Retarget
-        let powLimitTarget = try! DifficultyTarget(Data(params.powLimit.reversed()))
-
-        var new: DifficultyTarget
+        let base: BlockRef
         if params.preventBlockStorms {
 
             // TODO: - Use `BlockIndex.ancestor(of:at:)` instead of `get(at:)`
@@ -1568,18 +1553,29 @@ extension BlockchainService {
 
             // Here we use the first block of the difficulty period. This way the real difficulty is always preserved in the first block as it is not allowed to use the min-difficulty exception.
             let heightFirst = lastHeader.height - (params.difficultyAdjustmentInterval - 1)
-            let first = await blockIndex.get(at: heightFirst)
-            new = DifficultyTarget(compact: first.header.target)
+            base = await blockIndex.get(at: heightFirst)
         } else {
-            new = DifficultyTarget(compact: lastHeader.header.target)
+            base = lastHeader
         }
-        precondition(!new.isZero)
-        new *= (UInt32(actualTimespan))
-        new /= DifficultyTarget(UInt64(params.powTargetTimespan))
 
-        if new > powLimitTarget { new = powLimitTarget }
+        // A header is only accepted with a valid target, so its own nBits always decodes.
+        guard let baseTarget = Target(compact: base.header.target) else {
+            preconditionFailure("accepted header has invalid nBits")
+        }
 
-        return new.toCompact()
+        // Limit adjustment step
+        var actualTimespan = Int(lastHeader.header.time.timeIntervalSince1970) - Int(firstBlockTime.timeIntervalSince1970)
+        if actualTimespan < params.powTargetTimespan / 4 {
+            actualTimespan = params.powTargetTimespan / 4
+        }
+        if actualTimespan > params.powTargetTimespan * 4 {
+            actualTimespan = params.powTargetTimespan * 4
+        }
+
+        let next = baseTarget.retargeted(actualTimespan: actualTimespan,
+                                   targetTimespan: params.powTargetTimespan,
+                                   powLimit: params.powLimit)
+        return next?.compact ?? 0
     }
 }
 
@@ -2223,6 +2219,9 @@ extension BlockchainService {
     }
 
     private func blockProofEquivalentTime(to: BlockRef, from: BlockRef, tip: BlockRef) -> Int {
+        guard let tipTarget = Target(compact: tip.header.target) else { return 0 }
+        return Chainwork.blockProofEquivalentTime(to: to.chainwork, from: from.chainwork, tipTarget: tipTarget, targetSpacing: params.powTargetSpacing)
+        /*
         var r: DifficultyTarget
         let sign: Int
         if to.chainwork > from.chainwork {
@@ -2237,9 +2236,12 @@ extension BlockchainService {
             return sign * Int.max
         }
         return sign * Int(r.low64)
+        */
     }
 
-    private func blockProof(_ block: BlockRef) -> DifficultyTarget {
+    private func blockProof(_ block: BlockRef) -> Chainwork {
+        Target(compact: block.header.target)?.work ?? .zero
+        /*
         var negative = false
         var overflow = false
         let target = DifficultyTarget(compact: block.header.target, negative: &negative, overflow: &overflow)
@@ -2248,6 +2250,7 @@ extension BlockchainService {
         }
         // We need to compute 2**256 / (bnTarget+1), but we can't represent 2**256 as it's too large for an arith_uint256. However, as 2**256 is at least as large as bnTarget+1, it is equal to ((2**256 - bnTarget - 1) / (bnTarget+1)) + 1, or ~bnTarget / (bnTarget+1) + 1.
         return (~target / (target + 1)) + 1
+        */
     }
 
     /// Called by `BlockchainService.connectBlock()`.
@@ -2347,6 +2350,11 @@ extension BlockchainService {
         let txs = [coinbaseTx] + mempoolTxs
         let merkleRoot = calculateMerkleRoot(txs)
 
+        guard let decodedTarget = Target(compact: target) else {
+            logger.warning("Difficulty not met")
+            return nil
+        }
+
         var tries = maxTries
         var block: Block
         repeat {
@@ -2359,9 +2367,9 @@ extension BlockchainService {
             )
             nonce += 1
             tries -= 1
-        } while tries > 0 && (Target(block.id.hash)! > Target(compact: target)!)
+        } while tries > 0 && !block.id.meetsTarget(decodedTarget)
 
-        guard Target(block.id.hash)! <= Target(compact: target)! else {
+        guard block.id.meetsTarget(decodedTarget) else {
             logger.error("Difficulty target not met")
             return nil
         }

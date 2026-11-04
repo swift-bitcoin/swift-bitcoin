@@ -16,4 +16,6 @@ public enum BinaryDecodingError: Error {
     case invalidEnumCase
 
     case arrayElementError
+
+    case invalidData(String)
 }
