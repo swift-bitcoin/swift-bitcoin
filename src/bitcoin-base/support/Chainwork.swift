@@ -1,3 +1,4 @@
+import BinaryParsing
 import BitcoinCrypto
 
 /// An unsigned 256-bit amount of proof-of-work: a single block's work, or a chain's cumulative work.
@@ -57,6 +58,68 @@ public struct Chainwork: Hashable, Comparable, AdditiveArithmetic, Sendable, Cus
     }
 }
 
+// MARK: - Binary encoding
+
+extension Chainwork: ExpressibleByParsing {
+    public static let encodedByteCount = 32
+
+    /// Consumes 32 bytes: the value little-endian, least significant byte first, throwing if
+    /// fewer remain.
+    ///
+    /// This is byte for byte what swift-bitcoin's `DifficultyTarget` writes (eight little-endian
+    /// `UInt32` limbs, least significant first), so block-index records stored with it decode
+    /// unchanged.
+    @inlinable
+    public init(parsing input: inout ParserSpan) throws(ParsingError) {
+        let raw = try input.extract(byteCount: Self.encodedByteCount).bytes
+        self.init(low: raw.load(fromByteOffset: 0, as: UInt128.self, .littleEndian),
+                  high: raw.load(fromByteOffset: 16, as: UInt128.self, .littleEndian))
+    }
+
+    /// Appends the 32-byte little-endian encoding. Traps if `output` has fewer than 32 bytes free.
+    @inlinable
+    public func encode(into output: inout OutputRawSpan) {
+        output.append(low, as: UInt128.self, .littleEndian)
+        output.append(high, as: UInt128.self, .littleEndian)
+    }
+}
+
+// MARK: - Hex and big-endian bytes
+
+extension Chainwork {
+    /// Parses big-endian hex, most significant digit first: the form Bitcoin Core prints
+    /// `chainwork` in and writes `nMinimumChainWork` constants in. The `0x` prefix is optional and
+    /// 1 to 64 digits are accepted, zero-extended on the left. Unlike a target, zero is valid
+    /// (regtest's minimum chain work is zero), but it has to be written: `""` and `"0x"` are `nil`.
+    public init?(hex: String) {
+        guard hex != "", hex != "0x", hex != "0X",
+              let bytes = hexBytes(hex, byteCount: 32, zeroExtend: true)
+        else { return nil }
+        self.init(bigEndianBytes: bytes)
+    }
+
+    /// Creates chain work from its 32 bytes, most significant first, as swift-bitcoin's
+    /// `ConsensusParams` writes `minChainwork`. Accepts `[UInt8]`, `Data` and other byte
+    /// collections. Returns `nil` unless there are exactly 32 bytes.
+    public init?(bigEndianBytes bytes: some Collection<UInt8>) {
+        let bytes = Array(bytes)
+        guard bytes.count == 32 else { return nil }
+        self.init(
+            low: bytes[16..<32].reduce(0) { $0 << 8 | UInt128($1) },
+            high: bytes[0..<16].reduce(0) { $0 << 8 | UInt128($1) })
+    }
+
+    /// Creates chain work from 32 bytes in big-endian order, most significant first, without
+    /// allocating. Every 32-byte value is valid chain work, so this can't fail. Type the literal
+    /// as `InlineArray<32, UInt8>` to select this overload; an untyped one is a `[UInt8]`.
+    @inlinable
+    public init(bigEndianBytes bytes: InlineArray<32, UInt8>) {
+        let raw = bytes.span.bytes
+        self.init(low: raw.load(fromByteOffset: 16, as: UInt128.self, .bigEndian),
+                  high: raw.load(fromByteOffset: 0, as: UInt128.self, .bigEndian))
+    }
+}
+
 extension Chainwork {
     fileprivate static prefix func ~ (value: Self) -> Self {
         Chainwork(low: ~value.low, high: ~value.high)
@@ -99,6 +162,46 @@ extension Chainwork {
             shifted = shifted.shiftedRightByOne()
         }
         return quotient
+    }
+}
+
+// MARK: - Equivalent time
+
+extension Chainwork {
+    /// How long, in seconds, the work between `from` and `to` would take to produce at the tip's
+    /// difficulty: Bitcoin Core's `GetBlockProofEquivalentTime`.
+    ///
+    /// Computed as `|to − from| × targetSpacing ÷ tipTarget.work`, with Core's `arith_uint256`
+    /// semantics: the product wraps modulo 2²⁵⁶ and the quotient rounds down. The result is
+    /// negative when `to` has less work than `from`. A quotient that doesn't fit 63 bits
+    /// saturates at `Int.max`, or `-Int.max` (not `Int.min`), as in Core.
+    ///
+    /// Taking the tip's ``Target`` rather than its work means the divisor is never zero, so this
+    /// never traps on a valid target. Not a consensus rule: Core uses it for the `assumevalid`
+    /// and stale-tip heuristics.
+    ///
+    /// - Parameters:
+    ///   - to: The chain work at the later block, usually the best header.
+    ///   - from: The chain work at the earlier block.
+    ///   - tipTarget: The tip's target, whose work is the divisor.
+    ///   - targetSpacing: The seconds between blocks, `nPowTargetSpacing`. Must not be negative.
+    public static func blockProofEquivalentTime(
+        to: Chainwork, from: Chainwork, tipTarget: Target, targetSpacing: Int
+    ) -> Int {
+        precondition(targetSpacing >= 0, "Negative target spacing")
+        let (difference, sign) = to > from ? (to - from, 1) : (from - to, -1)
+        let quotient = difference
+            .multipliedWrapping(by: UInt64(targetSpacing))
+            .dividedBy(tipTarget.work)
+        guard quotient.high == 0, quotient.low <= UInt128(Int.max) else { return sign * Int.max }
+        return sign * Int(quotient.low)
+    }
+
+    /// The product modulo 2²⁵⁶, like `arith_uint256`'s `*`.
+    fileprivate func multipliedWrapping(by factor: UInt64) -> Self {
+        let factor = UInt128(factor)
+        let low = low.multipliedFullWidth(by: factor)
+        return Chainwork(low: low.low, high: high &* factor &+ low.high)
     }
 }
 

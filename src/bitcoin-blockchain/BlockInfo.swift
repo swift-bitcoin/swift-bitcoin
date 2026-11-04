@@ -4,7 +4,7 @@ import BitcoinBase
 /// Additional information about a block in the blockchain.
 public struct BlockInfo: Sendable {
 
-    public init(next: BlockHash?, height: Int, confirmations: Int, status: ValidationStatus, difficulty: Double, chainwork: Data, medianTime: Date) {
+    public init(next: BlockHash?, height: Int, confirmations: Int, status: ValidationStatus, difficulty: Double, chainwork: String, medianTime: Date) {
         self.next = next
         self.height = height
         self.confirmations = confirmations
@@ -19,7 +19,7 @@ public struct BlockInfo: Sendable {
     public let confirmations: Int
     public let status: ValidationStatus
     public let difficulty: Double
-    public let chainwork: Data
+    public let chainwork: String
     public let medianTime: Date
 
 }

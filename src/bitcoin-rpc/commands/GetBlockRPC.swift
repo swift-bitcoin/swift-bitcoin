@@ -39,7 +39,7 @@ extension GetBlockRPC {
             nonce: block.nonce,
             bits: blockTargetData.hex, // block.target as hex
             difficulty: info.difficulty, // block.difficulty as double
-            chainwork: info.chainwork.reversed().hex,
+            chainwork: info.chainwork,
             transactionCount: txs.count,
             previous: block.previous.displayHex,
             nextBlock: info.next?.displayHex,

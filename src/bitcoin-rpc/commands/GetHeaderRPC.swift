@@ -39,7 +39,7 @@ extension GetHeaderRPC {
             nonce: block.nonce,
             bits: blockTargetData.hex, // block.target as hex
             difficulty: info.difficulty, // block.difficulty as double
-            chainwork: info.chainwork.reversed().hex,
+            chainwork: info.chainwork,
             previous: block.previous.displayHex,
             nextBlock: info.next?.displayHex
         )

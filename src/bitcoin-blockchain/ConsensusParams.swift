@@ -20,7 +20,7 @@ public struct ConsensusParams: Sendable {
     public init(
         chain: String = "mainnet",
         magicBytes: Int = 0xd9b4bef9, // Sent/stored as little endian `[0xf9, 0xbe, 0xb4, 0xd9]`
-        powLimit: Data = Data([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+        powLimit: InlineArray<32, UInt8> = [0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
         powTargetTimespan: Int = 14 * 24 * 60 * 60, // two weeks
         powTargetSpacing: Int = 10 * 60,
         powAllowMinDifficultyBlocks: Bool = false,
@@ -34,7 +34,7 @@ public struct ConsensusParams: Sendable {
         genesisBlockNonce: Int = 2083236893,
         genesisBlockTarget: Int = 0x1d00ffff,
         assumeValid: BlockHash? = BlockHash(Hash256([0x77, 0x6d, 0xed, 0xa3, 0xad, 0x42, 0x97, 0xde, 0x9e, 0xf8, 0x11, 0x08, 0x79, 0xd2, 0x66, 0x2e, 0xe8, 0x20, 0x11, 0xdd, 0x58, 0xb6, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])), // 00000000000000000001b658dd1120e82e66d2790811f89ede9742ada3ed6d77; Height 886157
-        minChainwork: [UInt8] = /*.init(repeating: 0, count: 32), */ [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0xe1, 0x86, 0xb7, 0x0e, 0x08, 0x62, 0xc1, 0x93, 0xec, 0x44, 0xd6],
+        minChainwork: InlineArray<32, UInt8> = /*.init(repeating: 0, count: 32), */ [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0xe1, 0x86, 0xb7, 0x0e, 0x08, 0x62, 0xc1, 0x93, 0xec, 0x44, 0xd6],
         /// Data from RPC: getchaintxstats 4096 000000000000000000011c5890365bdbe5d25b97ce0057589acaef4f1a57263f
         chainData: ChainData = .init(time: 1723649144, txCount: 1059312821, txRate: 6.721086701157182),
         coinbaseMaturity: Int = Block.coinbaseMaturity,
@@ -53,6 +53,9 @@ public struct ConsensusParams: Sendable {
         precondition(minChainwork.count == 32)
         self.chain = chain
         self.magicBytes = magicBytes
+        guard let powLimit = Target(bigEndianBytes: powLimit) else {
+            preconditionFailure("powLimit must be 32 big-endian bytes and nonzero")
+        }
         self.powLimit = powLimit
         self.powTargetTimespan = powTargetTimespan
         self.powTargetSpacing = powTargetSpacing
@@ -67,7 +70,7 @@ public struct ConsensusParams: Sendable {
         self.genesisBlockNonce = genesisBlockNonce
         self.genesisBlockTarget = genesisBlockTarget
         self.assumeValid = if let assumeValid { .init(assumeValid) } else { nil }
-        self.minChainwork = try! DifficultyTarget(Data(minChainwork.reversed()))
+        self.minChainwork = Chainwork(bigEndianBytes: minChainwork)
         self.chainData = chainData
         self.subsidyHalvingInterval = subsidyHalvingInterval
         self.coinbaseMaturity = coinbaseMaturity
@@ -86,7 +89,7 @@ public struct ConsensusParams: Sendable {
     /// Used for block files.
     public let magicBytes: Int
 
-    public let powLimit: Data
+    public let powLimit: Target
     public let powTargetTimespan: Int
     public let powTargetSpacing: Int
     public let powAllowMinDifficultyBlocks: Bool
@@ -111,7 +114,7 @@ public struct ConsensusParams: Sendable {
     public let assumeValid: BlockHash?
 
     /// Big endian, 32 bytes (256 bit) number.
-    public var minChainwork: DifficultyTarget // [UInt8] // TODO: Change to UInt256 or InlineArray<UInt8, 256>
+    public var minChainwork: Chainwork // [UInt8] // TODO: Change to UInt256 or InlineArray<UInt8, 256>
     let chainData: ChainData
 
     /// The number of blocks needed to be mined until a coinbase output may be spent. Defaults to 100.
@@ -195,7 +198,7 @@ public struct ConsensusParams: Sendable {
     public static let regtest = Self(
         chain: "regtest",
         magicBytes: 0xdab5bffa, // Sent/stored as little endian `[0xfa, 0xbf, 0xb5, 0xda]`
-        powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+        powLimit: [0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
         powTargetTimespan: 24 * 60 * 60, // one day
         powAllowMinDifficultyBlocks: true,
         powNoRetargeting: true,
@@ -204,7 +207,7 @@ public struct ConsensusParams: Sendable {
         genesisBlockNonce: 2,
         genesisBlockTarget: 0x207fffff,
         assumeValid: nil,
-        minChainwork: .init(repeating: 0, count: 32),
+        minChainwork: .init(repeating: 0),
         chainData: .init(),
         subsidyHalvingInterval: 150,
         heightInCoinbaseHeight: 1,
@@ -218,13 +221,13 @@ public struct ConsensusParams: Sendable {
     public static func signet(options: SignetOptions = .init()) -> Self {
         let resolvedChallenge: Script
         let assumeValid: BlockHash?
-        let minChainwork: [UInt8]
+        let minChainwork: InlineArray<32, UInt8>
         let chainData: ChainData
 
         if let challenge = options.challenge {
             resolvedChallenge = challenge
             assumeValid = nil
-            minChainwork = .init(repeating: 0, count: 32)
+            minChainwork = .init(repeating: 0)
             // m_assumed_blockchain_size = 0;
             // m_assumed_chain_state_size = 0;
             chainData = .init()
@@ -269,7 +272,7 @@ public struct ConsensusParams: Sendable {
             chain: "signet",
             magicBytes: magicBytesInt,
             // consensus.powLimit = uint256{"00000377ae000000000000000000000000000000000000000000000000000000"};
-            powLimit: .init([0x00, 0x00, 0x03, 0x77, 0xae, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            powLimit: [0x00, 0x00, 0x03, 0x77, 0xae, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
             powTargetTimespan: 14 * 24 * 60 * 60, // two weeks
             powTargetSpacing: 10 * 60,
             powAllowMinDifficultyBlocks: false,
@@ -303,7 +306,7 @@ public struct ConsensusParams: Sendable {
     package static let swiftTesting = Self( // Similar to regtest
         chain: "swift-testing",
         magicBytes: 0xdab5bffa, // Sent/stored as little endian `[0xfa, 0xbf, 0xb5, 0xda]`
-        powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+        powLimit: [0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
         powTargetTimespan: 24 * 60 * 60, // one day
         powAllowMinDifficultyBlocks: true,
         powNoRetargeting: true,
@@ -311,7 +314,7 @@ public struct ConsensusParams: Sendable {
         genesisBlockNonce: 2,
         genesisBlockTarget: 0x207fffff,
         assumeValid: nil,
-        minChainwork: .init(repeating: 0, count: 32),
+        minChainwork: .init(repeating: 0),
         chainData: .init(),
         coinbaseMaturity: 1,
         subsidyHalvingInterval: 150,

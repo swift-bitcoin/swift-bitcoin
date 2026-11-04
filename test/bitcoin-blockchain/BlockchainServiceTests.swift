@@ -155,31 +155,13 @@ struct BlockchainServiceTests {
         #expect(lastBlock.txs[1] == signedTx)
     }
 
-    @Test("Difficulty Target")
-    func difficultyTarget() async throws {
-        let difficultyBits = 0x207fffff
-        let powLimitBE = Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]) // Regtest
-        let powLimitLE = Data(powLimitBE.reversed())
-        let powLimitTarget = try DifficultyTarget(powLimitLE)
-        #expect(powLimitTarget.data == powLimitLE)
-        let powLimitCompact = powLimitTarget.toCompact()
-        #expect(powLimitCompact == difficultyBits)
-
-        var neg: Bool = true
-        var over: Bool = true
-        let powLimitTarget_ = DifficultyTarget(compact: powLimitCompact, negative: &neg, overflow: &over)
-        #expect(!powLimitTarget_.isZero && !neg && !over)
-        let powLimitLE_ = powLimitTarget_.data
-        #expect(powLimitLE_.reversed().hex == "7fffff0000000000000000000000000000000000000000000000000000000000")
-    }
-
     @Test("Difficulty Adjustment")
     func difficultyAdjustment() async throws {
         let consensusParams = ConsensusParams(
             chain: ConsensusParams.swiftTesting.chain,
             magicBytes: 0,
-            powLimit: Data([0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
-            powTargetTimespan: 1 * 1 * 10 * 60, // 12 minutes
+            powLimit: [0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            powTargetTimespan: 1 * 1 * 10 * 60, // 10 minutes
             powTargetSpacing: 2 * 60, // 2 minutes
             powAllowMinDifficultyBlocks: true,
             powNoRetargeting: false,
@@ -191,6 +173,9 @@ struct BlockchainServiceTests {
         )
         let blockchain = try await BlockchainService(params: consensusParams)
         let genesisBlock = await blockchain.genesisBlock
+
+        #expect(consensusParams.powLimit.compact == 0x207fffff)
+        #expect(consensusParams.powLimit == Target(hex: "7f" + String(repeating: "ff", count: 31)))
 
         #expect(genesisBlock.target == 0x207fffff)
         let genesisDate = genesisBlock.time
@@ -214,28 +199,6 @@ struct BlockchainServiceTests {
             }
             #expect(header.target == expectedTarget)
         }
-    }
-
-    @Test("Difficulty", arguments: [
-        // very_low_target
-        (0x1f111111, 0.000001),
-        // low_target
-        (0x1ef88f6f, 0.000016),
-        // mid_target
-        (0x1df88f6f, 0.004023),
-        // high_target
-        (0x1cf88f6f, 1.029916),
-        // very_high_target
-        (0x12345678, 5913134931067755359633408.0)
-    ])
-    func difficulty(compact: Int, expected: Double) async throws {
-        var negative = true
-        var overflow = true
-        let target = DifficultyTarget(compact: compact, negative: &negative, overflow: &overflow)
-        #expect(!target.isZero)
-        #expect(!overflow)
-        #expect(target.toCompact(negative: negative) == compact)
-        #expect(isApproximatelyEqual(DifficultyTarget.getDifficulty(compact), to: expected, absoluteTolerance: 0.00001))
     }
 }
 

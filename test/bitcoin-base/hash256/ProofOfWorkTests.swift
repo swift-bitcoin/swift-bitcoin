@@ -103,8 +103,8 @@ struct SatisfiesProofOfWorkTests {
         #expect(!genesis.satisfiesProofOfWork(compact: 0x1B00_FFFF, powLimit: Fixtures.mainnetPowLimit))
     }
 
-    @Test(arguments: [UInt32(0), 0x0100_3456, 0x0492_3456, 0xFF12_3456, 0x2301_0000])
-    func invalidCompactFails(bits: UInt32) {
+    @Test(arguments: [Int(0), 0x0100_3456, 0x0492_3456, 0xFF12_3456, 0x2301_0000])
+    func invalidCompactFails(bits: Int) {
         #expect(!Self.zero.satisfiesProofOfWork(compact: bits, powLimit: Fixtures.regtestPowLimit))
     }
 

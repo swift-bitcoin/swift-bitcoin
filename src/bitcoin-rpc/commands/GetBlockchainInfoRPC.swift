@@ -18,7 +18,7 @@ extension GetBlockchainInfoRPC {
         let medianTime = await blockchain.medianTime
         let verificationProgress = await blockchain.verificationProgress
         let initialBlockDownload = await blockchain.isInitialBlockDownload
-        let chainwork = await blockchain.chainwork
+        let chainwork = await blockchain.currentChainwork
         let sizeOnDisk = await blockchain.sizeOnDisk
 
         return .init(
@@ -31,7 +31,7 @@ extension GetBlockchainInfoRPC {
             medianTime: Int(medianTime.timeIntervalSince1970),
             verificationProgress: verificationProgress,
             initialBlockDownload: initialBlockDownload,
-            chainwork: chainwork.hex,
+            chainwork: chainwork.description,
             sizeOnDisk: sizeOnDisk
         )
     }

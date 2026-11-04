@@ -8,7 +8,7 @@ public struct BlockRef: Equatable, Hashable, Sendable {
 
     // MARK: - Initializers
 
-    init(_ block: Block, height: Int, chainwork: DifficultyTarget, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = nil) {
+    init(_ block: Block, height: Int, chainwork: Chainwork, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = nil) {
         self.header = block.header
         self.height = height
         self.chainwork = chainwork
@@ -21,7 +21,7 @@ public struct BlockRef: Equatable, Hashable, Sendable {
 
     public let header: Block
     public let height: Int
-    public let chainwork: DifficultyTarget
+    public let chainwork: Chainwork
     public internal(set) var chainTxCount: Int
     public internal(set) var status: ValidationStatus
     var locator: BlockStorageLocator?
@@ -32,7 +32,7 @@ public struct BlockRef: Equatable, Hashable, Sendable {
 
     /// Calculate the difficulty for a given block index.
     var difficulty: Double {
-        DifficultyTarget.getDifficulty(header.target)
+        Target(compact: header.target)?.difficulty ?? 0 // DifficultyTarget.getDifficulty(header.target)
     }
 
     // MARK: - Instance Methods
@@ -58,9 +58,12 @@ public struct BlockRef: Equatable, Hashable, Sendable {
 extension BlockRef: BinaryCodable {
 
     public init(parsing input: inout ParserSpan, format: Never?) throws {
-        header = try .init(parsing: &input)
+        header = try Block(parsing: &input)
+        guard header.txs.isEmpty else {
+            throw BinaryDecodingError.invalidData("Block header cannot contain transactions")
+        }
         height = try Int(UInt32(parsingLittleEndian: &input)) // TODO: Verify conversion to UInt32
-        chainwork = try .init(parsing: &input)
+        chainwork = try Chainwork(parsing: &input)
         chainTxCount = try Int(UInt32(parsingLittleEndian: &input))
         let statusRaw = try UInt8(parsing: &input)
         guard let status = ValidationStatus(rawValue: statusRaw) else {
@@ -74,7 +77,7 @@ extension BlockRef: BinaryCodable {
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(header)
         counter.count(UInt32.self)
-        counter.count(chainwork)
+        counter.countSize(Hash256.byteCount)
         counter.count(UInt32.self)
         counter.count(status)
         counter.count(BlockStorageLocator.placeholder)
@@ -83,7 +86,7 @@ extension BlockRef: BinaryCodable {
     public func encode(into out: inout OutputRawSpan, format: Never?) throws {
         try header.encode(into: &out)
         out.append(UInt32(height), as: UInt32.self, .littleEndian)
-        try chainwork.encode(into: &out)
+        chainwork.encode(into: &out)
         out.append(UInt32(chainTxCount), as: UInt32.self, .littleEndian)
         out.append(status.rawValue)
         if let locator {

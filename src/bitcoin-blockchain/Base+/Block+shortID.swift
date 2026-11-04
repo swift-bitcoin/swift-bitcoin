@@ -18,7 +18,7 @@ public extension Block {
         return genesisBlock
     }
 
-    var work: DifficultyTarget { .getWork(target) }
+    // var work: DifficultyTarget { .getWork(target) }
 }
 
 /// BIP152: Short transaction identifier implementation. See [https://github.com/bitcoin/bips/blob/master/bip-0152.mediawiki#short-transaction-ids].
