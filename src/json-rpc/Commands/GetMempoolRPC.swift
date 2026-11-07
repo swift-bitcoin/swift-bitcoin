@@ -1,6 +1,5 @@
 /// Summary of current mempool information including a list of transaction IDs.
 public struct GetMempoolRPC: RPCCommand, Sendable {
-
     public typealias Params = Never
 
     public struct Result: Codable, Sendable {
@@ -17,5 +16,6 @@ public struct GetMempoolRPC: RPCCommand, Sendable {
 
     public static let method = "get-mempool"
     public static let params = ""
-    public static let description: String = "Summary of current mempool information including a list of transaction IDs."
+    public static let description: String =
+        "Summary of current mempool information including a list of transaction IDs."
 }

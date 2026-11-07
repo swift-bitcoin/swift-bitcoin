@@ -1,10 +1,9 @@
-import Foundation
 import BitcoinBase
 import BitcoinBlockchain
+import Foundation
 
 /// Information about a node's remote peer.
 public struct PeerState: Sendable {
-
     /// For incoming peers, the local IP address. For outgoing peers, the remote IP address.
     public let address: IPv6Address
 
@@ -85,16 +84,15 @@ public struct PeerState: Sendable {
     var checkPongTask: Task<(), Never>?
 
     /// BIP133
-    public internal(set) var feeFilterRate = Amount?.none // TODO: Honor when relaying transacions (inv) to this peer, #188
+
+    // TODO: Honor when relaying transacions (inv) to this peer, #188
+    public internal(set) var feeFilterRate = Amount?.none
 
     var outgoing: Bool { !incoming }
 
     /// The connection has been established.
     public var handshakeComplete: Bool {
-        version != nil &&
-        witnessRelayPreferenceReceived &&
-        v2AddressPreferenceReceived &&
-        versionAckReceived
+        version != nil && witnessRelayPreferenceReceived && v2AddressPreferenceReceived && versionAckReceived
     }
 
     mutating func registerKnownBlocks(_ ids: [BlockHash]) {
@@ -114,5 +112,5 @@ public struct PeerState: Sendable {
     }
 }
 
-private let maxKnownBlocks = Int.max  / 2
+private let maxKnownBlocks = Int.max / 2
 private let maxKnownTxs = 100

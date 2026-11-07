@@ -1,9 +1,9 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import BitcoinBase
 
 struct ScriptNumberTests {
-
     let zeroData = Data()
     let oneData = Data([1])
     let sixteenData = Data([16])
@@ -154,7 +154,6 @@ struct ScriptNumberTests {
         pushedData = try #require(op.pushedData)
         #expect(pushedData == seventeenData)
         #expect(pushedData == numData)
-
     }
 
     @Test("Adding")
@@ -313,15 +312,15 @@ struct ScriptNumberTests {
 
         let maxBytesPadded = Data([0b00000000, 0b00000000, 0b00000000, 0b01000000, 0b00000000])
         number = try ScriptNumber(maxBytesPadded, extendedLength: true)
-        #expect(number.value == 0x40000000)
+        #expect(number.value == 0x4000_0000)
         #expect(throws: ScriptError.zeroPaddedNumber) {
             _ = try ScriptNumber(maxBytesPadded, extendedLength: true, minimal: true)
         }
 
         let maxBytesPaddingOk = Data([0b00000000, 0b00000000, 0b00000000, 0b10000000, 0b00000000])
         number = try ScriptNumber(maxBytesPaddingOk, extendedLength: true)
-        #expect(number.value == 0x80000000)
+        #expect(number.value == 0x8000_0000)
         number = try ScriptNumber(maxBytesPaddingOk, extendedLength: true, minimal: true)
-        #expect(number.value == 0x80000000)
+        #expect(number.value == 0x8000_0000)
     }
 }

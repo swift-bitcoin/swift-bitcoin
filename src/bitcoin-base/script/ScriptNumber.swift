@@ -1,6 +1,6 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// A numerical value in the context of a script execution.
 ///
@@ -21,13 +21,12 @@ import BitcoinCrypto
 /// In particular, note that zero could be encoded as `01 80` (negative zero) if using the non-shortest form is allowed.
 ///
 public struct ScriptNumber: Equatable, Sendable {
-
     public static let zero = Self(unsafeValue: 0)
     public static let one = Self(unsafeValue: 1)
     public static let negativeOne = Self(unsafeValue: -1)
 
-    private static let maxValue: Int = 0x0000007fffffffff
-    private static let minValue: Int = -0x0000007fffffffff
+    private static let maxValue: Int = 0x0000_007f_ffff_ffff
+    private static let minValue: Int = -0x0000_007f_ffff_ffff
 
     public private(set) var value: Int
 
@@ -64,7 +63,6 @@ public struct ScriptNumber: Equatable, Sendable {
 }
 
 extension ScriptNumber: BinaryEncodable {
-
     /// BIP62 rule 4: Zero-padded number pushes Any time a script opcode consumes a stack value that is interpreted as a number, it must be encoded in its shortest possible form. 'Negative zero' is not allowed.
     public init(_ data: Data, extendedLength: Bool = false, minimal: Bool = false) throws {
         if data.isEmpty {
@@ -123,18 +121,18 @@ extension ScriptNumber: BinaryEncodable {
             let withSign = UInt16(magnitude) | signMask
             out.append(withSign, as: UInt16.self, .littleEndian)
         } else if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
-            let signMask = UInt32(isNegative ? 0x00800000 : 0)
+            let signMask = UInt32(isNegative ? 0x0080_0000 : 0)
             let withSign = UInt32(magnitude) | signMask
-            out.append(UInt16(withSign & 0x0000ffff), as: UInt16.self, .littleEndian)
+            out.append(UInt16(withSign & 0x0000_ffff), as: UInt16.self, .littleEndian)
             out.append(UInt8(withSign >> 16))
         } else if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
-            let signMask = UInt32(isNegative ? 0x80000000 : 0)
+            let signMask = UInt32(isNegative ? 0x8000_0000 : 0)
             let withSign = UInt32(magnitude) | signMask
             out.append(withSign, as: UInt32.self, .littleEndian)
         } else if magnitude <= Self.maxValue {
-            let signMask = UInt(isNegative ? 0x0000008000000000 : 0)
+            let signMask = UInt(isNegative ? 0x0000_0080_0000_0000 : 0)
             let withSign = UInt(magnitude) | signMask
-            out.append(UInt32(withSign & 0x00000000ffffffff), as: UInt32.self, .littleEndian)
+            out.append(UInt32(withSign & 0x0000_0000_ffff_ffff), as: UInt32.self, .littleEndian)
             out.append(UInt8(withSign >> 32))
         } else {
             fatalError("Magnitude cannot be higher than max value.")
@@ -144,19 +142,20 @@ extension ScriptNumber: BinaryEncodable {
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         guard value != 0 else { return }
         let magnitude = value.magnitude
-        let size = if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
-            1
-        } else if magnitude < Int(pow(Double(2), 8 * 2 - 1)) {
-            2
-        } else if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
-            3
-        } else if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
-            4
-        } else if magnitude <= Self.maxValue {
-            5
-        } else {
-            fatalError("Magnitude cannot be higher than max value.")
-        }
+        let size =
+            if magnitude < Int(pow(Double(2), 8 * 1 - 1)) {
+                1
+            } else if magnitude < Int(pow(Double(2), 8 * 2 - 1)) {
+                2
+            } else if magnitude < Int(pow(Double(2), 8 * 3 - 1)) {
+                3
+            } else if magnitude < Int(pow(Double(2), 8 * 4 - 1)) {
+                4
+            } else if magnitude <= Self.maxValue {
+                5
+            } else {
+                fatalError("Magnitude cannot be higher than max value.")
+            }
         counter.countSize(size)
     }
 }

@@ -1,11 +1,9 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 /// Aka `sigMsg`. See https://en.bitcoin.it/wiki/OP_CHECKSIG
 public struct SignatureHash: Equatable, Sendable {
-
     public init(tx: Transaction, input: Int, sighashType: SighashType, scriptCode: Data) {
-
         if sighashType.isSingle && input >= tx.outs.count {
             // Note: The transaction that uses SIGHASH_SINGLE type of signature should not have more inputs than outputs. However if it does (because of the pre-existing implementation), it shall not be rejected, but instead for every "illegal" input (meaning: an input that has an index bigger than the maximum output index) the node should still verify it, though assuming the hash of 0000000000000000000000000000000000000000000000000000000000000001
             //
@@ -14,7 +12,8 @@ public struct SignatureHash: Equatable, Sendable {
             data = Data([0x01]) + Data(repeating: 0, count: 31)
             return
         }
-        let message = SignatureMessage(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode/* ?? prevout.script.data*/)
+        let message = SignatureMessage(
+            tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode /* ?? prevout.script.data*/)
         data = Data(SHA256d.hash(data: message.data))
     }
 

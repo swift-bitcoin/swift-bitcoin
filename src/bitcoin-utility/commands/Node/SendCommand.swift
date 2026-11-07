@@ -3,7 +3,6 @@ import Foundation
 import JSONRPC
 
 struct SendCommand: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Sends an RPC command to a running Swift Bitcoin node."
     )
@@ -37,8 +36,8 @@ struct SendCommand: AsyncParsableCommand {
             SendTransactionRPC.self,
             ReindexRPC.self,
             ReindexStatusRPC.self,
-            ReindexStopRPC.self
-        ] as [any RPCCommand.Type]).map({ $0.method}).contains(method) {
+            ReindexStopRPC.self,
+        ] as [any RPCCommand.Type]).map({ $0.method }).contains(method) {
             // try StartP2P.parseAsRoot(params).run()
             throw ValidationError("Use bcutil node \(method) command instead.")
         }

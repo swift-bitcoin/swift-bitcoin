@@ -1,9 +1,12 @@
-import Foundation
 import BitcoinBase
+import Foundation
 
-public struct NodeParams : Sendable {
-
-    public init(network: NodeNetwork = .regtest, version: ProtocolVersion = .latest, services: ProtocolServices = .all, maxInTransitBlocks: Int = 16, feeFilterRate: Amount = 1, highBandwidthCompactBlocks: Bool = false, keepAliveFrequency: Int? = 2 * 60, pongTolerance: Int = 20 * 60) {
+public struct NodeParams: Sendable {
+    public init(
+        network: NodeNetwork = .regtest, version: ProtocolVersion = .latest, services: ProtocolServices = .all,
+        maxInTransitBlocks: Int = 16, feeFilterRate: Amount = 1, highBandwidthCompactBlocks: Bool = false,
+        keepAliveFrequency: Int? = 2 * 60, pongTolerance: Int = 20 * 60
+    ) {
         self.network = network
         self.version = version
         self.services = services

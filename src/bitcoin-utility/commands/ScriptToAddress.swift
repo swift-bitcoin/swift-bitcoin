@@ -6,12 +6,13 @@ import Foundation
 
 /// Generates an address from a script..
 struct ScriptToAddress: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Generates an address from a script."
     )
 
-    @Option(name: .shortAndLong, help: "For tapscript an EC public key in compressed format is required along with the script tree leaves.")
+    @Option(
+        name: .shortAndLong,
+        help: "For tapscript an EC public key in compressed format is required along with the script tree leaves.")
     var pubkey: String?
 
     @Option(name: .shortAndLong, help: "The signature version which determines the address type.")
@@ -20,7 +21,9 @@ struct ScriptToAddress: ParsableCommand {
     @Option(name: .shortAndLong, help: "The network for the address.")
     var network = WalletNetwork.mainnet
 
-    @Argument(help: "The script encoded as hexadecimal data. For tapscript include all script branches in breadth-first order.")
+    @Argument(
+        help:
+            "The script encoded as hexadecimal data. For tapscript include all script branches in breadth-first order.")
     var scripts: [String]
 
     mutating func run() throws {

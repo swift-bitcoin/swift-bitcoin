@@ -1,6 +1,6 @@
 import Foundation
 
-private let gen: [UInt32] = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
+private let gen: [UInt32] = [0x3b6a_57b2, 0x2650_8e6d, 0x1ea1_19fa, 0x3d42_33dd, 0x2a14_62b3]
 
 /// Bech32 checksum delimiter
 private let checksumMarker: String = "1"
@@ -11,17 +11,16 @@ private let encCharset: Data = "qpzry9x8gf2tvdw0s3jn54khce6mua7l".data(using: .u
 /// Bech32 character set for decoding
 private let decCharset: [Int8] = [
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-     15, -1, 10, 17, 21, 20, 26, 30,  7,  5, -1, -1, -1, -1, -1, -1,
-     -1, 29, -1, 24, 13, 25,  9,  8, 23, -1, 18, 22, 31, 27, 19, -1,
-     1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1,
-     -1, 29, -1, 24, 13, 25,  9,  8, 23, -1, 18, 22, 31, 27, 19, -1,
-     1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    15, -1, 10, 17, 21, 20, 26, 30, 7, 5, -1, -1, -1, -1, -1, -1,
+    -1, 29, -1, 24, 13, 25, 9, 8, 23, -1, 18, 22, 31, 27, 19, -1,
+    1, 0, 3, 16, 11, 28, 12, 14, 6, 4, 2, -1, -1, -1, -1, -1,
+    -1, 29, -1, 24, 13, 25, 9, 8, 23, -1, 18, 22, 31, 27, 19, -1,
+    1, 0, 3, 16, 11, 28, 12, 14, 6, 4, 2, -1, -1, -1, -1, -1,
 ]
 
 public enum Bech32Variant: Sendable, CustomStringConvertible {
-
     case bech32, m
 
     public var description: String {
@@ -34,14 +33,13 @@ public enum Bech32Variant: Sendable, CustomStringConvertible {
     var constant: UInt32 {
         switch self {
         case .bech32: 1
-        case .m: 0x2bc830a3
+        case .m: 0x2bc8_30a3
         }
     }
 }
 
 /// Encodes raw data into Bech32 and Bech32m strings used in BIP173 and BIP350 address formats.
 public struct Bech32Encoder: Sendable {
-
     public init(_ variant: Bech32Variant) {
         self.variant = variant
     }
@@ -76,7 +74,6 @@ public struct Bech32Encoder: Sendable {
 
 /// Decodes raw data from Bech32 and Bech32m strings.
 public struct Bech32Decoder: Sendable {
-
     public init(_ variant: Bech32Variant? = nil) {
         self.variant = variant
     }
@@ -122,7 +119,7 @@ public struct Bech32Decoder: Sendable {
         }
         let vSize: Int = str.count - 1 - intPos
         var values: Data = Data(repeating: 0x00, count: vSize)
-        for i in 0 ..< vSize {
+        for i in 0..<vSize {
             let c = strBytes[i + intPos + 1]
             let decInt = decCharset[Int(c)]
             if decInt == -1 {
@@ -157,14 +154,14 @@ public struct Bech32Decoder: Sendable {
 extension Bech32Decoder {
     public enum Error: LocalizedError {
         case nonUTF8String,
-             nonPrintableCharacter,
-             invalidCase,
-             noChecksumMarker,
-             incorrectHrpSize,
-             incorrectChecksumSize,
-             stringLengthExceeded,
-             invalidCharacter,
-             checksumMismatch
+            nonPrintableCharacter,
+            invalidCase,
+            noChecksumMarker,
+            incorrectHrpSize,
+            incorrectChecksumSize,
+            stringLengthExceeded,
+            invalidCharacter,
+            checksumMismatch
 
         public var errorDescription: String {
             switch self {
@@ -207,7 +204,7 @@ private func polymod(_ values: Data) -> UInt32 {
 /// Expand a HRP for use in checksum computation.
 private func expandHRP(_ hrp: String) -> Data {
     guard let hrpBytes = hrp.data(using: .utf8) else { return Data() }
-    var result = Data(repeating: 0x00, count: hrpBytes.count*2+1)
+    var result = Data(repeating: 0x00, count: hrpBytes.count * 2 + 1)
     for (i, c) in hrpBytes.enumerated() {
         result[i] = c >> 5
         result[i + hrpBytes.count + 1] = c & 0x1f
@@ -215,4 +212,3 @@ private func expandHRP(_ hrp: String) -> Data {
     result[hrp.count] = 0
     return result
 }
-

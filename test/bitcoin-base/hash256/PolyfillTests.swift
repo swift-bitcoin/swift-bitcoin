@@ -1,6 +1,7 @@
 import Foundation
-@testable import BitcoinCrypto
 import Testing
+
+@testable import BitcoinCrypto
 
 @Suite("Polyfills")
 struct PolyfillTests {

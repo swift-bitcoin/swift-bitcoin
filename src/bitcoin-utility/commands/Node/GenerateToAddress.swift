@@ -1,9 +1,8 @@
 import ArgumentParser
-import JSONRPC
 import BitcoinBlockchain // BlockchainService.Config.defaultMaxTries
+import JSONRPC
 
 struct GenerateToAddress: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: GenerateToAddressRPC.description
     )

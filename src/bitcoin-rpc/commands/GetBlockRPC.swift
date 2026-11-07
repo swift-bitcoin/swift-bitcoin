@@ -1,13 +1,11 @@
-import Foundation
-import JSONRPC
-import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
+import Foundation
+import JSONRPC
 
 extension GetBlockRPC {
-
     public func run(blockchain: BlockchainService) async throws(JSONRPCResponse.Error) -> Result {
-
         guard let blockID = BlockHash(displayHex: params.blockID) else {
             throw .init(.invalidParams, "Invalid block hash.")
         }

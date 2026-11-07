@@ -1,6 +1,7 @@
+import BinaryParsing
 import Foundation
 import Testing
-import BinaryParsing
+
 @testable import BitcoinCrypto
 
 @Test(arguments: [

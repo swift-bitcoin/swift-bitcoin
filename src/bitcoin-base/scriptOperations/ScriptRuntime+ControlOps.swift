@@ -1,7 +1,6 @@
 import Foundation
 
 extension ScriptRuntime {
-
     /// If the top stack value is not False, the statements are executed. The top stack value is removed.
     /// For the `isNotIf` variant, if the top stack value is False, the statements are executed. The top stack value is removed.
     mutating func opIf(isNotIf: Bool = false) throws {
@@ -11,18 +10,20 @@ extension ScriptRuntime {
             return
         }
         let first = try getUnaryParam()
-        let condition = if sigVersion == .witnessV0 && config.contains(.minimalIf) {
-            try ScriptBool(minimalData: first)
-        } else {
-            ScriptBool(first)
-        }
+        let condition =
+            if sigVersion == .witnessV0 && config.contains(.minimalIf) {
+                try ScriptBool(minimalData: first)
+            } else {
+                ScriptBool(first)
+            }
         let evalIfBranch = (!isNotIf && condition.value) || (isNotIf && !condition.value)
         pendingIfOps.append(evalIfBranch)
     }
 
     /// If the preceding `OP_IF` or `OP_NOTIF` or `OP_ELSE` was not executed then these statements are and if the preceding `OP_IF` or `OP_NOTIF` or `OP_ELSE` was executed then these statements are not.
     mutating func opElse() throws {
-        guard pendingElseOps.count == pendingIfOps.count, let waitingForElse = pendingElseOps.last, waitingForElse else {
+        guard pendingElseOps.count == pendingIfOps.count, let waitingForElse = pendingElseOps.last, waitingForElse
+        else {
             throw ScriptError.malformedIfElseEndIf // Else with no corresponding previous if
         }
         pendingElseOps[pendingIfOps.endIndex - 1] = false

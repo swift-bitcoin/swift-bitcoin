@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct GetBlock: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: GetBlockRPC.description
     )

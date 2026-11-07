@@ -1,13 +1,12 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension Transaction {
     /// The version of a ``Transaction``.
     ///
     /// Version 2 transactions enable use of relative lock times.
     public struct Version: Equatable, Comparable, Sendable {
-
         private init(_ versionValue: Int) {
             self.versionValue = versionValue
         }
@@ -48,7 +47,6 @@ extension Transaction {
 
 /// Binary data extensions.
 extension Transaction.Version: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         let rawValue = try UInt32(parsingLittleEndian: &input)
         self.init(Int(rawValue))
@@ -62,4 +60,3 @@ extension Transaction.Version: BinaryCodable {
         out.append(UInt32(versionValue), as: UInt32.self, .littleEndian)
     }
 }
-

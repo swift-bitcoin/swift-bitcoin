@@ -1,9 +1,8 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension PublicKey {
-
     /// Forces the parity to be even-y for uses in ``TaprootAddress``.
     var xOnlyNormalized: Self? {
         if hasEvenY {

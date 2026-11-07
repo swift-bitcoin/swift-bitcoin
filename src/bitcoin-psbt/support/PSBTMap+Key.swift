@@ -1,11 +1,9 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension PSBTMap {
-
     struct Key: Equatable, Hashable, BinaryCodable {
-
         init<K: KeyType>(_ type: K, data: Data = .init()) where K.RawValue == Int {
             self.type = type.rawValue
             self.data = data
@@ -16,7 +14,7 @@ extension PSBTMap {
             self.data = data
         }
 
-        init(parsing input: inout ParserSpan, format: Never?)  throws(PSBTMapError) {
+        init(parsing input: inout ParserSpan, format: Never?) throws(PSBTMapError) {
             do {
                 let keySize = try VarInt(parsing: &input)
                 let type = try VarInt(parsing: &input)

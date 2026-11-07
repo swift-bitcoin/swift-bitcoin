@@ -1,19 +1,20 @@
+import BitcoinBase
 import Collections
 import Logging
-import BitcoinBase
 
 /// An index plus in-memory storage for coins.
 struct TransientCoinIndex: CoinIndex {
-
     private var _coins = [Outpoint: UnspentOutput]()
 
-    var coins: [Outpoint : UnspentOutput] { _coins }
+    var coins: [Outpoint: UnspentOutput] { _coins }
 
     func get(_ outpoint: Outpoint) -> UnspentOutput? {
         _coins[outpoint]
     }
 
-    mutating func update(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) throws(CoinsError) -> [UnspentOutput?] {
+    mutating func update(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint: UnspentOutput])
+        throws(CoinsError) -> [UnspentOutput?]
+    {
         var removedCoins = [UnspentOutput?]()
         for outpoint in outpointsToRemove {
             guard let coin = _coins[outpoint] else {

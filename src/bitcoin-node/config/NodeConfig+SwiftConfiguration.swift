@@ -1,16 +1,18 @@
-import Foundation
-import Configuration
-import BitcoinCrypto
+import ArgumentParser
 import BitcoinBase
+import BitcoinCrypto
+import Configuration
+import Foundation
+import _NIOFileSystem
 
 extension NodeConfig {
-
     init(_ config: ConfigReader) throws(ConfigError) {
-        let network = if let networkString = config.string(forKey: "network"), let n = Network(rawValue: networkString) {
-            n
-        } else {
-            NodeConfig.default.network
-        }
+        let network =
+            if let networkString = config.string(forKey: "network"), let n = Network(rawValue: networkString) {
+                n
+            } else {
+                NodeConfig.default.network
+            }
 
         let signetChallenge: String?
         if let signetChallengeHex = config.string(forKey: "signetChallenge") {
@@ -38,62 +40,74 @@ extension NodeConfig {
         let rpcPort = config.int(forKey: "rpc.port", default: NodeConfig.default.rpc.port)
         let rpc = NodeConfig.RPCSettings(host: rpcHost, port: rpcPort)
 
-        let dataLocation = if let dataLocationString = config.string(forKey: "dataLocation"), let dl = DataLocation(dataLocationString) {
-            dl
-        } else {
-            NodeConfig.default.dataLocation
-        }
+        let dataLocation =
+            if let dataLocationString = config.string(forKey: "dataLocation"), let dl = DataLocation(dataLocationString)
+            {
+                dl
+            } else {
+                NodeConfig.default.dataLocation
+            }
 
-        guard config.string(forKey: "bind") == nil || (config.string(forKey: "bind.host") == nil && config.string(forKey: "bind.port") == nil) else {
+        guard
+            config.string(forKey: "bind") == nil
+                || (config.string(forKey: "bind.host") == nil && config.string(forKey: "bind.port") == nil)
+        else {
             throw .conflictingArguments("bind", "bind.host/port")
         }
 
-        let bind = if let bindString = config.string(forKey: "bind"), let b = BindSettings(bindString) {
-            b
-        } else if let bindHost = config.string(forKey: "bind.host") {
-            BindSettings(host: bindHost, port: config.int(forKey: "bind.port"))
-        } else {
-            NodeConfig.default.bind
-        }
+        let bind =
+            if let bindString = config.string(forKey: "bind"), let b = BindSettings(bindString) {
+                b
+            } else if let bindHost = config.string(forKey: "bind.host") {
+                BindSettings(host: bindHost, port: config.int(forKey: "bind.port"))
+            } else {
+                NodeConfig.default.bind
+            }
 
         let connectPartA = config.stringArray(forKey: "connect")?.compactMap(RemotePeer.init)
-        let connectPartB: [RemotePeer]? = if let connectHosts = config.stringArray(forKey: "connect.host"), let connectPorts = config.intArray(forKey: "connect.port") {
-            zip(connectHosts, connectPorts).map { RemotePeer(host: $0.0, port: $0.1)}
-        } else {
-            nil
-        }
-        let connect = if connectPartA == nil, connectPartB == nil {
-            NodeConfig.default.connect
-        } else {
-            (connectPartA ?? []) + (connectPartB ?? [])
-        }
+        let connectPartB: [RemotePeer]? =
+            if let connectHosts = config.stringArray(forKey: "connect.host"),
+                let connectPorts = config.intArray(forKey: "connect.port")
+            {
+                zip(connectHosts, connectPorts).map { RemotePeer(host: $0.0, port: $0.1) }
+            } else {
+                nil
+            }
+        let connect =
+            if connectPartA == nil, connectPartB == nil {
+                NodeConfig.default.connect
+            } else {
+                (connectPartA ?? []) + (connectPartB ?? [])
+            }
 
         let autoConnect = config.bool(forKey: "autoConnect", default: NodeConfig.default.autoConnect)
 
-        let logLevel = if let logLevelString = config.string(forKey: "logLevel"), let ll = LogLevel(rawValue: logLevelString) {
-            ll
-        } else {
-            NodeConfig.default.logLevel
-        }
+        let logLevel =
+            if let logLevelString = config.string(forKey: "logLevel"), let ll = LogLevel(rawValue: logLevelString) {
+                ll
+            } else {
+                NodeConfig.default.logLevel
+            }
 
-        let metrics = if let metricsEndpoint = config.string(forKey: "metrics.endpoint") {
-            OTelMetrics(endpoint: metricsEndpoint)
-        } else if config.bool(forKey: "metrics", default: false) {
-            OTelMetrics()
-        } else {
-            NodeConfig.default.metrics
-        }
+        let metrics =
+            if let metricsEndpoint = config.string(forKey: "metrics.endpoint") {
+                OTelMetrics(endpoint: metricsEndpoint)
+            } else if config.bool(forKey: "metrics", default: false) {
+                OTelMetrics()
+            } else {
+                NodeConfig.default.metrics
+            }
 
         let enableProfiling = config.bool(forKey: "enableProfiling", default: NodeConfig.default.enableProfiling)
 
         let feeRate = config.int(forKey: "feeRate") ?? NodeConfig.default.feeRate
 
-        self.init(network: network, signetChallenge: signetChallenge, rpc: rpc, dataLocation: dataLocation, bind: bind, connect: connect, autoConnect: autoConnect, logLevel: logLevel, metrics: metrics, enableProfiling: enableProfiling, feeRate: feeRate)
+        self.init(
+            network: network, signetChallenge: signetChallenge, rpc: rpc, dataLocation: dataLocation, bind: bind,
+            connect: connect, autoConnect: autoConnect, logLevel: logLevel, metrics: metrics,
+            enableProfiling: enableProfiling, feeRate: feeRate)
     }
 }
-
-import _NIOFileSystem
-import ArgumentParser
 
 extension NodeConfig {
     static func loadConfiguration(_ configOptions: ConfigOptions) async throws(ValidationError) -> NodeConfig {
@@ -128,7 +142,7 @@ extension NodeConfig {
             fileProviderJSON,
             fileProviderSwift,
             // Finally, use hardcoded defaults.
-            InMemoryProvider(values: [:] /* No need for hardcoded values as NodeConfig handles defaults */)
+            InMemoryProvider(values: [:] /* No need for hardcoded values as NodeConfig handles defaults */),
         ])
         let nodeConfig: NodeConfig
         do {

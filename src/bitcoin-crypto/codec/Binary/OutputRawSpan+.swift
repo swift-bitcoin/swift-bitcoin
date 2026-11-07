@@ -10,7 +10,6 @@ import Foundation
 // 3. A bug fix in `updateSubrange(_:copying:)`'s bounds check; see "Local change" below.
 
 extension OutputRawSpan {
-
     /// Appends the raw bytes of a Data instance directly into the buffer layout.
     package mutating func append<D: ContiguousBytes>(contentsOf data: D) {
         unsafe data.withUnsafeBytes { sourceBuffer in
@@ -18,9 +17,10 @@ extension OutputRawSpan {
 
             // Gain access to the underlying storage pointer and the layout's active count
             unsafe withUnsafeMutableBytes { targetBuffer, initializedCount in
-
                 // Precondition to protect against runtime buffer overflows
-                precondition(targetBuffer.count - initializedCount >= sourceBuffer.count, "Out of bounds: OutputRawSpan has insufficient capacity.")
+                precondition(
+                    targetBuffer.count - initializedCount >= sourceBuffer.count,
+                    "Out of bounds: OutputRawSpan has insufficient capacity.")
 
                 // Point directly to the first uninitialized byte in the memory block
                 //let destination = targetBuffer.baseAddress?.advanced(by: initializedCount)
@@ -86,7 +86,8 @@ extension MutableRawSpan {
         self.withUnsafeMutableBytes { destBuffer in
             source.withUnsafeBytes { srcBuffer in
                 guard let destBase = destBuffer.baseAddress,
-                      let srcBase = srcBuffer.baseAddress else {
+                    let srcBase = srcBuffer.baseAddress
+                else {
                     preconditionFailure("Unexpected nil baseAddress in non-empty buffer")
                 }
 

@@ -1,14 +1,15 @@
-import Testing
+import BitcoinTransport
 import Foundation
 import NIOCore
 import NIOEmbedded
-import BitcoinTransport
+import Testing
+
 @testable import BitcoinNode
 
 @Suite("MessageCoder integration with EmbeddedChannel")
 struct MessageCoderTests {
-    static func makeValidMessage(payload: Data = Data([1,2,3])) -> NetworkMessage {
-        NetworkMessage(.version, payload: payload, magicBytes: 0xD9B4BEF9)
+    static func makeValidMessage(payload: Data = Data([1, 2, 3])) -> NetworkMessage {
+        NetworkMessage(.version, payload: payload, magicBytes: 0xD9B4_BEF9)
     }
 
     @Test("decode returns .needMoreData if not enough bytes")
@@ -17,7 +18,7 @@ struct MessageCoderTests {
         defer { _ = try? channel.finish() }
         try channel.pipeline.syncOperations.addHandler(ByteToMessageHandler(MessageCoder()))
         var buffer = channel.allocator.buffer(capacity: 4)
-        buffer.writeBytes([0,1,2]) // Less than message base size
+        buffer.writeBytes([0, 1, 2]) // Less than message base size
         try channel.writeInbound(buffer)
         let msg = try channel.readInbound(as: NetworkMessage.self)
         #expect(msg == nil)
@@ -51,7 +52,7 @@ struct MessageCoderTests {
 
     @Test("decode handles malformed message gracefully")
     func decode_malformedMessage() async throws {
-        let msg = Self.makeValidMessage(payload: Data([1,2,3]))
+        let msg = Self.makeValidMessage(payload: Data([1, 2, 3]))
         var data = msg.data
         data = data.dropLast(2) // Corrupt/truncate
         let channel = EmbeddedChannel()
@@ -64,4 +65,3 @@ struct MessageCoderTests {
         #expect(output == nil)
     }
 }
-

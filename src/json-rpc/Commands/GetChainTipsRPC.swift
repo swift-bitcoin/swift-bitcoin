@@ -1,12 +1,10 @@
 /// Return information about all known tips in the block tree, including the main chain as well as orphaned branches.
 public struct GetChainTipsRPC: RPCCommand, Sendable {
-
     public typealias Params = Never
 
     public typealias Result = [Tip]
 
     public struct Tip: Codable, Sendable {
-
         public init(height: Int, hash: String, branchlen: Int, status: GetChainTipsRPC.Tip.Status) {
             self.height = height
             self.hash = hash
@@ -15,7 +13,6 @@ public struct GetChainTipsRPC: RPCCommand, Sendable {
         }
 
         public enum Status: String, Codable, Sendable {
-
             /// This branch contains at least one invalid block
             case invalid
 
@@ -49,5 +46,6 @@ public struct GetChainTipsRPC: RPCCommand, Sendable {
 
     public static let method = "get-chain-tips"
     public static let params = ""
-    public static let description: String = "Return information about all known tips in the block tree, including the main chain as well as orphaned branches."
+    public static let description: String =
+        "Return information about all known tips in the block tree, including the main chain as well as orphaned branches."
 }

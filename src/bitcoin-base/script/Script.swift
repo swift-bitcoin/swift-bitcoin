@@ -1,12 +1,11 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// A fully decoded Bitcoin script and its associated signature version.
 ///
 /// If there is a portion of the data that cannot be parsed it will be stored in ``Script/unparsable``.
 public struct Script: Equatable, Sendable {
-
     // MARK: - Initializers
 
     /// Creates a script from a list of operations.
@@ -51,17 +50,22 @@ public struct Script: Equatable, Sendable {
     // BIP16
     public var isPayToScriptHash: Bool {
         if binarySize == RIPEMD160.Digest.byteCount + 3,
-           ops.count == 3,
-           ops[0] == .hash160,
-           case .pushBytes(_) = ops[1],
-           ops[2] == .equal { true } else { false }
+            ops.count == 3,
+            ops[0] == .hash160,
+            case .pushBytes(_) = ops[1],
+            ops[2] == .equal
+        {
+            true
+        } else {
+            false
+        }
     }
 
     /// BIP141
     public var isSegwit: Bool {
         if binarySize >= 3 && binarySize <= 41,
-           ops.count == 2,
-           case .pushBytes(_) = ops[1]
+            ops.count == 2,
+            case .pushBytes(_) = ops[1]
         {
             if case .constant(_) = ops[0] { true } else { ops[0] == .zero }
         } else {
@@ -83,7 +87,7 @@ public struct Script: Equatable, Sendable {
     /// BIP141
     var witnessProgram: Data {
         precondition(isSegwit)
-        guard case let .pushBytes(data) = ops[1] else {
+        guard case .pushBytes(let data) = ops[1] else {
             preconditionFailure()
         }
         return data
@@ -92,7 +96,9 @@ public struct Script: Equatable, Sendable {
     /// BIP141
     var witnessVersion: Int {
         precondition(isSegwit)
-        return if case let .constant(value) = ops[0] { Int(value) } else if ops[0] == .zero { 0 } else { preconditionFailure() }
+        return if case .constant(let value) = ops[0] { Int(value) } else if ops[0] == .zero { 0 } else {
+            preconditionFailure()
+        }
     }
 
     // MARK: - Instance Methods
@@ -105,7 +111,10 @@ public struct Script: Equatable, Sendable {
     }
 
     /// Simple script execution ``ScriptRuntime``
-    public func run(_ config: ScriptConfig = .standard, tx: Transaction = .dummy, input: Int = 0, prevouts: [TransactionOutput] = [], stack: [Data] = [], sigVersion: SigVersion = .base) throws -> [Data] {
+    public func run(
+        _ config: ScriptConfig = .standard, tx: Transaction = .dummy, input: Int = 0,
+        prevouts: [TransactionOutput] = [], stack: [Data] = [], sigVersion: SigVersion = .base
+    ) throws -> [Data] {
         var runtime = ScriptRuntime(config, tx: tx, input: input, prevouts: prevouts)
         try runtime.run(self, stack: stack, sigVersion: sigVersion)
         return runtime.stack
@@ -158,9 +167,7 @@ public struct Script: Equatable, Sendable {
             Script.Operation.pushBytes(key.data)
         }
         return .init(
-            [.encodeMinimally(threshold)] +
-            keyOps +
-            [.encodeMinimally(keys.count), .checkMultisig]
+            [.encodeMinimally(threshold)] + keyOps + [.encodeMinimally(keys.count), .checkMultisig]
         )
     }
 
@@ -204,7 +211,7 @@ public struct Script: Equatable, Sendable {
         precondition(messageData.count <= UInt32.max)
         return [
             .return,
-            .encodeMinimally(messageData)
+            .encodeMinimally(messageData),
         ]
     }
 
@@ -213,7 +220,7 @@ public struct Script: Equatable, Sendable {
 
     /// BIP141 witness commitment script
     public static func witnessCommitment(witnessMerkleRoot: WitnessMerkleRoot, witnessReservedValue: Data) -> Script {
-        precondition(witnessReservedValue.count == 32)
+        precondition(witnessReservedValue.count == Transaction.Witness.reservedValueLength)
         // BIP141 Commitment Structure https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#commitment-structure
         var hasher = SHA256d()
         hasher.update(bytes: witnessMerkleRoot.hash.bytes.span.bytes)
@@ -229,7 +236,10 @@ public struct Script: Equatable, Sendable {
 
     /// Is this a BIP141 witness commitment script
     public var isWitnessCommitment: Bool {
-        guard ops.count >= 2, ops[0] == .return, case let .pushBytes(data) = ops[1], data.count == Self.witnessCommitmentTag.count + SHA256d.Digest.byteCount, data.starts(with: Self.witnessCommitmentTag) else { return false }
+        guard ops.count >= 2, ops[0] == .return, case .pushBytes(let data) = ops[1],
+            data.count == Self.witnessCommitmentTag.count + SHA256d.Digest.byteCount,
+            data.starts(with: Self.witnessCommitmentTag)
+        else { return false }
         return true
     }
 }
@@ -246,7 +256,6 @@ extension Script {
 }
 
 extension Script {
-
     /// Counts the number of signature operations in this script.
     ///
     /// Analog to Bitcoin Core's `GetSigOpCount(bool fAccurate)`.
@@ -262,7 +271,7 @@ extension Script {
                 n += 1
             case .checkMultisig, .checkMultisigVerify:
                 if accurate, let lastOpcode {
-                    if case let .constant(v) = lastOpcode, (1...16).contains(Int(v)) {
+                    if case .constant(let v) = lastOpcode, (1...16).contains(Int(v)) {
                         n += Int(v)
                     } else {
                         n += Script.maxMultisigPubkeys
@@ -297,7 +306,6 @@ extension Script {
 }
 
 extension Script: ExpressibleByArrayLiteral {
-
     public init(arrayLiteral ops: Script.Operation...) {
         self.init(ops)
     }
@@ -305,7 +313,6 @@ extension Script: ExpressibleByArrayLiteral {
 
 /// Data extensions.
 extension Script: BinaryCodable, ExpressibleByParsing {
-
     public enum BinaryFormat {
         case prefixed
     }
@@ -363,8 +370,8 @@ extension Script: BinaryCodable, ExpressibleByParsing {
                 try op.encode(into: &out)
             }
             out.append(contentsOf: unparsable)
-            // Coming in Swift 6.5+
-            // unparsable.withBytes { out.append(copying: $0) }
+        // Coming in Swift 6.5+
+        // unparsable.withBytes { out.append(copying: $0) }
         }
     }
 }

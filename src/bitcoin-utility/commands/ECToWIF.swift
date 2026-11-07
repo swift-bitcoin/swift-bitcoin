@@ -1,11 +1,10 @@
 import ArgumentParser
-import BitcoinWallet
 import BitcoinCrypto
+import BitcoinWallet
 import Foundation
 
 /// Converts a raw private key to the Wallet Interchange Format (WIF).
 struct ECToWIF: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Converts a raw private key to the Wallet Interchange Format (WIF)."
     )

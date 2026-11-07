@@ -2,7 +2,6 @@ import Foundation
 
 /// Aka `sigMsg`. See https://en.bitcoin.it/wiki/OP_CHECKSIG
 struct SignatureMessage: Equatable, Sendable {
-
     init(tx: Transaction, input inputIndex: Int, sighashType: SighashType, scriptCode: Data) {
         guard let script = try? Script(scriptCode) else {
             preconditionFailure()
@@ -12,17 +11,20 @@ struct SignatureMessage: Equatable, Sendable {
             // Procedure for Hashtype SIGHASH_ANYONECANPAY
             // The txCopy input vector is resized to a length of one.
             // The current transaction input (with scriptPubKey modified to subScript) is set as the first and only member of this vector.
-            newIns.append(.init(outpoint: tx.ins[inputIndex].outpoint, sequence: tx.ins[inputIndex].sequence, script: script))
+            newIns.append(
+                .init(outpoint: tx.ins[inputIndex].outpoint, sequence: tx.ins[inputIndex].sequence, script: script))
         } else {
-            tx.ins.enumerated().forEach { i, input in
-                newIns.append(.init(
-                    outpoint: input.outpoint,
-                    // SIGHASH_NONE | SIGHASH_SINGLE - All other txCopy inputs aside from the current input are set to have an nSequence index of zero.
-                    sequence: i == inputIndex || (!sighashType.isNone && !sighashType.isSingle) ? input.sequence : .initial,
-                    // The scripts for all transaction inputs in txCopy are set to empty scripts (exactly 1 byte 0x00)
-                    // The script for the current transaction input in txCopy is set to subScript (lead in by its length as a var-integer encoded!)
-                    script: i == inputIndex ? script : .empty
-                ))
+            for (i, input) in tx.ins.enumerated() {
+                newIns.append(
+                    .init(
+                        outpoint: input.outpoint,
+                        // SIGHASH_NONE | SIGHASH_SINGLE - All other txCopy inputs aside from the current input are set to have an nSequence index of zero.
+                        sequence: i == inputIndex || (!sighashType.isNone && !sighashType.isSingle)
+                            ? input.sequence : .initial,
+                        // The scripts for all transaction inputs in txCopy are set to empty scripts (exactly 1 byte 0x00)
+                        // The script for the current transaction input in txCopy is set to subScript (lead in by its length as a var-integer encoded!)
+                        script: i == inputIndex ? script : .empty
+                    ))
             }
         }
         var newOuts: [TransactionOutput]
@@ -33,9 +35,9 @@ struct SignatureMessage: Equatable, Sendable {
             // All other txCopy outputs aside from the output that is the same as the current input index are set to a blank script and a value of (long) -1.
             newOuts = []
 
-            tx.outs.enumerated().forEach { i, out in
+            for (i, out) in tx.outs.enumerated() {
                 guard i <= inputIndex else {
-                    return
+                    break
                 }
                 if i == inputIndex {
                     newOuts.append(out)

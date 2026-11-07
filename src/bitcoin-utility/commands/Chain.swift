@@ -1,17 +1,17 @@
 import ArgumentParser
 import BitcoinBase
 import Foundation
+
 import enum BitcoinTransport.NodeNetwork
 
 struct Chain: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "",
         discussion: """
-        Access local chain data.
-        """,
+            Access local chain data.
+            """,
         subcommands: [
-            ChainInfo.self, ChainTips.self, Reindex.self
+            ChainInfo.self, ChainTips.self, Reindex.self,
         ]
     )
 

@@ -1,9 +1,8 @@
-import Foundation
 import CSECP256K1
+import Foundation
 
 /// Elliptic curve SECP256K1 signature supporting ECDSA algorithms.
 public struct RecoverableSignature: Equatable, Sendable, CustomStringConvertible {
-
     public init?(message: String, secretKey: SecretKey, recoverCompressedKeys: Bool = true) {
         guard let messageData = message.data(using: .utf8) else {
             return nil
@@ -11,8 +10,12 @@ public struct RecoverableSignature: Equatable, Sendable, CustomStringConvertible
         self.init(messageData: messageData, secretKey: secretKey, recoverCompressedKeys: recoverCompressedKeys)
     }
 
-    public init(messageData: Data, secretKey: SecretKey, additionalEntropy: Data? = nil, recoverCompressedKeys: Bool = true) {
-        self.init(hash: getMessageHash(messageData: messageData), secretKey: secretKey, recoverCompressedKeys: recoverCompressedKeys)
+    public init(
+        messageData: Data, secretKey: SecretKey, additionalEntropy: Data? = nil, recoverCompressedKeys: Bool = true
+    ) {
+        self.init(
+            hash: getMessageHash(messageData: messageData), secretKey: secretKey,
+            recoverCompressedKeys: recoverCompressedKeys)
     }
 
     public init(hash: Data, secretKey: SecretKey, additionalEntropy: Data? = nil, recoverCompressedKeys: Bool = true) {
@@ -69,7 +72,8 @@ public struct RecoverableSignature: Equatable, Sendable, CustomStringConvertible
     }
 
     public func recoverPubkey(messageData: Data) -> PublicKey? {
-        guard let pubkeyData = internalRecoverPubkey(sigData: data, hash: getMessageHash(messageData: messageData)) else {
+        guard let pubkeyData = internalRecoverPubkey(sigData: data, hash: getMessageHash(messageData: messageData))
+        else {
             return nil
         }
         return PublicKey(pubkeyData)
@@ -106,7 +110,10 @@ private func signRecoverable(hash: Data, secretKey: SecretKey, compressedPubkeys
 
     var rsig = CollectionOfOne(ECDSARecoverableSignature())
     var rsigSpan = rsig.mutableSpan
-    guard eccSigningContext.ecdsaSignRecoverable(sig: &rsigSpan, msghash32: hash.span, seckey: secretKey.data.span, noncefp: .rfc6979) != 0 else {
+    guard
+        eccSigningContext.ecdsaSignRecoverable(
+            sig: &rsigSpan, msghash32: hash.span, seckey: secretKey.data.span, noncefp: .rfc6979) != 0
+    else {
         preconditionFailure()
     }
 
@@ -114,7 +121,10 @@ private func signRecoverable(hash: Data, secretKey: SecretKey, compressedPubkeys
     var sigBytesSpan = sigBytes.mutableSpan
     var rec = CollectionOfOne(Int32(-1))
     var recSpan = rec.mutableSpan
-    guard eccSigningContext.ecdsaRecoverableSignatureSerializeCompact(output64: &sigBytesSpan, recid: &recSpan, sig: rsig.span) != 0 else {
+    guard
+        eccSigningContext.ecdsaRecoverableSignatureSerializeCompact(
+            output64: &sigBytesSpan, recid: &recSpan, sig: rsig.span) != 0
+    else {
         preconditionFailure()
     }
 
@@ -132,7 +142,8 @@ private func signRecoverable(hash: Data, secretKey: SecretKey, compressedPubkeys
 
     var recoveredPubkey = CollectionOfOne(Pubkey())
     var recoveredPubkeySpan = recoveredPubkey.mutableSpan
-    guard SECP256K1Context.shared.ecdsaRecover(pubkey: &recoveredPubkeySpan, sig: rsig.span, msghash32: hash.span) != 0 else {
+    guard SECP256K1Context.shared.ecdsaRecover(pubkey: &recoveredPubkeySpan, sig: rsig.span, msghash32: hash.span) != 0
+    else {
         preconditionFailure()
     }
 
@@ -155,7 +166,10 @@ private func internalRecoverPubkey(sigData: Data, hash: Data) -> Data? {
     let sigSansPrefix = [UInt8](sigData.dropFirst())
     var sig = CollectionOfOne(ECDSARecoverableSignature())
     var sigSpan = sig.mutableSpan
-    guard SECP256K1Context.shared.ecdsaRecoverableSignatureParseCompact(sig: &sigSpan, input64: sigSansPrefix.span, recid: recid) != 0 else {
+    guard
+        SECP256K1Context.shared.ecdsaRecoverableSignatureParseCompact(
+            sig: &sigSpan, input64: sigSansPrefix.span, recid: recid) != 0
+    else {
         preconditionFailure() // throw?
     }
 
@@ -170,15 +184,22 @@ private func internalRecoverPubkey(sigData: Data, hash: Data) -> Data? {
     var pubSpan = pub.mutableSpan
     var lengthSpan = length.mutableSpan
 
-    guard SECP256K1Context.shared.ecPubkeySerialize(output: &pubSpan, outputlen: &lengthSpan, pubkey: pubkey.span, flags: UInt32(comp ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED)) != 0 else {
+    guard
+        SECP256K1Context.shared.ecPubkeySerialize(
+            output: &pubSpan, outputlen: &lengthSpan, pubkey: pubkey.span,
+            flags: UInt32(comp ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED)) != 0
+    else {
         preconditionFailure()
     }
     precondition(length[0] == (comp ? PublicKey.compressedLength : PublicKey.uncompressedLength))
     return Data(pub.prefix(length[0]))
 }
 
-private extension SECP256K1Context {
-    func ecdsaSignRecoverable(sig: inout MutableSpan<ECDSARecoverableSignature>, msghash32: Span<UInt8>, seckey: Span<UInt8>, noncefp: NonceFunction?) -> Int32 {
+extension SECP256K1Context {
+    fileprivate func ecdsaSignRecoverable(
+        sig: inout MutableSpan<ECDSARecoverableSignature>, msghash32: Span<UInt8>, seckey: Span<UInt8>,
+        noncefp: NonceFunction?
+    ) -> Int32 {
         unsafe self.ecdsaSignRecoverable(sig: &sig, msghash32: msghash32, seckey: seckey, noncefp: noncefp, ndata: nil)
     }
 }

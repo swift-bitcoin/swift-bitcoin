@@ -1,14 +1,14 @@
 import BitcoinBase
+
 import struct _NIOFileSystem.FilePath
 
 /// Coins index, also known as chain state.
 ///
 /// A list of unspent outputs (coins) indexed by outpoint (transaction ID plus offset).
 protocol CoinIndex: Sendable {
-
     var path: FilePath? { get async }
 
-    var coins: [Outpoint : UnspentOutput] { get async }
+    var coins: [Outpoint: UnspentOutput] { get async }
     func get(_ outpoint: Outpoint) async throws(CoinsError) -> UnspentOutput?
 
     /// Removes spent coins and adds new unspent ones.
@@ -16,16 +16,15 @@ protocol CoinIndex: Sendable {
     ///   - remove: A list of outpoints to remove.
     ///   - add: A map of outpoints to coins.
     /// - Returns: A list of removed coins with "holes" which are the coins that could not be removed because they were not found.
-    @discardableResult mutating func update(remove: [Outpoint], add: [Outpoint : UnspentOutput]) async throws(CoinsError) -> [UnspentOutput?]
+    @discardableResult mutating func update(remove: [Outpoint], add: [Outpoint: UnspentOutput]) async throws(CoinsError)
+        -> [UnspentOutput?]
 }
 
 extension CoinIndex {
     var path: FilePath? { nil }
 }
 
-
 enum CoinsError: Error {
-
     /// When trying to remove spent coins, no unspent output was found for at least on of the provided outpoints.
     case spentCoinNotFound
 

@@ -1,9 +1,8 @@
-import Testing
-import Foundation
 import BitcoinBase
+import Foundation
+import Testing
 
 struct OpIfTests {
-
     @Test("If branch")
     func ifBranch() throws {
         // If branch
@@ -81,13 +80,15 @@ struct OpIfTests {
     @Test("Nested Else")
     func nestedElse() throws {
         // Inner else
-        var script = Script([.constant(1), .if, .zero, .if, .constant(2), .else, .constant(3) , .endIf, .endIf])
+        var script = Script([.constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .endIf, .endIf])
         var stack = [Data]()
         try script.run(&stack)
         #expect(stack == [Data([3])])
 
         // 2 level nesting, inner else
-        script = [.constant(1), .if, .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3) , .endIf, .endIf, .endIf]
+        script = [
+            .constant(1), .if, .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .endIf, .endIf, .endIf,
+        ]
         stack = []
         try script.run(&stack)
         #expect(stack == [Data([3])])
@@ -99,31 +100,44 @@ struct OpIfTests {
         #expect(stack == [Data([3])])
 
         // 2 level nesting, outer else
-        script = [.zero, .if, .constant(1), .if, .constant(1), .if, .constant(2), .endIf, .endIf, .else, .constant(3), .endIf]
+        script = [
+            .zero, .if, .constant(1), .if, .constant(1), .if, .constant(2), .endIf, .endIf, .else, .constant(3), .endIf,
+        ]
         stack = []
         try script.run(&stack)
         #expect(stack == [Data([3])])
 
         // 2 level nesting, middle else
-        script = [.constant(1), .if, .zero, .if, .constant(1), .if, .constant(2), .endIf, .else, .constant(3), .endIf, .endIf]
+        script = [
+            .constant(1), .if, .zero, .if, .constant(1), .if, .constant(2), .endIf, .else, .constant(3), .endIf, .endIf,
+        ]
         stack = []
         try script.run(&stack)
         #expect(stack == [Data([3])])
 
         // 2 level nesting, alternate 1
-        script = [.zero, .if, .constant(1), .if, .constant(1), .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf]
+        script = [
+            .zero, .if, .constant(1), .if, .constant(1), .if, .constant(2), .else, .constant(3), .endIf, .else,
+            .constant(4), .endIf, .else, .constant(5), .endIf,
+        ]
         stack = []
         try script.run(&stack)
         #expect(stack == [Data([5])])
 
         // alternate 2
-        script = [.constant(1), .if, .zero, .if, .constant(1), .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf]
+        script = [
+            .constant(1), .if, .zero, .if, .constant(1), .if, .constant(2), .else, .constant(3), .endIf, .else,
+            .constant(4), .endIf, .else, .constant(5), .endIf,
+        ]
         stack = []
         try script.run(&stack)
         #expect(stack == [Data([4])])
 
         // alternate 2
-        script = [.constant(1), .if, .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .endIf, .else, .constant(4), .endIf, .else, .constant(5), .endIf]
+        script = [
+            .constant(1), .if, .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .endIf, .else,
+            .constant(4), .endIf, .else, .constant(5), .endIf,
+        ]
         stack = []
         try script.run(&stack)
         #expect(stack == [Data([3])])
@@ -133,20 +147,19 @@ struct OpIfTests {
         let script: Script = [
             .zero,
             .if,
-                .constant(2),
+            .constant(2),
             .else,
-                .zero,
-                .if,
-                    .constant(3),
-                .else,
-                    .constant(4),
-                .endIf,
-            .endIf
+            .zero,
+            .if,
+            .constant(3),
+            .else,
+            .constant(4),
+            .endIf,
+            .endIf,
         ]
         var stack = [Data]()
         try script.run(&stack)
         #expect(stack == [Data([4])])
-
     }
 
     @Test("Empty Branched")
@@ -267,26 +280,28 @@ struct OpIfTests {
         script = [
             .constant(1),
             .if,
-                .constant(1),
-                .if,
-                    .constant(2),
-                .else,
-                    .constant(3),
-                    .else,
-                        .constant(4),
-                    .endIf,
-            .endIf
+            .constant(1),
+            .if,
+            .constant(2),
+            .else,
+            .constant(3),
+            .else,
+            .constant(4),
+            .endIf,
+            .endIf,
         ]
         stack = []
         #expect(throws: (any Error).self) { try script.run(&stack) }
 
         script = [
-            .zero, .if, .constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf]
+            .zero, .if, .constant(1), .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf,
+        ]
         stack = []
         #expect(throws: (any Error).self) { try script.run(&stack) }
 
         script = [
-            .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf]
+            .constant(1), .if, .zero, .if, .constant(2), .else, .constant(3), .else, .constant(4), .endIf, .endIf,
+        ]
         stack = []
         #expect(throws: (any Error).self) { try script.run(&stack) }
     }

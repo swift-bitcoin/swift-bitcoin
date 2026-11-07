@@ -1,17 +1,19 @@
-import Testing
-import Foundation
+import BitcoinBase
 import BitcoinBlockchain
 import BitcoinCrypto
-import BitcoinBase
+import Foundation
+import Testing
+
 //import SystemPackage
 import struct _NIOFileSystem.FilePath
 
 struct PersistenceTests {
-
     @Test func persistentToMemoryBlockchainSync() async throws {
-        await withKnownIssue("Some blockchain persistence tests randomly crashing after NIO update #451", isIntermittent: true) {
+        await withKnownIssue(
+            "Some blockchain persistence tests randomly crashing after NIO update #451", isIntermittent: true
+        ) {
             let fm = FileManager.default
-            let disambiguator = UInt.random(in: UInt.min ... UInt.max)
+            let disambiguator = UInt.random(in: UInt.min...UInt.max)
             let dataDirURL = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)/swift-bitcoin-data")
             let dataDir = FilePath(dataDirURL.relativePath)
             try? fm.removeItem(atPath: dataDir.string)
@@ -58,10 +60,11 @@ struct PersistenceTests {
     }
 
     @Test func memoryToPersistentBlockchainSync() async throws {
-        await withKnownIssue("Some blockchain persistence tests randomly crashing after NIO update #451", isIntermittent: true) {
-
+        await withKnownIssue(
+            "Some blockchain persistence tests randomly crashing after NIO update #451", isIntermittent: true
+        ) {
             let fm = FileManager.default
-            let disambiguator = UInt.random(in: UInt.min ... UInt.max)
+            let disambiguator = UInt.random(in: UInt.min...UInt.max)
             let dataDirURL = fm.temporaryDirectory.appendingPathComponent("\(disambiguator)/swift-bitcoin-data")
             let dataDir = FilePath(dataDirURL.relativePath)
             try? fm.removeItem(atPath: dataDir.string)

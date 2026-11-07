@@ -1,7 +1,8 @@
 import Crypto
 import Foundation
-@testable import BitcoinBase
 import Testing
+
+@testable import BitcoinBase
 
 // MARK: - Deterministic randomness
 
@@ -103,7 +104,10 @@ struct BytePattern: Sendable, CustomTestStringConvertible {
         BytePattern("top bit only") { $0[31] = 0x80 },
         BytePattern("low word max") { for i in 0..<16 { $0[i] = 0xFF } },
         BytePattern("high word max") { for i in 16..<32 { $0[i] = 0xFF } },
-        BytePattern("word boundary") { $0[15] = 0xFF; $0[16] = 0x01 },
+        BytePattern("word boundary") {
+            $0[15] = 0xFF
+            $0[16] = 0x01
+        },
         BytePattern("alternating") { for i in 0..<32 { $0[i] = i.isMultiple(of: 2) ? 0xAA : 0x55 } },
         BytePattern("single-digit bytes") { $0 = [UInt8](repeating: 0x0A, count: 32) },
     ]
@@ -165,8 +169,10 @@ func limbs(_ bytes: [UInt8]) -> [UInt64] {
 }
 
 func limbs(_ work: Chainwork) -> [UInt64] {
-    [UInt64(truncatingIfNeeded: work.low), UInt64(truncatingIfNeeded: work.low >> 64),
-     UInt64(truncatingIfNeeded: work.high), UInt64(truncatingIfNeeded: work.high >> 64)]
+    [
+        UInt64(truncatingIfNeeded: work.low), UInt64(truncatingIfNeeded: work.low >> 64),
+        UInt64(truncatingIfNeeded: work.high), UInt64(truncatingIfNeeded: work.high >> 64),
+    ]
 }
 
 /// Schoolbook multiplication of little-endian limb arrays.
@@ -223,15 +229,17 @@ enum Fixtures {
     static let mainnetPowLimit = Target(hex: "00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff")!
     static let regtestPowLimit = Target(hex: "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")!
 
-    static let genesisHeader = bytes(fromHex:
-        "0100000000000000000000000000000000000000000000000000000000000000"
+    static let genesisHeader = bytes(
+        fromHex:
+            "0100000000000000000000000000000000000000000000000000000000000000"
             + "000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa"
             + "4b1e5e4a29ab5f49ffff001d1dac2b7c")
     static let genesisHash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
     static let genesisMerkleRoot = "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"
 
-    static let block1Header = bytes(fromHex:
-        "010000006fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d61900"
+    static let block1Header = bytes(
+        fromHex:
+            "010000006fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d61900"
             + "00000000982051fd1e4ba744bbbe680e1fee14677ba1a3c3540bf7b1cdb606e8"
             + "57233e0e61bc6649ffff001d01e36299")
     static let block1Hash = "00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"

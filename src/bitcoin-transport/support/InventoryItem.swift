@@ -1,11 +1,10 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// Inventory vectors are used for notifying other nodes about objects they have or data which is being requested.
 public struct InventoryItem: Equatable {
-
     public init(type: InventoryType, hash: Hash256) {
         self.type = type
         self.hash = hash
@@ -19,7 +18,6 @@ public struct InventoryItem: Equatable {
 }
 
 extension InventoryItem: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         type = try InventoryType(parsing: &input)
         hash = try Hash256(parsing: &input)

@@ -1,11 +1,10 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// A reference to an unspent transaction output (aka _UTXO_).
 public struct UnspentOutput: Equatable, Sendable {
-
     let out: TransactionOutput
     let height: Int
     let isCoinbase: Bool
@@ -20,11 +19,10 @@ public struct UnspentOutput: Equatable, Sendable {
     var isMempool: Bool {
         height == Self.mempoolHeight
     }
-    public static let mempoolHeight = 0x7fffffff
+    public static let mempoolHeight = 0x7fff_ffff
 }
 
 extension UnspentOutput: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         // Reading isCoinbase first to allow for a null marker (UInt8.max) without possible conflict of values
         isCoinbase = try UInt8(parsing: &input) != 0
@@ -47,7 +45,6 @@ extension UnspentOutput: BinaryCodable {
 }
 
 extension Optional: BinaryCodable where Wrapped == UnspentOutput {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         let previousRange = input.parserRange
         let noneMarker = try UInt8(parsing: &input)

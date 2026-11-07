@@ -1,10 +1,9 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// A reference to a specific ``TransactionOutput`` of a particular ``Transaction`` which is stored in a ``Transaction/Input``.
 public struct Outpoint: Equatable, Hashable, Sendable {
-
     /// Creates a reference to an output of a previous transaction.
     /// - Parameters:
     ///   - tx: The identifier for the previous transaction being referenced.
@@ -23,13 +22,12 @@ public struct Outpoint: Equatable, Hashable, Sendable {
     /// The outpoint meant for the single coinbase transaction input. Also known as _null_ outpoint or _null prevout_.
     public static let coinbase = Self(
         tx: TransactionIdentifier(Hash256(.init(repeating: 0))), // All zeroes
-        out: 0xffffffff // or `UInt32.max`
+        out: 0xffff_ffff // or `UInt32.max`
     )
 }
 
 /// Data extensions.
 extension Outpoint: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         let tx = try TransactionIdentifier(parsing: &input)
         let out = Int(try UInt32(parsingLittleEndian: &input))

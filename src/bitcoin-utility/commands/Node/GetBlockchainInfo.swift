@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct GetBlockchainInfo: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: GetBlockchainInfoRPC.description
     )

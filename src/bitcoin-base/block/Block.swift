@@ -1,15 +1,17 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// A block of transactions. It may be interpreted as a just a block header when body of transactions is empty. It may also include additional contextual information such as the block's height within the blockchain.
 public struct Block: Equatable, Sendable {
-
     public typealias ID = Data
 
     // MARK: - Initializers
 
-    public init(version: Int = Self.versionBitsTopBits, previous: BlockHash, merkleRoot: MerkleRoot, time: Date = .now, target: Int, nonce: Int = 0, txs: [Transaction] = []) {
+    public init(
+        version: Int = Self.versionBitsTopBits, previous: BlockHash, merkleRoot: MerkleRoot, time: Date = .now,
+        target: Int, nonce: Int = 0, txs: [Transaction] = []
+    ) {
         self.version = version
         self.previous = previous
         self.merkleRoot = merkleRoot
@@ -69,19 +71,18 @@ public struct Block: Equatable, Sendable {
     // MARK: - Type Properties
 
     /// BIP9 version bits prefix `0b001…`
-    public static let versionBitsTopBits = 0x20000000
+    public static let versionBitsTopBits = 0x2000_0000
 }
 
-package extension Block {
+extension Block {
     /// Minimum size of data in bytes.
-    static let minSize = headerSize + 1
+    package static let minSize = headerSize + 1
 
     /// Size of header data in bytes.
-    static let headerSize = 80
+    package static let headerSize = 80
 }
 
 extension Block: BinaryCodable {
-
     public enum BinaryFormat: Equatable, Sendable {
         case headerOnly
         case noWitness
@@ -105,12 +106,15 @@ extension Block: BinaryCodable {
             let target = Int(try UInt32(parsingLittleEndian: &input))
             let nonce = Int(try UInt32(parsingLittleEndian: &input))
 
-            let txs: [Transaction] = if format == .headerOnly {
-                []
-            } else {
-                try [Transaction](parsing: &input, format: format == .noWitness ? (nil, .noWitness) : nil)
-            }
-            self.init(version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce, txs: txs)
+            let txs: [Transaction] =
+                if format == .headerOnly {
+                    []
+                } else {
+                    try [Transaction](parsing: &input, format: format == .noWitness ? (nil, .noWitness) : nil)
+                }
+            self.init(
+                version: version, previous: previous, merkleRoot: merkleRoot, time: time, target: target, nonce: nonce,
+                txs: txs)
         case .signet: fatalError("Signet encoding is for use with encoder only.")
         case .file(let magicBytes):
             let magic = Int(try UInt32(parsingLittleEndian: &input))
@@ -176,4 +180,3 @@ extension Block: BinaryCodable {
         }
     }
 }
-

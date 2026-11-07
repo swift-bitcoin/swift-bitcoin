@@ -1,15 +1,14 @@
-import Foundation
-import NIOPosix
-import BitcoinTransport
-import JSONRPC
 import AsyncAlgorithms
-import ServiceLifecycle
+import BitcoinTransport
+import Foundation
+import JSONRPC
+import Logging
 import NIOCore
 import NIOExtras
-import Logging
+import NIOPosix
+import ServiceLifecycle
 
 actor P2PClient: Service {
-
     init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) async {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
@@ -49,13 +48,13 @@ actor P2PClient: Service {
         let bootstrap = ClientBootstrap(group: eventLoopGroup)
         let clientChannel: NIOAsyncChannel<NetworkMessage, NetworkMessage>
         do {
-            clientChannel = try await bootstrap.connect( host: remoteHost, port: remotePort) { [logger] connection in
+            clientChannel = try await bootstrap.connect(host: remoteHost, port: remotePort) { [logger] connection in
                 connection.eventLoop.makeCompletedFuture {
                     try connection.pipeline.syncOperations.addHandlers([
                         MessageToByteHandler(MessageCoder()),
                         ByteToMessageHandler(MessageCoder()),
                         DebugInboundEventsHandler(logger: logger),
-                        DebugOutboundEventsHandler(logger: logger)
+                        DebugOutboundEventsHandler(logger: logger),
                     ])
                     return try NIOAsyncChannel<NetworkMessage, NetworkMessage>(wrappingChannelSynchronously: connection)
                 }
@@ -76,7 +75,6 @@ actor P2PClient: Service {
         logger.info("P2P client @\(localPort ?? -1) connected to peer @\(remoteHost):\(remotePort) ( …")
 
         try await clientChannel.executeThenClose { @Sendable [logger] inbound, outbound in
-
             try await withThrowingDiscardingTaskGroup { [logger] group in
                 group.addTask { [peerID] in
                     await self.node.connect(peerID)
@@ -100,8 +98,9 @@ actor P2PClient: Service {
                         } catch let error as NodeService.Error {
                             logger.error("An error has occurred while processing message:\n\(error)")
                             try await clientChannel.channel.close()
-                            break // Important that we don't return or continue here as the removal of the peer happens on this task but we don't want to process any more incoming/outgoing messages once an exception occurred.
 
+                            // Important that we don't return or continue here as the removal of the peer happens on this task but we don't want to process any more incoming/outgoing messages once an exception occurred.
+                            break
                         }
                         // Send all queued responses
                         while let message = await self.node.popMessage(peerID) {

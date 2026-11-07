@@ -1,15 +1,15 @@
 import ArgumentParser
-import Foundation
 import BitcoinBase
+import Foundation
+
 import enum BitcoinTransport.NodeNetwork
 
 struct Node: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Connects to a runing node and sends it an RPC command.",
         discussion: """
-        Use one of the subcommands to specify which RPC method to call.
-        """,
+            Use one of the subcommands to specify which RPC method to call.
+            """,
         subcommands: [
             Help.self,
             Status.self,
@@ -31,7 +31,7 @@ struct Node: AsyncParsableCommand {
             SendCommand.self,
             ReindexCommand.self,
             ReindexStatus.self,
-            ReindexStop.self
+            ReindexStop.self,
         ],
         defaultSubcommand: SendCommand.self
     )
@@ -45,7 +45,11 @@ struct Node: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "The hostname or address of the RPC service to connect to.")
     var host = "0.0.0.0"
 
-    @Option(name: .shortAndLong, help: "The server TCP port to connect to. Defaults to network's default port (\(NodeNetwork.mainnet.defaultRPCPort) for \(NodeNetwork.mainnet))")
+    @Option(
+        name: .shortAndLong,
+        help:
+            "The server TCP port to connect to. Defaults to network's default port (\(NodeNetwork.mainnet.defaultRPCPort) for \(NodeNetwork.mainnet))"
+    )
     var port: Int?
 
     var resolvedNetwork: NodeNetwork {

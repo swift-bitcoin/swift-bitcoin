@@ -1,10 +1,9 @@
-import Foundation
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// Witness version 1 or higher Bitcoin address.
 public struct TaprootAddress: AddressProtocol {
-
     public init?(_ address: String) {
         walletLoop: for network in WalletNetwork.allCases {
             var version: Int

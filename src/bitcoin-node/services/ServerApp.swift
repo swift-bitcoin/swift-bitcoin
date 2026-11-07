@@ -1,14 +1,19 @@
-import Foundation
-import JSONRPC
+import AsyncAlgorithms
 import BitcoinBase
 import BitcoinBlockchain
 import BitcoinTransport
+import Foundation
+import Instrumentation
+import JSONRPC
 import Logging
 import Metrics
-import ProfileRecorderServer
-import ServiceLifecycle
 import NIOCore
 import NIOPosix
+import OTel
+import ProfileRecorderServer
+import ServiceLifecycle
+import SystemMetrics
+import UnixSignals
 
 /// A top-level actor that composes and orchestrates the node’s services.
 ///
@@ -61,7 +66,6 @@ import NIOPosix
 ///   - P2PService and P2PClient for peer-to-peer networking
 ///   - StatusRPC, ConnectRPC, StartP2PRPC for RPC command interfaces
 actor ServerApp {
-
     init(_ config: NodeConfig) async throws(ServerError) {
         let challenge: Script?
         if let signetChallenge = config.signetChallenge {
@@ -76,12 +80,13 @@ actor ServerApp {
         } else {
             challenge = nil
         }
-        network = switch config.network {
-        case .mainnet: .mainnet
-        case .testnet: .testnet
-        case .regtest: .regtest
-        case .signet: .signet(challenge: challenge)
-        }
+        network =
+            switch config.network {
+            case .mainnet: .mainnet
+            case .testnet: .testnet
+            case .regtest: .regtest
+            case .signet: .signet(challenge: challenge)
+            }
         let dataLocation = BlockchainService.Config.DataLocation(config.dataLocation)
         let port = config.rpc.port // ?? network.defaultRPCPort
 
@@ -91,20 +96,25 @@ actor ServerApp {
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        guard let configStringData = try? encoder.encode(config), let configString = String(data: configStringData, encoding: .utf8) else {
+        guard let configStringData = try? encoder.encode(config),
+            let configString = String(data: configStringData, encoding: .utf8)
+        else {
             fatalError("Could not encode configuration")
         }
         logger.info("\(configString)")
 
         if config.enableProfiling {
             logger.info("Profiling capability enabled as per configuration")
-            async let _ = ProfileRecorderServer(configuration: .parseFromEnvironment()).runIgnoringFailures(logger: logger)
+            async let _ = ProfileRecorderServer(configuration: .parseFromEnvironment()).runIgnoringFailures(
+                logger: logger)
         }
 
         let telemetryService: ServiceGroup?
         let metricsFactory: (any MetricsFactory)?
         if let metricsConfig = config.metrics {
-            logger.info("Metrics enabled as per OpenTelemetry (OTLP) configuration with gRPC endpoint \(metricsConfig.endpoint)")
+            logger.info(
+                "Metrics enabled as per OpenTelemetry (OTLP) configuration with gRPC endpoint \(metricsConfig.endpoint)"
+            )
             // Initialize all telemetry services
             do {
                 (telemetryService, metricsFactory) = try makeTelemetryService(
@@ -138,7 +148,9 @@ actor ServerApp {
 
         eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
-        rpcService = RPCService(host: config.rpc.host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain, logger: logger)
+        rpcService = RPCService(
+            host: config.rpc.host, port: port, eventLoopGroup: eventLoopGroup, node: node, blockchain: blockchain,
+            logger: logger)
 
         var services: [ServiceGroupConfiguration.ServiceConfiguration] = []
 
@@ -149,30 +161,45 @@ actor ServerApp {
         // services.append(.init(service: node, successTerminationBehavior: .gracefullyShutdownGroup, failureTerminationBehavior: .cancelGroup))
 
         if let bind = config.bind {
-            let p2pService = P2PService(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: bind.host ?? "0.0.0.0", port: bind.port ?? network.defaultP2PPort)
+            let p2pService = P2PService(
+                eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: bind.host ?? "0.0.0.0",
+                port: bind.port ?? network.defaultP2PPort)
             self.p2pService = p2pService
-            services.append(.init(service: p2pService, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup))
+            services.append(
+                .init(
+                    service: p2pService, successTerminationBehavior: .ignore,
+                    failureTerminationBehavior: .gracefullyShutdownGroup))
         }
 
-        services.append(.init(service: rpcService, successTerminationBehavior: .gracefullyShutdownGroup, failureTerminationBehavior: .cancelGroup))
+        services.append(
+            .init(
+                service: rpcService, successTerminationBehavior: .gracefullyShutdownGroup,
+                failureTerminationBehavior: .cancelGroup))
 
-        serviceGroup = ServiceGroup(configuration: .init(
-            services: services,
-            gracefulShutdownSignals: [.sigint, .sigterm],
-            cancellationSignals: [.sigquit],
-            logger: logger
-        ))
+        serviceGroup = ServiceGroup(
+            configuration: .init(
+                services: services,
+                gracefulShutdownSignals: [.sigint, .sigterm],
+                cancellationSignals: [.sigquit],
+                logger: logger
+            ))
 
-        let autoConnectAddresses = if config.autoConnect && config.connect.isEmpty {
-            network.autoconnectPeers.shuffled()
-        } else {
-            config.connect.map {
-                ($0.host, $0.port ?? network.defaultP2PPort)
+        let autoConnectAddresses =
+            if config.autoConnect && config.connect.isEmpty {
+                network.autoconnectPeers.shuffled()
+            } else {
+                config.connect.map {
+                    ($0.host, $0.port ?? network.defaultP2PPort)
+                }
             }
-        }
 
-        let autoConnectService = AutoConnectService(addresses: autoConnectAddresses, services: serviceGroup, eventLoopGroup: eventLoopGroup, node: node, logger: logger)
-        await serviceGroup.addServiceUnlessShutdown(.init(service: autoConnectService, successTerminationBehavior: .ignore, failureTerminationBehavior: .cancelGroup))
+        let autoConnectService = AutoConnectService(
+            addresses: autoConnectAddresses, services: serviceGroup, eventLoopGroup: eventLoopGroup, node: node,
+            logger: logger)
+        await serviceGroup.addServiceUnlessShutdown(
+            .init(
+                service: autoConnectService, successTerminationBehavior: .ignore,
+                failureTerminationBehavior: .cancelGroup))
 
         // All instance variables initialized, time to set some call backs
         await rpcService.setServerApp(self)
@@ -221,7 +248,8 @@ actor ServerApp {
         let status = await rpcService.status
 
         let p2pClientStatus = await node.outgoingPeers.map {
-            StatusRPC.Result.P2PClient(peerID: $0.id, connected: true, remoteHost: $0.host, remotePort: $0.port, localPort: -1)
+            StatusRPC.Result.P2PClient(
+                peerID: $0.id, connected: true, remoteHost: $0.host, remotePort: $0.port, localPort: -1)
         }
 
         // Collect P2P Client Services' statuses in order
@@ -243,7 +271,11 @@ actor ServerApp {
          }
          */
 
-        let p2pStatus = await p2pService?.status ?? .init(listening: false, host: nil, port: nil, overallConnections: -1, sessionConnections: -1, activeConnections: -1)
+        let p2pStatus =
+            await p2pService?.status
+            ?? .init(
+                listening: false, host: nil, port: nil, overallConnections: -1, sessionConnections: -1,
+                activeConnections: -1)
 
         // Execute RPC Command
         return await StatusRPC().run(rpcStatus: status, p2pStatus: p2pStatus, p2pClientStatus: p2pClientStatus)
@@ -263,11 +295,15 @@ actor ServerApp {
     /// - Returns: The new peer’s numeric ID (PeerID) on success.
     /// - Throws: JSONRPCResponse.Error if the connection cannot be started.
     func rpcConnect(_ params: ConnectRPC.Params) async throws(JSONRPCResponse.Error) -> ConnectRPC.Result {
-
         guard let node else { preconditionFailure() }
 
-        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port ?? network.defaultP2PPort)
-        let config = ServiceGroupConfiguration.ServiceConfiguration(service: service, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup) // TODO: Maybe do not shut down when we timeout on an outgoing peer?
+        let service = await P2PClient(
+            eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host,
+            port: params.port ?? network.defaultP2PPort)
+        let config = ServiceGroupConfiguration.ServiceConfiguration(
+
+            // TODO: Maybe do not shut down when we timeout on an outgoing peer?
+            service: service, successTerminationBehavior: .ignore, failureTerminationBehavior: .gracefullyShutdownGroup)
         await serviceGroup.addServiceUnlessShutdown(config)
         return service.peerID
     }
@@ -277,16 +313,17 @@ actor ServerApp {
     /// - Parameter params: The bind host and port for the P2P listener (StartP2PRPC.Params).
     /// - Note: If the listener is already running, this call logs a warning and does nothing.
     func rpcStartP2P(_ params: StartP2PRPC.Params) async {
-
         guard let node else { preconditionFailure() }
 
         guard p2pService == nil else {
             logger.warning("Already listening for incoming peer-to-peer connections")
             return
         }
-        let p2pService = P2PService(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port)
+        let p2pService = P2PService(
+            eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: params.host, port: params.port)
         self.p2pService = p2pService
-        let config = ServiceGroupConfiguration.ServiceConfiguration(service: p2pService, successTerminationBehavior: .ignore)
+        let config = ServiceGroupConfiguration.ServiceConfiguration(
+            service: p2pService, successTerminationBehavior: .ignore)
         await serviceGroup.addServiceUnlessShutdown(config)
     }
 
@@ -312,30 +349,23 @@ actor ServerApp {
 }
 
 extension BlockchainService.Config.DataLocation {
-
     /// Maps the application’s NodeConfig.DataLocation to the blockchain service’s data location.
     ///
     /// - Parameter dataLocation: The app-level data location setting.
     /// - Note: `.custom(path:)` is forwarded as-is to the underlying service.
     init(_ dataLocation: NodeConfig.DataLocation) {
-        self = switch dataLocation {
-        case .inMemory: .inMemory
-        case .defaultPath: .defaultPath
-        case let .custom(path: path): .custom(path: path)
-        }
+        self =
+            switch dataLocation {
+            case .inMemory: .inMemory
+            case .defaultPath: .defaultPath
+            case .custom(let path): .custom(path: path)
+            }
     }
 }
 
-import AsyncAlgorithms
-import Instrumentation
-import Logging
-import Metrics
-import OTel
-import ServiceLifecycle
-import SystemMetrics
-import UnixSignals
-
-func makeTelemetryService(logger: Logger, serviceName: String, endpoint: String) throws -> (service: ServiceGroup, metricsFactory: any MetricsFactory) {
+func makeTelemetryService(logger: Logger, serviceName: String, endpoint: String) throws -> (
+    service: ServiceGroup, metricsFactory: any MetricsFactory
+) {
     var otelConfig = OTel.Configuration.default
     otelConfig.metrics.otlpExporter.protocol = .grpc
     otelConfig.metrics.otlpExporter.endpoint = endpoint

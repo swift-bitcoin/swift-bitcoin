@@ -1,19 +1,18 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
-public extension SecretKey {
-
-    struct WIFMetadata {
+extension SecretKey {
+    public struct WIFMetadata {
         public let isMainnet: Bool
         public let compressedPubkeys: Bool
     }
 
-    init?(wif: String) {
+    public init?(wif: String) {
         var metadata = WIFMetadata?.none
         self.init(wif: wif, metadata: &metadata)
     }
 
-    init?(wif: String, metadata: inout WIFMetadata?) {
+    public init?(wif: String, metadata: inout WIFMetadata?) {
         precondition(metadata == nil)
 
         guard var secretKeyData = Base58Decoder().decode(wif) else {
@@ -21,7 +20,9 @@ public extension SecretKey {
             return nil
         }
 
-        guard let versionByte = secretKeyData.popFirst(), versionByte == Self.base58VersionMain || versionByte == Self.base58VersionTest else {
+        guard let versionByte = secretKeyData.popFirst(),
+            versionByte == Self.base58VersionMain || versionByte == Self.base58VersionTest
+        else {
             // throw invalidBase58VersionByte
             return nil
         }
@@ -45,7 +46,7 @@ public extension SecretKey {
         self.init(secretKeyData)
     }
 
-    func toWIF(compressedPubkeys: Bool = true, mainnet: Bool = true) -> String {
+    public func toWIF(compressedPubkeys: Bool = true, mainnet: Bool = true) -> String {
         var data = Data()
         data.append(Data([mainnet ? Self.base58VersionMain : Self.base58VersionTest]))
         data.append(self.data)

@@ -1,7 +1,7 @@
 import BinaryParsing
+import BitcoinCrypto
 import Crypto
 import Foundation
-import BitcoinCrypto
 
 /// A 32-byte hash (Bitcoin's double SHA-256, `HASH256`), stored as `InlineArray<32, UInt8>`:
 /// bytes in wire order, alignment 1, no conversion.
@@ -95,7 +95,8 @@ public struct Hash256: Hashable, Sendable, CustomDebugStringConvertible {
     /// insert and lookup ran ~3x slower.
     @inlinable
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        let l = lhs.words, r = rhs.words
+        let l = lhs.words
+        let r = rhs.words
         return ((l.low ^ r.low) | (l.high ^ r.high)) == 0
     }
 
@@ -186,8 +187,10 @@ extension Hash256 {
     @inlinable
     package var words: (low: UInt128, high: UInt128) {
         let raw = bytes.span.bytes
-        return (raw.load(fromByteOffset: 0, as: UInt128.self, .littleEndian),
-                raw.load(fromByteOffset: 16, as: UInt128.self, .littleEndian))
+        return (
+            raw.load(fromByteOffset: 0, as: UInt128.self, .littleEndian),
+            raw.load(fromByteOffset: 16, as: UInt128.self, .littleEndian)
+        )
     }
 
     @usableFromInline
@@ -203,7 +206,8 @@ extension Hash256 {
     /// Whether `lhs` is less than `rhs` as 256-bit little-endian integers.
     @inlinable
     package static func numericallyPrecedes(_ lhs: Self, _ rhs: Self) -> Bool {
-        let l = lhs.words, r = rhs.words
+        let l = lhs.words
+        let r = rhs.words
         return (l.high, l.low) < (r.high, r.low)
     }
 }
@@ -233,7 +237,7 @@ func hexBytes(_ text: String, byteCount: Int, zeroExtend: Bool) -> [UInt8]? {
     let digits = text.hasPrefix("0x") || text.hasPrefix("0X") ? String(text.dropFirst(2)) : text
     let width = 2 * byteCount
     guard zeroExtend ? digits.count <= width : digits.count == width,
-          let decoded = Data(hex: String(repeating: "0", count: width - digits.count) + digits)
+        let decoded = Data(hex: String(repeating: "0", count: width - digits.count) + digits)
     else { return nil }
     return [UInt8](decoded)
 }

@@ -1,11 +1,12 @@
 import BinaryParsing
-import Foundation
 import BitcoinBase
+import Foundation
 //import BitcoinCrypto
 import Testing
 
 private let identifierTypes: [any Hash256Identifier.Type] = [
-    TransactionIdentifier.self, WitnessTransactionIdentifier.self, BlockHash.self, MerkleRoot.self, WitnessMerkleRoot.self,
+    TransactionIdentifier.self, WitnessTransactionIdentifier.self, BlockHash.self, MerkleRoot.self,
+    WitnessMerkleRoot.self,
 ]
 
 @Suite("Hash256 identifiers")
@@ -35,7 +36,8 @@ struct IdentifierTests {
         func check<ID: Hash256Identifier>(_: ID.Type) {
             for a in BytePattern.all {
                 for b in BytePattern.all {
-                    let lhs = ID(hash(a.bytes)), rhs = ID(hash(b.bytes))
+                    let lhs = ID(hash(a.bytes))
+                    let rhs = ID(hash(b.bytes))
                     #expect((lhs == rhs) == (a.bytes == b.bytes), "\(a.name) vs \(b.name)")
                     if lhs == rhs { #expect(lhs.hashValue == rhs.hashValue) }
                 }
@@ -119,7 +121,7 @@ private struct Header: ExpressibleByParsing, Equatable {
     var nonce: Int
 
     init(parsing input: inout ParserSpan) throws(ParsingError) {
-        version = Int(try Int32(parsingLittleEndian: &input))  // signed, as in Bitcoin Core
+        version = Int(try Int32(parsingLittleEndian: &input)) // signed, as in Bitcoin Core
         previousBlock = try BlockHash(parsing: &input)
         merkleRoot = try MerkleRoot(parsing: &input)
         time = Int(try UInt32(parsingLittleEndian: &input))

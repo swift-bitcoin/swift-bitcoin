@@ -1,6 +1,6 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
 public struct ExtendedKey: Equatable, Hashable, Sendable {
@@ -29,10 +29,14 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         guard let secretKey = SecretKey(secretKeyData) else {
             throw Error.invalidSeed
         }
-        try self.init(secretKey: secretKey, chaincode: chaincode, parentFingerprint: 0, depth: 0, keyIndex: 0, mainnet: mainnet)
+        try self.init(
+            secretKey: secretKey, chaincode: chaincode, parentFingerprint: 0, depth: 0, keyIndex: 0, mainnet: mainnet)
     }
 
-    fileprivate init(secretKey: SecretKey? = nil, pubkey: PublicKey? = nil, chaincode: Data, parentFingerprint: Int, depth: Int, keyIndex: Int, mainnet: Bool) throws(Error) {
+    fileprivate init(
+        secretKey: SecretKey? = nil, pubkey: PublicKey? = nil, chaincode: Data, parentFingerprint: Int, depth: Int,
+        keyIndex: Int, mainnet: Bool
+    ) throws(Error) {
         guard secretKey == nil && pubkey != nil || (secretKey != nil && pubkey == nil) else {
             preconditionFailure()
         }
@@ -74,13 +78,14 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
 
     private func derive(_ keyIndex: Int) -> Self {
         let depth = depth + 1
-        let pubkey = if let secretKey {
-            PublicKey(secretKey)
-        } else if let pubkey {
-            pubkey
-        } else {
-            fatalError()
-        }
+        let pubkey =
+            if let secretKey {
+                PublicKey(secretKey)
+            } else if let pubkey {
+                pubkey
+            } else {
+                fatalError()
+            }
 
         // assert(IsValid());
         // assert(IsCompressed());
@@ -102,15 +107,21 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
         let hmacResult = Data(hmac.finalize())
         let chaincode = hmacResult.dropFirst(32)
         let tweak = hmacResult.prefix(32)
-        let newSecretKey: SecretKey? = if let secretKey {
-            secretKey.tweak(tweak)
-        } else { nil }
+        let newSecretKey: SecretKey? =
+            if let secretKey {
+                secretKey.tweak(tweak)
+            } else { nil }
 
-        let newPubkey: PublicKey? = if let pubkey = self.pubkey {
-            pubkey.tweak(tweak)
-        } else { nil }
+        let newPubkey: PublicKey? =
+            if let pubkey = self.pubkey {
+                pubkey.tweak(tweak)
+            } else { nil }
 
-        guard let ret = try? Self(secretKey: newSecretKey, pubkey: newPubkey, chaincode: chaincode, parentFingerprint: pubkey.fingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
+        guard
+            let ret = try? Self(
+                secretKey: newSecretKey, pubkey: newPubkey, chaincode: chaincode, parentFingerprint: pubkey.fingerprint,
+                depth: depth, keyIndex: keyIndex, mainnet: isMainnet)
+        else {
             preconditionFailure()
         }
         return ret
@@ -143,7 +154,11 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
     public var neutered: Self {
         guard let secretKey else { preconditionFailure() }
         let pubkey = PublicKey(secretKey)
-        guard let ret = try? Self(secretKey: nil, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet) else {
+        guard
+            let ret = try? Self(
+                secretKey: nil, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint,
+                depth: depth, keyIndex: keyIndex, mainnet: isMainnet)
+        else {
             preconditionFailure()
         }
         return ret
@@ -161,20 +176,20 @@ public struct ExtendedKey: Equatable, Hashable, Sendable {
 }
 
 /// Error
-public extension ExtendedKey {
-    enum Error: Swift.Error, Equatable {
-        case invalidEncoding, wrongDataLength, unknownNetwork, invalidPrivateKeyLength, invalidSecretKey, invalidPublicKeyEncoding, invalidPublicKey, zeroDepthNonZeroFingerprint, zeroDepthNonZeroIndex, invalidSeed, binaryDecodingError
+extension ExtendedKey {
+    public enum Error: Swift.Error, Equatable {
+        case invalidEncoding, wrongDataLength, unknownNetwork, invalidPrivateKeyLength, invalidSecretKey,
+            invalidPublicKeyEncoding, invalidPublicKey, zeroDepthNonZeroFingerprint, zeroDepthNonZeroIndex, invalidSeed,
+            binaryDecodingError
     }
 }
 
 extension ExtendedKey: BinaryCodable {
-
     public enum BinaryFormat {
         case versionOnly
     }
 
     public init(parsing input: inout ParserSpan, format: BinaryFormat?) throws(Error) {
-
         guard format == nil else {
             preconditionFailure("Cannot decode an extended key from only a version.")
         }
@@ -186,7 +201,10 @@ extension ExtendedKey: BinaryCodable {
             throw .binaryDecodingError
         }
 
-        guard version == mainHDKeyVersionPrivate || version == mainHDKeyVersionPublic || version == testHDKeyVersionPrivate || version == testHDKeyVersionPublic else {
+        guard
+            version == mainHDKeyVersionPrivate || version == mainHDKeyVersionPublic
+                || version == testHDKeyVersionPrivate || version == testHDKeyVersionPublic
+        else {
             throw Error.unknownNetwork
         }
         let isMainnet = version == mainHDKeyVersionPrivate || version == mainHDKeyVersionPublic
@@ -232,7 +250,6 @@ extension ExtendedKey: BinaryCodable {
             let pubkeyData: Data
             do {
                 pubkeyData = try Data(parsing: &input, byteCount: PublicKey.compressedLength)
-
             } catch {
                 throw .binaryDecodingError
             }
@@ -244,7 +261,9 @@ extension ExtendedKey: BinaryCodable {
             }
             pubkey = parsedPubkey
         }
-        try self.init(secretKey: secretKey, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint, depth: depth, keyIndex: keyIndex, mainnet: isMainnet)
+        try self.init(
+            secretKey: secretKey, pubkey: pubkey, chaincode: chaincode, parentFingerprint: parentFingerprint,
+            depth: depth, keyIndex: keyIndex, mainnet: isMainnet)
     }
 
     public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
@@ -257,11 +276,12 @@ extension ExtendedKey: BinaryCodable {
     }
 
     public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
-        let version = if hasSecretKey {
-            isMainnet ? mainHDKeyVersionPrivate : testHDKeyVersionPrivate
-        } else {
-            isMainnet ? mainHDKeyVersionPublic : testHDKeyVersionPublic
-        }
+        let version =
+            if hasSecretKey {
+                isMainnet ? mainHDKeyVersionPrivate : testHDKeyVersionPrivate
+            } else {
+                isMainnet ? mainHDKeyVersionPublic : testHDKeyVersionPublic
+            }
         out.append(version, as: UInt32.self, .littleEndian)
         guard format != .versionOnly else {
             return
@@ -284,7 +304,7 @@ extension ExtendedKey: BinaryCodable {
     private static let versionSize = MemoryLayout<UInt32>.size
 }
 
-private let mainHDKeyVersionPrivate = UInt32(0xe4ad8804) // LE: 0x0488ade4
-private let mainHDKeyVersionPublic = UInt32(0x1eb28804) // LE: 0x0488b21e
-private let testHDKeyVersionPrivate = UInt32(0x94833504) // LE: 0x04358394
-private let testHDKeyVersionPublic = UInt32(0xcf873504) // LE: 0x043587cf
+private let mainHDKeyVersionPrivate = UInt32(0xe4ad_8804) // LE: 0x0488ade4
+private let mainHDKeyVersionPublic = UInt32(0x1eb2_8804) // LE: 0x0488b21e
+private let testHDKeyVersionPrivate = UInt32(0x9483_3504) // LE: 0x04358394
+private let testHDKeyVersionPublic = UInt32(0xcf87_3504) // LE: 0x043587cf

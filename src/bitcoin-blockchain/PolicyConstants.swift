@@ -1,7 +1,6 @@
 import BitcoinBase
 
 enum PolicyConstants {
-
     /// See ``BitcoinBase/Script/defaultPermitBareMultisig``.
     ///
     /// `DEFAULT_PERMIT_BAREMULTISIG`
@@ -86,67 +85,63 @@ enum PolicyConstants {
 }
 
 /// Policy.
-public extension Transaction {
-
+extension Transaction {
     /// Maximum standard weight.
-    static let maxStandardWeight = PolicyConstants.maxStandardWeight
+    public static let maxStandardWeight = PolicyConstants.maxStandardWeight
 
     /// Maximum number of ephemeral dust outputs allowed.
-    static let maxDustOutputs = PolicyConstants.maxDustOutputs
+    public static let maxDustOutputs = PolicyConstants.maxDustOutputs
 
     /// Min feerate for defining dust.
     ///
     /// Changing the dust limit changes which transactions are standard and should be done with care and ideally rarely. It makes sense to only increase the dust limit after prior releases were already not creating outputs below the new threshold.
-    static let dustRelayFee = PolicyConstants.dustRelayFee
+    public static let dustRelayFee = PolicyConstants.dustRelayFee
 
     /// The minimum non-witness size for transactions we're willing to relay/mine: one larger than 64 .
-    static let minStandardNonWitnessSize = PolicyConstants.minStandardNonWitnessTransactionSize
+    public static let minStandardNonWitnessSize = PolicyConstants.minStandardNonWitnessTransactionSize
 
     /// The maximum number of sigops we're willing to relay/mine in a single transaction.
-    static let maxStandardSigopsCost = PolicyConstants.maxStandardTransactionSigopsCost
+    public static let maxStandardSigopsCost = PolicyConstants.maxStandardTransactionSigopsCost
 
     /// The maximum number of potentially executed legacy signature operations in a single standard tx.
-    static let maxLegacySigops = PolicyConstants.maxTransactionLegacySigops
+    public static let maxLegacySigops = PolicyConstants.maxTransactionLegacySigops
 }
 
 /// Consensus.
-public extension Transaction.Input {
-
+extension Transaction.Input {
     /// Interpret sequence numbers as relative lock-time constraints.
-    static let standardLocktimeVerifyOption = PolicyConstants.standardLocktimeVerifyOption
+    public static let standardLocktimeVerifyOption = PolicyConstants.standardLocktimeVerifyOption
 }
 
 /// Policy.
-public extension Transaction.Witness {
-
+extension Transaction.Witness {
     /// Maximum allowed byte size of a P2WSH redeem script in the witness.
-    static let maxP2WSHScriptSize = PolicyConstants.maxP2WSHScriptSize
+    public static let maxP2WSHScriptSize = PolicyConstants.maxP2WSHScriptSize
 
     /// Maximum number of stack items permitted in a P2WSH witness.
-    static let maxP2WSHStackItems = PolicyConstants.maxP2WSHStackItems
+    public static let maxP2WSHStackItems = PolicyConstants.maxP2WSHStackItems
 
     /// Maximum byte size for a single stack item in a P2WSH witness.
-    static let maxP2WSHStackItemSize = PolicyConstants.maxP2WSHStackItemSize
+    public static let maxP2WSHStackItemSize = PolicyConstants.maxP2WSHStackItemSize
 
     /// Maximum byte size for a single stack item in a Tapscript witness.
-    static let maxTapscriptStackItemSize = PolicyConstants.maxTapscriptStackItemSize
+    public static let maxTapscriptStackItemSize = PolicyConstants.maxTapscriptStackItemSize
 }
 
 /// Policy.
-public extension Script {
-
+extension Script {
     /// Default for -permitbaremultisig
-    static let defaultPermitBareMultisig = PolicyConstants.defaultPermitBareMultisig
+    public static let defaultPermitBareMultisig = PolicyConstants.defaultPermitBareMultisig
 
     /// Default for -datacarrier
-    static let defaultAcceptDatacarrier = PolicyConstants.defaultAcceptDatacarrier
+    public static let defaultAcceptDatacarrier = PolicyConstants.defaultAcceptDatacarrier
 
     // The maximum size of a standard _ScriptSig_.
-    static let maxStandardInputScriptSize = PolicyConstants.maxStandardInputScriptSize
+    public static let maxStandardInputScriptSize = PolicyConstants.maxStandardInputScriptSize
 
     /// Default setting for max data carrier size in vbytes.
-    static let maxOpReturnRelay = PolicyConstants.maxOpReturnRelay
+    public static let maxOpReturnRelay = PolicyConstants.maxOpReturnRelay
 
     /// Maximum number of signature check operations in standard P2SH script.
-    static let maxP2SHSigops = PolicyConstants.maxP2SHSigops
+    public static let maxP2SHSigops = PolicyConstants.maxP2SHSigops
 }

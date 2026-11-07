@@ -1,11 +1,10 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// `notfound` is a response to a `getdata`, sent if any requested data items could not be relayed, for example, because the requested transaction was not in the memory pool or relay set.
 /// Payload (maximum 50,000 entries, which is just over 1.8 megabytes).
 public struct NotFoundMessage: Equatable {
-
     public init(items: [InventoryItem]) {
         self.items = items
     }
@@ -14,7 +13,6 @@ public struct NotFoundMessage: Equatable {
 }
 
 extension NotFoundMessage: BinaryCodable {
-
     public enum ParseError: Error {
         /// Maximum inventory items is 50,000.
         case tooManyItems
@@ -26,7 +24,7 @@ extension NotFoundMessage: BinaryCodable {
             throw ParsingError(userError: ParseError.tooManyItems)
         }
         var items = [InventoryItem]()
-        for _ in 0 ..< itemCount {
+        for _ in 0..<itemCount {
             let item = try InventoryItem(parsing: &input)
             items.append(item)
         }

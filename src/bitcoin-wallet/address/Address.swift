@@ -2,31 +2,39 @@ import BitcoinBase
 
 /// Type-erased bitcoin address. Use when needing to decode and generate outputs but the type of address being decoded is not known beforehand
 public enum Address: AddressProtocol {
-
-    case legacy(LegacyAddress), segwit(SegwitAddress), taproot(TaprootAddress)
+    case legacy(LegacyAddress)
+    case segwit(SegwitAddress)
+    case taproot(TaprootAddress)
 
     public init?(_ address: String) {
-        if let a = LegacyAddress(address) { self = .legacy(a) }
-        else if let a = SegwitAddress(address) { self = .segwit(a) }
-        else if let a = TaprootAddress(address) { self = .taproot(a) }
-        else { return nil }
+        if let a = LegacyAddress(address) {
+            self = .legacy(a)
+        } else if let a = SegwitAddress(address) {
+            self = .segwit(a)
+        } else if let a = TaprootAddress(address) {
+            self = .taproot(a)
+        } else {
+            return nil
+        }
     }
 
     public var script: Script {
-        let address: any AddressProtocol = switch self {
-        case .legacy(let a): a
-        case .segwit(let a): a
-        case .taproot(let a): a
-        }
+        let address: any AddressProtocol =
+            switch self {
+            case .legacy(let a): a
+            case .segwit(let a): a
+            case .taproot(let a): a
+            }
         return address.script
     }
 
     public var description: String {
-        let address: any AddressProtocol = switch self {
-        case .legacy(let a): a
-        case .segwit(let a): a
-        case .taproot(let a): a
-        }
+        let address: any AddressProtocol =
+            switch self {
+            case .legacy(let a): a
+            case .segwit(let a): a
+            case .taproot(let a): a
+            }
         return address.description
     }
 
@@ -42,8 +50,8 @@ public enum Address: AddressProtocol {
             network = a.network
         }
         // TODO: What about signet? Should all non-identified chains be linked to regtest network type? Should we add a network type param to ConsensusParams on top of the chain ID?
-        return network == .mainnet && chain == "mainnet" ||
-               (network == .testnet && (chain == "testnet" || chain == "testnet4")) ||
-               (network == .regtest && !["mainnet", "testnet", "testnet4"].contains(chain))
+        return network == .mainnet && chain == "mainnet"
+            || (network == .testnet && (chain == "testnet" || chain == "testnet4"))
+            || (network == .regtest && !["mainnet", "testnet", "testnet4"].contains(chain))
     }
 }

@@ -1,6 +1,6 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 private let bitsPerByte = UInt8.bitWidth
 private let bitsPerMnemonicWord = 11
@@ -8,13 +8,16 @@ private let mnemonicEntropyMin = 16 // Bytes
 private let mnemonicEntropyMax = 32 // Bytes
 private let mnemonicEntropyMultiple = 4 // Bytes
 
-private let mnemonicSeparators = [ "jp": "\u{3000}" /* "　" */]
+private let mnemonicSeparators = ["jp": "\u{3000}" /* "　" */]
 
-private let mnemonicWordLists = ["cs": mnemonicWordList_cs, "fr": mnemonicWordList_fr, "it": mnemonicWordList_it, "ko": mnemonicWordList_ko, "pt": mnemonicWordList_pt, "en": mnemonicWordList_en, "es": mnemonicWordList_es, "jp": mnemonicWordList_jp, "zh": mnemonicWordList_zh, "zh-Hant": mnemonicWordList_zhHant]
+private let mnemonicWordLists = [
+    "cs": mnemonicWordList_cs, "fr": mnemonicWordList_fr, "it": mnemonicWordList_it, "ko": mnemonicWordList_ko,
+    "pt": mnemonicWordList_pt, "en": mnemonicWordList_en, "es": mnemonicWordList_es, "jp": mnemonicWordList_jp,
+    "zh": mnemonicWordList_zh, "zh-Hant": mnemonicWordList_zhHant,
+]
 
 /// BIP39
 public struct MnemonicPhrase {
-
     public let mnemonic: String
     public let language: String
 
@@ -32,7 +35,9 @@ public struct MnemonicPhrase {
         guard let wordlist = mnemonicWordLists[language] else {
             throw Error.languageNotSupported
         }
-        precondition(entropy.count >= mnemonicEntropyMin && entropy.count <= mnemonicEntropyMax && entropy.count % mnemonicEntropyMultiple == 0)
+        precondition(
+            entropy.count >= mnemonicEntropyMin && entropy.count <= mnemonicEntropyMax
+                && entropy.count % mnemonicEntropyMultiple == 0)
         let checksumBitCount = entropy.count / mnemonicEntropyMultiple
         let hashFirstByte = Data(SHA256.hash(data: entropy)).first!
         let discardChecksumBits = bitsPerByte - checksumBitCount
@@ -46,11 +51,13 @@ public struct MnemonicPhrase {
             let bitsInFirstByte = bitsPerByte - (bitsConsumed % bitsPerByte)
             let bitsInSecondOrThirdByte = (bitsPerMnemonicWord - bitsInFirstByte) % bitsPerByte
             let bitsInLastByte = bitsInSecondOrThirdByte == 0 ? bitsPerByte : bitsInSecondOrThirdByte
-            let bytes = (bitsInFirstByte > 0 ? 1 : 0) + (bitsInSecondOrThirdByte > 0 ? 1 : 0) + (bitsPerMnemonicWord - bitsInFirstByte) / bitsPerByte
+            let bytes =
+                (bitsInFirstByte > 0 ? 1 : 0) + (bitsInSecondOrThirdByte > 0 ? 1 : 0)
+                + (bitsPerMnemonicWord - bitsInFirstByte) / bitsPerByte
             let startIndex = entropyChecksumed.startIndex.advanced(by: bitsConsumed / bitsPerByte)
             let endIndex = startIndex.advanced(by: bytes)
             let paddingBytes = MemoryLayout<UInt32>.size - bytes
-            let paddedChunk = Data(repeating: 0x00, count: paddingBytes) + entropyChecksumed[startIndex ..< endIndex]
+            let paddedChunk = Data(repeating: 0x00, count: paddingBytes) + entropyChecksumed[startIndex..<endIndex]
 
             let wordWithGarbage = try paddedChunk.withParserSpan { input in
                 try UInt32(parsingBigEndian: &input)
@@ -128,7 +135,8 @@ public struct MnemonicPhrase {
             }
             bits += bufferLevel
         }
-        let checksumedEntropyByteCount = checksumedEntropyBitCount / bitsPerByte + (checksumedEntropyBitCount % bitsPerByte == 0 ? 0 : 1)
+        let checksumedEntropyByteCount =
+            checksumedEntropyBitCount / bitsPerByte + (checksumedEntropyBitCount % bitsPerByte == 0 ? 0 : 1)
         if checksumedEntropy.count > checksumedEntropyByteCount {
             checksumedEntropy = checksumedEntropy.dropLast(1)
         }
@@ -144,9 +152,8 @@ public struct MnemonicPhrase {
     }
 }
 
-public extension MnemonicPhrase {
-    enum Error: Swift.Error {
-
+extension MnemonicPhrase {
+    public enum Error: Swift.Error {
         /// Mnemonic word list language not supported.
         case languageNotSupported
 

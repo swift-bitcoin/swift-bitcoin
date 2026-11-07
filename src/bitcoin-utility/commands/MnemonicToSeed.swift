@@ -7,7 +7,6 @@ import Foundation
 /// WARNING: mnemonic should be created from properly generated entropy.
 ///
 struct MnemonicToSeed: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Convert a mnemonic phrase (BIP39) into a seed suitable for BIP32 master key generation."
     )
@@ -27,7 +26,9 @@ struct MnemonicToSeed: ParsableCommand {
             mnemonicPhrase = try MnemonicPhrase(mnemonic, passphrase: passphrase, language: language)
         } catch MnemonicPhrase.Error.languageNotSupported {
             throw ValidationError("Invalid language value: language")
-        } catch MnemonicPhrase.Error.mnemonicWordNotOnList, MnemonicPhrase.Error.mnemonicInvalidLength, MnemonicPhrase.Error.invalidMnemonicChecksum  {
+        } catch MnemonicPhrase.Error.mnemonicWordNotOnList, MnemonicPhrase.Error.mnemonicInvalidLength, MnemonicPhrase
+            .Error.invalidMnemonicChecksum
+        {
             throw ValidationError("Invalid mnemonic value: mnemonic")
         } catch {
             throw error

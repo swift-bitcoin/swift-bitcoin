@@ -1,10 +1,9 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// The message command represents the different kinds of message on the peer-to-peer network.
 public enum MessageCommand: String, RawRepresentable, Sendable {
-
     /// Initial message in the handshake sequence.
     /// The payload is a serialized ``ProtocolVersion``.
     case version
@@ -104,7 +103,6 @@ public enum MessageCommand: String, RawRepresentable, Sendable {
 }
 
 extension MessageCommand: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         let commandDataUntrimmed = try [UInt8](parsing: &input, byteCount: fullLength)
         let commandData = commandDataUntrimmed.reversed().trimmingPrefix(while: { $0 == 0x00 }).reversed()

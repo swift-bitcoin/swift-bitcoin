@@ -1,9 +1,8 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 public enum TransportNetwork: Int {
-
     /// IPv4 address (globally routed internet)
     case IPV4 = 1
 
@@ -42,7 +41,6 @@ public enum TransportNetwork: Int {
 }
 
 extension TransportNetwork: BinaryCodable {
-
     public enum ParseError: Error {
         /// Invalid network identifier value.
         case invalidNetworkIdentified(Int)

@@ -1,5 +1,5 @@
-import Foundation
 import BinaryParsing
+import Foundation
 
 /// Encode and decode binary data with custom binary format.
 ///
@@ -10,30 +10,28 @@ import BinaryParsing
 public typealias BinaryCodable = BinaryEncodable & BinaryDecodable
 
 public protocol BinaryEncodable {
-
     associatedtype BinaryFormat
 
     func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?)
     func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws
 }
 
-public extension BinaryEncodable {
-
-    func countBytes(into counter: inout BinarySizeCounter) {
+extension BinaryEncodable {
+    public func countBytes(into counter: inout BinarySizeCounter) {
         countBytes(into: &counter, format: nil)
     }
 
-    func encode(into out: inout OutputRawSpan) throws {
+    public func encode(into out: inout OutputRawSpan) throws {
         try encode(into: &out, format: nil)
     }
 
-    func binarySize(format: BinaryFormat?) -> Int {
+    public func binarySize(format: BinaryFormat?) -> Int {
         var counter = BinarySizeCounter()
         countBytes(into: &counter, format: format)
         return counter.size
     }
 
-    func data(binaryFormat: BinaryFormat?) -> Data {
+    public func data(binaryFormat: BinaryFormat?) -> Data {
         let maybeData = try? Data(capacity: binarySize(format: binaryFormat)) { out in
             try encode(into: &out, format: binaryFormat)
         }
@@ -41,12 +39,12 @@ public extension BinaryEncodable {
     }
 
     /// The external binary representation's length in bytes.
-    var binarySize: Int {
+    public var binarySize: Int {
         binarySize(format: nil)
     }
 
     /// The instance's external binary representation.
-    var data: Data {
+    public var data: Data {
         data(binaryFormat: nil)
     }
 }
@@ -57,13 +55,12 @@ public protocol BinaryDecodable {
     init(parsing input: inout ParserSpan, format: BinaryFormat?) throws
 }
 
-public extension BinaryDecodable {
-
-    init(parsing input: inout ParserSpan) throws {
+extension BinaryDecodable {
+    public init(parsing input: inout ParserSpan) throws {
         try self.init(parsing: &input, format: nil)
     }
 
-    init(_ data: Data, binaryFormat: BinaryFormat?) throws {
+    public init(_ data: Data, binaryFormat: BinaryFormat?) throws {
         var input = ParserSpan(data.bytes)
         try self.init(parsing: &input, format: binaryFormat)
     }
@@ -72,7 +69,7 @@ public extension BinaryDecodable {
     /// - Parameter data: The binary representation to decode.
     ///
     /// This initializer is generic over `DataProtocol`  meaning it can be passed a `Data` instance or a `UInt8` array.
-    init(_ data: Data) throws {
+    public init(_ data: Data) throws {
         try self.init(data, binaryFormat: nil)
     }
 }

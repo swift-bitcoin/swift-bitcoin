@@ -1,5 +1,7 @@
 import Foundation
+
 @testable import BitcoinBase
+
 extension Transaction {
     static let empty = Self(version: .v1, locktime: .init(0), ins: [], outs: [])
 }
@@ -13,7 +15,11 @@ extension Script {
 
     func runV1(_ stack: inout [Data]) throws {
         let config = ScriptConfig.standard.subtracting(.discourageOpSuccess)
-        var runtime = ScriptRuntime(config, tx: .init(version: .v1, locktime: .init(0), ins: [.init(outpoint: .coinbase, witness: .init([]))], outs: []), input: 0, prevouts: [])
+        var runtime = ScriptRuntime(
+            config,
+            tx: .init(
+                version: .v1, locktime: .init(0), ins: [.init(outpoint: .coinbase, witness: .init([]))], outs: []),
+            input: 0, prevouts: [])
         try runtime.run(self, stack: stack, sigVersion: .witnessV1)
         stack = runtime.stack
     }

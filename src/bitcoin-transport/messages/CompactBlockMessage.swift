@@ -1,15 +1,14 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
+import Foundation
 
 /// A `HeaderAndShortIDs` (i.e. ``CompactBlockMessage``)  structure is used to relay a block header, the short transactions IDs used for matching already-available transactions, and a select few transactions which we expect a peer may be missing.
 ///
 /// The `cmpctblock` message is defined as a message containing a serialized `HeaderAndShortIDs` message and `pchCommand == "cmpctblock"`.
 ///
 public struct CompactBlockMessage: Equatable {
-
     public init(header: Block, nonce: UInt64, txIDs: [UInt64], txs: [PrefilledTransaction]) {
         precondition(header.txs.isEmpty)
         self.header = header
@@ -44,14 +43,13 @@ public struct CompactBlockMessage: Equatable {
 }
 
 extension CompactBlockMessage: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         header = try Block(parsing: &input, format: .headerOnly)
         nonce = try UInt64(parsingLittleEndian: &input)
 
         let txIDCount = try VarInt(parsing: &input).value
         var txIDs = [UInt64]()
-        for _ in 0 ..< txIDCount {
+        for _ in 0..<txIDCount {
             let part1 = try UInt32(parsingLittleEndian: &input)
             let part2 = try UInt16(parsingLittleEndian: &input)
             let identifier = (UInt64(part2) << 32) | UInt64(part1)
@@ -62,7 +60,7 @@ extension CompactBlockMessage: BinaryCodable {
         let txCount = try VarInt(parsing: &input).value
         var txs = [PrefilledTransaction]()
         var previousIndex = -1
-        for _ in 0 ..< txCount {
+        for _ in 0..<txCount {
             let tx = try PrefilledTransaction(parsing: &input, format: .init(previousIndex: previousIndex))
             previousIndex = tx.index
             txs.append(tx)
@@ -89,7 +87,7 @@ extension CompactBlockMessage: BinaryCodable {
 
         try VarInt(txIDs.count).encode(into: &out)
         for identifier in txIDs {
-            let part1 = UInt32(truncatingIfNeeded: identifier & 0xFFFFFFFF) // lower 4 bytes
+            let part1 = UInt32(truncatingIfNeeded: identifier & 0xFFFF_FFFF) // lower 4 bytes
             let part2 = UInt16(truncatingIfNeeded: (identifier >> 32) & 0xFFFF) // next 2 bytes
             out.append(part1, as: UInt32.self, .littleEndian)
             out.append(part2, as: UInt16.self, .littleEndian)

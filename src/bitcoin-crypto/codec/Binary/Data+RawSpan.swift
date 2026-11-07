@@ -22,7 +22,10 @@ extension Data {
         initializingWith initializer: (inout OutputRawSpan) throws(E) -> Void
     ) throws(E) {
         precondition(size >= 0, "size must be non-negative")
-        guard size > 0 else { self = Data(); return }
+        guard size > 0 else {
+            self = Data()
+            return
+        }
 
         let raw = UnsafeMutableRawBufferPointer.allocate(byteCount: size, alignment: 1)
         var out = unsafe OutputRawSpan(buffer: raw, initializedCount: 0)
@@ -48,7 +51,6 @@ extension Data {
 }
 
 extension Data {
-
     /// Creates data from a raw span.
     /// - Parameter span: The raw span whose bytes to copy into a new Data.
     package init(_ span: RawSpan) {

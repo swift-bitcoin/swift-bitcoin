@@ -1,8 +1,6 @@
 /// Submits a new (raw) transaction to the mempool. The transaction needs to be both valid and signed for it to be accepted.
 public struct SendTransactionRPC: RPCCommand, Sendable {
-
     public struct Params: Codable, Sendable {
-
         public init(transactionData: String) {
             self.transactionData = transactionData
         }
@@ -11,7 +9,6 @@ public struct SendTransactionRPC: RPCCommand, Sendable {
     }
 
     public struct Result: Codable, Sendable {
-
         public init(mempoolSize: Int) {
             self.mempoolSize = mempoolSize
         }

@@ -1,12 +1,9 @@
 /// Displays status for all of the node's services.
 public struct StatusRPC: RPCCommand, Sendable {
-
     public typealias Params = Never
 
     public struct Result: Codable, Sendable {
-
         public struct RPCService: Codable, Sendable {
-
             public init(listening: Bool, host: String, port: Int, overallConnections: Int, activeConnections: Int) {
                 self.listening = listening
                 self.host = host
@@ -23,8 +20,10 @@ public struct StatusRPC: RPCCommand, Sendable {
         }
 
         public struct P2PService: Codable, Sendable {
-
-            public init(listening: Bool, host: String?, port: Int?, overallConnections: Int, sessionConnections: Int, activeConnections: Int) {
+            public init(
+                listening: Bool, host: String?, port: Int?, overallConnections: Int, sessionConnections: Int,
+                activeConnections: Int
+            ) {
                 self.listening = listening
                 self.host = host
                 self.port = port
@@ -42,8 +41,9 @@ public struct StatusRPC: RPCCommand, Sendable {
         }
 
         public struct P2PClient: Codable, Sendable {
-
-            public init(peerID: Int /* PeerID */, connected: Bool, remoteHost: String, remotePort: Int, localPort: Int?) {
+            public init(
+                peerID: Int /* PeerID */, connected: Bool, remoteHost: String, remotePort: Int, localPort: Int?
+            ) {
                 self.peerID = peerID
                 self.connected = connected
                 self.remoteHost = remoteHost
@@ -58,7 +58,10 @@ public struct StatusRPC: RPCCommand, Sendable {
             let localPort: Int?
         }
 
-        public init(rpcStatus: StatusRPC.Result.RPCService, p2pStatus: StatusRPC.Result.P2PService, p2pClientStatus: [StatusRPC.Result.P2PClient]) {
+        public init(
+            rpcStatus: StatusRPC.Result.RPCService, p2pStatus: StatusRPC.Result.P2PService,
+            p2pClientStatus: [StatusRPC.Result.P2PClient]
+        ) {
             self.rpcStatus = rpcStatus
             self.p2pStatus = p2pStatus
             self.p2pClientStatus = p2pClientStatus
@@ -69,7 +72,7 @@ public struct StatusRPC: RPCCommand, Sendable {
         let p2pClientStatus: [P2PClient]
     }
 
-    public init() { }
+    public init() {}
 
     public static let method = "status"
     public static let params = ""

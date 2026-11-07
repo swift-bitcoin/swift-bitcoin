@@ -1,6 +1,6 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 struct BlockStorageLocator: Hashable {
     let file: Int
@@ -23,7 +23,6 @@ struct BlockStorageLocator: Hashable {
 }
 
 extension BlockStorageLocator: BinaryCodable {
-
     init(parsing input: inout ParserSpan, format: Never?) throws {
         let file32 = try UInt32(parsingLittleEndian: &input)
         file = file32 == .max ? -1 : Int(file32)

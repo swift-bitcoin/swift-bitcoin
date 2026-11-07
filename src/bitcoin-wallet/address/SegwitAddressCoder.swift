@@ -1,15 +1,14 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 /// Segregated Witness Address encoder/decoder
 struct SegwitAddressEncoder {
-
     let hrp: String
     let version: Int
 
     enum Error: LocalizedError {
         case bitsConversionFailed,
-             encodingCheckFailed
+            encodingCheckFailed
 
         var errorDescription: String {
             switch self {
@@ -29,7 +28,7 @@ struct SegwitAddressEncoder {
         }
         enc.append(conv)
         let result = Bech32Encoder(version > 0 ? .m : .bech32).encode(hrp, values: enc)
-        guard let _ = try? SegwitAddressDecoder(hrp: hrp).decode(result) else {
+        guard (try? SegwitAddressDecoder(hrp: hrp).decode(result)) != nil else {
             throw Error.encodingCheckFailed
         }
         return result
@@ -37,15 +36,20 @@ struct SegwitAddressEncoder {
 }
 
 struct SegwitAddressDecoder {
-
     enum Error: LocalizedError {
-        case bitsConversionFailed,
-             hrpMismatch(String, String),
-             checksumSizeTooLow,
-             dataSizeMismatch(Int),
-             segwitVersionNotSupported(UInt8),
-             segwitV0ProgramSizeMismatch(Int),
-             invalidBech32Variant(Bech32Variant)
+        case bitsConversionFailed
+        case
+            hrpMismatch(String, String)
+        case
+            checksumSizeTooLow
+        case
+            dataSizeMismatch(Int)
+        case
+            segwitVersionNotSupported(UInt8)
+        case
+            segwitV0ProgramSizeMismatch(Int)
+        case
+            invalidBech32Variant(Bech32Variant)
 
         var errorDescription: String {
             switch self {
@@ -91,7 +95,10 @@ struct SegwitAddressDecoder {
         if segwitVersion == 0 && conv.count != 20 && conv.count != 32 {
             throw Error.segwitV0ProgramSizeMismatch(conv.count)
         }
-        guard segwitVersion == 0 && decoded.detectedVariant == .bech32 || (segwitVersion > 0 && decoded.detectedVariant == .m) else {
+        guard
+            segwitVersion == 0 && decoded.detectedVariant == .bech32
+                || (segwitVersion > 0 && decoded.detectedVariant == .m)
+        else {
             throw Error.invalidBech32Variant(decoded.detectedVariant)
         }
         return (Int(segwitVersion), conv)
@@ -117,7 +124,7 @@ private func convertBits(from: Int, to: Int, pad: Bool, idata: Data) -> Data? {
         if bits != 0 {
             odata.append(UInt8((acc << (to - bits)) & maxv))
         }
-    } else if (bits >= from || ((acc << (to - bits)) & maxv) != 0) {
+    } else if bits >= from || ((acc << (to - bits)) & maxv) != 0 {
         return nil
     }
     return odata

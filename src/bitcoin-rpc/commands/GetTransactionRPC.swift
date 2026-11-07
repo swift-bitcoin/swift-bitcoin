@@ -1,13 +1,11 @@
-import Foundation
-import JSONRPC
-import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
+import Foundation
+import JSONRPC
 
 extension GetTransactionRPC {
-
     public func run(blockchain: BlockchainService) async throws(JSONRPCResponse.Error) -> Result {
-
         guard let txID = TransactionIdentifier(displayHex: params.transactionID) else {
             throw .init(.invalidParams, "Transaction ID hex encoding or length is invalid.")
         }

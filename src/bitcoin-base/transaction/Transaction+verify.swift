@@ -1,12 +1,11 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 private let taprootControlBaseSize = 33
 private let taprootControlNodeSize = 32
 
 /// Transaction inputs/scripts verification.
 extension Transaction {
-
     // MARK: - Instance Methods
 
     public func verifyScripts(prevouts: [TransactionOutput], config: ScriptConfig = .standard) -> Bool {
@@ -94,7 +93,6 @@ extension Transaction {
                         throw ScriptError.falseReturned
                     }
                 }
-
             } else {
                 isSegwit = false
                 witnessVersion = nil
@@ -201,7 +199,10 @@ extension Transaction {
                 fatalError()
             }
             let extendedSig = try SchnorrSignature.Extended(stack[0])
-            let sighash = SignatureHash.Taproot(tx: self, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, sighashCache: &runtime.sighashCache).data
+            let sighash = SignatureHash.Taproot(
+                tx: self, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts,
+                sighashCache: &runtime.sighashCache
+            ).data
             guard extendedSig.sig.verify(hash: sighash, pubkey: pubkey) else {
                 throw ScriptError.invalidSchnorrSignature
             }
@@ -213,7 +214,11 @@ extension Transaction {
         let control = stack.removeLast()
 
         // control block c, and must have length 33 + 32m, for a value of m that is an integer between 0 and 128, inclusive. Fail if it does not have such a length.
-        guard control.count >= taprootControlBaseSize && (control.count - taprootControlBaseSize) % taprootControlNodeSize == 0 && (control.count - taprootControlBaseSize) / taprootControlNodeSize <= 128 else {
+        guard
+            control.count >= taprootControlBaseSize
+                && (control.count - taprootControlBaseSize) % taprootControlNodeSize == 0
+                && (control.count - taprootControlBaseSize) / taprootControlNodeSize <= 128
+        else {
             throw ScriptError.invalidTapscriptControlBlock
         }
 
@@ -226,13 +231,16 @@ extension Transaction {
         let internalKeyData = control.dropFirst().prefix(PublicKey.xOnlyLength)
 
         // Fail if this point is not on the curve.
-        guard let internalKey = PublicKey(xOnly: internalKeyData), internalKey.check(useXOnly: true) else { throw ScriptError.invalidTaprootPublicKey }
+        guard let internalKey = PublicKey(xOnly: internalKeyData), internalKey.check(useXOnly: true) else {
+            throw ScriptError.invalidTaprootPublicKey
+        }
 
         // Let v = c[0] & 0xfe and call it the leaf version
         let leafVersion = control[0] & Witness.taprootLeafMask
 
         // Let k0 = hashTapLeaf(v || compact_size(size of s) || s); also call it the tapleaf hash.
-        let tapLeafHash = Data(SHA256.hash(data: [leafVersion] + VarInt(tapscriptData.count).data + tapscriptData, tag: "TapLeaf"))
+        let tapLeafHash = Data(
+            SHA256.hash(data: [leafVersion] + VarInt(tapscriptData.count).data + tapscriptData, tag: "TapLeaf"))
 
         // Compute the Merkle root from the leaf and the provided path.
         let merkleRoot = computeMerkleRoot(controlBlock: control, tapLeafHash: tapLeafHash)
@@ -242,7 +250,9 @@ extension Transaction {
         // Verify that the output pubkey matches the tweaked internal pubkey, after correcting for parity.
         //let parity = (control[0] & 0x01) != 0
         let hasEvenY = (control[0] & 0x01) == 0
-        let outputKey = PublicKey(xOnly: outputKeyData, hasEvenY: hasEvenY)! // TODO: Check if this could fail somehow when witness data contains an invalid public key.
+
+        // TODO: Check if this could fail somehow when witness data contains an invalid public key.
+        let outputKey = PublicKey(xOnly: outputKeyData, hasEvenY: hasEvenY)!
         guard internalKey.checkTweak(tweak, outputKey: outputKey) else {
             throw ScriptError.invalidTaprootTweak
         }
@@ -260,26 +270,25 @@ extension Transaction {
 
         // The tapscript is executed according to the rules in the following section, with the initial stack as input.
         // If execution fails for any reason, fail.
-        try runtime.run(tapscript, stack: stack, sigVersion: .witnessV1, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
+        try runtime.run(
+            tapscript, stack: stack, sigVersion: .witnessV1, leafVersion: leafVersion, tapLeafHash: tapLeafHash)
 
         // If the execution results in anything but exactly one element on the stack which evaluates to true with CastToBool(), fail.
         guard runtime.stack.count == 1, let last = runtime.stack.last, ScriptBool(last).value else {
             throw ScriptError.falseReturned
         }
-
     }
 }
 
 private func computeMerkleRoot(controlBlock: Data, tapLeafHash: Data) -> Data {
     let pathLen = (controlBlock.count - taprootControlBaseSize) / taprootControlNodeSize
     var k = tapLeafHash
-    for i in 0 ..< pathLen {
+    for i in 0..<pathLen {
         let startIndex = controlBlock.startIndex.advanced(by: taprootControlBaseSize + taprootControlNodeSize * i)
         let endIndex = startIndex.advanced(by: taprootControlNodeSize)
-        let node = controlBlock[startIndex ..< endIndex]
+        let node = controlBlock[startIndex..<endIndex]
         let payload = k.lexicographicallyPrecedes(node) ? k + node : node + k
         k = Data(SHA256.hash(data: payload, tag: "TapBranch"))
     }
     return k
 }
-

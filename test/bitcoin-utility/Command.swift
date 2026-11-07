@@ -1,5 +1,6 @@
-import Testing
 import ArgumentParser
+import Testing
+
 @testable import BitcoinUtility
 
 @Test func defaultCommand() throws {

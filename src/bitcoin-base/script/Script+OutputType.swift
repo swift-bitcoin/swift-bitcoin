@@ -1,16 +1,15 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 /// The public keys or hashes in an output script (scriptPubkey) to match by the input script (scriptSig).
 public typealias OutputScriptSolutions = [Data]
 
 extension Script {
-
     /// Match pay-to-pubkey: [PUSHDATA(pubkey) OP_CHECKSIG]
     func matchPayToPubkey() -> Data? {
         let script = self
         guard script.ops.count == 2 else { return nil }
-        if case let .pushBytes(pk) = script.ops[0], script.ops[1] == .checkSig {
+        if case .pushBytes(let pk) = script.ops[0], script.ops[1] == .checkSig {
             // Accept standard sizes: 33-byte compressed or 65-byte uncompressed
             if pk.count == PublicKey.compressedLength || pk.count == PublicKey.uncompressedLength {
                 return pk
@@ -24,7 +23,7 @@ extension Script {
         let script = self
         guard script.ops.count == 5 else { return nil }
         guard script.ops[0] == .dup, script.ops[1] == .hash160 else { return nil }
-        guard case let .pushBytes(hash) = script.ops[2], hash.count == 20 else { return nil }
+        guard case .pushBytes(let hash) = script.ops[2], hash.count == 20 else { return nil }
         guard script.ops[3] == .equalVerify, script.ops[4] == .checkSig else { return nil }
         return hash
     }
@@ -37,7 +36,7 @@ extension Script {
         guard ops.count >= 3, ops.last == .checkMultisig else { return nil }
 
         // First op must be OP_M
-        guard case let .constant(m) = ops[0], m >= 1, m <= Script.maxMultisigPubkeys else { return nil }
+        guard case .constant(let m) = ops[0], m >= 1, m <= Script.maxMultisigPubkeys else { return nil }
 
         // Collect consecutive pubkey pushes until we reach OP_N
         var i = 1
@@ -57,7 +56,9 @@ extension Script {
                 // Expect OP_N here (number of keys), followed by OP_CHECKMULTISIG at the end
                 let required = Int(m)
                 let numKeys = Int(n)
-                guard i == ops.count - 2, numKeys == keys.count, numKeys >= required, numKeys <= Script.maxMultisigPubkeys else {
+                guard i == ops.count - 2, numKeys == keys.count, numKeys >= required,
+                    numKeys <= Script.maxMultisigPubkeys
+                else {
                     return nil
                 }
                 return (required, keys)
@@ -73,13 +74,14 @@ extension Script {
     func matchMultiA() -> (threshold: Int, keys: [Data])? {
         guard !ops.isEmpty else { return nil }
         // Fast checks similar to the C++ code: starts with 32-byte push and ends with OP_NUMEQUAL
-        guard case let .pushBytes(first) = ops.first!, first.count == PublicKey.xOnlyLength, ops.last == .numEqual else { return nil }
+        guard case .pushBytes(let first) = ops.first!, first.count == PublicKey.xOnlyLength, ops.last == .numEqual
+        else { return nil }
 
         var keys = [Data]()
         var i = 0
         // Parse pairs of (32-byte key, OP_CHECKSIG or OP_CHECKSIGADD)
         while i + 1 < ops.count {
-            guard case let .pushBytes(k) = ops[i], k.count == PublicKey.xOnlyLength else { return nil }
+            guard case .pushBytes(let k) = ops[i], k.count == PublicKey.xOnlyLength else { return nil }
             let next = ops[i + 1]
             if keys.isEmpty {
                 guard next == .checkSig else { return nil }
@@ -98,7 +100,7 @@ extension Script {
         guard !keys.isEmpty, keys.count <= Script.maxMultisigPubkeys else { return nil }
 
         // Expect threshold and OP_NUMEQUAL at the end
-        guard ops.count >= 2, case let .constant(t) = ops[ops.count - 2], ops.last == .numEqual else { return nil }
+        guard ops.count >= 2, case .constant(let t) = ops[ops.count - 2], ops.last == .numEqual else { return nil }
         let threshold = Int(t)
         guard threshold >= 1, threshold <= keys.count else { return nil }
         return (threshold, keys)
@@ -115,7 +117,7 @@ extension Script {
         // it is always OP_HASH160 20 [20 byte hash] OP_EQUAL
         if scriptPubKey.isPayToScriptHash {
             // Extract the 20-byte hash from OP_HASH160 <20> OP_EQUAL
-            if case let .pushBytes(hash) = scriptPubKey.ops[1] {
+            if case .pushBytes(let hash) = scriptPubKey.ops[1] {
                 return (.scriptHash, [hash])
             }
             return (.nonStandard, [])
@@ -150,7 +152,9 @@ extension Script {
         }
 
         // Null data (OP_RETURN ...) and push-only after the first byte
-        if !scriptPubKey.ops.isEmpty, scriptPubKey.ops[0] == .return, scriptPubKey.ops.dropFirst().allSatisfy({ $0.isPush }) {
+        if !scriptPubKey.ops.isEmpty, scriptPubKey.ops[0] == .return,
+            scriptPubKey.ops.dropFirst().allSatisfy({ $0.isPush })
+        {
             // Provably prunable, data-carrying output
             // So long as script passes the IsUnspendable() test and all but the first byte passes the IsPushOnly() test we don't care what exactly is in the script.
             return (.nullData, [])

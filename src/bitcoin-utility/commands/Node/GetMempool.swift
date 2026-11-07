@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct GetMempool: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: GetMempoolRPC.description
     )

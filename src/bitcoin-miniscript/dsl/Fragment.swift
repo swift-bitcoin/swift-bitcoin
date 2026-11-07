@@ -1,10 +1,10 @@
-import Foundation
 import BitcoinBase
 import BitcoinCrypto
+import Foundation
 
 /// Semantics: `false`; Miniscript: `0`;  BitcoinScript: `0`
 public struct Zero: ExpB, ModZ, ModU, ModD {
-    public init() { }
+    public init() {}
 
     public var compiled: [Script.Operation] {
         [.zero]
@@ -15,7 +15,7 @@ public struct Zero: ExpB, ModZ, ModU, ModD {
 
 /// Semantics: `true`; Miniscript: `1`; BitcoinScript: `1`.
 public struct One: ExpB, ModZ, ModU {
-    public init() { }
+    public init() {}
 
     public var compiled: [Script.Operation] {
         [.constant(1)]
@@ -49,7 +49,7 @@ public struct PK_H: ExpK, ModN, ModD, ModU {
             preconditionFailure()
         }
         let hash = Data(BitcoinCrypto.Hash160.hash(data: keyData))
-        return [.dup, .hash160,  .pushBytes(hash), .equalVerify]
+        return [.dup, .hash160, .pushBytes(hash), .equalVerify]
     }
 
     public var description: String {
@@ -109,7 +109,6 @@ public struct After: ExpB, ModZ {
 
 /// Semantics: `len(x) = 32 and SHA256(x) = h`; Miniscript: `sha256(h)`; BitcoinScript: `SIZE <20> EQUALVERIFY SHA256 <h> EQUAL`.
 public struct SHA256: ExpB, ModO, ModN, ModD, ModU {
-
     public init(_ h: Data) {
         precondition(h.count == BitcoinCrypto.SHA256.Digest.byteCount)
         self.h = h
@@ -127,7 +126,6 @@ public struct SHA256: ExpB, ModO, ModN, ModD, ModU {
 
 /// Semantics: `len(x) = 32 and HASH256(x) = h`; Miniscript: `hash256(h)`; BitcoinScript: `SIZE <20> EQUALVERIFY HASH256 <h> EQUAL`.
 public struct Hash256: ExpB, ModO, ModN, ModD, ModU {
-
     public init(_ h: Data) {
         precondition(h.count == BitcoinCrypto.SHA256d.Digest.byteCount)
         self.h = h
@@ -146,7 +144,6 @@ public struct Hash256: ExpB, ModO, ModN, ModD, ModU {
 
 /// Semantics: `len(x) = 32 and RIPEMD160(x) = h`; Miniscript: `ripemd160(h)`; BitcoinScript: `SIZE <20> EQUALVERIFY RIPEMD160 <h> EQUAL`.
 public struct RIPEMD160: ExpB, ModO, ModN, ModD, ModU {
-
     public init(_ h: Data) {
         precondition(h.count == BitcoinCrypto.RIPEMD160.Digest.byteCount)
         self.h = h
@@ -165,7 +162,6 @@ public struct RIPEMD160: ExpB, ModO, ModN, ModD, ModU {
 
 /// Semantics: `len(x) = 32 and HASH160(x) = h`; Miniscript: `hash160(h)`; BitcoinScript: `SIZE <20> EQUALVERIFY HASH160 <h> EQUAL`.
 public struct Hash160: ExpB, ModO, ModN, ModD, ModU {
-
     public init(_ h: Data) {
         precondition(h.count == BitcoinCrypto.Hash160.Digest.byteCount)
         self.h = h
@@ -184,9 +180,15 @@ public struct Hash160: ExpB, ModO, ModN, ModD, ModU {
 
 /// Semantics: `(X and Y) or Z`; Miniscript: `andor(X,Y,Z)`; BitcoinScript: `[X] NOTIF [Z] ELSE [Y] ENDIF`.
 public struct AndOr<X: ExpB, Y: ExpBKV, Z: ExpBKV>: ExpBKV {
-    private init(x: X, y: Y, z: Z) { self.x = x; self.y = y; self.z = z }
+    private init(x: X, y: Y, z: Z) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
 
-    let x: X; let y: Y; let z: Z
+    let x: X
+    let y: Y
+    let z: Z
 
     public var compiled: [Script.Operation] {
         x.compiled + [.notIf] + z.compiled + [.else] + y.compiled + [.endIf]
@@ -209,16 +211,19 @@ extension AndOr: ExpV where Y: ExpV, Z: ExpV {
     public init(_ x: X, _ y: Y, _ z: Z) { self.init(x: x, y: y, z: z) }
 }
 
-extension AndOr: ModZ where X: ModZ, Y: ModZ, Z: ModZ { }
-extension AndOr: ModO where X: ModZ, Y: ModO, Z: ModO { }
+extension AndOr: ModZ where X: ModZ, Y: ModZ, Z: ModZ {}
+extension AndOr: ModO where X: ModZ, Y: ModO, Z: ModO {}
 // TODO: Work around conflicting conformances :(
 // extension AndOr: ModO where X: ModO, Y: ModZ, Z: ModZ { }
-extension AndOr: ModU where Y: ModU, Z: ModU { }
-extension AndOr: ModD where Z: ModD { }
+extension AndOr: ModU where Y: ModU, Z: ModU {}
+extension AndOr: ModD where Z: ModD {}
 
 /// Semantics: `X and Y`; Miniscript: `and_v(X,Y)`; Bitcoin Script: `[X] [Y]`.
 public struct AndV<X: ExpV, Y: ExpBKV>: ExpBKV {
-    public init(_ x: X, _ y: Y) { self.x = x; self.y = y }
+    public init(_ x: X, _ y: Y) {
+        self.x = x
+        self.y = y
+    }
     let x: X, y: Y
 
     public var compiled: [Script.Operation] {
@@ -230,22 +235,25 @@ public struct AndV<X: ExpV, Y: ExpBKV>: ExpBKV {
     }
 }
 
-extension AndV: ExpB where Y: ExpB { }
-extension AndV: ExpK where Y: ExpK { }
-extension AndV: ExpV where Y: ExpV { }
+extension AndV: ExpB where Y: ExpB {}
+extension AndV: ExpK where Y: ExpK {}
+extension AndV: ExpV where Y: ExpV {}
 
-extension AndV: ModZ where X: ModZ, Y: ModZ { }
-extension AndV: ModO where X: ModZ, Y: ModO { }
+extension AndV: ModZ where X: ModZ, Y: ModZ {}
+extension AndV: ModO where X: ModZ, Y: ModO {}
 // TODO: Work around conflicting conformances :(
 // extension AndV: ModO where X: ModO, Y: ModZ { }
-extension AndV: ModN where X: ModN { }
+extension AndV: ModN where X: ModN {}
 // TODO: Work around conflicting conformances :(
 // extension AndV: ModN where X: ModZ, Y: ModN { }
-extension AndV: ModU where Y: ModU { }
+extension AndV: ModU where Y: ModU {}
 
 /// Semantics: `X and Y`; Miniscript: `and_b(X,Y)`; Bitcoin Script: `[X] [Y] BOOLAND`.
 public struct AndB<X: ExpB, Y: ExpW>: ExpB, ModU {
-    public init(_ x: X, _ y: Y) { self.x = x; self.y = y }
+    public init(_ x: X, _ y: Y) {
+        self.x = x
+        self.y = y
+    }
     let x: X, y: Y
 
     public var compiled: [Script.Operation] {
@@ -257,18 +265,21 @@ public struct AndB<X: ExpB, Y: ExpW>: ExpB, ModU {
     }
 }
 
-extension AndB: ModZ where X: ModZ, Y: ModZ { }
-extension AndB: ModO where X: ModZ, Y: ModO { }
+extension AndB: ModZ where X: ModZ, Y: ModZ {}
+extension AndB: ModO where X: ModZ, Y: ModO {}
 // TODO: Work around conflicting conformances :(
 // extension AndB: ModO where X: ModO, Y: ModZ { }
-extension AndB: ModN where X: ModN { }
+extension AndB: ModN where X: ModN {}
 // TODO: Work around conflicting conformances :(
 // extension AndB: ModN where X: ModZ, Y: ModN { }
-extension AndB: ModD where X: ModD, Y: ModD { }
+extension AndB: ModD where X: ModD, Y: ModD {}
 
 /// Semantics: `X and Y`; Miniscript: `and_n(X,Y) = andor(X,Y,0)`; Bitcoin Script: `[X] NOTIF 0 ELSE [Y] ENDIF`.
 public struct AndN<X: ExpB, Y: ExpB>: ExpB {
-    public init(_ x: X, _ y: Y) { self.x = x; self.y = y }
+    public init(_ x: X, _ y: Y) {
+        self.x = x
+        self.y = y
+    }
     let x: X, y: Y
     public var compiled: [Script.Operation] { AndOr(x, y, Zero()).compiled }
 
@@ -279,7 +290,6 @@ public struct AndN<X: ExpB, Y: ExpB>: ExpB {
 
 /// Semantics: `X or Z`; Miniscript: `or_b(X,Z)`; BitcoinScript: `[X] [Z] BOOLOR`.
 public struct OrB<X: ExpB & ModD, X_: ExpB & ModD_, Z: ExpW & ModD, Z_: ExpW & ModD_>: ExpB, ModD, ModU {
-
     public init(_ x: X, _ z: Z, _ dummyX: X_? = Never?.none, _ dummyZ: Z_? = Never?.none) {
         precondition(dummyX == nil)
         precondition(dummyZ == nil)
@@ -325,14 +335,17 @@ public struct OrB<X: ExpB & ModD, X_: ExpB & ModD_, Z: ExpW & ModD, Z_: ExpW & M
     }
 }
 
-extension OrB: ModZ where X: ModZ, Z: ModZ { }
-extension OrB: ModO where X: ModZ, Z: ModO { }
+extension OrB: ModZ where X: ModZ, Z: ModZ {}
+extension OrB: ModO where X: ModZ, Z: ModO {}
 // TODO: Work around conflicting conformances :(
 // extension OrB: ModO where X: ModO, Z: ModZ { }
 
 /// Semantics: `X or Z`; Miniscript: `or_c(X,Z)`; BitcoinScript: `[X] NOTIF [Z] ENDIF`.
 public struct OrC<X: ExpB, Z: ExpV>: ExpV {
-    public init(_ x: X, _ z: Z) { self.x = x; self.z = z }
+    public init(_ x: X, _ z: Z) {
+        self.x = x
+        self.z = z
+    }
     let x: X, z: Z
 
     public var compiled: [Script.Operation] {
@@ -344,12 +357,15 @@ public struct OrC<X: ExpB, Z: ExpV>: ExpV {
     }
 }
 
-extension OrC: ModZ where X: ModZ, Z: ModZ { }
-extension OrC: ModO where X: ModO, Z: ModZ { }
+extension OrC: ModZ where X: ModZ, Z: ModZ {}
+extension OrC: ModO where X: ModO, Z: ModZ {}
 
 /// Semantics: `X or Z`; Miniscript: `or_d(X,Z)`; BitcoinScript: `[X] IFDUP NOTIF [Z] ENDIF`.
 public struct OrD<X: ExpB, Z: ExpB>: ExpB {
-    public init(_ x: X, _ z: Z) { self.x = x; self.z = z }
+    public init(_ x: X, _ z: Z) {
+        self.x = x
+        self.z = z
+    }
     let x: X, z: Z
 
     public var compiled: [Script.Operation] {
@@ -361,14 +377,13 @@ public struct OrD<X: ExpB, Z: ExpB>: ExpB {
     }
 }
 
-extension OrD: ModZ where X: ModZ, Z: ModZ { }
-extension OrD: ModO where X: ModO, Z: ModZ { }
-extension OrD: ModD where Z: ModD { }
-extension OrD: ModU where Z: ModU { }
+extension OrD: ModZ where X: ModZ, Z: ModZ {}
+extension OrD: ModO where X: ModO, Z: ModZ {}
+extension OrD: ModD where Z: ModD {}
+extension OrD: ModU where Z: ModU {}
 
 /// Semantics: `X or Z`; Miniscript: `or_i(X,Z)`; BitcoinScript: `IF [X] ELSE [Z] ENDIF`.
 public struct OrI<X: ExpBKV, Z: ExpBKV>: ExpBKV {
-
     private init(x: X, z: Z) {
         self.x = x
         self.z = z
@@ -397,11 +412,11 @@ extension OrI: ExpV where X: ExpV, Z: ExpV {
     public init(_ x: X, _ z: Z) { self.init(x: x, z: z) }
 }
 
-extension OrI: ModO where X: ModZ, Z: ModZ { }
-extension OrI: ModU where X: ModU, Z: ModU { }
-extension OrI: ModD where X: ModD { }
+extension OrI: ModO where X: ModZ, Z: ModZ {}
+extension OrI: ModU where X: ModU, Z: ModU {}
+extension OrI: ModD where X: ModD {}
 // TODO: Work around conflicting conformances :(
-extension OrI: ModD_ where Z: ModD { }
+extension OrI: ModD_ where Z: ModD {}
 
 /// Semantics: `X1 + ... + Xn = k`; Miniscript: `thresh(k,X1,...,Xn)`; BitcoinScript: `[X1] [X2] ADD ... [Xn] ADD ... <k> EQUAL`.
 public struct Thresh<X0: ExpB, X1: ExpW, X2: ExpW, X3: ExpW>: ExpB, ModD, ModU {
@@ -422,7 +437,9 @@ public struct Thresh<X0: ExpB, X1: ExpW, X2: ExpW, X3: ExpW>: ExpB, ModD, ModU {
 
     public var compiled: [Script.Operation] {
         let k = UInt8(k)
-        return x0.compiled + x1.compiled + [.add] + x2.compiled + [.add] + x3.compiled + [.add] + [.constant(k), .equal]
+        return x0.compiled + x1.compiled + [.add] + x2.compiled + [.add] + x3.compiled + [.add] + [
+            .constant(k), .equal,
+        ]
     }
 
     public var description: String {
@@ -430,12 +447,11 @@ public struct Thresh<X0: ExpB, X1: ExpW, X2: ExpW, X3: ExpW>: ExpB, ModD, ModU {
     }
 }
 
-extension Thresh: ModZ where X0: ModZ, X1: ModZ, X2: ModZ, X3: ModZ { }
+extension Thresh: ModZ where X0: ModZ, X1: ModZ, X2: ModZ, X3: ModZ {}
 // TODO: Figure out conformance for ModO when _all are z except one is o_.
 
 /// Semantics: `check(key1) + ... + check(keyn) = k (P2WSH only)`; Miniscript: `multi(k,key1,...,keyn)`; BitcoinScript: `<k> <key1> ... <keyn> <n> CHECKMULTISIG`.
 public struct Multi: ExpB, ModN, ModD, ModU {
-
     public init(_ k: Int, _ keys: PublicKey...) {
         precondition(keys.count >= 1 && keys.count <= UInt8.max)
         precondition(k >= 1)
@@ -450,7 +466,8 @@ public struct Multi: ExpB, ModN, ModD, ModU {
     public var compiled: [Script.Operation] {
         let k = UInt8(k)
         let n = UInt8(keys.count)
-        let keysPushBytes = keys
+        let keysPushBytes =
+            keys
             .map {
                 guard let keyData = $0.compressedData else { preconditionFailure() }
                 return keyData
@@ -467,7 +484,6 @@ public struct Multi: ExpB, ModN, ModD, ModU {
 
 /// Semantics: `check(key1) + ... + check(keyn) = k (Tapscript only)`; Miniscript: `multi_a(k,key1,...,keyn)`; BitcoinScript: `<key1> CHECKSIG <key2> CHECKSIGADD ... <keyn> CHECKSIGADD <k> NUMEQUAL`.
 public struct MultiA: ExpB, ModD, ModU {
-
     public init(_ k: Int, _ keys: PublicKey...) {
         precondition(keys.count >= 1 && keys.count <= UInt8.max)
         precondition(k >= 1)

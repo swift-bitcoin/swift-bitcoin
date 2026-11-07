@@ -1,5 +1,4 @@
 #!/usr/bin/swift
-
 /// To make this same substitution using Vim:
 ///
 /// ```vim
@@ -62,7 +61,7 @@ print("Enter an arbitrary length hexadecimal (new line terminates input):")
 var buffer = ""
 while let line = readLine() {
     if line.isEmpty {
-        break;
+        break
     }
     buffer += line.lowercased()
 }

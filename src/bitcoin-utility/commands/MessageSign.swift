@@ -1,11 +1,10 @@
 import ArgumentParser
-import BitcoinWallet
 import BitcoinCrypto
+import BitcoinWallet
 import Foundation
 
 /// Signs a message with a private key. The signature is encoded in Base64 format.
 struct MessageSign: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Signs a message with a private key.The signature is encoded in Base64 format."
     )
@@ -28,7 +27,8 @@ struct MessageSign: ParsableCommand {
         guard let messageData = message.data(using: .utf8) else {
             throw ValidationError("Invalid UTF8-encoded message: message")
         }
-        let sig = RecoverableSignature(messageData: messageData, secretKey: secretKey, recoverCompressedKeys: metadata.compressedPubkeys)
+        let sig = RecoverableSignature(
+            messageData: messageData, secretKey: secretKey, recoverCompressedKeys: metadata.compressedPubkeys)
         let result = sig.base64
         print(result)
         destroyECCSigningContext()

@@ -1,14 +1,13 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// BIP152: A `BlockTransactionsRequest` structure is used to list transaction indexes in a block being requested.
 ///
 /// The `getblocktxn` message is defined as a message containing a serialized `BlockTransactionsRequest` message and `pchCommand == "getblocktxn"`.
 ///
 public struct GetBlockTransactionsMessage: Equatable {
-
     public init(blockHash: BlockHash, txIndices: [Int]) {
         self.blockHash = blockHash
         self.txIndices = txIndices
@@ -30,14 +29,13 @@ public struct GetBlockTransactionsMessage: Equatable {
 }
 
 extension GetBlockTransactionsMessage: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         blockHash = try BlockHash(parsing: &input)
         let txCount = try VarInt(parsing: &input).value
 
         var txIndices = [Int]()
         var previousIndex = -1
-        for _ in 0 ..< txCount {
+        for _ in 0..<txCount {
             let indexDiff = try VarInt(parsing: &input).value
             let index = indexDiff + previousIndex + 1
             txIndices.append(index)
@@ -51,11 +49,12 @@ extension GetBlockTransactionsMessage: BinaryCodable {
         counter.count(VarInt(txIndices.count))
         var previousIndex = Int?.none
         for index in txIndices {
-            let indexDiff = if let previousIndex {
-                index - previousIndex - 1
-            } else {
-                index
-            }
+            let indexDiff =
+                if let previousIndex {
+                    index - previousIndex - 1
+                } else {
+                    index
+                }
             previousIndex = index
             counter.count(VarInt(indexDiff))
         }
@@ -66,15 +65,16 @@ extension GetBlockTransactionsMessage: BinaryCodable {
         try VarInt(txIndices.count).encode(into: &out)
         var previousIndex = Int?.none
         for index in txIndices {
-            let indexDiff = if let previousIndex {
-                index - previousIndex - 1
-            } else {
-                index
-            }
+            let indexDiff =
+                if let previousIndex {
+                    index - previousIndex - 1
+                } else {
+                    index
+                }
             previousIndex = index
             try VarInt(indexDiff).encode(into: &out)
         }
     }
 }
 
-fileprivate let hashLength = SHA256.Digest.byteCount // 32 bytes
+private let hashLength = SHA256.Digest.byteCount // 32 bytes

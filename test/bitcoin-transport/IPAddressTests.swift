@@ -1,8 +1,7 @@
-import Testing
 import BitcoinTransport
+import Testing
 
 struct IPAddressTests {
-
     @Test("IPv4")
     func ipv4() {
         let loopback = IPv4Address.loopback

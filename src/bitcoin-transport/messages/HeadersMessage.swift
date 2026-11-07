@@ -1,8 +1,8 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
+import Foundation
 
 /// The `headers` message sends block headers to a node which previously requested certain headers with a `getheaders` message. A headers message can be empty.
 ///
@@ -11,7 +11,6 @@ import BitcoinBlockchain
 /// Added inprotocol version `31800`.
 ///
 public struct HeadersMessage: Equatable {
-
     public init(items: [Block]) {
         self.items = items
     }
@@ -26,7 +25,6 @@ public struct HeadersMessage: Equatable {
 }
 
 extension HeadersMessage: BinaryCodable {
-
     public enum ParseError: Error {
         /// Maximum headers is 2000.
         case tooManyHeaders
@@ -41,7 +39,7 @@ extension HeadersMessage: BinaryCodable {
             throw ParsingError(userError: ParseError.tooManyHeaders)
         }
         var items = [Block]()
-        for _ in 0 ..< itemCount {
+        for _ in 0..<itemCount {
             let block = try Block(parsing: &input)
 
             guard block.txs.isEmpty else {
@@ -65,4 +63,3 @@ extension HeadersMessage: BinaryCodable {
         }
     }
 }
-

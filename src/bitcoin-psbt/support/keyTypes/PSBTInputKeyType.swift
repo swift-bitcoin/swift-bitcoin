@@ -1,5 +1,4 @@
 enum PSBTInputKeyType: Int, KeyType {
-
     /// Non-Witness UTXO .`PSBT_IN_NON_WITNESS_UTXO` in BIP174.
     ///
     /// The transaction in network serialization format the current input spends from. This should be present for inputs that spend non-segwit outputs and can be present for inputs that spend segwit outputs. An input can have both `PSBT_IN_NON_WITNESS_UTXO` and `PSBT_IN_WITNESS_UTXO`.

@@ -1,20 +1,21 @@
-import Foundation
-import Logging
-import ServiceLifecycle
-import NIOCore
-import NIOPosix
-
-import JSONRPC
-import NIOJSONRPC
-import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
-import BitcoinTransport
+import BitcoinCrypto
 import BitcoinRPC
+import BitcoinTransport
+import Foundation
+import JSONRPC
+import Logging
+import NIOCore
+import NIOJSONRPC
+import NIOPosix
+import ServiceLifecycle
 
 actor RPCService: Service {
-
-    init(host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService, logger: Logger) {
+    init(
+        host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService,
+        logger: Logger
+    ) {
         self.host = host
         self.port = port
         self.eventLoopGroup = eventLoopGroup
@@ -56,7 +57,8 @@ actor RPCService: Service {
                         MessageToByteHandler(NewlineEncoder()),
                         MessageToByteHandler(ResponseEncoder()),
                     ])
-                    return try NIOAsyncChannel<JSONRPCRequest, JSONRPCResponse>(wrappingChannelSynchronously: connection)
+                    return try NIOAsyncChannel<JSONRPCRequest, JSONRPCResponse>(
+                        wrappingChannelSynchronously: connection)
                 }
             }
 
@@ -64,13 +66,13 @@ actor RPCService: Service {
         try await withGracefulShutdownHandler {
             try await withThrowingDiscardingTaskGroup { @Sendable [logger] group in
                 try await serverChannel.executeThenClose { [logger] serverChannelInbound in
-
                     logger.info("RPC server accepting incoming connections @ \(host):\(port)…")
                     await serviceUp()
 
                     for try await connectionChannel in serverChannelInbound.cancelOnGracefulShutdown() {
-
-                        logger.info("Incoming RPC connection from client @ \(String(describing: connectionChannel.channel.remoteAddress))")
+                        logger.info(
+                            "Incoming RPC connection from client @ \(String(describing: connectionChannel.channel.remoteAddress))"
+                        )
                         await connectionMade()
 
                         group.addTask { [logger] in
@@ -84,7 +86,9 @@ actor RPCService: Service {
                                 logger.error("An unexpected error has occurred:\n\(error)")
                             }
 
-                            logger.info("RPC server disconnected from client @ \(String(describing: connectionChannel.channel.remoteAddress)).")
+                            logger.info(
+                                "RPC server disconnected from client @ \(String(describing: connectionChannel.channel.remoteAddress))."
+                            )
                             await self.clientDisconnected()
                         }
                     }
@@ -120,7 +124,10 @@ actor RPCService: Service {
         activeConnections -= 1
     }
 
-    private func handleRequest(_ request: JSONRPCRequest, _ inbound: NIOAsyncChannelInboundStream<JSONRPCRequest>, _ outbound: NIOAsyncChannelOutboundWriter<JSONRPCResponse>) async throws -> () {
+    private func handleRequest(
+        _ request: JSONRPCRequest, _ inbound: NIOAsyncChannelInboundStream<JSONRPCRequest>,
+        _ outbound: NIOAsyncChannelOutboundWriter<JSONRPCResponse>
+    ) async throws {
         do {
             switch request.params {
             case .help(let params):
@@ -186,6 +193,8 @@ actor RPCService: Service {
     }
 
     var status: StatusRPC.Result.RPCService {
-        StatusRPC.Result.RPCService(listening: listening, host: host, port: port, overallConnections: overallConnections, activeConnections: activeConnections)
+        StatusRPC.Result.RPCService(
+            listening: listening, host: host, port: port, overallConnections: overallConnections,
+            activeConnections: activeConnections)
     }
 }

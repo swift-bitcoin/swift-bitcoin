@@ -30,8 +30,7 @@ import Foundation
 
 /// Encodes data into hexadecimal strings.
 public struct Base16Encoder: Sendable {
-
-    public init() { }
+    public init() {}
 
     public func encode<D: DataProtocol>(_ d: D) -> String {
         var digits = [UInt8]()
@@ -47,12 +46,11 @@ public struct Base16Encoder: Sendable {
 
 /// Decodes raw data from hexadecimal strings.
 public struct Base16Decoder: Sendable {
-
     public enum Error: Swift.Error, Sendable {
         case invalidHexValue, invalidString
     }
 
-    public init() { }
+    public init() {}
 
     public func decode(_ hexString: String) throws(Error) -> Data {
         let utf8 = hexString.utf8
@@ -91,10 +89,9 @@ private func nibble(_ digit: UInt8) throws(Base16Decoder.Error) -> UInt8 {
 
 // MARK: - Data Extensions
 
-package extension Data {
-
+extension Data {
     /// Create instance from string containing hex digits.
-    init?(hex: String) {
+    package init?(hex: String) {
         guard let decoded = try? Base16Decoder().decode(hex) else {
             return nil
         }
@@ -102,8 +99,7 @@ package extension Data {
     }
 }
 
-package extension DataProtocol {
-
+extension DataProtocol {
     /// Hexadecimal (Base-16) string representation of data.
-    var hex: String { Base16Encoder().encode(self) }
+    package var hex: String { Base16Encoder().encode(self) }
 }

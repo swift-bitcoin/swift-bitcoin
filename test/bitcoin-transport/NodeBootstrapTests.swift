@@ -1,19 +1,25 @@
-import Testing
-import BitcoinCrypto
-import Foundation
 import AsyncAlgorithms
 import BitcoinBase
-import BitcoinWallet
 import BitcoinBlockchain
+import BitcoinCrypto
+import BitcoinWallet
+import Foundation
+import Testing
+
 @testable import BitcoinTransport
 
-private let secretKey = SecretKey([0x49, 0xc3, 0xa4, 0x4b, 0xf0, 0xe2, 0xb8, 0x1e, 0x4a, 0x74, 0x11, 0x02, 0xb4, 0x08, 0xe3, 0x11, 0x70, 0x2c, 0x7e, 0x3b, 0xe0, 0x21, 0x5c, 0xa2, 0xc4, 0x66, 0xb3, 0xb5, 0x4d, 0x9c, 0x54, 0x63])!
+private let secretKey = SecretKey([
+    0x49, 0xc3, 0xa4, 0x4b, 0xf0, 0xe2, 0xb8, 0x1e, 0x4a, 0x74, 0x11, 0x02, 0xb4, 0x08, 0xe3, 0x11, 0x70, 0x2c, 0x7e,
+    0x3b, 0xe0, 0x21, 0x5c, 0xa2, 0xc4, 0x66, 0xb3, 0xb5, 0x4d, 0x9c, 0x54, 0x63,
+])!
 
-private let pubkey = PublicKey([0x02, 0xc8, 0xd2, 0x1f, 0x79, 0x52, 0x9d, 0xee, 0xaa, 0x27, 0x69, 0x19, 0x8d, 0x3d, 0xf6, 0x20, 0x9a, 0x06, 0x4c, 0x99, 0x15, 0xae, 0x55, 0x7f, 0x7a, 0x9d, 0x01, 0xd7, 0x24, 0x59, 0x0d, 0x63, 0x34])!
+private let pubkey = PublicKey([
+    0x02, 0xc8, 0xd2, 0x1f, 0x79, 0x52, 0x9d, 0xee, 0xaa, 0x27, 0x69, 0x19, 0x8d, 0x3d, 0xf6, 0x20, 0x9a, 0x06, 0x4c,
+    0x99, 0x15, 0xae, 0x55, 0x7f, 0x7a, 0x9d, 0x01, 0xd7, 0x24, 0x59, 0x0d, 0x63, 0x34,
+])!
 
 /// Initializing node/peer state to avoid simulating the message sequence that would lead to that state.
 struct NodeBootstrapTests {
-
     @Test("Ping Pong")
     func pingPong() async throws {
         // Alice's node
@@ -21,7 +27,7 @@ struct NodeBootstrapTests {
         let alice = await NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(peers: [peerB : makePeerState()])
+            state: NodeState(peers: [peerB: makePeerState()])
         )
         await #expect(alice.state.peers[peerB]!.handshakeComplete)
 
@@ -30,7 +36,7 @@ struct NodeBootstrapTests {
         let bob = await NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(peers: [peerA : makePeerState(true)])
+            state: NodeState(peers: [peerA: makePeerState(true)])
         )
         await #expect(bob.state.peers[peerA]!.handshakeComplete)
 
@@ -76,17 +82,21 @@ struct NodeBootstrapTests {
         let alice = await NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(peers: [peerB : makePeerState()])
+            state: NodeState(peers: [peerB: makePeerState()])
         )
 
         // Bob's node
         let peerA = 0
         let peerC = 1 // Carol on Bob's node
-        let bob = await NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = await NodeService(
+            blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil),
+            state: NodeState(peers: [peerA: makePeerState(true), peerC: makePeerState()]))
 
         // Carol's node
         let carolPeerB = 0 // Bob on Carol's node
-        let carol = await NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
+        let carol = await NodeService(
+            blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil),
+            state: NodeState(peers: [carolPeerB: makePeerState(true)]))
 
         // Peer channels
         var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
@@ -160,17 +170,21 @@ struct NodeBootstrapTests {
         let alice = await NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(peers: [peerB : makePeerState()])
+            state: NodeState(peers: [peerB: makePeerState()])
         )
 
         // Bob's node
         let peerA = 0
         let peerC = 1 // Carol on Bob's node
-        let bob = await NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = await NodeService(
+            blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil),
+            state: NodeState(peers: [peerA: makePeerState(true), peerC: makePeerState()]))
 
         // Carol node
         let carolPeerB = 0 // Bob on Carol's node
-        let carol = await NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
+        let carol = await NodeService(
+            blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil),
+            state: NodeState(peers: [carolPeerB: makePeerState(true)]))
 
         // Peer channels
         var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
@@ -205,7 +219,7 @@ struct NodeBootstrapTests {
         #expect(await alice.blockchain.headers == bobsHeight0)
         #expect(await carol.blockchain.headers == bobsHeight0)
 
-        let aliceTip  = await alice.blockchain.height
+        let aliceTip = await alice.blockchain.height
         #expect(aliceTip == 1)
 
         // let pubkey = try #require(PubKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
@@ -300,23 +314,27 @@ struct NodeBootstrapTests {
     }
 
     @Test("Compact block (high bandwidth mode)")
-    func  compactBlockHighBandwidth() async throws {
+    func compactBlockHighBandwidth() async throws {
         // Alices's node
         let peerB = 0
         let alice = await NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(peers: [peerB : makePeerState()])
+            state: NodeState(peers: [peerB: makePeerState()])
         )
 
         // Bob's node
         let peerA = 0
         let peerC = 1 // Carol on Bob's node
-        let bob = await NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState()]))
+        let bob = await NodeService(
+            blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil),
+            state: NodeState(peers: [peerA: makePeerState(true), peerC: makePeerState()]))
 
         // Carol's node
         let carolPeerB = 0 // Bob on Carol's node
-        let carol = await NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
+        let carol = await NodeService(
+            blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil),
+            state: NodeState(peers: [carolPeerB: makePeerState(true)]))
 
         // Peer channels
         var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
@@ -350,7 +368,7 @@ struct NodeBootstrapTests {
         #expect(await alice.blockchain.headers == bobsHeight0)
         #expect(await carol.blockchain.headers == bobsHeight0)
 
-        let aliceTip  = await alice.blockchain.height
+        let aliceTip = await alice.blockchain.height
         #expect(aliceTip == 1)
 
         // Setup blockchains
@@ -380,7 +398,7 @@ struct NodeBootstrapTests {
         #expect(await alice.blockchain.headers == bobsHeight1)
         #expect(await carol.blockchain.headers == bobsHeight1)
 
-        let aliceTip2  = await alice.blockchain.height
+        let aliceTip2 = await alice.blockchain.height
         #expect(aliceTip2 == 2)
 
         // Grab block 1's coinbase transaction and output.
@@ -485,17 +503,21 @@ struct NodeBootstrapTests {
         let alice = await NodeService(
             blockchain: try await .init(params: .swiftTesting),
             config: .init(keepAliveFrequency: nil),
-            state: NodeState(peers: [peerB : makePeerState(highBandwidth: false)])
+            state: NodeState(peers: [peerB: makePeerState(highBandwidth: false)])
         )
 
         // Bob's node
         let peerA = 0
         let peerC = 1 // Carol on Bob's node
-        let bob = await NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [peerA : makePeerState(true), peerC : makePeerState(highBandwidth: false)]))
+        let bob = await NodeService(
+            blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil),
+            state: NodeState(peers: [peerA: makePeerState(true), peerC: makePeerState(highBandwidth: false)]))
 
         // Carol's node
         let carolPeerB = 0 // Bob on Carol's node
-        let carol = await NodeService(blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil), state: NodeState(peers: [carolPeerB : makePeerState(true)]))
+        let carol = await NodeService(
+            blockchain: try await .init(params: .swiftTesting), config: .init(keepAliveFrequency: nil),
+            state: NodeState(peers: [carolPeerB: makePeerState(true)]))
 
         // Peer channels
         var aliceToBob = await alice.channel(for: peerB).makeAsyncIterator()
@@ -585,7 +607,7 @@ struct NodeBootstrapTests {
         #expect(await alice.blockchain.headers == bobsHeight0)
         #expect(await carol.blockchain.headers == bobsHeight0)
 
-        let aliceTip  = await alice.blockchain.height
+        let aliceTip = await alice.blockchain.height
         #expect(aliceTip == 1)
 
         // Setup blockchains
@@ -670,7 +692,7 @@ struct NodeBootstrapTests {
         #expect(await alice.blockchain.headers == bobsHeight1)
         #expect(await carol.blockchain.headers == bobsHeight1)
 
-        let aliceTip2  = await alice.blockchain.height
+        let aliceTip2 = await alice.blockchain.height
         #expect(aliceTip2 == 2)
 
         let bobsHeight2 = await bob.blockchain.headers

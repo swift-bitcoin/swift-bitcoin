@@ -2,7 +2,6 @@ import ArgumentParser
 import Bitcoin
 
 struct SchnorrSignMessage: ParsableCommand {
-
     @Option var secretKey: String
     @Argument var message: String
 

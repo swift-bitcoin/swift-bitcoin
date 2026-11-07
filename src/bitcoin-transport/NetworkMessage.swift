@@ -1,11 +1,10 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBlockchain
+import BitcoinCrypto
+import Foundation
 
 /// Any message sent or received by nodes on the peer-to-peer network.
 public struct NetworkMessage: Equatable, Sendable {
-
     public init(_ command: MessageCommand, payload: Data = .init(), magicBytes: Int = NodeNetwork.regtest.magicBytes) {
         // TODO: - Remove the detault regtest magic bytes (or make mainnet the default)
 
@@ -41,7 +40,6 @@ public struct NetworkMessage: Equatable, Sendable {
 }
 
 extension NetworkMessage: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         magicBytes = Int(try UInt32(parsingLittleEndian: &input))
         command = try MessageCommand(parsing: &input)

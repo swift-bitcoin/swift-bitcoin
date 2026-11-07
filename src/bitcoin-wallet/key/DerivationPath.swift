@@ -1,9 +1,8 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 public struct DerivationPath: Equatable, Sendable {
-
     package init(fingerprint: Int, indices: [Int], harden: [Bool]? = nil) {
         let resolvedHarden: [Bool]
         if let harden {
@@ -24,7 +23,6 @@ public struct DerivationPath: Equatable, Sendable {
 }
 
 extension DerivationPath: BinaryCodable {
-
     public enum DecodingError: Error {
         case invalidFingerprint, invalidIndex
     }
@@ -43,7 +41,6 @@ extension DerivationPath: BinaryCodable {
                 throw .invalidIndex
             }
             indicesRaw.append(indexElement)
-
         }
         indices = indicesRaw.map { Int($0) }
     }

@@ -1,14 +1,13 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// BIP152: A `BlockTransactions` structure is used to provide some of the transactions in a block, as requested.
 ///
 /// The `blocktxn` message is defined as a message containing a serialized `BlockTransactions` message and `pchCommand == "blocktxn"`.
 ///
 public struct BlockTransactionsMessage: Equatable {
-
     public init(blockHash: BlockHash, txs: [Transaction]) {
         self.blockHash = blockHash
         self.txs = txs
@@ -30,12 +29,11 @@ public struct BlockTransactionsMessage: Equatable {
 }
 
 extension BlockTransactionsMessage: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         blockHash = try BlockHash(parsing: &input)
         let txCount = try VarInt(parsing: &input).value
         var txs = [Transaction]()
-        for _ in 0 ..< txCount {
+        for _ in 0..<txCount {
             let tx = try Transaction(parsing: &input)
             txs.append(tx)
         }

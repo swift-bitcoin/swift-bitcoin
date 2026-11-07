@@ -12,8 +12,10 @@ private func target(hex: String) -> Target {
 @Suite("BlockHash.meetsTarget")
 struct MeetsTargetTests {
     /// `hash <= target`: equal and one less pass, one more fails.
-    @Test(arguments: ["1", "ff", "100", "ffffffffffffffff", "1" + String(repeating: "0", count: 32),
-                      "ffff" + String(repeating: "0", count: 52), String(repeating: "f", count: 64)])
+    @Test(arguments: [
+        "1", "ff", "100", "ffffffffffffffff", "1" + String(repeating: "0", count: 32),
+        "ffff" + String(repeating: "0", count: 52), String(repeating: "f", count: 64),
+    ])
     func boundaryIsInclusive(_ hex: String) {
         let t = target(hex: hex)
         let value = bytes(of: t.value)
@@ -48,7 +50,8 @@ struct MeetsTargetTests {
     @Test func extremes() {
         let zero = BlockHash(hash([UInt8](repeating: 0, count: 32)))
         let maxHash = BlockHash(hash([UInt8](repeating: 0xFF, count: 32)))
-        let minTarget = target(hex: "1"), maxTarget = target(hex: String(repeating: "f", count: 64))
+        let minTarget = target(hex: "1")
+        let maxTarget = target(hex: String(repeating: "f", count: 64))
 
         #expect(zero.meetsTarget(minTarget))
         #expect(block(hex: "1").meetsTarget(minTarget))
@@ -117,9 +120,11 @@ struct SatisfiesProofOfWorkTests {
 
     @Test func regtest() {
         #expect(Self.zero.satisfiesProofOfWork(compact: 0x207F_FFFF, powLimit: Fixtures.regtestPowLimit))
-        #expect(block(hex: "7fffff" + String(repeating: "0", count: 58))
-            .satisfiesProofOfWork(compact: 0x207F_FFFF, powLimit: Fixtures.regtestPowLimit))
-        #expect(!block(hex: "7fffff" + String(repeating: "0", count: 57) + "1")
-            .satisfiesProofOfWork(compact: 0x207F_FFFF, powLimit: Fixtures.regtestPowLimit))
+        #expect(
+            block(hex: "7fffff" + String(repeating: "0", count: 58))
+                .satisfiesProofOfWork(compact: 0x207F_FFFF, powLimit: Fixtures.regtestPowLimit))
+        #expect(
+            !block(hex: "7fffff" + String(repeating: "0", count: 57) + "1")
+                .satisfiesProofOfWork(compact: 0x207F_FFFF, powLimit: Fixtures.regtestPowLimit))
     }
 }

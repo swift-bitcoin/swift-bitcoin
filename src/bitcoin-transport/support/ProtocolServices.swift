@@ -1,6 +1,6 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 public struct ProtocolServices: OptionSet, Sendable {
     public init(rawValue: UInt64) {
@@ -17,7 +17,6 @@ public struct ProtocolServices: OptionSet, Sendable {
 }
 
 extension ProtocolServices: BinaryCodable {
-
     public enum ParseError: Error {
         /// Invalid network identifier value.
         case invalidNetworkIdentified(Int)

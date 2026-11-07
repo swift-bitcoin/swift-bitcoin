@@ -61,7 +61,7 @@ public struct Chainwork: Hashable, Comparable, AdditiveArithmetic, Sendable, Cus
 // MARK: - Binary encoding
 
 extension Chainwork: ExpressibleByParsing {
-    public static let encodedByteCount = 32
+    public static let encodedByteCount = Hash256.byteCount
 
     /// Consumes 32 bytes: the value little-endian, least significant byte first, throwing if
     /// fewer remain.
@@ -72,8 +72,9 @@ extension Chainwork: ExpressibleByParsing {
     @inlinable
     public init(parsing input: inout ParserSpan) throws(ParsingError) {
         let raw = try input.extract(byteCount: Self.encodedByteCount).bytes
-        self.init(low: raw.load(fromByteOffset: 0, as: UInt128.self, .littleEndian),
-                  high: raw.load(fromByteOffset: 16, as: UInt128.self, .littleEndian))
+        self.init(
+            low: raw.load(fromByteOffset: 0, as: UInt128.self, .littleEndian),
+            high: raw.load(fromByteOffset: 16, as: UInt128.self, .littleEndian))
     }
 
     /// Appends the 32-byte little-endian encoding. Traps if `output` has fewer than 32 bytes free.
@@ -93,7 +94,7 @@ extension Chainwork {
     /// (regtest's minimum chain work is zero), but it has to be written: `""` and `"0x"` are `nil`.
     public init?(hex: String) {
         guard hex != "", hex != "0x", hex != "0X",
-              let bytes = hexBytes(hex, byteCount: 32, zeroExtend: true)
+            let bytes = hexBytes(hex, byteCount: Hash256.byteCount, zeroExtend: true)
         else { return nil }
         self.init(bigEndianBytes: bytes)
     }
@@ -103,7 +104,7 @@ extension Chainwork {
     /// collections. Returns `nil` unless there are exactly 32 bytes.
     public init?(bigEndianBytes bytes: some Collection<UInt8>) {
         let bytes = Array(bytes)
-        guard bytes.count == 32 else { return nil }
+        guard bytes.count == Hash256.byteCount else { return nil }
         self.init(
             low: bytes[16..<32].reduce(0) { $0 << 8 | UInt128($1) },
             high: bytes[0..<16].reduce(0) { $0 << 8 | UInt128($1) })
@@ -115,8 +116,9 @@ extension Chainwork {
     @inlinable
     public init(bigEndianBytes bytes: InlineArray<32, UInt8>) {
         let raw = bytes.span.bytes
-        self.init(low: raw.load(fromByteOffset: 16, as: UInt128.self, .bigEndian),
-                  high: raw.load(fromByteOffset: 0, as: UInt128.self, .bigEndian))
+        self.init(
+            low: raw.load(fromByteOffset: 16, as: UInt128.self, .bigEndian),
+            high: raw.load(fromByteOffset: 0, as: UInt128.self, .bigEndian))
     }
 }
 
@@ -190,7 +192,8 @@ extension Chainwork {
     ) -> Int {
         precondition(targetSpacing >= 0, "Negative target spacing")
         let (difference, sign) = to > from ? (to - from, 1) : (from - to, -1)
-        let quotient = difference
+        let quotient =
+            difference
             .multipliedWrapping(by: UInt64(targetSpacing))
             .dividedBy(tipTarget.work)
         guard quotient.high == 0, quotient.low <= UInt128(Int.max) else { return sign * Int.max }

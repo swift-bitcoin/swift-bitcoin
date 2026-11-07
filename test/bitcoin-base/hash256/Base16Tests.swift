@@ -1,6 +1,7 @@
 import Foundation
-@testable import BitcoinCrypto
 import Testing
+
+@testable import BitcoinCrypto
 
 /// The vendored swift-bitcoin coder (Codec/Base16.swift). Written against its public behavior, so
 /// the same tests check any replacement implementation.

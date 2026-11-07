@@ -1,35 +1,40 @@
-import Testing
-import BitcoinCrypto
-import Foundation
 import BitcoinBlockchain
-import BitcoinTransport
-import JSONRPC
+import BitcoinCrypto
 import BitcoinRPC
+import BitcoinTransport
+import Foundation
+import JSONRPC
+import Testing
 
 struct CommandTests {
-
     @Test("Blockchain Info")
     func blockchainInfo() async throws {
         // TODO: Enable tmp storage to get valid sizeOnDisk readings.
 
         let satoshiChain = try await BlockchainService(params: .swiftTesting)
-        let pubkey = try #require(PublicKey(compressed: [0x02, 0x9a, 0x38, 0x65, 0xb2, 0x48, 0x8e, 0x2f, 0xee, 0x75, 0x33, 0x6d, 0x10, 0x48, 0xc1, 0xd0, 0x79, 0x5a, 0x08, 0x83, 0x68, 0xa0, 0xca, 0xa4, 0xad, 0xc0, 0x76, 0x42, 0x5c, 0x90, 0x22, 0x7b, 0xc3]))
+        let pubkey = try #require(
+            PublicKey(compressed: [
+                0x02, 0x9a, 0x38, 0x65, 0xb2, 0x48, 0x8e, 0x2f, 0xee, 0x75, 0x33, 0x6d, 0x10, 0x48, 0xc1, 0xd0, 0x79,
+                0x5a, 0x08, 0x83, 0x68, 0xa0, 0xca, 0xa4, 0xad, 0xc0, 0x76, 0x42, 0x5c, 0x90, 0x22, 0x7b, 0xc3,
+            ]))
 
         let output1 = await GetBlockchainInfoRPC().run(blockchain: satoshiChain)
         #expect(output1.chain == "swift-testing")
         #expect(output1.blocks == 0)
         #expect(output1.headers == 0)
         #expect(output1.bestBlockHash == "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")
-        #expect(output1.difficulty == "4.656542373906925e-10") // If it was a Double it would be `4.6565423739069247e-10`
-        #expect(output1.time == 1296688602)
-        #expect(output1.medianTime == 1296688602)
+
+        // If it was a Double it would be `4.6565423739069247e-10`
+        #expect(output1.difficulty == "4.656542373906925e-10")
+        #expect(output1.time == 1_296_688_602)
+        #expect(output1.medianTime == 1_296_688_602)
         #expect(output1.verificationProgress == 1)
         #expect(output1.initialBlockDownload)
         #expect(output1.chainwork == "0000000000000000000000000000000000000000000000000000000000000002")
         #expect(output1.sizeOnDisk == 0) // 293
 
         // Fixing date for to get a stable block ID for comparison
-        let fixedTime = 1739295700
+        let fixedTime = 1_739_295_700
         await satoshiChain.generateTo(pubkey, blockTime: Date(timeIntervalSince1970: TimeInterval(fixedTime)))
 
         let output2 = await GetBlockchainInfoRPC().run(blockchain: satoshiChain)
@@ -37,13 +42,17 @@ struct CommandTests {
         #expect(output2.blocks == 1)
         #expect(output2.headers == 1)
         #expect(output2.bestBlockHash == "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")
-        #expect(output2.difficulty == "4.656542373906925e-10") // If it was a Double it would be `4.6565423739069247e-10`
+
+        // If it was a Double it would be `4.6565423739069247e-10`
+        #expect(output2.difficulty == "4.656542373906925e-10")
         #expect(output2.time == fixedTime)
         #expect(output2.medianTime == fixedTime)
         #expect(output2.verificationProgress == 1)
         #expect(output2.initialBlockDownload)
         #expect(output2.chainwork == "0000000000000000000000000000000000000000000000000000000000000004")
-        #expect(output2.sizeOnDisk == 0) // Requires data dir, 552 (Swift Bitcoin, no undo data) or 593 (Bitcoin Core, with undo data)
+
+        // Requires data dir, 552 (Swift Bitcoin, no undo data) or 593 (Bitcoin Core, with undo data)
+        #expect(output2.sizeOnDisk == 0)
 
         // Unfixing date for to get a valid IDB reading
         var calendar = Calendar(identifier: .iso8601)
@@ -56,20 +65,26 @@ struct CommandTests {
         #expect(output3.chain == "swift-testing")
         #expect(output3.blocks == 2)
         #expect(output3.headers == 2)
-        #expect(output3.difficulty == "4.656542373906925e-10") // If it was a Double it would be `4.6565423739069247e-10`
+
+        // If it was a Double it would be `4.6565423739069247e-10`
+        #expect(output3.difficulty == "4.656542373906925e-10")
         #expect(output3.time == Int(nowSeconds.timeIntervalSince1970))
         #expect(output3.medianTime == fixedTime)
         #expect(output3.verificationProgress == 1)
         #expect(!output3.initialBlockDownload)
         #expect(output3.chainwork == "0000000000000000000000000000000000000000000000000000000000000006")
-        #expect(output3.sizeOnDisk == 0) // Requires data dir, 552 (Swift Bitcoin, no undo data) or 593 (Bitcoin Core, with undo data)
+
+        // Requires data dir, 552 (Swift Bitcoin, no undo data) or 593 (Bitcoin Core, with undo data)
+        #expect(output3.sizeOnDisk == 0)
 
         // Block 1
-        let getBlockOut = try await GetBlockRPC(.init(blockID: "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")).run(blockchain: satoshiChain)
+        let getBlockOut = try await GetBlockRPC(
+            .init(blockID: "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")
+        ).run(blockchain: satoshiChain)
         #expect(getBlockOut.id == "781576e309f1153343397e5acdd0f9be7bcc361db98133e0071f762e22142881")
         #expect(getBlockOut.confirmations == 2)
         #expect(getBlockOut.height == 1)
-        #expect(getBlockOut.version == 536870912)
+        #expect(getBlockOut.version == 536_870_912)
         #expect(getBlockOut.versionHex == "20000000")
         #expect(getBlockOut.merkleRoot == "71847446d61f87f01ea98e4c32f3ecd7a509cdb912c04a13a4b20736af5a0d49")
         #expect(getBlockOut.time == fixedTime)
@@ -84,9 +99,10 @@ struct CommandTests {
         #expect(getBlockOut.strippedsize == 215)
         #expect(getBlockOut.size == 251)
         #expect(getBlockOut.weight == 896)
-        #expect(getBlockOut.txs == [
-            "71847446d61f87f01ea98e4c32f3ecd7a509cdb912c04a13a4b20736af5a0d49"
-        ])
+        #expect(
+            getBlockOut.txs == [
+                "71847446d61f87f01ea98e4c32f3ecd7a509cdb912c04a13a4b20736af5a0d49"
+            ])
 
         await satoshiChain.shutdown()
     }

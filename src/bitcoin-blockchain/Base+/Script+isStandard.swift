@@ -1,11 +1,10 @@
-import Foundation
 import BitcoinBase
+import Foundation
 
 /// Script standardness.
 extension Script {
     // bool IsStandard(const CScript& scriptPubKey, TxoutType& whichType)
     func isStandard() -> OutputType? {
-
         let (whichType, solutions) = solveOutputType()
 
         if whichType == .nonStandard {

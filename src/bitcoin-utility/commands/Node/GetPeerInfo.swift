@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct GetPeerInfo: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: GetPeerInfoRPC.description
     )

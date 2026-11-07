@@ -1,9 +1,8 @@
+import Bitcoin
 import Foundation
 import Testing
-import Bitcoin
 
 struct DocumentationExamples {
-
     @Test func gettingStarted() async throws {
         // Generate a secret key, corresponding public key, hash and address.
         let secretKey = SecretKey()
@@ -17,7 +16,7 @@ struct DocumentationExamples {
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         var blocks = [Block]()
-        for _ in 1 ... 100 {
+        for _ in 1...100 {
             blocks.append(await blockchain.generateTo(address.script)!)
         }
 

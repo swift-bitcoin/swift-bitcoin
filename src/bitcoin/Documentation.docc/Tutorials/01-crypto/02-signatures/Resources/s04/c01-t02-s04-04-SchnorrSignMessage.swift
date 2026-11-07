@@ -3,7 +3,6 @@ import Bitcoin
 import Foundation
 
 struct SchnorrSignMessage: ParsableCommand {
-
     @Option var secretKey: String
     @Option var tweak: String?
     @Argument var message: String

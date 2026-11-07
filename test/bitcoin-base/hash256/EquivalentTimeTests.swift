@@ -3,8 +3,8 @@ import Testing
 
 @Suite("Block proof equivalent time")
 struct EquivalentTimeTests {
-    static let genesis = Target(compact: 0x1d00ffff)!     // work 0x100010001
-    static let regtest = Target(compact: 0x207fffff)!     // work 2
+    static let genesis = Target(compact: 0x1d00_ffff)! // work 0x100010001
+    static let regtest = Target(compact: 0x207f_ffff)! // work 2
 
     @Test func oneBlockAtTheTipsDifficultyIsOneSpacing() {
         let work = Self.genesis.work
@@ -14,9 +14,11 @@ struct EquivalentTimeTests {
     }
 
     @Test func signFollowsDirection() {
-        let a = Chainwork(low: 20), b = Chainwork(low: 10)
+        let a = Chainwork(low: 20)
+        let b = Chainwork(low: 10)
         #expect(Chainwork.blockProofEquivalentTime(to: a, from: b, tipTarget: Self.regtest, targetSpacing: 600) == 3000)
-        #expect(Chainwork.blockProofEquivalentTime(to: b, from: a, tipTarget: Self.regtest, targetSpacing: 600) == -3000)
+        #expect(
+            Chainwork.blockProofEquivalentTime(to: b, from: a, tipTarget: Self.regtest, targetSpacing: 600) == -3000)
         #expect(Chainwork.blockProofEquivalentTime(to: a, from: a, tipTarget: Self.regtest, targetSpacing: 600) == 0)
     }
 
@@ -34,7 +36,7 @@ struct EquivalentTimeTests {
         // 2⁶⁴ × 600 ÷ 2 needs more than 64 bits; 2⁶² × 2 ÷ 2 does not
         let time = Chainwork.blockProofEquivalentTime(
             to: Chainwork(low: 1 << 64), from: .zero, tipTarget: Self.regtest, targetSpacing: 600)
-        #expect(time == Int.max)                              // 300 × 2⁶⁴ doesn't fit
+        #expect(time == Int.max) // 300 × 2⁶⁴ doesn't fit
         let fits = Chainwork.blockProofEquivalentTime(
             to: Chainwork(low: 1 << 62), from: .zero, tipTarget: Self.regtest, targetSpacing: 2)
         #expect(fits == 1 << 62)
@@ -42,17 +44,26 @@ struct EquivalentTimeTests {
 
     @Test func saturatesSymmetricallyLikeCore() {
         let huge = Chainwork(low: 0, high: 1)
-        #expect(Chainwork.blockProofEquivalentTime(to: huge, from: .zero, tipTarget: Self.regtest, targetSpacing: 600) == Int.max)
-        #expect(Chainwork.blockProofEquivalentTime(to: .zero, from: huge, tipTarget: Self.regtest, targetSpacing: 600) == -Int.max)
+        #expect(
+            Chainwork.blockProofEquivalentTime(to: huge, from: .zero, tipTarget: Self.regtest, targetSpacing: 600)
+                == Int.max)
+        #expect(
+            Chainwork.blockProofEquivalentTime(to: .zero, from: huge, tipTarget: Self.regtest, targetSpacing: 600)
+                == -Int.max)
         let edge = Chainwork(low: UInt128(Int.max))
-        #expect(Chainwork.blockProofEquivalentTime(to: edge, from: .zero, tipTarget: Self.regtest, targetSpacing: 2) == Int.max)
-        #expect(Chainwork.blockProofEquivalentTime(to: edge + Chainwork(low: 2), from: .zero, tipTarget: Self.regtest, targetSpacing: 2) == Int.max)
+        #expect(
+            Chainwork.blockProofEquivalentTime(to: edge, from: .zero, tipTarget: Self.regtest, targetSpacing: 2)
+                == Int.max)
+        #expect(
+            Chainwork.blockProofEquivalentTime(
+                to: edge + Chainwork(low: 2), from: .zero, tipTarget: Self.regtest, targetSpacing: 2) == Int.max)
     }
 
     @Test func productWrapsModulo2To256LikeCore() {
         // (2²⁵⁵) × 2 wraps to 0; Core's arith_uint256 does the same.
         let half = Chainwork(low: 0, high: 1 << 127)
-        #expect(Chainwork.blockProofEquivalentTime(to: half, from: .zero, tipTarget: Self.regtest, targetSpacing: 2) == 0)
+        #expect(
+            Chainwork.blockProofEquivalentTime(to: half, from: .zero, tipTarget: Self.regtest, targetSpacing: 2) == 0)
     }
 
     @Test func assumeValidTwoWeeks() {

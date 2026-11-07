@@ -1,15 +1,19 @@
-import Testing
-import BitcoinCrypto
-import Foundation
 import BitcoinBase
+import BitcoinCrypto
 import BitcoinWallet
+import Foundation
+import Testing
 
 struct BitcoinWalletTests {
-
     /// Test signing messages
     @Test("Message signing")
     func messageSigning() async throws {
-        let secretKey = try #require(SecretKey(Data([0x45, 0x85, 0x1e, 0xe2, 0x66, 0x2f, 0x0c, 0x36, 0xf4, 0xfd, 0x2a, 0x7d, 0x53, 0xa0, 0x8f, 0x7b, 0x06, 0xc7, 0xab, 0xfd, 0x61, 0x95, 0x3c, 0x52, 0x16, 0xcc, 0x39, 0x7c, 0x4f, 0x2c, 0xae, 0x8c])))
+        let secretKey = try #require(
+            SecretKey(
+                Data([
+                    0x45, 0x85, 0x1e, 0xe2, 0x66, 0x2f, 0x0c, 0x36, 0xf4, 0xfd, 0x2a, 0x7d, 0x53, 0xa0, 0x8f, 0x7b,
+                    0x06, 0xc7, 0xab, 0xfd, 0x61, 0x95, 0x3c, 0x52, 0x16, 0xcc, 0x39, 0x7c, 0x4f, 0x2c, 0xae, 0x8c,
+                ])))
         let compressedPubkeys = true
         let wif = secretKey.toWIF(compressedPubkeys: compressedPubkeys, mainnet: false)
         #expect(wif == "cPuqe8derNHnWuMtRfDUb8CGwuStiEeVAniZTHrmf9yTWyu7n481")
@@ -23,18 +27,21 @@ struct BitcoinWalletTests {
 
         let message = "Hello, Bitcoin!"
         let messageData = try #require(message.data(using: .utf8))
-        let sig = RecoverableSignature(messageData: messageData, secretKey: secretKey2, recoverCompressedKeys: metadata.compressedPubkeys)
+        let sig = RecoverableSignature(
+            messageData: messageData, secretKey: secretKey2, recoverCompressedKeys: metadata.compressedPubkeys)
 
-        #expect(sig.base64 == "IN97K44jABXPVVQ5dnPo0AcLpmG/Q0b73Yxr6JQvIFtPJJQhshb4NJ2nHjqtRhKIUNGnFGr+tlHxzoOw6xpmJ5I=")
+        #expect(
+            sig.base64 == "IN97K44jABXPVVQ5dnPo0AcLpmG/Q0b73Yxr6JQvIFtPJJQhshb4NJ2nHjqtRhKIUNGnFGr+tlHxzoOw6xpmJ5I=")
 
         let address = "miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5"
         // Decode P2PKH address
         let addressDecoded = try #require(LegacyAddress(address))
-        let result = if let pubkey = sig.recoverPubkey(messageData: messageData) {
-            Data(Hash160.hash(data: pubkey.data)) == addressDecoded.hash
-        } else {
-            false
-        }
+        let result =
+            if let pubkey = sig.recoverPubkey(messageData: messageData) {
+                Data(Hash160.hash(data: pubkey.data)) == addressDecoded.hash
+            } else {
+                false
+            }
         #expect(result)
     }
 

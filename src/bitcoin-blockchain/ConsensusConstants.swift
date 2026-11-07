@@ -3,7 +3,6 @@ import Foundation
 
 // MARK: - Flags from `consensus.h` in Bitcoin Core.
 enum ConsensusConstants {
-
     // MARK: - Transaction
 
     /// See ``BitcoinBase/Transaction/witnessScaleFactor``.
@@ -38,12 +37,16 @@ enum ConsensusConstants {
     /// Typically used in `verifytxoutproof() -> CPartialMerkleTree::ExtractMatches()` in Bitcoin Core.
     ///
     /// Unused in Swift Bitcoin as of May 18, 2026
-    static let minTransactionWeight = Transaction.witnessScaleFactor * 60 // 60 is the lower bound for the size of a valid serialized CTransaction
+
+    // 60 is the lower bound for the size of a valid serialized CTransaction
+    static let minTransactionWeight = Transaction.witnessScaleFactor * 60
 
     /// `MIN_SERIALIZABLE_TRANSACTION_WEIGHT` in Bitcoin Core.
     ///
     /// Unused as of May 18, 2026
-    static let minSerializableTransactionWeight = Transaction.witnessScaleFactor * 10 // 10 is the lower bound for the size of a serialized CTransaction
+
+    // 10 is the lower bound for the size of a serialized CTransaction
+    static let minSerializableTransactionWeight = Transaction.witnessScaleFactor * 10
 
     /// See ``BitcoinBase/Block/maxTimewarp``.
     ///
@@ -57,36 +60,33 @@ enum ConsensusConstants {
 }
 
 /// Consensus.
-public extension Transaction {
-
+extension Transaction {
     /// Witness scale factor.
-    static let witnessScaleFactor = ConsensusConstants.witnessScaleFactor
+    public static let witnessScaleFactor = ConsensusConstants.witnessScaleFactor
 }
 
 /// Consensus.
-public extension Transaction.Input {
-
+extension Transaction.Input {
     /// Interpret sequence numbers as relative lock-time constraints.
-    static let locktimeVerifySequence = ConsensusConstants.locktimeVerifySequence
+    public static let locktimeVerifySequence = ConsensusConstants.locktimeVerifySequence
 }
 
 /// Consensus.
-public extension Block {
-
+extension Block {
     /// The maximum allowed weight for a block, see BIP141 (network rule)
-    static let maxWeight = ConsensusConstants.maxBlockWeight
+    public static let maxWeight = ConsensusConstants.maxBlockWeight
 
     /// The maximum allowed size for a serialized block, in bytes (only for buffer size limits)
     ///
     /// Used for storage only (not consensus) as of May 18, 2026
-    static let maxSerializedSize = ConsensusConstants.maxBlockSerializedSized
+    public static let maxSerializedSize = ConsensusConstants.maxBlockSerializedSized
 
     /// The maximum allowed number of signature check operations in a block (network rule)
-    static let maxSigopsCost = ConsensusConstants.maxBlockSigopsCost
+    public static let maxSigopsCost = ConsensusConstants.maxBlockSigopsCost
 
     /// Coinbase transaction outputs can only be spent after this number of new blocks (network rule)
-    static let coinbaseMaturity = ConsensusConstants.coinbaseMaturity
+    public static let coinbaseMaturity = ConsensusConstants.coinbaseMaturity
 
     /// Maximum number of seconds that the timestamp of the first block of a difficulty adjustment period is allowed to be earlier than the last block of the previous period (BIP94).
-    static let maxTimewarp = ConsensusConstants.maxTimewarp
+    public static let maxTimewarp = ConsensusConstants.maxTimewarp
 }

@@ -1,6 +1,8 @@
 public struct MiniscriptProperties {
-
-    init(_ type: ExpressionType, _ mods: Set<TypeModifier>, olderBlocks: Bool = false, olderSeconds: Bool = false, afterBlocks: Bool = false, afterSeconds: Bool = false) {
+    init(
+        _ type: ExpressionType, _ mods: Set<TypeModifier>, olderBlocks: Bool = false, olderSeconds: Bool = false,
+        afterBlocks: Bool = false, afterSeconds: Bool = false
+    ) {
         self.type = type
         self.mods = mods
         self.olderBlocks = olderBlocks
@@ -18,5 +20,5 @@ public struct MiniscriptProperties {
     let afterSeconds: Bool
 
     /// "k" No timelock mixing. This expression does not contain a mix of heightlock and timelock of the same type. If the miniscript does not have the "k" property, the miniscript template will not match the user expectation of the corresponding spending policy.
-    public var k: Bool { !(olderBlocks && olderSeconds) && !(afterBlocks && afterSeconds)}
+    public var k: Bool { !(olderBlocks && olderSeconds) && !(afterBlocks && afterSeconds) }
 }

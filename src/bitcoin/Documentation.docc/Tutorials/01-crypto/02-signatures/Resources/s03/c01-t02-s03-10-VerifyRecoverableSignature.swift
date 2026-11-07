@@ -1,9 +1,8 @@
-import Foundation
 import ArgumentParser
 import Bitcoin
+import Foundation
 
 struct VerifyRecoverableSignature: ParsableCommand {
-
     @Option var publicKeyHash: String
     @Argument var signature: String
     @Argument var message: String
@@ -21,11 +20,12 @@ struct VerifyRecoverableSignature: ParsableCommand {
         guard let messageData = message.data(using: .utf8) else {
             throw ValidationError("Message is not UTF-8 compatible")
         }
-        let result = if let publicKey = signature.recoverPubkey(messageData: messageData) {
-            Data(Hash160.hash(data: publicKey.data)) == hash
-        } else {
-            false
-        }
+        let result =
+            if let publicKey = signature.recoverPubkey(messageData: messageData) {
+                Data(Hash160.hash(data: publicKey.data)) == hash
+            } else {
+                false
+            }
         print(result ? "Signature is valid" : "Signature is invalid")
     }
 }

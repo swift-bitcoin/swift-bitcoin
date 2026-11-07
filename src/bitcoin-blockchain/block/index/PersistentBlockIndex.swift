@@ -1,20 +1,19 @@
-import LMDB
 import BinaryParsing
-import _NIOFileSystem
-import Foundation
-import Logging
-import Collections
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Collections
+import Foundation
+import LMDB
+import Logging
+import _NIOFileSystem
 
 /// Hybrid in-memory / database block index service implementation.
 actor PersistentBlockIndex: BlockIndex {
-
     enum InitError: Error {
         case missingBlockHash
     }
 
-    init(path: FilePath, logger: Logger) throws/*(InitError)*/ {
+    init(path: FilePath, logger: Logger) throws /*(InitError)*/ {
         self.path = path.appending("block-index")
         self.logger = logger
 
@@ -25,7 +24,7 @@ actor PersistentBlockIndex: BlockIndex {
         let byID = try env.openDatabase(named: "by-id")
         let byHeight = try env.openDatabase(named: "by-height", options: [.duplicateSort, .duplicateFixed])
 
-        var cache = [BlockHash : BlockRef]()
+        var cache = [BlockHash: BlockRef]()
         var heightsCache = [[BlockHash]]()
 
         let txn = try ReadTransaction(env)
@@ -66,7 +65,7 @@ actor PersistentBlockIndex: BlockIndex {
     private let byHeight: Database
 
     // By id cache
-    private var cache = [BlockHash : BlockRef]()
+    private var cache = [BlockHash: BlockRef]()
 
     /// Either the ID of the Block at each height in the active chain. Or additionally, the IDs of blocks at that height not on the active chain.
     private var heightsCache = [[BlockHash]]()
@@ -169,16 +168,18 @@ actor PersistentBlockIndex: BlockIndex {
         return try add(genesisBlock, locator: locator, status: .active, chainTxCount: genesisBlock.txs.count)
     }
 
-    private func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus, chainTxCount: Int) throws(BlockIndexError) -> BlockRef {
-
+    private func add(_ block: Block, locator: BlockStorageLocator?, status: ValidationStatus, chainTxCount: Int)
+        throws(BlockIndexError) -> BlockRef
+    {
         // We can only add a block with locator if it is the genesis block and we have no other blocks
         precondition(locator == nil || cache.isEmpty)
 
-        let previous = if block.previous != BlockHash.zero {
-            get(block.previous)
-        } else {
-            BlockRef?.none
-        }
+        let previous =
+            if block.previous != BlockHash.zero {
+                get(block.previous)
+            } else {
+                BlockRef?.none
+            }
 
         guard cache.isEmpty || previous != nil else {
             throw BlockIndexError.parentMissing
@@ -190,7 +191,8 @@ actor PersistentBlockIndex: BlockIndex {
         let chainwork = if let previous { previous.chainwork + target.work } else { target.work }
         // let chainwork = if let previous { previous.chainwork + block.work } else { block.work }
 
-        var newRef = BlockRef(block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
+        var newRef = BlockRef(
+            block, height: height, chainwork: chainwork, chainTxCount: chainTxCount, status: status, locator: locator)
         newRef.skip = ancestor(of: newRef, at: skipHeight(from: height)).header.id
         cache[newRef.header.id] = newRef
 
@@ -215,21 +217,25 @@ actor PersistentBlockIndex: BlockIndex {
         }
     }
 
-    func updateBlock(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) -> BlockRef {
+    func updateBlock(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int)
+        -> BlockRef
+    {
         precondition([.active, .stale].contains(status))
         precondition(locator.isComplete)
         return update(ref, locator: locator, status: status, chainTxCount: chainTxCount)
     }
 
-    func updateHeader(_ ref: BlockRef, locator: BlockStorageLocator) -> BlockRef  {
+    func updateHeader(_ ref: BlockRef, locator: BlockStorageLocator) -> BlockRef {
         precondition(!locator.isPlaceholder && !locator.hasUndoOffset)
         return update(ref, locator: locator, status: .merkle, chainTxCount: nil)
     }
 
-    private func update(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?) -> BlockRef {
-
+    private func update(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int?)
+        -> BlockRef
+    {
         // Valid transitions header -> merkle; merkle -> active/stale
-        precondition(ref.status == .header && status == .merkle || (ref.status == .merkle && [.active, .stale].contains(status)))
+        precondition(
+            ref.status == .header && status == .merkle || (ref.status == .merkle && [.active, .stale].contains(status)))
 
         var newRef = ref
         newRef.locator = locator
@@ -452,7 +458,7 @@ actor PersistentBlockIndex: BlockIndex {
     func clear() async {
         heightsCache = .init()
         cache = .init()
-       // await clearPersistent()
+        // await clearPersistent()
     }
 
     /*
@@ -499,16 +505,16 @@ private func skipHeight(from height: Int) -> Int {
     return height & 1 != 0 ? invertLowestOne(invertLowestOne(height - 1)) + 1 : invertLowestOne(height)
 }
 
-private func _ancestor(of tip: BlockRef, at height: Int, refs: [BlockHash : BlockRef]) -> BlockRef {
+private func _ancestor(of tip: BlockRef, at height: Int, refs: [BlockHash: BlockRef]) -> BlockRef {
     precondition(height <= tip.height)
     var indexWalk = tip // const CBlockIndex* pindexWalk = this;
     var heightWalk = tip.height
-    while (heightWalk > height) {
+    while heightWalk > height {
         let heightSkip = skipHeight(from: heightWalk)
         let heightSkipPrev = skipHeight(from: heightWalk - 1)
-        if let skip = indexWalk.skip, heightSkip == height || (
-            heightSkip > height && !(
-                heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height))
+        if let skip = indexWalk.skip,
+            heightSkip == height
+                || (heightSkip > height && !(heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height))
         {
             // Only follow skip if previous->skip isn't better than skip->previous.
             indexWalk = refs[skip]!
@@ -522,7 +528,7 @@ private func _ancestor(of tip: BlockRef, at height: Int, refs: [BlockHash : Bloc
 }
 
 /// Find the last common ancestor two blocks have.
-private func _lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef, refs: [BlockHash : BlockRef]) -> BlockRef {
+private func _lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef, refs: [BlockHash: BlockRef]) -> BlockRef {
     var pa: BlockRef
     var pb: BlockRef
     // First rewind to the last common height (the forking point cannot be past one of the two).
@@ -558,7 +564,6 @@ private func _lastCommonAncestor(_ blockA: BlockRef, _ blockB: BlockRef, refs: [
 }
 
 extension BlockHash: LMDBCodable {
-
     public init(lmdbBytes bytes: RawSpan) throws(LMDBDecodingError) {
         guard let hash = Hash256(bytes: bytes) else {
             throw .init(BlockHash.self, byteCount: bytes.byteCount, reason: "Bad byte count")
@@ -572,7 +577,6 @@ extension BlockHash: LMDBCodable {
 }
 
 extension BlockRef: LMDBCodable {
-
     public init(lmdbBytes bytes: RawSpan) throws(LMDBDecodingError) {
         var input = ParserSpan.init(bytes)
         do {

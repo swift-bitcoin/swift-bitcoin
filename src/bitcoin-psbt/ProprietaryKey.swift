@@ -1,13 +1,12 @@
 import Foundation
 
-public typealias ProprietaryInfo = [ProprietaryID : [ProprietaryKey : ProprietaryValue]]
+public typealias ProprietaryInfo = [ProprietaryID: [ProprietaryKey: ProprietaryValue]]
 public typealias ProprietaryID = Data
 public typealias ProprietaryKeyType = Int
 public typealias ProprietaryValue = Data
 
 /// Proprietary key.
 public struct ProprietaryKey: Hashable, Sendable {
-
     /// Creates a new proprietary key.
     /// - Parameters:
     ///   - type: Key type. Must be greater than 0.

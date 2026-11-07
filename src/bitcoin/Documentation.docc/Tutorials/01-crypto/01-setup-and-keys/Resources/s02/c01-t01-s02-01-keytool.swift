@@ -7,7 +7,7 @@
 import ArgumentParser
 
 @main
-struct keytool: ParsableCommand {
+struct Keytool: ParsableCommand {
     mutating func run() throws {
         print("Hello, world!")
     }

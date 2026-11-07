@@ -1,14 +1,14 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 public enum PSBTMapError: Error {
-    case /*invalidKeyType, invalidKeyData,*/ invalidKeyEncoding, invalidValueEncoding, invalidKeyPairEncoding, duplicateKey, missingDelimiter
+    case /*invalidKeyType, invalidKeyData,*/ invalidKeyEncoding, invalidValueEncoding, invalidKeyPairEncoding,
+        duplicateKey, missingDelimiter
 }
 
 struct PSBTMap: BinaryCodable {
-
-    init(entries: [Key : Data]) {
+    init(entries: [Key: Data]) {
         self.entries = entries
     }
 
@@ -23,7 +23,7 @@ struct PSBTMap: BinaryCodable {
             throw .missingDelimiter
         }
 
-        var entries = [Key : Data]()
+        var entries = [Key: Data]()
         var foundDelimiter = maybeDelimiter == Self.delimiter
         while !foundDelimiter {
             let keypair: Keypair
@@ -59,7 +59,7 @@ struct PSBTMap: BinaryCodable {
         self.entries = entries
     }
 
-    let entries: [Key : Data]
+    let entries: [Key: Data]
 
     private var keypairs: [Keypair] {
         entries.map { Keypair(key: $0, value: $1) }

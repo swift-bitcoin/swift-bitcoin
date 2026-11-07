@@ -1,11 +1,11 @@
 import ArgumentParser
-import LMDB
 import Foundation
+import LMDB
 import _NIOFileSystem
+
 import func BitcoinBlockchain.initBlockIndexEnv
 
 struct Drop: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: ""
     )

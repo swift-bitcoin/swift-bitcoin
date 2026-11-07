@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct GetTransaction: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: GetTransactionRPC.description
     )

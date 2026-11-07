@@ -3,7 +3,6 @@ import Logging
 
 /// Block storage service protocol.
 protocol BlockStorage: Sendable {
-
     var config: BlockStorageConfig { get async }
     var sizeOnDisk: Int { get async }
 
@@ -16,7 +15,8 @@ protocol BlockStorage: Sendable {
 
     func store(_ block: Block) async throws(BlockStorageError) -> BlockStorageLocator
 
-    func store(_ undo: BlockUndo, forBlockAt locator: BlockStorageLocator) async throws(BlockStorageError) -> BlockStorageLocator
+    func store(_ undo: BlockUndo, forBlockAt locator: BlockStorageLocator) async throws(BlockStorageError)
+        -> BlockStorageLocator
 
     func retrieve(_ locator: BlockStorageLocator) async throws(BlockStorageError) -> (Block, BlockUndo?)
 

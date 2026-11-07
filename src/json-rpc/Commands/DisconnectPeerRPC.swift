@@ -2,7 +2,6 @@ import Foundation
 
 /// Disconnects peer from node. Returns true if successful.
 public struct DisconnectPeerRPC: RPCCommand, Sendable {
-
     public struct Params: Codable, Sendable {
         public init(peerID: Int /* PeerID */) {
             self.peerID = peerID

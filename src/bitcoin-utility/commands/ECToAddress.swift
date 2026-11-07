@@ -1,12 +1,11 @@
 import ArgumentParser
-import BitcoinWallet
 import BitcoinBase
 import BitcoinCrypto
+import BitcoinWallet
 import Foundation
 
 /// Creates an address from the provided public key.
 struct ECToAddress: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Creates an address from the provided public key."
     )
@@ -28,14 +27,15 @@ struct ECToAddress: ParsableCommand {
         guard let pubkey = PublicKey(pubkeyData) else {
             throw ValidationError("Invalid public key data: pubkey")
         }
-        let result = switch sigVersion {
-        case .base:
-            LegacyAddress(pubkey, mainnet: network == .mainnet).description
-        case .witnessV0:
-            SegwitAddress(pubkey, network: network).description
-        case .witnessV1:
-            TaprootAddress(pubkey, network: network).description
-        }
+        let result =
+            switch sigVersion {
+            case .base:
+                LegacyAddress(pubkey, mainnet: network == .mainnet).description
+            case .witnessV0:
+                SegwitAddress(pubkey, network: network).description
+            case .witnessV1:
+                TaprootAddress(pubkey, network: network).description
+            }
         print(result)
     }
 }

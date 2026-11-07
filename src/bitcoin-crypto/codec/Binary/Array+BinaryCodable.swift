@@ -1,8 +1,7 @@
-import Foundation
 import BinaryParsing
+import Foundation
 
 extension Array: BinaryCodable where Element: BinaryCodable {
-
     public enum ArrayBinaryFormat {
         case unprefixed
     }
@@ -17,7 +16,7 @@ extension Array: BinaryCodable where Element: BinaryCodable {
         let count = try VarInt(parsing: &input)
 
         self.init()
-        for _ in 0 ..< count.value {
+        for _ in 0..<count.value {
             let element = try Element(parsing: &input, format: format?.elementBinaryFormat)
             append(element)
         }

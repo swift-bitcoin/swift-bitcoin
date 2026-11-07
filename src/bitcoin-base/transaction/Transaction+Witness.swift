@@ -1,13 +1,12 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension Transaction {
     /// Witness data associated with a particular ``Transaction/Input``.
     ///
     /// Refer to BIP141 for more information.
     public struct Witness: Equatable, Sendable {
-
         public init(_ stack: [Data]) {
             self.stack = stack
         }
@@ -18,12 +17,16 @@ extension Transaction {
         /// BIP341
         var taprootAnnex: Data? {
             // If there are at least two witness elements, and the first byte of the last element is 0x50, this last element is called annex a
-            if stack.count > 1, let maybeAnnex = stack.last, let firstElem = maybeAnnex.first, firstElem == Self.annexTag {
+            if stack.count > 1, let maybeAnnex = stack.last, let firstElem = maybeAnnex.first,
+                firstElem == Self.annexTag
+            {
                 return maybeAnnex
             } else {
                 return nil
             }
         }
+
+        package static let reservedValueLength = 32 // Bytes
 
         /// The annex tag byte.
         ///
@@ -50,11 +53,10 @@ extension Transaction.Witness: ExpressibleByArrayLiteral {
 
 /// Binary data extensions.
 extension Transaction.Witness: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         let count = (try VarInt(parsing: &input)).value
         var stack = [Data]()
-        for _ in 0 ..< count {
+        for _ in 0..<count {
             let elementLength = (try VarInt(parsing: &input)).value
             let element = try Data(parsing: &input, byteCount: elementLength)
             stack.append(element)

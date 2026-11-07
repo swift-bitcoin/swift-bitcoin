@@ -1,10 +1,9 @@
 import NIOCore
 
 public final class HalfCloseOnTimeout: ChannelInboundHandler, Sendable {
-
     public typealias InboundIn = Any
 
-    public init() { }
+    public init() {}
 
     public func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
         if event is IdleStateHandler.IdleStateEvent {

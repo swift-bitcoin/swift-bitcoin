@@ -1,12 +1,12 @@
-import Testing
-import Foundation
 import BitcoinBase
+import Foundation
+import Testing
 
 struct TxTests {
-
     @Test("Deserialization")
     func deserialization() throws {
-        let url = try #require(Bundle.module.url(forResource: "mainnet-transactions", withExtension: "json", subdirectory: "data"))
+        let url = try #require(
+            Bundle.module.url(forResource: "mainnet-transactions", withExtension: "json", subdirectory: "data"))
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
 
@@ -19,7 +19,8 @@ struct TxTests {
                 let expectedTransactionData = Data(hex: txInfo.hex),
                 let tx = try? Transaction(expectedTransactionData)
             else {
-                Issue.record("Transaction data could not be decoded."); continue
+                Issue.record("Transaction data could not be decoded.")
+                continue
             }
 
             #expect(tx.data == expectedTransactionData)
@@ -30,8 +31,12 @@ struct TxTests {
             let expectedLocktime = txInfo.locktime
             #expect(tx.locktime.locktimeValue == expectedLocktime)
 
-            guard let expectedID = TransactionIdentifier(displayHex: txInfo.txid)  /* Data(hex: txInfo.txid) */, let expectedWitnessID = WitnessTransactionIdentifier(displayHex: txInfo.hash) /* Data(hex: txInfo.hash) */ else {
-                Issue.record("Transaction ID data could not be decoded."); continue
+            guard let expectedID = TransactionIdentifier(displayHex: txInfo.txid) /* Data(hex: txInfo.txid) */,
+                let expectedWitnessID = WitnessTransactionIdentifier(
+                    displayHex: txInfo.hash) /* Data(hex: txInfo.hash) */
+            else {
+                Issue.record("Transaction ID data could not be decoded.")
+                continue
             }
             #expect(tx.id == expectedID)
             #expect(tx.witnessID == expectedWitnessID)
@@ -53,7 +58,8 @@ struct TxTests {
 
                 if let coinbase = vinData.coinbase {
                     guard let expectedCoinbase = Data(hex: coinbase) else {
-                        Issue.record("Transaction input \(i) coinbase data could not be decoded."); continue
+                        Issue.record("Transaction input \(i) coinbase data could not be decoded.")
+                        continue
                     }
 
                     let expectedOutpoint = Outpoint.coinbase
@@ -61,10 +67,12 @@ struct TxTests {
 
                     let expectedScript = try Script(expectedCoinbase)
                     #expect(input.script == expectedScript)
-
-                } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig, let expectedScriptData = Data(hex: scriptSig.hex) {
+                } else if let txid = vinData.txid, let expectedOutput = vinData.vout, let scriptSig = vinData.scriptSig,
+                    let expectedScriptData = Data(hex: scriptSig.hex)
+                {
                     guard let expectedTx = TransactionIdentifier(displayHex: txid) else {
-                        Issue.record("Transaction input \(i) transaction ID data could not be decoded."); continue
+                        Issue.record("Transaction input \(i) transaction ID data could not be decoded.")
+                        continue
                     }
 
                     //let expectedTx = Data(expectedTxByteSwapped.reversed())
@@ -79,7 +87,8 @@ struct TxTests {
                         #expect(input.witness == expectedWitness)
                     }
                 } else {
-                    Issue.record("Transaction input \(i) data could not be decoded."); continue
+                    Issue.record("Transaction input \(i) data could not be decoded.")
+                    continue
                 }
             }
             for i in txInfo.vout.indices {
@@ -90,7 +99,8 @@ struct TxTests {
                 #expect(Double(out.value) / 100_000_000 == expectedValue)
 
                 guard let expectedScriptData = Data(hex: voutData.scriptPubKey.hex) else {
-                    Issue.record("Transaction out \(i) script data could not be decoded."); continue
+                    Issue.record("Transaction out \(i) script data could not be decoded.")
+                    continue
                 }
                 let expectedScript = try Script(expectedScriptData)
                 #expect(out.script == expectedScript)

@@ -1,9 +1,10 @@
 import Foundation
 
-fileprivate let length = 4
+private let length = 4
 
-public struct IPv4Address: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, ExpressibleByStringLiteral {
-
+public struct IPv4Address: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible,
+    ExpressibleByStringLiteral
+{
     public var description: String {
         "\(rawValue[0]).\(rawValue[1]).\(rawValue[2]).\(rawValue[3])"
     }
@@ -14,11 +15,12 @@ public struct IPv4Address: Equatable, Sendable, CustomStringConvertible, CustomD
 
     public init(_ rawValue: Data) {
         let rawValue1 = rawValue.prefix(length)
-        let rawValue2 = if rawValue1.count < length {
-            Data(repeating: 0, count: length - rawValue1.count) + rawValue1
-        } else {
-            rawValue1
-        }
+        let rawValue2 =
+            if rawValue1.count < length {
+                Data(repeating: 0, count: length - rawValue1.count) + rawValue1
+            } else {
+                rawValue1
+            }
         self.rawValue = rawValue2
     }
 
@@ -41,7 +43,7 @@ public struct IPv4Address: Equatable, Sendable, CustomStringConvertible, CustomD
 extension IPv4Address {
     public static func parse(_ address: String) -> (host: String, port: Int?)? {
         let regex = /([\d\.]+)(\:(\d{1,5}))?/
-        guard let _ = address.wholeMatch(of: regex) else {
+        guard address.wholeMatch(of: regex) != nil else {
             return nil
         }
         let matches = address.matches(of: regex)

@@ -1,6 +1,6 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// A Bitcoin transaction.
 ///
@@ -12,7 +12,6 @@ import BitcoinCrypto
 ///
 /// Version 2 transactions allows for relative lock times based on age of spent outputs.
 public struct Transaction: Equatable, Sendable {
-
     // MARK: - Initializers
 
     /// Creates a transaction from its inputs and outputs.
@@ -21,7 +20,9 @@ public struct Transaction: Equatable, Sendable {
     ///   - locktime: The absolute lock time by which this transaction will be able to be mined. It can be specified as a block height or a calendar date. Disabled by default.
     ///   - ins: The coins this transaction will be spending.
     ///   - outs: The new coins this transaction will create.
-    public init(version: Version = .v1, locktime: Locktime = .disabled, ins: [Transaction.Input], outs: [TransactionOutput]) {
+    public init(
+        version: Version = .v1, locktime: Locktime = .disabled, ins: [Transaction.Input], outs: [TransactionOutput]
+    ) {
         self.version = version
         self.locktime = locktime
         self.ins = ins
@@ -98,38 +99,47 @@ public struct Transaction: Equatable, Sendable {
     // MARK: - Type Methods
 
     public static func genesis(_ params: GenesisParams) -> Self {
-
         let genesisTx = Transaction(
             version: .v1,
-            ins: [.init(
-                outpoint: .coinbase,
-                sequence: .final,
-                script: .init([
-                    .pushBytes(Data([0xff, 0xff, 0x00, 0x1d])),
-                    .pushBytes(Data([0x04])),
-                    .encodeMinimally(params.timestampMessage.data(using: .ascii)!)
-                ]))],
+            ins: [
+                .init(
+                    outpoint: .coinbase,
+                    sequence: .final,
+                    script: .init([
+                        .pushBytes(Data([0xff, 0xff, 0x00, 0x1d])),
+                        .pushBytes(Data([0x04])),
+                        .encodeMinimally(params.timestampMessage.data(using: .ascii)!),
+                    ]))
+            ],
             outs: [
                 .init(value: params.reward, script: params.outputScript)
             ])
         return genesisTx
     }
 
-    public static func coinbase(version: Version? = nil, blockHeight: Int, out: TransactionOutput, witnessMerkleRoot: WitnessMerkleRoot, tag: String? = nil) -> Self {
-
+    public static func coinbase(
+        version: Version? = nil, blockHeight: Int, out: TransactionOutput, witnessMerkleRoot: WitnessMerkleRoot,
+        tag: String? = nil
+    ) -> Self {
         var ops = [Script.Operation.encodeMinimally(blockHeight), .zero]
         if let tag, let utf8Data = tag.data(using: .utf8) {
             ops.append(.encodeMinimally(utf8Data))
         }
         let version = version ?? Transaction.Version.current
 
-        let witnessReservedValue = Data(count: 32)
-        let coinbaseTx = Transaction(version: version, ins: [
-            .init(outpoint: .coinbase, script: .init(ops), witness: .init([witnessReservedValue]))
-        ], outs: [
-            out,
-            .init(value: 0, script: Script.witnessCommitment(witnessMerkleRoot: witnessMerkleRoot, witnessReservedValue: witnessReservedValue))
-        ])
+        let witnessReservedValue = Data(count: Witness.reservedValueLength)
+        let coinbaseTx = Transaction(
+            version: version,
+            ins: [
+                .init(outpoint: .coinbase, script: .init(ops), witness: .init([witnessReservedValue]))
+            ],
+            outs: [
+                out,
+                .init(
+                    value: 0,
+                    script: Script.witnessCommitment(
+                        witnessMerkleRoot: witnessMerkleRoot, witnessReservedValue: witnessReservedValue)),
+            ])
         return coinbaseTx
     }
 
@@ -137,7 +147,6 @@ public struct Transaction: Equatable, Sendable {
 }
 
 extension Transaction {
-
     // MARK: - Computed Properties
 
     /// BIP141 / BIP144
@@ -156,7 +165,6 @@ extension Transaction {
 }
 
 extension Transaction: BinaryCodable {
-
     public enum BinaryFormat: Equatable, Sendable {
         case noWitness
     }

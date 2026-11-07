@@ -1,13 +1,13 @@
-import Testing
-import struct NIOFileSystem.FilePath
-import Foundation
-import BitcoinCrypto
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
 import BitcoinWallet
+import Foundation
+import Testing
+
+import struct NIOFileSystem.FilePath
 
 struct BlockchainIntegrationTests {
-
     /// Checks that some of the newly learned block's transaction might already be in our mempool.
     @Test("New block transaction already in mempool")
     func blockTxInMempool() async throws {
@@ -34,13 +34,13 @@ struct BlockchainIntegrationTests {
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
         var newBlocks = [Block]()
-        for _ in 1 ... 100 {
+        for _ in 1...100 {
             let newBlock = try #require(await alice.generateTo(alicePK))
             newBlocks.append(newBlock)
         }
         #expect(await alice.headers == 100)
 
-        for i in 0 ..< 100 {
+        for i in 0..<100 {
             try await bob.processBlock(newBlocks[i])
         }
         #expect(await bob.headers == 100)
@@ -53,7 +53,7 @@ struct BlockchainIntegrationTests {
             outs: [
                 .init(value: 1000, script: .payToPubkeyHash(bobPK)),
                 .init(value: 1500, script: .payToPubkeyHash(carolPK)),
-                .init(value: 2000, script: .payToPubkeyHash(derekPK))
+                .init(value: 2000, script: .payToPubkeyHash(derekPK)),
             ])
 
         var signer = TransactionSigner(tx: t_a3, prevouts: [coinbaseTx.outs[0]])
@@ -80,7 +80,7 @@ struct BlockchainIntegrationTests {
             ins: [.init(outpoint: t_a3.outpoint(1))],
             outs: [
                 .init(value: 1000, script: .payToPubkeyHash(derekPK)),
-                .init(value: 500, script: .payToPubkeyHash(errolPK))
+                .init(value: 500, script: .payToPubkeyHash(errolPK)),
             ])
         signer = TransactionSigner(tx: tA1_b2, prevouts: [t_a3.outs[1]])
         signer.sign(input: 0, with: carolKey)
@@ -89,11 +89,11 @@ struct BlockchainIntegrationTests {
         var tA0_A2_c2 = Transaction(
             ins: [
                 .init(outpoint: t_a3.outpoint(0)),
-                .init(outpoint: t_a3.outpoint(2))
+                .init(outpoint: t_a3.outpoint(2)),
             ],
             outs: [
                 .init(value: 1500, script: .payToPubkeyHash(fionaPK)),
-                .init(value: 1500, script: .payToPubkeyHash(gabrielPK))
+                .init(value: 1500, script: .payToPubkeyHash(gabrielPK)),
             ])
         signer = TransactionSigner(tx: tA0_A2_c2, prevouts: [t_a3.outs[0], t_a3.outs[2]])
         signer.sign(input: 0, with: bobKey)
@@ -108,7 +108,6 @@ struct BlockchainIntegrationTests {
 
         try await alice.addTransaction(tA0_A2_c2)
         #expect(await alice.mempool.count == 1)
-
 
         let bobLastBlock = try #require(await bob.generateTo(bobPK))
         #expect(await bob.mempool.isEmpty)
@@ -132,7 +131,7 @@ struct BlockchainIntegrationTests {
 
         let expectedUTXOSet1 = [
             coinbaseTx1.outpoint(0): UnspentOutput(coinbaseTx1.outs[0], height: 1, isCoinbase: true),
-            coinbaseTx1.outpoint(1): UnspentOutput(coinbaseTx1.outs[1], height: 1, isCoinbase: true)
+            coinbaseTx1.outpoint(1): UnspentOutput(coinbaseTx1.outs[1], height: 1, isCoinbase: true),
         ]
 
         #expect(utxoSet1 == expectedUTXOSet1)
@@ -143,7 +142,7 @@ struct BlockchainIntegrationTests {
             .init(value: 300_000_000, script: .payToPubkeyHash(alicePK)),
             .init(value: 400_000_000, script: .payToPubkeyHash(alicePK)),
             .init(value: 500_000_000, script: .payToPubkeyHash(alicePK)),
-            .init(value: 3_499_999_999, script: .payToPubkeyHash(alicePK))
+            .init(value: 3_499_999_999, script: .payToPubkeyHash(alicePK)),
         ]
         var tx1 = Transaction(
             ins: [.init(outpoint: coinbaseTx1.outpoint(0))],
@@ -159,12 +158,12 @@ struct BlockchainIntegrationTests {
         var tx2 = Transaction(
             ins: [.init(outpoint: tx1.outpoint(5))],
             outs: [
-            TransactionOutput(value: 600_000_000, script: .payToPubkeyHash(alicePK)),
-            .init(value: 700_000_000, script: .payToPubkeyHash(alicePK)),
-            .init(value: 800_000_000, script: .payToPubkeyHash(alicePK)),
-            .init(value: 900_000_000, script: .payToPubkeyHash(alicePK)),
-            .init(value: 499_999_999, script: .payToPubkeyHash(alicePK))
-        ])
+                TransactionOutput(value: 600_000_000, script: .payToPubkeyHash(alicePK)),
+                .init(value: 700_000_000, script: .payToPubkeyHash(alicePK)),
+                .init(value: 800_000_000, script: .payToPubkeyHash(alicePK)),
+                .init(value: 900_000_000, script: .payToPubkeyHash(alicePK)),
+                .init(value: 499_999_999, script: .payToPubkeyHash(alicePK)),
+            ])
 
         var signer2 = TransactionSigner(tx: tx2, prevouts: [tx1.outs[5]])
         signer2.sign(input: 0, with: aliceKey)
@@ -191,7 +190,7 @@ struct BlockchainIntegrationTests {
             tx2.outpoint(1): UnspentOutput(tx2.outs[1], height: 2),
             tx2.outpoint(2): UnspentOutput(tx2.outs[2], height: 2),
             tx2.outpoint(3): UnspentOutput(tx2.outs[3], height: 2),
-            tx2.outpoint(4): UnspentOutput(tx2.outs[4], height: 2)
+            tx2.outpoint(4): UnspentOutput(tx2.outs[4], height: 2),
         ]
 
         #expect(utxoSet2.count == expectedUTXOSet2.count)
@@ -227,8 +226,8 @@ struct BlockchainIntegrationTests {
         var tx = Transaction(
             ins: [.init(outpoint: coinbaseTx.outpoint(0))],
             outs: [
-            .init(value: 4_999_999_999, script: .payToPubkeyHash(alicePK))
-        ])
+                .init(value: 4_999_999_999, script: .payToPubkeyHash(alicePK))
+            ])
 
         var signer = TransactionSigner(tx: tx, prevouts: [coinbaseTx.outs[0]])
         signer.sign(input: 0, with: aliceKey)
@@ -255,19 +254,21 @@ struct BlockchainIntegrationTests {
 
         let expectedTips: [ChainTipSummary] = [
             .init(tip: blockCC.id, height: 3, branchLength: 4, status: .active),
-            .init(tip: blockB.id, height: 2, branchLength: 1, status: .stale)
+            .init(tip: blockB.id, height: 2, branchLength: 1, status: .stale),
         ]
         #expect(tips == expectedTips)
     }
 
     /// Makes the active chain switch twice. In the first reorg the last block become stale. Afterwards another reorganization reactivates it and two different blocks turn stale.
     @Test(arguments: [false, true]) func reReorg(persistence: Bool) async throws {
-
         let fm = FileManager.default
-        let disambiguator = UInt.random(in: UInt.min ... UInt.max)
+        let disambiguator = UInt.random(in: UInt.min...UInt.max)
 
         func dataDir(_ index: Int) throws -> FilePath {
-            let url = fm.temporaryDirectory.appendingPathComponent(disambiguator.description)/*.appendingPathComponent(#fileID).appendingPathComponent(#function)*/.appendingPathComponent(index.description)
+            let url = fm.temporaryDirectory.appendingPathComponent(
+                disambiguator.description
+            ) /*.appendingPathComponent(#fileID).appendingPathComponent(#function)*/.appendingPathComponent(
+                index.description)
             let path = FilePath(stringLiteral: url.relativePath)
             // print("FilePath string: \(path.string)") // Careful LLDB truncates this
             try? fm.removeItem(atPath: path.string)
@@ -287,10 +288,15 @@ struct BlockchainIntegrationTests {
             }
         }
 
-        let satoshi = try await BlockchainService(params: .swiftTesting, config: persistence ? .init(dataLocation: .custom(path: dataPath!.string)) : .init())
+        let satoshi = try await BlockchainService(
+            params: .swiftTesting, config: persistence ? .init(dataLocation: .custom(path: dataPath!.string)) : .init())
 
-        let alice = try await BlockchainService(params: .swiftTesting, config: persistence ?.init(dataLocation: .custom(path: dataPath1!.string)) : .init())
-        let bob = try await BlockchainService(params: .swiftTesting, config: persistence ? .init(dataLocation: .custom(path: dataPath2!.string)) : .init())
+        let alice = try await BlockchainService(
+            params: .swiftTesting, config: persistence ? .init(dataLocation: .custom(path: dataPath1!.string)) : .init()
+        )
+        let bob = try await BlockchainService(
+            params: .swiftTesting, config: persistence ? .init(dataLocation: .custom(path: dataPath2!.string)) : .init()
+        )
 
         let satoshiKey = SecretKey()
         let satoshiID = satoshiKey.pubkey
@@ -306,7 +312,7 @@ struct BlockchainIntegrationTests {
 
         let expectedUTXOSetA = [
             coinbaseTxA.outpoint(0): UnspentOutput(coinbaseTxA.outs[0], height: 1, isCoinbase: true),
-            coinbaseTxA.outpoint(1): UnspentOutput(coinbaseTxA.outs[1], height: 1, isCoinbase: true)
+            coinbaseTxA.outpoint(1): UnspentOutput(coinbaseTxA.outs[1], height: 1, isCoinbase: true),
         ]
 
         #expect(await satoshi.unspentOutputs == expectedUTXOSetA)
@@ -321,8 +327,8 @@ struct BlockchainIntegrationTests {
             ins: [.init(outpoint: coinbaseTxA.outpoint(0))],
             outs: [
                 .init(value: 9000, script: .payToPubkeyHash(aliceID)),
-                .init(value: 1000, script: .payToPubkeyHash(bobID))
-        ])
+                .init(value: 1000, script: .payToPubkeyHash(bobID)),
+            ])
 
         var signer1 = TransactionSigner(tx: tx1, prevouts: [coinbaseTxA.outs[0]])
         signer1.sign(input: 0, with: satoshiKey)
@@ -339,7 +345,7 @@ struct BlockchainIntegrationTests {
             coinbaseTxB.outpoint(0): UnspentOutput(coinbaseTxB.outs[0], height: 2, isCoinbase: true),
             coinbaseTxB.outpoint(1): UnspentOutput(coinbaseTxB.outs[1], height: 2, isCoinbase: true),
             tx1.outpoint(0): UnspentOutput(tx1.outs[0], height: 2, isCoinbase: false),
-            tx1.outpoint(1): UnspentOutput(tx1.outs[1], height: 2, isCoinbase: false)
+            tx1.outpoint(1): UnspentOutput(tx1.outs[1], height: 2, isCoinbase: false),
         ]
         #expect(await alice.unspentOutputs == expectedUTXOSetB)
 
@@ -350,8 +356,8 @@ struct BlockchainIntegrationTests {
             ins: [.init(outpoint: coinbaseTxA.outpoint(0))],
             outs: [
                 .init(value: 2000, script: .payToPubkeyHash(aliceID)),
-                .init(value: 8000, script: .payToPubkeyHash(bobID))
-        ])
+                .init(value: 8000, script: .payToPubkeyHash(bobID)),
+            ])
 
         var signer11 = TransactionSigner(tx: tx11, prevouts: [coinbaseTxA.outs[0]])
         signer11.sign(input: 0, with: satoshiKey)
@@ -367,7 +373,7 @@ struct BlockchainIntegrationTests {
             coinbaseTxBB.outpoint(0): UnspentOutput(coinbaseTxBB.outs[0], height: 2, isCoinbase: true),
             coinbaseTxBB.outpoint(1): UnspentOutput(coinbaseTxBB.outs[1], height: 2, isCoinbase: true),
             tx11.outpoint(0): UnspentOutput(tx11.outs[0], height: 2, isCoinbase: false),
-            tx11.outpoint(1): UnspentOutput(tx11.outs[1], height: 2, isCoinbase: false)
+            tx11.outpoint(1): UnspentOutput(tx11.outs[1], height: 2, isCoinbase: false),
         ]
         #expect(await bob.unspentOutputs == expectedUTXOSetBB)
 
@@ -375,8 +381,8 @@ struct BlockchainIntegrationTests {
             ins: [.init(outpoint: tx1.outpoint(0))],
             outs: [
                 .init(value: 6000, script: .payToPubkeyHash(aliceID)),
-                .init(value: 3000, script: .payToPubkeyHash(bobID))
-        ])
+                .init(value: 3000, script: .payToPubkeyHash(bobID)),
+            ])
 
         var signer2 = TransactionSigner(tx: tx2, prevouts: [tx1.outs[0]])
         signer2.sign(input: 0, with: aliceKey)
@@ -392,8 +398,8 @@ struct BlockchainIntegrationTests {
             ins: [.init(outpoint: tx11.outpoint(1))],
             outs: [
                 .init(value: 5000, script: .payToPubkeyHash(bobID)),
-                .init(value: 3000, script: .payToPubkeyHash(aliceID))
-        ])
+                .init(value: 3000, script: .payToPubkeyHash(aliceID)),
+            ])
 
         var signer22 = TransactionSigner(tx: tx22, prevouts: [tx11.outs[1]])
         signer22.sign(input: 0, with: bobKey)
@@ -417,7 +423,7 @@ struct BlockchainIntegrationTests {
             coinbaseTxCC.outpoint(1): UnspentOutput(coinbaseTxCC.outs[1], height: 3, isCoinbase: true),
             tx11.outpoint(0): UnspentOutput(tx11.outs[0], height: 2, isCoinbase: false),
             tx22.outpoint(0): UnspentOutput(tx22.outs[0], height: 3, isCoinbase: false),
-            tx22.outpoint(1): UnspentOutput(tx22.outs[1], height: 3, isCoinbase: false)
+            tx22.outpoint(1): UnspentOutput(tx22.outs[1], height: 3, isCoinbase: false),
         ]
 
         #expect(await bob.unspentOutputs == expectedUTXOSetCC)
@@ -449,7 +455,7 @@ struct BlockchainIntegrationTests {
             coinbaseTxD.outpoint(1): UnspentOutput(coinbaseTxD.outs[1], height: 4, isCoinbase: true),
             tx1.outpoint(1): UnspentOutput(tx1.outs[1], height: 2, isCoinbase: false),
             tx2.outpoint(0): UnspentOutput(tx2.outs[0], height: 3, isCoinbase: false),
-            tx2.outpoint(1): UnspentOutput(tx2.outs[1], height: 3, isCoinbase: false)
+            tx2.outpoint(1): UnspentOutput(tx2.outs[1], height: 3, isCoinbase: false),
         ]
 
         #expect(await alice.unspentOutputs == expectedUTXOSetD)
@@ -467,7 +473,7 @@ struct BlockchainIntegrationTests {
 
         let expectedTips: [ChainTipSummary] = [
             .init(tip: blockD.id, height: 4, branchLength: 5, status: .active),
-            .init(tip: blockCC.id, height: 3, branchLength: 2, status: .stale)
+            .init(tip: blockCC.id, height: 3, branchLength: 2, status: .stale),
         ]
         #expect(tips == expectedTips)
 

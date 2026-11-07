@@ -1,8 +1,7 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 extension ScriptRuntime {
-
     /// The entire transaction's outputs, inputs, and script (from the most recently-executed `OP_CODESEPARATOR` to the end) are hashed. The signature used by `OP_CHECKSIG` must be a valid signature for this hash and public key. If it is, `1` is returned, `0` otherwise.
     mutating func opCheckSig() throws {
         let (sig, pubkeyData) = try getBinaryParams()
@@ -77,7 +76,6 @@ extension ScriptRuntime {
         try opCheckMultisig()
         try opVerify()
     }
-
 
     /// BIP342: Three values are popped from the stack. The integer n is incremented by one and returned to the stack if the signature is valid for the public key and transaction. The integer n is returned to the stack unchanged if the signature is the empty vector (OP_0). In any other case, the script is invalid. This opcode is only available in tapscript.
     mutating func opCheckSigAdd() throws {
@@ -156,16 +154,15 @@ extension ScriptRuntime {
     }
 
     private func checkSigECDSA(_ sig: Data, _ pubkeyData: Data, scriptCode: Data) throws -> Bool {
-
         // Check public key
         if config.contains(.strictEncoding) {
-            guard let _ = PublicKey(pubkeyData, skipCheck: true) else {
+            guard PublicKey(pubkeyData, skipCheck: true) != nil else {
                 throw ScriptError.invalidPublicKeyEncoding
             }
         }
         // Only compressed keys are accepted in segwit
         if sigVersion == .witnessV0 && config.contains(.witnessCompressedPubkey) {
-            guard let _ = PublicKey(compressed: pubkeyData, skipCheck: true) else {
+            guard PublicKey(compressed: pubkeyData, skipCheck: true) != nil else {
                 throw ScriptError.invalidPublicKeyEncoding
             }
         }
@@ -174,7 +171,8 @@ extension ScriptRuntime {
         // Empty signature. Not strictly DER encoded, but allowed to provide a
         // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
         guard /* !sig.isEmpty, */
-              let extendedSig = ECDSASignature.Extended(sig, skipCheck: true) else {
+            let extendedSig = ECDSASignature.Extended(sig, skipCheck: true)
+        else {
             return false
         }
 
@@ -193,11 +191,14 @@ extension ScriptRuntime {
             throw ScriptError.undefinedSighashType
         }
 
-        let sighash = if sigVersion == .base {
-            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode).data
-        } else {
-            SignatureHash.Segwit(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode, prevout: prevout).data
-        }
+        let sighash =
+            if sigVersion == .base {
+                SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode).data
+            } else {
+                SignatureHash.Segwit(
+                    tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode, prevout: prevout
+                ).data
+            }
         if let pubkey = PublicKey(pubkeyData) {
             return extendedSig.sig.verify(hash: sighash, pubkey: pubkey)
         }
@@ -205,7 +206,6 @@ extension ScriptRuntime {
     }
 
     private mutating func checkSigSchnorr(_ sig: Data, _ pubkeyData: Data) throws -> Bool {
-
         guard let tapLeafHash = tapLeafHash, let keyVersion = keyVersion else { preconditionFailure() }
 
         if !sig.isEmpty { try checkSigopBudget() }
@@ -215,10 +215,13 @@ extension ScriptRuntime {
 
         // If the public key size is 32 bytes, it is considered to be a public key as described in BIP340:
         if let pubkey = PublicKey(xOnly: pubkeyData), !sig.isEmpty {
-
-            let ext = TapscriptExtension(tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
+            let ext = TapscriptExtension(
+                tapLeafHash: tapLeafHash, keyVersion: keyVersion, codesepPos: codeSeparatorPosition)
             let extendedSig = try SchnorrSignature.Extended(sig)
-            let sighash = SignatureHash.Taproot(tx: tx, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, tapscriptExtension: ext, sighashCache: &sighashCache).data
+            let sighash = SignatureHash.Taproot(
+                tx: tx, input: input, sighashType: extendedSig.sighashType, prevouts: prevouts, tapscriptExtension: ext,
+                sighashCache: &sighashCache
+            ).data
 
             // Validation failure in this case immediately terminates script execution with failure.
             guard extendedSig.sig.verify(hash: sighash, pubkey: pubkey) else {

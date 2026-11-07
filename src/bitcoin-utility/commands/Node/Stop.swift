@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct Stop: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: StopRPC.description
     )

@@ -1,19 +1,21 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 public enum ProtocolVersion: Int, Sendable, Comparable {
-
-    case unsupported = 70015, latest = 70016, future = 70017
+    case unsupported = 70015
+    case latest = 70016
+    case future = 70017
 
     init(_ value: Int) {
-        self = if value == Self.latest.rawValue {
-            .latest
-        } else if value >= Self.future.rawValue {
-            .future
-        } else {
-            .unsupported
-        }
+        self =
+            if value == Self.latest.rawValue {
+                .latest
+            } else if value >= Self.future.rawValue {
+                .future
+            } else {
+                .unsupported
+            }
     }
 
     public static func < (lhs: ProtocolVersion, rhs: ProtocolVersion) -> Bool {
@@ -22,7 +24,6 @@ public enum ProtocolVersion: Int, Sendable, Comparable {
 }
 
 extension ProtocolVersion: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         let value: UInt32 = try .init(parsingLittleEndian: &input)
         self.init(Int(value))

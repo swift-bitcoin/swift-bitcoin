@@ -1,9 +1,8 @@
-import Foundation
 import CSECP256K1
+import Foundation
 
 /// Elliptic curve SECP256K1 secret key.
 public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible {
-
     /// Uses global secp256k1 signing context.
     public init() {
         var bytes: [UInt8]
@@ -49,7 +48,9 @@ public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible 
 
     package var xOnlyPubkey: PublicKey { .init(self, requireEvenY: true) }
 
-    public func sign(_ message: String, signatureFormat: ECDSASignature.Format = .full, recoverCompressedKeys: Bool = true) -> ECDSASignature? {
+    public func sign(
+        _ message: String, signatureFormat: ECDSASignature.Format = .full, recoverCompressedKeys: Bool = true
+    ) -> ECDSASignature? {
         .init(message: message, secretKey: self, format: signatureFormat)
     }
 

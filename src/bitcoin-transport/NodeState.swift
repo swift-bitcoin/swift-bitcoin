@@ -1,9 +1,8 @@
-import Foundation
 import BitcoinBase
+import Foundation
 
 public struct NodeState: Sendable {
-
-    public init(feeFilterRate: Amount = 1, peers: [PeerID : PeerState] = [:]) {
+    public init(feeFilterRate: Amount = 1, peers: [PeerID: PeerState] = [:]) {
         self.feeFilterRate = feeFilterRate
         self.peers = peers
     }
@@ -12,7 +11,7 @@ public struct NodeState: Sendable {
     public var feeFilterRate: Amount // TODO: Allow to be changed via RPC command, #189
 
     /// Peer information.
-    public internal(set) var peers = [PeerID : PeerState]()
+    public internal(set) var peers = [PeerID: PeerState]()
 
     @usableFromInline static let initial = Self()
 }

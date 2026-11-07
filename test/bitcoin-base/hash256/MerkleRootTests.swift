@@ -38,8 +38,9 @@ struct MerkleRootTests {
                 "b1fea52486ce0c62bb442b530a3f0132b826c74e473d1f2c220bfa78111c5082",
                 "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
             ])
-            #expect(MerkleRoot(transactionIdentifiers: ids).displayHex
-                == "7dac2c5666815c17a3b36427de37bb9d2e2c5ccec3f8633eb91a4205cb4c10ff")
+            #expect(
+                MerkleRoot(transactionIdentifiers: ids).displayHex
+                    == "7dac2c5666815c17a3b36427de37bb9d2e2c5ccec3f8633eb91a4205cb4c10ff")
         }
 
         @Test func block100000() {
@@ -49,8 +50,9 @@ struct MerkleRootTests {
                 "6359f0868171b1d194cbee1af2f16ea598ae8fad666d9b012c8ed2b79a236ec4",
                 "e9a66845e05d5abc0ad04ec80f774a7e585c6e8db975962d069a522137b80c1d",
             ])
-            #expect(MerkleRoot(transactionIdentifiers: ids).displayHex
-                == "f3e94742aca4b5ef85488dc37c06c3282295ffec960994b2c0d5ac2a25a95766")
+            #expect(
+                MerkleRoot(transactionIdentifiers: ids).displayHex
+                    == "f3e94742aca4b5ef85488dc37c06c3282295ffec960994b2c0d5ac2a25a95766")
         }
 
         @Test func orderMatters() {
@@ -112,8 +114,9 @@ struct MerkleRootTests {
             #expect(MerkleRoot(transactionIdentifiers: ids[...]) == expected)
             #expect(MerkleRoot(transactionIdentifiers: ids.lazy.map { $0 }) == expected)
             #expect(MerkleRoot(transactionIdentifiers: ContiguousArray(ids)) == expected)
-            #expect(MerkleRoot(transactionIdentifiers: Array(syntheticTransactionIdentifiers(12)[3...]))
-                == MerkleRoot(transactionIdentifiers: Array(syntheticTransactionIdentifiers(12).dropFirst(3))))
+            #expect(
+                MerkleRoot(transactionIdentifiers: Array(syntheticTransactionIdentifiers(12)[3...]))
+                    == MerkleRoot(transactionIdentifiers: Array(syntheticTransactionIdentifiers(12).dropFirst(3))))
             #expect(ids == syntheticTransactionIdentifiers(9))
         }
     }
@@ -152,14 +155,16 @@ struct MerkleRootTests {
         /// The odd-level self-pairing is part of the algorithm, not a mutation.
         @Test(arguments: [3, 5, 7, 9, 11, 13, 100, 1_000])
         func oddCountsAreNotMutations(count: Int) throws {
-            #expect(MerkleRoot.compute(transactionIdentifiers: syntheticTransactionIdentifiers(count)).isMutated == false)
+            #expect(
+                MerkleRoot.compute(transactionIdentifiers: syntheticTransactionIdentifiers(count)).isMutated == false)
         }
 
         /// Detection only adds the flag: the root is the same with and without it, mutated or not.
         @Test func detectionDoesNotChangeTheRoot() {
             let ids = syntheticTransactionIdentifiers(5)
             for list in [ids, ids + [ids[4]], ids + ids] {
-                #expect(MerkleRoot.compute(transactionIdentifiers: list).root == MerkleRoot(transactionIdentifiers: list))
+                #expect(
+                    MerkleRoot.compute(transactionIdentifiers: list).root == MerkleRoot(transactionIdentifiers: list))
             }
         }
     }
@@ -178,8 +183,9 @@ struct MerkleRootTests {
             let leaves = [Self.zero] + ids.dropFirst().map(\.hash)
             let expected = referenceRoot(leaves.map(TransactionIdentifier.init))
             #expect(bytes(of: WitnessMerkleRoot(witnessTransactionIdentifiers: ids).hash) == expected)
-            #expect(WitnessMerkleRoot.compute(witnessTransactionIdentifiers: ids).root
-                == WitnessMerkleRoot(witnessTransactionIdentifiers: ids))
+            #expect(
+                WitnessMerkleRoot.compute(witnessTransactionIdentifiers: ids).root
+                    == WitnessMerkleRoot(witnessTransactionIdentifiers: ids))
         }
 
         /// Whatever is passed for the coinbase is ignored.
@@ -193,7 +199,8 @@ struct MerkleRootTests {
         /// A coinbase-only block's witness root is zero.
         @Test func coinbaseOnly() {
             #expect(WitnessMerkleRoot(witnessTransactionIdentifiers: Self.wtxids(1)).hash == Self.zero)
-            #expect(WitnessMerkleRoot(witnessTransactionIdentifiers: [WitnessTransactionIdentifier]()).hash == Self.zero)
+            #expect(
+                WitnessMerkleRoot(witnessTransactionIdentifiers: [WitnessTransactionIdentifier]()).hash == Self.zero)
         }
 
         /// Without witness data wtxids equal txids, so the trees differ only in the coinbase leaf.
@@ -202,8 +209,9 @@ struct MerkleRootTests {
             var withZeroCoinbase = txids
             withZeroCoinbase[0] = TransactionIdentifier(Self.zero)
             let wtxids = txids.map { WitnessTransactionIdentifier($0.hash) }
-            #expect(WitnessMerkleRoot(witnessTransactionIdentifiers: wtxids).hash
-                == MerkleRoot(transactionIdentifiers: withZeroCoinbase).hash)
+            #expect(
+                WitnessMerkleRoot(witnessTransactionIdentifiers: wtxids).hash
+                    == MerkleRoot(transactionIdentifiers: withZeroCoinbase).hash)
         }
 
         @Test func reportsMutation() {
@@ -217,7 +225,9 @@ struct MerkleRootTests {
         func commitment(reservedSeed: Int) {
             let root = WitnessMerkleRoot(witnessTransactionIdentifiers: Self.wtxids(4))
             let reserved = reservedSeed == 0 ? Self.zero : randomHashes(1, seed: UInt64(70 + reservedSeed))[0]
-            #expect(root.commitment(witnessReservedValue: reserved) == doubleSHA256(bytes(of: root.hash) + bytes(of: reserved)))
+            #expect(
+                root.commitment(witnessReservedValue: reserved)
+                    == doubleSHA256(bytes(of: root.hash) + bytes(of: reserved)))
         }
     }
 }

@@ -1,5 +1,4 @@
 enum PSBTOutputKeyType: Int, KeyType {
-
     /// Redeem Script. `PSBT_OUT_REDEEM_SCRIPT` in BIP174.
     ///
     /// The redeemScript for this output if it has one.

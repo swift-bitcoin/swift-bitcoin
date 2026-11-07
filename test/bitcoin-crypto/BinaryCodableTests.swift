@@ -1,12 +1,11 @@
-import Foundation
 import BinaryParsing
-import Testing
 import BitcoinCrypto
+import Foundation
+import Testing
 
 struct BinaryCodableTests {
-
     @Test func trivialRoundtrip() throws {
-        let a = Int.random(in: Int.min ... Int.max)
+        let a = Int.random(in: Int.min...Int.max)
         var counter = BinarySizeCounter()
         counter.count(Int.self)
 
@@ -42,7 +41,8 @@ struct BinaryCodableTests {
 
     @Test func nestedStructRoundtrip() throws {
         let child = CustomStruct(int: .max, intArray: [0, 1, 2], dataField: .init([3, 4, 5, 6]), uInt64: .max)
-        let parent = ParentStruct(int1: .max, child: child, int2: .max / 2, children: [child, child, child], int3: .max / 3)
+        let parent = ParentStruct(
+            int1: .max, child: child, int2: .max / 2, children: [child, child, child], int3: .max / 3)
         var counter = BinarySizeCounter()
         counter.count(parent)
         let data = try Data(capacity: counter.size) { out in
@@ -134,4 +134,3 @@ extension CustomStruct: BinaryCodable {
         out.append(uInt64, as: UInt64.self, .littleEndian)
     }
 }
-

@@ -1,11 +1,11 @@
-import Testing
-import Foundation
-@testable import BitcoinBlockchain // @testable for sigHash(), SigHashType
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
+import Testing
+
+@testable import BitcoinBlockchain // @testable for sigHash(), SigHashType
 
 struct BlockchainServiceTests {
-
     /// Tests synchronizing blocks between two blockchains.
     @Test("Dual blockchain synchronization")
     func dualBlockchainSync() async throws {
@@ -43,7 +43,10 @@ struct BlockchainServiceTests {
 
         let bob = try await BlockchainService()
         await bob.generateTo(pubkey)
-        await bob.generateTo(pubkey) // TODO: This block would/should fail if it shares the same timestamp as the previous, as they need to be strictly newer than the median time
+
+        // TODO: This block would/should fail if it shares the same timestamp as the previous, as they need to be
+        // strictly newer than the median time
+        await bob.generateTo(pubkey)
         await bob.generateTo(pubkey)
 
         let aliceLocator = await alice.blockLocator()
@@ -81,10 +84,8 @@ struct BlockchainServiceTests {
         await #expect(alice.height == 3)
     }
 
-
     /// Tests mining empty blocks, spending a coinbase transaction and mine again.
     @Test("Mine and spend") func mineAndSpend() async throws {
-
         // Generate a secret key, corresponding public key, hash and address.
         let secretKey = SecretKey()
         let pubkey = secretKey.pubkey
@@ -93,7 +94,7 @@ struct BlockchainServiceTests {
         let blockchain = try await BlockchainService()
 
         // Mine 100 blocks so block 1's coinbase output reaches maturity.
-        for _ in 0 ..< 100 {
+        for _ in 0..<100 {
             await blockchain.generateTo(Script.payToPubkeyHash(pubkey))
         }
 
@@ -124,7 +125,7 @@ struct BlockchainServiceTests {
             sequence: unsignedInput.sequence,
             script: .init([
                 .pushBytes(sigData),
-                .pushBytes(pubkey.data)
+                .pushBytes(pubkey.data),
             ]),
             witness: unsignedInput.witness)
 
@@ -160,67 +161,73 @@ struct BlockchainServiceTests {
         let consensusParams = ConsensusParams(
             chain: ConsensusParams.swiftTesting.chain,
             magicBytes: 0,
-            powLimit: [0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            powLimit: [
+                0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            ],
             powTargetTimespan: 1 * 1 * 10 * 60, // 10 minutes
             powTargetSpacing: 2 * 60, // 2 minutes
             powAllowMinDifficultyBlocks: true,
             powNoRetargeting: false,
-            genesisBlockTime: 1296688602,
+            genesisBlockTime: 1_296_688_602,
             genesisBlockNonce: 2,
-            genesisBlockTarget: 0x207fffff,
+            genesisBlockTarget: 0x207f_ffff,
             assumeValid: nil,
             segwitHeight: 0
         )
         let blockchain = try await BlockchainService(params: consensusParams)
         let genesisBlock = await blockchain.genesisBlock
 
-        #expect(consensusParams.powLimit.compact == 0x207fffff)
+        #expect(consensusParams.powLimit.compact == 0x207f_ffff)
         #expect(consensusParams.powLimit == Target(hex: "7f" + String(repeating: "ff", count: 31)))
 
-        #expect(genesisBlock.target == 0x207fffff)
+        #expect(genesisBlock.target == 0x207f_ffff)
         let genesisDate = genesisBlock.time
         var date = genesisDate
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = .gmt
 
-        let pubkey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
+        let pubkey = try #require(
+            PublicKey(compressed: [
+                0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e,
+                0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05,
+            ])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         for i in 1...15 {
             let minutes = if i < 5 { 4 } else if i < 10 { 2 } else { 4 }
             date = calendar.date(byAdding: .minute, value: minutes, to: date)!
             let header = try #require(await blockchain.generateTo(pubkey, blockTime: date))
-            let expectedTarget = if (1...4).contains(i) {
-                0x207fffff // 0x7fffff0000000000000000000000000000000000000000000000000000000000 DifficultyTarget(compact: block.target).data.reversed().hex
-            } else if (5...9).contains(i) {
-                0x1f6d386d // 0x006d386d00000000000000000000000000000000000000000000000000000000
-            } else if (10...14).contains(i) {
-                0x1f576057 // 0x0057605700000000000000000000000000000000000000000000000000000000
-            } else {
-                0x1f1e9351 // 0x001e935100000000000000000000000000000000000000000000000000000000
-            }
+            let expectedTarget =
+                if (1...4).contains(i) {
+                    0x207f_ffff // 0x7fffff0000000000000000000000000000000000000000000000000000000000
+                } else if (5...9).contains(i) {
+                    0x1f6d_386d // 0x006d386d00000000000000000000000000000000000000000000000000000000
+                } else if (10...14).contains(i) {
+                    0x1f57_6057 // 0x0057605700000000000000000000000000000000000000000000000000000000
+                } else {
+                    0x1f1e_9351 // 0x001e935100000000000000000000000000000000000000000000000000000000
+                }
             #expect(header.target == expectedTarget)
         }
     }
 }
 
-fileprivate func isApproximatelyEqual(
+private func isApproximatelyEqual(
     _ value: Double,
     to other: Double,
     absoluteTolerance: Double,
     relativeTolerance: Double = 0
-  ) -> Bool {
+) -> Bool {
     precondition(
-      absoluteTolerance >= 0 && absoluteTolerance.isFinite,
-      "absoluteTolerance should be non-negative and finite, " +
-      "but is \(absoluteTolerance)."
+        absoluteTolerance >= 0 && absoluteTolerance.isFinite,
+        "absoluteTolerance should be non-negative and finite, " + "but is \(absoluteTolerance)."
     )
     precondition(
-      relativeTolerance >= 0 && relativeTolerance <= 1,
-      "relativeTolerance should be non-negative and <= 1, " +
-      "but is \(relativeTolerance)."
+        relativeTolerance >= 0 && relativeTolerance <= 1,
+        "relativeTolerance should be non-negative and <= 1, " + "but is \(relativeTolerance)."
     )
     if value == other { return true }
     let delta = value - other
     let scale = max(value, other)
-    let bound = max(absoluteTolerance, scale*relativeTolerance)
+    let bound = max(absoluteTolerance, scale * relativeTolerance)
     return delta.isFinite && delta <= bound
 }
