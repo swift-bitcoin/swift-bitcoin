@@ -1,11 +1,9 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 extension ECDSASignature {
-
     /// A signature with sighash type extension.
     public struct Extended: Equatable, Sendable {
-
         public init(_ sig: ECDSASignature, sighashType: SighashType) {
             self.sig = sig
             self.sighashType = sighashType
@@ -17,7 +15,6 @@ extension ECDSASignature {
 }
 
 extension ECDSASignature.Extended {
-
     package init?(_ data: Data, skipCheck: Bool = false) {
         guard let last = data.last, let sig = ECDSASignature(data.dropLast()) else {
             return nil

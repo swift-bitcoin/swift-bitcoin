@@ -5,12 +5,14 @@ import _NIOFileSystem
 
 /// Legacy check configuration command; uses old ``NodeConfig/parse(_:strict:)`` instead of `Configuration`.
 struct LegacyCheckConfig: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Verifies the configuration file."
     )
 
-    @Argument(help: "The absolute path to either the directory containing Swift Bitcoin's configuration file or the configuration file itself, e.g. \"/some/directory/myConfig.json\".")
+    @Argument(
+        help:
+            "The absolute path to either the directory containing Swift Bitcoin's configuration file or the configuration file itself, e.g. \"/some/directory/myConfig.json\"."
+    )
     var location = NodeConfig.defaultLocation
 
     mutating func run() async throws(ValidationError) {

@@ -2,7 +2,6 @@ import Foundation
 import _NIOFileSystem
 
 extension NodeConfig {
-
     static func checkLocation(_ location: String) async throws(ParseError) -> FilePath {
         // Check whether we are accessing the default location
         let isDefault = location == Self.defaultLocation

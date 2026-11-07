@@ -1,5 +1,4 @@
 public struct ReindexRPC: RPCCommand, Sendable {
-
     public typealias Params = Never
     public typealias Result = Never
 

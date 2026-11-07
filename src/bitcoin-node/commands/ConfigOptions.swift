@@ -1,11 +1,13 @@
 import ArgumentParser
 
 struct ConfigOptions: ParsableArguments {
-
     @Option(help: "The absolute path the directory containing Swift Bitcoin's configuration file(s).")
     var configPath = NodeConfig.defaultLocation
 
-    @Option(help: "The P2P network to connect to. Defaults to what's specified in the configuration file. (default: \(NodeConfig.default.network))")
+    @Option(
+        help:
+            "The P2P network to connect to. Defaults to what's specified in the configuration file. (default: \(NodeConfig.default.network))"
+    )
     var network: NodeConfig.Network?
 
     @Option(help: "Serialized script for seeding signet, in hexadecimal format.")
@@ -14,10 +16,16 @@ struct ConfigOptions: ParsableArguments {
     @Option(help: "The address to bind the RPC server to.")
     var rpcHost: String?
 
-    @Option(help: "The TCP port number to bind the server instance to. Default's to network's default port (\(NodeConfig.Network.mainnet.defaultRPCPort) for mainnet)")
+    @Option(
+        help:
+            "The TCP port number to bind the server instance to. Default's to network's default port (\(NodeConfig.Network.mainnet.defaultRPCPort) for mainnet)"
+    )
     var rpcPort: Int?
 
-    @Option(help: "Use in-memory for ephemeral in-memory data. Use default-path for storing data in the default location (will be created if it does not yet exist) or use \"custom(path)\" to specify a custom path")
+    @Option(
+        help:
+            "Use in-memory for ephemeral in-memory data. Use default-path for storing data in the default location (will be created if it does not yet exist) or use \"custom(path)\" to specify a custom path"
+    )
     var dataLocation: String?
 
     @Option(help: "Listen for incoming connections on the peer-to-peer network at the speficied \"address:port\".")
@@ -42,7 +50,10 @@ struct ConfigOptions: ParsableArguments {
     @Option(help: .private)
     var connectPort: [Int] = []
 
-    @Option(help: "Connect to randomly selected public peers automatically on startup. (default: \(NodeConfig.default.autoConnect))")
+    @Option(
+        help:
+            "Connect to randomly selected public peers automatically on startup. (default: \(NodeConfig.default.autoConnect))"
+    )
     var autoConnect: Bool?
 
     @Option(help: "Log level.")

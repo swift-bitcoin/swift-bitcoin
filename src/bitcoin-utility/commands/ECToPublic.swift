@@ -1,11 +1,10 @@
 import ArgumentParser
-import BitcoinWallet
 import BitcoinCrypto
+import BitcoinWallet
 import Foundation
 
 /// Computes the public key corresponding to the provided secret key.
 struct ECToPublic: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Computes the public key corresponding to the provided secret key."
     )

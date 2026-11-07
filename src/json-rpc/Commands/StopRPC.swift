@@ -1,5 +1,4 @@
 public struct StopRPC: RPCCommand, Sendable {
-
     public typealias Params = Never
     public typealias Result = Never
 

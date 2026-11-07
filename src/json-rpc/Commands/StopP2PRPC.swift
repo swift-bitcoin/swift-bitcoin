@@ -1,6 +1,5 @@
 /// Stops listening to incoming peer-to-peer connections.
 public struct StopP2PRPC: RPCCommand, Sendable {
-
     public typealias Params = Never
     public typealias Result = Never
 

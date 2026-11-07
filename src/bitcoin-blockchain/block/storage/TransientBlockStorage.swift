@@ -1,11 +1,10 @@
+import BitcoinBase
+import Collections
 import Foundation
 import Logging
-import Collections
-import BitcoinBase
 
 /// Block storage service.
 actor TransientBlockStorage: BlockStorage {
-
     init(config: BlockStorageConfig = .init(), logger: Logger) throws(BlockStorageError) {
         precondition(config.path == nil)
         self.config = config
@@ -29,11 +28,15 @@ actor TransientBlockStorage: BlockStorage {
         try store(block: block, undo: nil)
     }
 
-    func store(_ undo: BlockUndo, forBlockAt locator: BlockStorageLocator) throws(BlockStorageError) -> BlockStorageLocator {
+    func store(_ undo: BlockUndo, forBlockAt locator: BlockStorageLocator) throws(BlockStorageError)
+        -> BlockStorageLocator
+    {
         try store(block: nil, undo: undo, locator: locator)
     }
 
-    private func store(block: Block?, undo: BlockUndo?, locator previousLocator: BlockStorageLocator? = nil) throws(BlockStorageError) -> BlockStorageLocator {
+    private func store(block: Block?, undo: BlockUndo?, locator previousLocator: BlockStorageLocator? = nil)
+        throws(BlockStorageError) -> BlockStorageLocator
+    {
         let blockOffset: Int
         let undoOffset: Int
         if let block {
@@ -102,12 +105,14 @@ actor TransientBlockStorage: BlockStorage {
         if locator.offset == -1 {
             undoOffset = blockUndos.isEmpty || !includeUndo ? -1 : 0
         } else {
-            undoOffset = locator.undoOffset == -1 || !includeUndo || !blockUndos.indices.contains(locator.undoOffset + 1) ? -1 : locator.undoOffset + 1
+            undoOffset =
+                locator.undoOffset == -1 || !includeUndo || !blockUndos.indices.contains(locator.undoOffset + 1)
+                ? -1 : locator.undoOffset + 1
         }
         let blockUndo = undoOffset == -1 ? nil : blockUndos[undoOffset]
         let locator = BlockStorageLocator(file: -1, offset: offset, undoOffset: undoOffset)
         return .init(locator: locator, block: block, undo: blockUndo)
     }
 
-    func flush() async { }
+    func flush() async {}
 }

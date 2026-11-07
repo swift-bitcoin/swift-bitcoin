@@ -2,9 +2,8 @@ import Foundation
 
 /// Pre-calculates a binary size by accumulating the byte count of values.
 public struct BinarySizeCounter {
-
     /// Initializes a size counter at zero bytes.
-    public init() { }
+    public init() {}
 
     /// The accumulated encoded data length, in bytes.
     public private(set) var size = 0

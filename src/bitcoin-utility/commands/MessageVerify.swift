@@ -1,11 +1,10 @@
 import ArgumentParser
-import BitcoinWallet
 import BitcoinCrypto
+import BitcoinWallet
 import Foundation
 
 /// Verifies a message signatue using the specified Bitcoin address.
 struct MessageVerify: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Verifies a message signatue using the specified Bitcoin address."
     )
@@ -33,11 +32,12 @@ struct MessageVerify: ParsableCommand {
         guard let sig = RecoverableSignature(sigData) else {
             throw ValidationError("Invalid signature data: signature")
         }
-        let result = if let pubkey = sig.recoverPubkey(messageData: messageData) {
-            Data(Hash160.hash(data: pubkey.data)) == address.hash
-        } else {
-            false
-        }
+        let result =
+            if let pubkey = sig.recoverPubkey(messageData: messageData) {
+                Data(Hash160.hash(data: pubkey.data)) == address.hash
+            } else {
+                false
+            }
         print(result)
     }
 }

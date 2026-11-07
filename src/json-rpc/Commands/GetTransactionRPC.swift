@@ -1,6 +1,5 @@
 /// Transaction information including ID, witness ID, inputs and outputs. For each output a raw value is also included in order to facilitate the signing of transactions which require the serialization of previous outputs.
 public struct GetTransactionRPC: RPCCommand, Sendable {
-
     public struct Params: Codable, Sendable {
         public init(transactionID: String) {
             self.transactionID = transactionID
@@ -10,7 +9,10 @@ public struct GetTransactionRPC: RPCCommand, Sendable {
     }
 
     public struct Result: Codable, Sendable {
-        public init(id: String, witnessID: String, inputs: [GetTransactionRPC.Result.Input], outputs: [GetTransactionRPC.Result.Output]) {
+        public init(
+            id: String, witnessID: String, inputs: [GetTransactionRPC.Result.Input],
+            outputs: [GetTransactionRPC.Result.Output]
+        ) {
             self.id = id
             self.witnessID = witnessID
             self.inputs = inputs

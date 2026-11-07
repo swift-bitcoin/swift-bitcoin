@@ -2,7 +2,6 @@ import ArgumentParser
 import Bitcoin
 
 struct HashMessage: ParsableCommand {
-
     @Argument var message: String
 
     func run() throws(ValidationError) {

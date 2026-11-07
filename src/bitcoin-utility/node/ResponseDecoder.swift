@@ -1,11 +1,10 @@
 import Foundation
+import JSONRPC
 import NIOCore
 import NIOFoundationCompat
-import JSONRPC
 
 /// Client side request/response coder.
 struct ResponseDecoder: ByteToMessageDecoder {
-
     typealias InboundIn = ByteBuffer
     typealias InboundOut = JSONRPCResponse
 

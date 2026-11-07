@@ -1,13 +1,15 @@
 import BinaryParsing
+import BitcoinBase
 import Foundation
 import Testing
-import BitcoinBase
 
 private func target(low: UInt128, high: UInt128 = 0) -> Target {
-    Target(hex: String(high, radix: 16) + {
-        let digits = String(low, radix: 16)
-        return String(repeating: "0", count: 32 - digits.count) + digits
-    }())!
+    Target(
+        hex: String(high, radix: 16)
+            + {
+                let digits = String(low, radix: 16)
+                return String(repeating: "0", count: 32 - digits.count) + digits
+            }())!
 }
 
 private let maxWork = Chainwork(low: .max, high: .max)
@@ -16,21 +18,22 @@ private let maxWork = Chainwork(low: .max, high: .max)
 struct ChainworkTests {
     @Suite struct FromTarget {
         /// Expected values computed with Python: 2²⁵⁶ // (target + 1).
-        @Test(arguments: [
-            (Int(0x1D00_FFFF), "100010001"),
-            (0x1C00_FFFF, "10001000100"),
-            (0x1B00_FFFF, "1000100010001"),
-            (0x1D01_FFFE, "80008000"),
-            (0x1D00_D86A, "12ed3afd2"),
-            (0x1B04_04CB, "3fb3ab764c00"),
-            (0x1F11_1111, "f00"),
-            (0x1903_A30C, "4663bb9efdacfcf2"),
-            (0x1234_5678, "4e42c9406c694408de2d51dec8c58"),
-            (0x1703_4219, "4e9235f043634662e0cb"),
-            (0x207F_FFFF, "2"),
-            (0x2100_FFFF, "1"),
-            (0x0101_0000, "8" + String(repeating: "0", count: 63)),
-        ] as [(Int, String)])
+        @Test(
+            arguments: [
+                (Int(0x1D00_FFFF), "100010001"),
+                (0x1C00_FFFF, "10001000100"),
+                (0x1B00_FFFF, "1000100010001"),
+                (0x1D01_FFFE, "80008000"),
+                (0x1D00_D86A, "12ed3afd2"),
+                (0x1B04_04CB, "3fb3ab764c00"),
+                (0x1F11_1111, "f00"),
+                (0x1903_A30C, "4663bb9efdacfcf2"),
+                (0x1234_5678, "4e42c9406c694408de2d51dec8c58"),
+                (0x1703_4219, "4e9235f043634662e0cb"),
+                (0x207F_FFFF, "2"),
+                (0x2100_FFFF, "1"),
+                (0x0101_0000, "8" + String(repeating: "0", count: 63)),
+            ] as [(Int, String)])
         func knownValues(bits: Int, expectedHex: String) {
             let work = Target(compact: bits)!.work
             #expect(work.description == String(repeating: "0", count: 64 - expectedHex.count) + expectedHex)
@@ -45,10 +48,12 @@ struct ChainworkTests {
         @Test(arguments: 1...256)
         func powersOfTwo(k: Int) {
             let allOnes = UInt128.max
-            let t = k >= 128
+            let t =
+                k >= 128
                 ? target(low: allOnes, high: k == 256 ? allOnes : (1 << (k - 128)) - 1)
                 : target(low: (1 << k) - 1)
-            let expected = 256 - k >= 128
+            let expected =
+                256 - k >= 128
                 ? Chainwork(low: 0, high: 1 << (256 - k - 128))
                 : Chainwork(low: 1 << (256 - k))
             #expect(t.work == expected)
@@ -137,7 +142,7 @@ struct ChainworkTests {
 
         @Test func picksTheChainWithMoreWork() {
             let easy = (0..<10).reduce(Chainwork.zero) { sum, _ in sum + Target.difficultyOne.work }
-            let hard = Target(compact: 0x1C00_FFFF)!.work  // one block at 256x difficulty
+            let hard = Target(compact: 0x1C00_FFFF)!.work // one block at 256x difficulty
             #expect(hard > easy)
         }
     }
@@ -146,7 +151,9 @@ struct ChainworkTests {
         /// What swift-bitcoin's `DifficultyTarget` writes: eight `UInt32` limbs, least significant
         /// first, each little-endian.
         private func difficultyTargetEncoding(_ work: Chainwork) -> [UInt8] {
-            let limbs32 = limbs(work).flatMap { [UInt32(truncatingIfNeeded: $0), UInt32(truncatingIfNeeded: $0 >> 32)] }
+            let limbs32 = limbs(work).flatMap {
+                [UInt32(truncatingIfNeeded: $0), UInt32(truncatingIfNeeded: $0 >> 32)]
+            }
             return limbs32.flatMap { limb in (0..<4).map { UInt8(truncatingIfNeeded: limb >> (8 * $0)) } }
         }
 
@@ -155,7 +162,7 @@ struct ChainworkTests {
         }
 
         @Test func genesisWork() {
-            let work = Target.difficultyOne.work  // 0x100010001
+            let work = Target.difficultyOne.work // 0x100010001
             #expect(encoded(work) == [0x01, 0x00, 0x01, 0x00, 0x01] + [UInt8](repeating: 0, count: 27))
         }
 
@@ -164,7 +171,7 @@ struct ChainworkTests {
             let max = Chainwork(low: .max, high: .max)
             #expect(encoded(max) == [UInt8](repeating: 0xFF, count: 32))
             #expect(try Chainwork(parsing: encoded(max)) == max)
-            let boundary = Chainwork(low: 0, high: 1)  // 2^128: byte 16 is the first byte of `high`
+            let boundary = Chainwork(low: 0, high: 1) // 2^128: byte 16 is the first byte of `high`
             #expect(encoded(boundary) == [UInt8](repeating: 0, count: 16) + [0x01] + [UInt8](repeating: 0, count: 15))
         }
 
@@ -204,9 +211,9 @@ struct ChainworkTests {
     @Suite struct HexAndBytes {
         /// `nMinimumChainWork` values as Bitcoin Core and swift-bitcoin's `ConsensusParams` write them.
         @Test(arguments: [
-            "00000000000000000000000000000000000000000000034a4690fe592dc49c7c",  // testnet4
-            "00000000000000000000000000000000000000000000000000000b463ea0a4b8",  // signet
-            "0000000000000000000000000000000000000000000000000000000000000000",  // regtest
+            "00000000000000000000000000000000000000000000034a4690fe592dc49c7c", // testnet4
+            "00000000000000000000000000000000000000000000000000000b463ea0a4b8", // signet
+            "0000000000000000000000000000000000000000000000000000000000000000", // regtest
         ])
         func minimumChainWork(hex: String) throws {
             let work = try #require(Chainwork(hex: hex))
@@ -266,7 +273,8 @@ struct ChainworkTests {
                 #expect(fromInline == work)
             }
             #expect(Chainwork(bigEndianBytes: InlineArray<32, UInt8>(repeating: 0)) == .zero)
-            #expect(Chainwork(bigEndianBytes: InlineArray<32, UInt8>(repeating: 0xFF)) == Chainwork(low: .max, high: .max))
+            #expect(
+                Chainwork(bigEndianBytes: InlineArray<32, UInt8>(repeating: 0xFF)) == Chainwork(low: .max, high: .max))
         }
 
         /// Byte 15 is the high word's least significant byte, byte 16 the low word's most significant.
@@ -297,7 +305,9 @@ struct ChainworkTests {
         @Test func isSixtyFourHexDigits() {
             #expect(Chainwork.zero.description == String(repeating: "0", count: 64))
             #expect(maxWork.description == String(repeating: "f", count: 64))
-            #expect(Chainwork(low: 0, high: 1).description == String(repeating: "0", count: 31) + "1" + String(repeating: "0", count: 32))
+            #expect(
+                Chainwork(low: 0, high: 1).description == String(repeating: "0", count: 31) + "1"
+                    + String(repeating: "0", count: 32))
             for t in randomTargets(100, seed: 44) {
                 #expect(t.work.description.count == 64)
             }

@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct StopP2P: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         commandName: StopP2PRPC.method,
         abstract: StopP2PRPC.description

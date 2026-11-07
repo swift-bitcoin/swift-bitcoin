@@ -1,13 +1,12 @@
-import LMDB
 import BinaryParsing
-import _NIOFileSystem
-import Foundation
-import Logging
 import BitcoinBase
+import Foundation
+import LMDB
+import Logging
+import _NIOFileSystem
 
 /// An index plus in-memory storage for coins.
 actor PersistentCoinIndex: CoinIndex {
-
     enum Error: Swift.Error {
         case deletionIssue
     }
@@ -19,7 +18,7 @@ actor PersistentCoinIndex: CoinIndex {
         let env = try initCoinIndexEnv(path: self.path)
         let byID = try env.openDatabase(named: "by-id")
 
-        var coins = [Outpoint : UnspentOutput]()
+        var coins = [Outpoint: UnspentOutput]()
         try env.read { txn in
             let cursor = try Cursor(txn, database: byID)
 
@@ -46,7 +45,9 @@ actor PersistentCoinIndex: CoinIndex {
         coins[outpoint]
     }
 
-    func update(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) throws(CoinsError) -> [UnspentOutput?] {
+    func update(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint: UnspentOutput]) throws(CoinsError)
+        -> [UnspentOutput?]
+    {
         var removedOutpoints = [Outpoint]()
         var removedCoins = [UnspentOutput?]()
         for outpoint in outpointsToRemove {
@@ -65,9 +66,11 @@ actor PersistentCoinIndex: CoinIndex {
         return removedCoins
     }
 
-    private func updatePersistent(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint : UnspentOutput]) throws/*(CoinsError)*/ {
+    private func updatePersistent(remove outpointsToRemove: [Outpoint], add coinsToAdd: [Outpoint: UnspentOutput])
+        throws /*(CoinsError)*/
+    {
         do {
-            try env.write{ txn /*throws(CoinsError)*/ in
+            try env.write { txn /*throws(CoinsError)*/ in
                 for outpoint in outpointsToRemove {
                     let deleted: Bool
                     do {
@@ -90,12 +93,12 @@ actor PersistentCoinIndex: CoinIndex {
                 }
             }
         } catch {
-//            switch error {
-//            case let .handlerIssue(nestedError):
-//                throw nestedError
-//            default:
-                throw CoinsError.databaseError(error)
-//            }
+            //            switch error {
+            //            case let .handlerIssue(nestedError):
+            //                throw nestedError
+            //            default:
+            throw CoinsError.databaseError(error)
+            //            }
         }
     }
 }

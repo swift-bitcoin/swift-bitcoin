@@ -1,12 +1,10 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension Transaction {
-
     /// Lock time value for a ``Transaction``. If less than 500,000,000 is interpreted as the minimum block height at which the transaction is unlocked. When equal or greater than 500,000,000 it represents the time (UNIX epoch) at which the transaction is unlocked. Use 0 to disable the time lock entirely.
     public struct Locktime: Equatable, Sendable {
-
         public init(_ locktimeValue: Int) {
             self.locktimeValue = locktimeValue
         }
@@ -40,7 +38,6 @@ extension Transaction {
 
 /// Binary data extensions.
 extension Transaction.Locktime: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         let rawValue = try UInt32(parsingLittleEndian: &input)
         self.init(Int(rawValue))

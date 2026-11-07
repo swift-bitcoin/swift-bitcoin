@@ -1,9 +1,8 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 /// A boolean value in the context of SCRIPT execution.
 public struct ScriptBool: Equatable, Sendable {
-
     public static let `false` = Self(false)
     public static let `true` = Self(true)
 
@@ -19,7 +18,6 @@ public struct ScriptBool: Equatable, Sendable {
 }
 
 extension ScriptBool: BinaryEncodable {
-
     init(_ data: Data) {
         let firstNonZeroIndex = data.firstIndex { $0 != 0 }
         if firstNonZeroIndex == data.endIndex - 1, let last = data.last, last == 0x80 {

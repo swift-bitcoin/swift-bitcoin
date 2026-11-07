@@ -1,9 +1,8 @@
-import Foundation
 import BitcoinBase
+import Foundation
 
 /// A summary of a chain tip – i.e. fork
 public struct ChainTipSummary: Equatable, Sendable {
-
     // Mainly for testing
     package init(tip: BlockHash, height: Int, branchLength: Int, status: ValidationStatus) {
         self.tip = tip
@@ -11,7 +10,6 @@ public struct ChainTipSummary: Equatable, Sendable {
         self.branchLength = branchLength
         self.status = status
     }
-    
 
     init(_ fork: ChainFork) {
         tip = fork.tip.header.id

@@ -1,7 +1,7 @@
-import Foundation
 import AsyncAlgorithms
 import BitcoinBase
 import BitcoinBlockchain
+import Foundation
 import Logging
 import Metrics
 
@@ -10,13 +10,11 @@ public typealias PeerID = Int
 
 /// Manages connection with state.peers, process incoming messages and sends responses.
 public actor NodeService: Sendable {
-
     public struct Stats: Sendable {
         public let peers: Int
     }
 
     public struct PeerSummary: Sendable {
-
         init(_ peer: PeerState, id: PeerID) {
             self.id = id
             host = peer.host
@@ -40,7 +38,10 @@ public actor NodeService: Sendable {
     ///   - version: Protocol version number.
     ///   - services: Supported services.
     ///   - feeFilterRate: An arbitrary fee rate by which to filter transactions.
-    public init(blockchain: BlockchainService, config: NodeParams, logger: Logger = .init(label: "node"), state: NodeState = .initial) async {
+    public init(
+        blockchain: BlockchainService, config: NodeParams, logger: Logger = .init(label: "node"),
+        state: NodeState = .initial
+    ) async {
         self.blockchain = blockchain
         self.config = config
         self.logger = logger
@@ -85,11 +86,11 @@ public actor NodeService: Sendable {
     package let logger: Logger
 
     public private(set) var state: NodeState {
-       didSet {
-           for continuation in continuations {
-               continuation.yield(stats)
-           }
-       }
+        didSet {
+            for continuation in continuations {
+                continuation.yield(stats)
+            }
+        }
     }
 
     private lazy var metrics = Metrics()
@@ -127,16 +128,16 @@ public actor NodeService: Sendable {
     private var port = Int?.none
 
     /// Channel for delivering message to state.peers.
-    private var peerOuts = [PeerID : AsyncChannel<NetworkMessage>]()
+    private var peerOuts = [PeerID: AsyncChannel<NetworkMessage>]()
 
     /// The node's randomly generated identifier (nonce). This is sent with `version` messages.
-    private let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
+    private let nonce = UInt64.random(in: UInt64.min...UInt64.max)
 
     /// Subscription to new blocks
     private var blockChannels = [AsyncChannel<Block>]()
 
     /// BIP152
-    private var pendingBlockTxs: [BlockHash : [Transaction?]] = [:]
+    private var pendingBlockTxs: [BlockHash: [Transaction?]] = [:]
 
     /// The peer currently downloading headers from; `nil` means the peer has not been selected yet or we are close to the tip and accepting headers from all peers.
     private var headersSyncPeerID: PeerID?
@@ -149,12 +150,12 @@ public actor NodeService: Sendable {
     private func startSubscriptions() async {
         await withDiscardingTaskGroup { group in
             group.addTask {
-                for await (block, status, height) in await self.blocks/*.cancelOnGracefulShutdown()*/ {
+                for await (block, status, height) in await self.blocks /*.cancelOnGracefulShutdown()*/ {
                     await self.handleBlockUpdate(block, status: status, height: height)
                 }
             }
             group.addTask {
-                for await tx in await self.txs/*.cancelOnGracefulShutdown()*/ {
+                for await tx in await self.txs /*.cancelOnGracefulShutdown()*/ {
                     await self.handleTx(tx)
                 }
             }
@@ -289,7 +290,7 @@ public actor NodeService: Sendable {
             }
         }
 
-        guard let _ = state.peers[id] else { return false }
+        guard state.peers[id] != nil else { return false }
         if headersSyncPeerID == id {
             headersSyncPeerID = nil
         }
@@ -427,15 +428,17 @@ public actor NodeService: Sendable {
     }
 
     private func sendTx(_ tx: Transaction, to id: PeerID) async {
-        guard let _ = state.peers[id] else { return }
+        guard state.peers[id] != nil else { return }
         let inventoryMessage = InventoryMessage(items: [.init(type: .witnessTx, hash: tx.witnessID.hash)])
         await send(.inv, payload: inventoryMessage.data, to: id)
     }
 
     private func sendBlock(_ block: Block, to id: PeerID, useQueue: Bool = false) async {
-        guard let _ = state.peers[id] else { return }
-        let nonce = UInt64.random(in: UInt64.min ... UInt64.max)
-        let compactBlockMesssage = CompactBlockMessage(header: block.header, nonce: nonce, txIDs: block.shortTransactionIDs(nonce: nonce, dropIndices: [0]), txs: [.init(index: 0, tx: block.txs[0])])
+        guard state.peers[id] != nil else { return }
+        let nonce = UInt64.random(in: UInt64.min...UInt64.max)
+        let compactBlockMesssage = CompactBlockMessage(
+            header: block.header, nonce: nonce, txIDs: block.shortTransactionIDs(nonce: nonce, dropIndices: [0]),
+            txs: [.init(index: 0, tx: block.txs[0])])
         if useQueue {
             enqueue(.cmpctblock, payload: compactBlockMesssage.data, to: id)
         } else {
@@ -445,7 +448,7 @@ public actor NodeService: Sendable {
 
     /// Request headers from a specific peer.
     private func requestHeaders(_ id: PeerID) async {
-        guard let _ = state.peers[id] else { preconditionFailure() }
+        guard state.peers[id] != nil else { preconditionFailure() }
         let locatorHashes = await blockchain.blockLocator()
         let getHeaders = GetHeadersMessage(protocolVersion: .latest, locatorHashes: locatorHashes)
         enqueue(.getheaders, payload: getHeaders.data, to: id)
@@ -477,7 +480,9 @@ public actor NodeService: Sendable {
             $0.union($1.inTransitBlocks)
         }
 
-        let (blockIDs, updatedLastCommonBlock) = await blockchain.findNextBlocksToDownload(bestKnownBlock: peer.bestKnownHeader, lastCommonBlock: peer.lastCommonBlock, count: numberOfBlocksToRequest, exclude: allInTransitBlocks.union(processingBlocks))
+        let (blockIDs, updatedLastCommonBlock) = await blockchain.findNextBlocksToDownload(
+            bestKnownBlock: peer.bestKnownHeader, lastCommonBlock: peer.lastCommonBlock, count: numberOfBlocksToRequest,
+            exclude: allInTransitBlocks.union(processingBlocks))
 
         state.peers[id]?.lastCommonBlock = updatedLastCommonBlock
 
@@ -518,7 +523,6 @@ public actor NodeService: Sendable {
      */
 
     private func handleBlockUpdate(_ block: Block, status: ValidationStatus, height: Int) async {
-
         // The following line causes `findNextBlocksToDownload()` to request the same block twice
         // if status == .merkle { processingBlocks.remove(block.id) }
 
@@ -559,7 +563,7 @@ public actor NodeService: Sendable {
                         if peer.prefersHeaders {
                             await self.send(.headers, payload: headersMessage.data, to: id)
                         } else {
-                            let inventoryMessage = InventoryMessage(items: [.init(type: .block, hash:  block.id.hash)]
+                            let inventoryMessage = InventoryMessage(items: [.init(type: .block, hash: block.id.hash)]
                             )
                             await self.send(.inv, payload: inventoryMessage.data, to: id)
                         }
@@ -600,7 +604,6 @@ public actor NodeService: Sendable {
 
     /// Processes an incoming version message as part of the handshake.
     private func processVersion(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
-
         // Inbound connection sequence:
         // <- version (we receive the first message from the connecting peer)
         // -> version
@@ -747,7 +750,6 @@ public actor NodeService: Sendable {
 
         // TODO: During IBD set the fee filter to max money. Reset after IBD.
         enqueue(.feefilter, payload: FeeFilterMessage(feeRate: state.feeFilterRate).data, to: id)
-
     }
 
     private func processPing(_ message: NetworkMessage, from id: PeerID) async throws {
@@ -768,7 +770,6 @@ public actor NodeService: Sendable {
     }
 
     private func processPong(_ message: NetworkMessage, from id: PeerID) throws {
-
         guard let peer = state.peers[id] else { return }
 
         guard let pong = try? PongMessage(message.payload) else {
@@ -786,7 +787,8 @@ public actor NodeService: Sendable {
 
         if peer.compactBlocksVersionLocked { return }
 
-        guard let compactBlocksVersion = peer.compactBlocksVersion, compactBlocksVersion >= Self.minCompactBlocksVersion else {
+        guard let compactBlocksVersion = peer.compactBlocksVersion, compactBlocksVersion >= Self.minCompactBlocksVersion
+        else {
             throw Error.unsupportedCompactBlocksVersion
         }
         state.peers[id]?.compactBlocksVersionLocked = true
@@ -818,7 +820,7 @@ public actor NodeService: Sendable {
     }
 
     private func processGetHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
-        guard let _ = state.peers[id] else { return }
+        guard state.peers[id] != nil else { return }
 
         guard let getHeaders = try? GetHeadersMessage(message.payload) else {
             logger.error("Could not parse get headers message")
@@ -832,7 +834,7 @@ public actor NodeService: Sendable {
     }
 
     private func processHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
-        guard let _ = state.peers[id] else { return }
+        guard state.peers[id] != nil else { return }
 
         guard let headersMessage = try? HeadersMessage(message.payload) else {
             throw Error.invalidPayload
@@ -891,11 +893,14 @@ public actor NodeService: Sendable {
         if let (headerRef, _) = headerProcessingResult.headerAndPrevious {
             headerRefs.insert(headerRef)
         }
-        updatePeer(id, with: .init(headerRefs: headerRefs, connectedHeaders: headerProcessingResult.connectedHeaders, heldHeaders: headerProcessingResult.heldHeaders))
+        updatePeer(
+            id,
+            with: .init(
+                headerRefs: headerRefs, connectedHeaders: headerProcessingResult.connectedHeaders,
+                heldHeaders: headerProcessingResult.heldHeaders))
     }
 
     private func updatePeer(_ id: PeerID, with headerProcessingResult: MultipleHeadersProcessingResult) {
-
         // Update peer's held headers (non-connecting)
         state.peers[id]!.heldHeaders.formUnion(headerProcessingResult.heldHeaders)
 
@@ -932,12 +937,12 @@ public actor NodeService: Sendable {
     }
 
     private func processSendHeaders(_ message: NetworkMessage, from id: PeerID) async throws {
-        guard let _ = state.peers[id] else { return }
+        guard state.peers[id] != nil else { return }
         state.peers[id]!.prefersHeaders = true
     }
 
     private func processBlock(_ message: NetworkMessage, from id: PeerID) async throws {
-        guard let _ = state.peers[id] else { preconditionFailure() }
+        guard state.peers[id] != nil else { preconditionFailure() }
 
         guard let block = try? Block(message.payload) else {
             throw Error.invalidPayload
@@ -949,7 +954,8 @@ public actor NodeService: Sendable {
         let removed = state.peers[id]?.inTransitBlocks.remove(block.id)
 
         processingBlocks.insert(block.id)
-        let headerProcessingResult = try await blockchain.processBlock(block, isRequested: removed != nil, immediate: false)
+        let headerProcessingResult = try await blockchain.processBlock(
+            block, isRequested: removed != nil, immediate: false)
 
         updatePeer(id, with: headerProcessingResult)
 
@@ -986,7 +992,7 @@ public actor NodeService: Sendable {
     }
 
     private func processGetData(_ message: NetworkMessage, from id: PeerID) async throws {
-        guard let _ = state.peers[id] else { preconditionFailure() }
+        guard state.peers[id] != nil else { preconditionFailure() }
 
         guard let getDataMessage = try? GetDataMessage(message.payload) else {
             throw Error.invalidPayload
@@ -1023,7 +1029,7 @@ public actor NodeService: Sendable {
     }
 
     private func processInventory(_ message: NetworkMessage, from id: PeerID) async throws {
-        guard let _ = state.peers[id] else { preconditionFailure() }
+        guard state.peers[id] != nil else { preconditionFailure() }
 
         guard let inventoryMessage = try? InventoryMessage(message.payload) else {
             throw Error.invalidPayload
@@ -1056,7 +1062,7 @@ public actor NodeService: Sendable {
     }
 
     private func processTx(_ message: NetworkMessage, from id: PeerID) async throws {
-        guard let _ = state.peers[id] else { preconditionFailure() }
+        guard state.peers[id] != nil else { preconditionFailure() }
 
         let tx: Transaction
         do {
@@ -1076,7 +1082,7 @@ public actor NodeService: Sendable {
     }
 
     private func processCompactBlock(_ message: NetworkMessage, from id: PeerID) async throws {
-        guard let _ = state.peers[id] else { preconditionFailure() }
+        guard state.peers[id] != nil else { preconditionFailure() }
 
         guard let compactBlockMessage = try? CompactBlockMessage(message.payload) else {
             throw Error.invalidPayload
@@ -1092,7 +1098,8 @@ public actor NodeService: Sendable {
             txs[prefilled.index] = prefilled.tx
         }
 
-        let mempoolTxs = await blockchain.mempoolTransactions(shortIDs: compactBlockMessage.txIDs, header: compactBlockMessage.header, nonce: compactBlockMessage.nonce)
+        let mempoolTxs = await blockchain.mempoolTransactions(
+            shortIDs: compactBlockMessage.txIDs, header: compactBlockMessage.header, nonce: compactBlockMessage.nonce)
 
         var j = 0
         for i in txs.indices {
@@ -1113,19 +1120,22 @@ public actor NodeService: Sendable {
             var block = compactBlockMessage.header
             block.txs = txs.compactMap { $0 }
             precondition(block.txs.count == txs.count)
-            headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true) // TODO: Immediate = false to not block
+
+            // TODO: Immediate = false to not block
+            headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true)
         } else {
-             headerProcessingResult = try await blockchain.processHeader(header)
+            headerProcessingResult = try await blockchain.processHeader(header)
 
             pendingBlockTxs[header.id] = txs
-            let getBlockTxs = GetBlockTransactionsMessage(blockHash: compactBlockMessage.header.id, txIndices: missingTxIndices)
+            let getBlockTxs = GetBlockTransactionsMessage(
+                blockHash: compactBlockMessage.header.id, txIndices: missingTxIndices)
             enqueue(.getblocktxn, payload: getBlockTxs.data, to: id)
         }
         updatePeer(id, with: headerProcessingResult)
     }
 
     private func processGetBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
-        guard let _ = state.peers[id] else { preconditionFailure() }
+        guard state.peers[id] != nil else { preconditionFailure() }
         guard let getBlockTxsMessage = try? GetBlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
         }
@@ -1141,7 +1151,7 @@ public actor NodeService: Sendable {
     }
 
     private func processBlockTxs(_ message: NetworkMessage, from id: PeerID) async throws(Error) {
-        guard let _ = state.peers[id] else { preconditionFailure() }
+        guard state.peers[id] != nil else { preconditionFailure() }
 
         guard let blockTxsMessage = try? BlockTransactionsMessage(message.payload) else {
             throw .invalidPayload
@@ -1164,7 +1174,8 @@ public actor NodeService: Sendable {
         block.txs = pendingBlockTxs.compactMap { $0 }
         let headerProcessingResult: SingleHeaderProcessingResult
         do {
-            headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true) // TODO: Immediate = false to not block
+            // TODO: Immediate = false to not block
+            headerProcessingResult = try await blockchain.processBlock(block, isRequested: true, immediate: true)
         } catch {
             throw .invalidBlock
         }

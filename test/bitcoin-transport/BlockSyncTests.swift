@@ -1,13 +1,13 @@
-import Testing
-import BitcoinCrypto
-import Foundation
 import AsyncAlgorithms
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
+import Foundation
+import Testing
+
 @testable import BitcoinTransport
 
 struct BlockSyncTests {
-
     var aliceChain = BlockchainService?.none
     var alice = NodeService?.none
     var peerB = PeerID?.none
@@ -22,24 +22,33 @@ struct BlockSyncTests {
         var params = ConsensusParams.swiftTesting
 
         // 3 blocks to IBD completion
-        params.minChainwork = Chainwork(bigEndianBytes: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08])
+        params.minChainwork = Chainwork(bigEndianBytes: [
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08,
+        ])
 
         let aliceChain = try await BlockchainService(params: params)
         self.aliceChain = aliceChain
-        let alice = await NodeService(blockchain: aliceChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
+        let alice = await NodeService(
+            blockchain: aliceChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
         self.alice = alice
         let peerB = await alice.addPeer(incoming: false)
         self.peerB = peerB
         bobToAlice = await alice.channel(for: peerB).makeAsyncIterator()
 
         let bobChain = try await BlockchainService(params: .swiftTesting)
-        let pubkey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
+        let pubkey = try #require(
+            PublicKey(compressed: [
+                0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e,
+                0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05,
+            ])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         await bobChain.generateTo(pubkey)
         await bobChain.generateTo(pubkey)
         await bobChain.generateTo(pubkey)
 
         self.bobChain = bobChain
-        let bob = await NodeService(blockchain: bobChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
+        let bob = await NodeService(
+            blockchain: bobChain, config: .init(network: .regtest, maxInTransitBlocks: 2, feeFilterRate: 3))
         self.bob = bob
         let peerA = await bob.addPeer()
         self.peerA = peerA
@@ -108,7 +117,6 @@ struct BlockSyncTests {
     ///     <- pong
     ///
     func handshake() async throws {
-
         guard let alice, let peerB, let aliceChain, let bob, let peerA, let bobChain else { preconditionFailure() }
 
         await alice.connect(peerB)

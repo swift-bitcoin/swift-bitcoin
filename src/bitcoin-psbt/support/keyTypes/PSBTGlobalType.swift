@@ -1,7 +1,6 @@
-protocol KeyType: CaseIterable, RawRepresentable where RawValue == Int { }
+protocol KeyType: CaseIterable, RawRepresentable where RawValue == Int {}
 
 enum PSBTGlobalKeyType: Int, KeyType {
-
     /// Unsigned Transaction. `PSBT_GLOBAL_UNSIGNED_TX` in BIP174.
     ///
     /// The transaction in network serialization. The scriptSigs and witnesses for each input must be empty. The transaction must be in the old serialization format (without witnesses).

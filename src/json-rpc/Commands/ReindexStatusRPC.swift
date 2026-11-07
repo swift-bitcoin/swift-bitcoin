@@ -1,5 +1,4 @@
 public struct ReindexStatusRPC: RPCCommand, Sendable {
-
     public typealias Params = Never
     public typealias Result = Bool
 

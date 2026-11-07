@@ -1,9 +1,8 @@
-import Foundation
 import ArgumentParser
 import Bitcoin
+import Foundation
 
 struct VerifyRecoverableSignature: ParsableCommand {
-
     @Option var publicKeyHash: String
     @Argument var signature: String
     @Argument var message: String

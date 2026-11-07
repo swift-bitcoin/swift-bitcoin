@@ -1,10 +1,9 @@
-import Foundation
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// Witness version 0 Bitcoin address.
 public struct SegwitAddress: AddressProtocol {
-
     public init?(_ address: String) {
         walletLoop: for network in WalletNetwork.allCases {
             var version: Int
@@ -12,7 +11,8 @@ public struct SegwitAddress: AddressProtocol {
             do {
                 (version, hash) = try SegwitAddressDecoder(hrp: network.bech32HRP).decode(address)
                 self.network = network
-                guard version == 0, (hash.count == Hash160.Digest.byteCount || hash.count == SHA256.Digest.byteCount) else {
+                guard version == 0, hash.count == Hash160.Digest.byteCount || hash.count == SHA256.Digest.byteCount
+                else {
                     return nil
                 }
                 self.hash = hash

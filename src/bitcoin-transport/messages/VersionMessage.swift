@@ -1,9 +1,14 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 struct VersionMessage: Equatable, Sendable {
-    init(protocolVersion: ProtocolVersion = .latest, services: ProtocolServices = .all, receiverServices: ProtocolServices? = nil, receiverAddress: IPv6Address? = nil, receiverPort: Int? = nil, transmitterAddress: IPv6Address? = nil, transmitterPort: Int? = nil, nonce: UInt64 = 0, userAgent: String = "/SwiftBitcoin:0.1.0/", startHeight: Int = 0, relay: Bool = true) {
+    init(
+        protocolVersion: ProtocolVersion = .latest, services: ProtocolServices = .all,
+        receiverServices: ProtocolServices? = nil, receiverAddress: IPv6Address? = nil, receiverPort: Int? = nil,
+        transmitterAddress: IPv6Address? = nil, transmitterPort: Int? = nil, nonce: UInt64 = 0,
+        userAgent: String = "/SwiftBitcoin:0.1.0/", startHeight: Int = 0, relay: Bool = true
+    ) {
         self.protocolVersion = protocolVersion
         self.services = services
         self.timestamp = Date(timeIntervalSince1970: Date.now.timeIntervalSince1970.rounded(.down))
@@ -39,7 +44,6 @@ struct VersionMessage: Equatable, Sendable {
 }
 
 extension VersionMessage: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         protocolVersion = try ProtocolVersion(parsing: &input)
         services = try ProtocolServices(parsing: &input)

@@ -1,10 +1,9 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// BIP152
 public struct SendCompactMessage: Equatable {
-
     init(highBandwidth: Bool = false, version: Int = 2) {
         self.highBandwidth = highBandwidth
         self.version = version
@@ -15,7 +14,6 @@ public struct SendCompactMessage: Equatable {
 }
 
 extension SendCompactMessage: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         highBandwidth = try Int8(parsing: &input) != 0
         version = Int(try UInt64(parsingLittleEndian: &input))

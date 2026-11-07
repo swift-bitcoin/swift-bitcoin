@@ -1,6 +1,6 @@
 import Foundation
-import NIOCore
 import JSONRPC
+import NIOCore
 
 /// Client side request/response coder.
 struct RequestEncoder: MessageToByteEncoder {

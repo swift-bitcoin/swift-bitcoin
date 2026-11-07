@@ -1,9 +1,8 @@
 import ArgumentParser
-import Foundation
 import Bitcoin
+import Foundation
 
 struct RecoverableSignMessage: ParsableCommand {
-
     @Option var secretKey: String
     @Argument var message: String
 

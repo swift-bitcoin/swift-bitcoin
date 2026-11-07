@@ -1,9 +1,8 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 public struct SighashType: Equatable, Sendable {
-
     init(rawValue: Int32) {
         self.rawValue = rawValue
     }
@@ -68,7 +67,6 @@ public struct SighashType: Equatable, Sendable {
 }
 
 extension SighashType: BinaryCodable {
-
     public enum BinaryFormat: Equatable, Sendable {
         case fullLength
     }
@@ -133,8 +131,7 @@ extension SighashType: BinaryCodable {
 
 /// BIP341: Used to represent the `default` signature hash type.
 extension Optional where Wrapped == SighashType {
-
     var data: Data {
-        if case let .some(wrapped) = self { wrapped.data } else { Data([0x00]) }
+        if case .some(let wrapped) = self { wrapped.data } else { Data([0x00]) }
     }
 }

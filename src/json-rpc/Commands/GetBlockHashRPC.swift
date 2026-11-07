@@ -1,8 +1,6 @@
 /// Block hash by height.
 public struct GetBlockHashRPC: RPCCommand, Sendable {
-
     public struct Params: Codable, Sendable {
-
         public init(height: Int) {
             self.height = height
         }
@@ -11,7 +9,6 @@ public struct GetBlockHashRPC: RPCCommand, Sendable {
     }
 
     public struct Result: Codable, Sendable {
-
         public init(hash: String) {
             self.hash = hash
         }

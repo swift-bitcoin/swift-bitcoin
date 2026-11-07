@@ -1,9 +1,8 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 public struct NetworkAddress: Equatable {
-
     public init(time: Date, services: ProtocolServices, networkID: TransportNetwork, addressData: Data, port: Int) {
         self.time = time
         self.services = services
@@ -20,7 +19,6 @@ public struct NetworkAddress: Equatable {
 }
 
 extension NetworkAddress: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         time = Date(timeIntervalSince1970: TimeInterval(try Int64(parsingLittleEndian: &input)))
         services = ProtocolServices(rawValue: try VarInt(parsing: &input).rawValue)

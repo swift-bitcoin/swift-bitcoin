@@ -2,7 +2,10 @@ import Foundation
 
 extension SignatureMessage.Taproot {
     struct Cache {
-        init(shaPrevouts: Data? = nil, shaAmounts: Data? = nil, shaScriptPubKeys: Data? = nil, shaSequences: Data? = nil, shaOuts: Data? = nil) {
+        init(
+            shaPrevouts: Data? = nil, shaAmounts: Data? = nil, shaScriptPubKeys: Data? = nil, shaSequences: Data? = nil,
+            shaOuts: Data? = nil
+        ) {
             self.shaPrevouts = shaPrevouts
             self.shaAmounts = shaAmounts
             self.shaScriptPubKeys = shaScriptPubKeys

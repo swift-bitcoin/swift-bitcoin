@@ -1,9 +1,8 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension PSBTMap {
-
     /// PSBT Keypair Structure
     ///
     /// Format:
@@ -20,7 +19,6 @@ extension PSBTMap {
     /// `<magic>` - Magic bytes which are ASCII for psbt [2] followed by a separator of `0xff`. This integer must be serialized in most significant byte order.
     ///
     struct Keypair: BinaryCodable {
-
         init(key: Key, value: Data) {
             self.key = key
             self.value = value

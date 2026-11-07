@@ -4,7 +4,6 @@ import Foundation
 
 /// An affordance to sign multiple inputs of a bitcoin tx.
 public struct TransactionSigner {
-
     /// Creates a new signer with default signature hash type of _all_.
     /// - Parameters:
     ///   - tx: A transaction to sign.
@@ -43,8 +42,9 @@ public struct TransactionSigner {
     ///   - secretKeys: Secret keys for each signature.
     /// - Returns: A transaction with the signed input.
     @discardableResult
-    public mutating func sign(input: Int, redeemScript: Script? = nil, witnessScript: Script? = nil, with secretKeys: [SecretKey]) -> Transaction {
-
+    public mutating func sign(
+        input: Int, redeemScript: Script? = nil, witnessScript: Script? = nil, with secretKeys: [SecretKey]
+    ) -> Transaction {
         guard let sighashType else { preconditionFailure() }
 
         let prevout = if prevouts.count == 1 { prevouts[0] } else { prevouts[input] }
@@ -52,25 +52,32 @@ public struct TransactionSigner {
 
         precondition(
             // Bare multisig
-            redeemScript == nil && witnessScript == nil && lockScript.isPayToMultisig ||
+            redeemScript == nil && witnessScript == nil && lockScript.isPayToMultisig
 
-            // P2SH with multisig redeem script
-            (redeemScript != nil && witnessScript == nil && lockScript == .payToScriptHash(redeemScript!) && redeemScript!.isPayToMultisig) ||
+                // P2SH with multisig redeem script
+                || (redeemScript != nil && witnessScript == nil && lockScript == .payToScriptHash(redeemScript!)
+                    && redeemScript!.isPayToMultisig)
 
-            // P2WSH with multisig witness script
-            (redeemScript == nil && witnessScript != nil && lockScript == .payToWitnessScriptHash(witnessScript!) && witnessScript!.isPayToMultisig) ||
+                // P2WSH with multisig witness script
+                || (redeemScript == nil && witnessScript != nil && lockScript == .payToWitnessScriptHash(witnessScript!)
+                    && witnessScript!.isPayToMultisig)
 
-            // P2SH-P2WSH with multisig redeem script
-            (/*redeemScript != nil && */ witnessScript != nil && lockScript == .payToScriptHash(.payToWitnessScriptHash(witnessScript!)) && witnessScript!.isPayToMultisig)
+                // P2SH-P2WSH with multisig redeem script
+                || ( /*redeemScript != nil && */
+                witnessScript != nil && lockScript == .payToScriptHash(.payToWitnessScriptHash(witnessScript!))
+                    && witnessScript!.isPayToMultisig)
         )
 
-        let sighash = if let witnessScript {
-            SignatureHash.Segwit(tx: tx, input: input, sighashType: sighashType, scriptCode: witnessScript.data, prevout: prevout).data
-        } else if let redeemScript {
-            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: redeemScript.data).data
-        } else {
-            SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: lockScript.data).data
-        }
+        let sighash =
+            if let witnessScript {
+                SignatureHash.Segwit(
+                    tx: tx, input: input, sighashType: sighashType, scriptCode: witnessScript.data, prevout: prevout
+                ).data
+            } else if let redeemScript {
+                SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: redeemScript.data).data
+            } else {
+                SignatureHash(tx: tx, input: input, sighashType: sighashType, scriptCode: lockScript.data).data
+            }
 
         var sigs = [Data]()
         for secretKey in secretKeys {
@@ -80,7 +87,7 @@ public struct TransactionSigner {
             lastSig = sigExt
         }
         if let redeemScript { sigs.append(redeemScript.data) }
-        if let witnessScript { sigs.append(witnessScript.data)}
+        if let witnessScript { sigs.append(witnessScript.data) }
 
         if let witnessScript {
             let witness = [Data()] + sigs
@@ -109,11 +116,8 @@ public struct TransactionSigner {
         let redeemScript = Script.payToWitnessPubkeyHash(pubkeyHash)
 
         precondition(
-            lockScript.isPayToPubkey ||
-            lockScript.isPayToPubkeyHash ||
-            lockScript.isPayToWitnessKeyHash ||
-            lockScript == .payToScriptHash(redeemScript) ||
-            lockScript.isPayToTaproot
+            lockScript.isPayToPubkey || lockScript.isPayToPubkeyHash || lockScript.isPayToWitnessKeyHash
+                || lockScript == .payToScriptHash(redeemScript) || lockScript.isPayToTaproot
         )
 
         let sighash: Data
@@ -122,13 +126,17 @@ public struct TransactionSigner {
 
             guard let sighashType else { preconditionFailure() }
 
-            let scriptCode: Data? = if lockScript.isPayToWitnessKeyHash {
-                nil
-            } else { Script.segwitPKHScriptCode(pubkeyHash).data }
-            sighash = SignatureHash.Segwit(tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode, prevout: prevouts[input]).data
+            let scriptCode: Data? =
+                if lockScript.isPayToWitnessKeyHash {
+                    nil
+                } else { Script.segwitPKHScriptCode(pubkeyHash).data }
+            sighash =
+                SignatureHash.Segwit(
+                    tx: tx, input: input, sighashType: sighashType, scriptCode: scriptCode, prevout: prevouts[input]
+                ).data
         } else if lockScript.isPayToTaproot {
             // .witnessV1
-             sighash = SignatureHash.Taproot(tx: tx, input: input, sighashType: sighashType, prevouts: prevouts).data
+            sighash = SignatureHash.Taproot(tx: tx, input: input, sighashType: sighashType, prevouts: prevouts).data
         } else {
             guard let sighashType else { preconditionFailure() }
             // .base

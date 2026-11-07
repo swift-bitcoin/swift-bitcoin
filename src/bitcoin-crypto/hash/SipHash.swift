@@ -5,9 +5,7 @@ import Crypto
 /// More information on this [article](https://en.wikipedia.org/wiki/SipHash).
 ///
 public struct SipHash: HashFunction {
-
     public struct Digest: Crypto.Digest {
-
         typealias Buffer = (UInt64, UInt64, UInt64, UInt64)
 
         init(_ v: Buffer) {
@@ -24,7 +22,7 @@ public struct SipHash: HashFunction {
     }
 
     public init() {
-        self.init(k0: UInt64.random(in: 0 ... UInt64.max), k1: UInt64.random(in: 0 ... UInt64.max))
+        self.init(k0: UInt64.random(in: 0...UInt64.max), k1: UInt64.random(in: 0...UInt64.max))
     }
 
     public init(k0: UInt64, k1: UInt64) {
@@ -36,7 +34,8 @@ public struct SipHash: HashFunction {
 
     /// Message digest buffer.
     /// Initialized with the bytes of  "somepseudorandomlygeneratedbytes".
-    private var v = Digest.Buffer(0x736f6d6570736575, 0x646f72616e646f6d, 0x6c7967656e657261, 0x7465646279746573)
+    private var v = Digest.Buffer(
+        0x736f_6d65_7073_6575, 0x646f_7261_6e64_6f6d, 0x6c79_6765_6e65_7261, 0x7465_6462_7974_6573)
 
     private var pendingBytes = UInt64(0)
     private var pendingByteCount = 0
@@ -90,7 +89,7 @@ public struct SipHash: HashFunction {
         while i < end {
             var m: UInt64 = 0
             withUnsafeMutableBytes(of: &m) { p in
-                p.copyMemory(from: .init(rebasing: buffer[i ..< i + 8]))
+                p.copyMemory(from: .init(rebasing: buffer[i..<i + 8]))
             }
             v = compressWord(UInt64(littleEndian: m), v)
             i += 8
@@ -134,7 +133,7 @@ public struct SipHash: HashFunction {
         var v = compressWord(pendingBytes, v)
 
         v.2 ^= 0xff
-        for _ in 0 ..< SipHash.d {
+        for _ in 0..<SipHash.d {
             v = sipRound(v)
         }
 
@@ -148,7 +147,6 @@ public struct SipHash: HashFunction {
 
     /// SipHash 2-4 means c == 2 and d == 4.
     public static let d = 4
-
 }
 
 private func sipRound(_ v: SipHash.Digest.Buffer) -> SipHash.Digest.Buffer {
@@ -173,7 +171,7 @@ private func sipRound(_ v: SipHash.Digest.Buffer) -> SipHash.Digest.Buffer {
 private func compressWord(_ m: UInt64, _ v: SipHash.Digest.Buffer) -> SipHash.Digest.Buffer {
     var v = v
     v.3 ^= m
-    for _ in 0 ..< SipHash.c {
+    for _ in 0..<SipHash.c {
         v = sipRound(v)
     }
     v.0 ^= m

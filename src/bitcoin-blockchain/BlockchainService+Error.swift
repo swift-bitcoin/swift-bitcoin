@@ -2,27 +2,28 @@ import BitcoinBase
 
 /// Error types extension.
 extension BlockchainService {
-
     /// Error during initialization of the blockchain service.
     ///
     /// Usually represents a failure to initialize one of the subsystems like disk block storage or an index database.
     public enum InitError: Swift.Error {
-
         /// Problem creating or reading the data directory.
         case dataDirIssue
     }
 
     /// An error during a blockchain operation.
     public enum Error: Swift.Error {
-
         /// A transaction in the block could not be validated.
         case invalidTransactionInBlock(TransactionValidationError)
         case failedTransactionCheck(Transaction.ValidationError)
         case feesOutOfRange
 
-        case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insufficientProofOfWork, headerTooOld, headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, missingInput, badBlockSize, multipleCoinbaseTransactions, badBlockSigops, coinbaseTransactionOverspends, wrongMerkleRoot, invalidBlockAlreadyExists, futureLocktime, lowWorkChain
+        case unsupportedBlockVersion, orphanHeader, invalidDifficultyTarget, insufficientProofOfWork, headerTooOld,
+            headerTooNew, headerPartOfInvalidChain, missingCoinbaseTransaction, missingInput, badBlockSize,
+            multipleCoinbaseTransactions, badBlockSigops, coinbaseTransactionOverspends, wrongMerkleRoot,
+            invalidBlockAlreadyExists, futureLocktime, lowWorkChain
 
-        case malformedSignetChallenge, badSignetBlockSignature, invalidSignetSolutionScript, invalidSignetSolutionWitness, extraneousSignetSolutionData, signetBlockMissingWitnessCommitment
+        case malformedSignetChallenge, badSignetBlockSignature, invalidSignetSolutionScript,
+            invalidSignetSolutionWitness, extraneousSignetSolutionData, signetBlockMissingWitnessCommitment
 
         case dataDirIssue, blockFileIssue
 

@@ -1,11 +1,11 @@
 import ArgumentParser
 import BitcoinBlockchain
-import struct _NIOFileSystem.FilePath
 import Foundation
 import Logging
 
-struct Reindex: AsyncParsableCommand {
+import struct _NIOFileSystem.FilePath
 
+struct Reindex: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: ""
     )
@@ -19,7 +19,8 @@ struct Reindex: AsyncParsableCommand {
         var logger = Logger(label: "reindex")
         logger.logLevel = .info
         let network = try parent.resolvedNetwork
-        let blockchain = try await BlockchainService(params: network.params, config: .init(dataLocation: .defaultPath), logger: logger)
+        let blockchain = try await BlockchainService(
+            params: network.params, config: .init(dataLocation: .defaultPath), logger: logger)
         await blockchain.reindex(decodeOnly: decodeOnly, headersOnly: headersOnly)
     }
 }

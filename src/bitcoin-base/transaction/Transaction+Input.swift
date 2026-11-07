@@ -1,11 +1,10 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension Transaction {
     /// A single input belonging to a ``Transaction``.
     public struct Input: Equatable, Sendable {
-
         // MARK: - Initializers
 
         /// Constructs a transaction input.
@@ -14,7 +13,9 @@ extension Transaction {
         ///   - sequence: This input's sequence number.
         ///   - script: Optional script to unlock the referenced output.
         ///   - witness: Optional witness data for this input. See BIP141 for more information.
-        public init(outpoint: Outpoint, sequence: Sequence = .final, script: Script = .empty, /* BIP141 */ witness: Witness = []) {
+        public init(
+            outpoint: Outpoint, sequence: Sequence = .final, script: Script = .empty, /* BIP141 */ witness: Witness = []
+        ) {
             self.outpoint = outpoint
             self.sequence = sequence
             self.script = script
@@ -41,7 +42,6 @@ extension Transaction {
 
 /// Data extensions.
 extension Transaction.Input: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         outpoint = try Outpoint(parsing: &input)
         script = try Script(parsing: &input, format: .prefixed)

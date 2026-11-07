@@ -1,7 +1,7 @@
 import BinaryParsing
+import BitcoinBase
 import Crypto
 import Foundation
-import BitcoinBase
 import Testing
 
 @Suite("Hash256")
@@ -16,8 +16,14 @@ struct Hash256Tests {
 
         /// Alignment 1 means no padding next to other fields.
         @Test func packsWhenEmbedded() {
-            struct Flagged { var hash: Hash256; var flag: Bool }
-            struct Indexed { var hash: Hash256; var index: UInt32 }
+            struct Flagged {
+                var hash: Hash256
+                var flag: Bool
+            }
+            struct Indexed {
+                var hash: Hash256
+                var index: UInt32
+            }
             #expect(MemoryLayout<Flagged>.stride == 33)
             #expect(MemoryLayout<Indexed>.stride == 36)
         }
@@ -47,15 +53,18 @@ struct Hash256Tests {
         }
 
         @Test func fromCryptoKitDigest() {
-            #expect(Hash256(SHA256.hash(data: Data())).hexString
-                == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
-            #expect(Hash256(SHA256.hash(data: Data("abc".utf8))).hexString
-                == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+            #expect(
+                Hash256(SHA256.hash(data: Data())).hexString
+                    == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+            #expect(
+                Hash256(SHA256.hash(data: Data("abc".utf8))).hexString
+                    == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
         }
 
         @Test(arguments: [0, 1, 16, 31, 33, 64])
         func rejectsWrongLength(count: Int) {
-            let array = [UInt8](repeating: 0xAB, count: count), data = Data(count: count)
+            let array = [UInt8](repeating: 0xAB, count: count)
+            let data = Data(count: count)
             let fromSpan = Hash256(bytes: array.span)
             let fromRawSpan = Hash256(bytes: array.span.bytes)
             let fromData = Hash256(bytes: data.bytes)
@@ -75,7 +84,9 @@ struct Hash256Tests {
 
     @Suite struct DoubleSHA256 {
         @Test func knownVectors() {
-            let empty = [UInt8](), genesis = Fixtures.genesisHeader, block1 = Fixtures.block1Header
+            let empty = [UInt8]()
+            let genesis = Fixtures.genesisHeader
+            let block1 = Fixtures.block1Header
             let emptyHash = Hash256(hashing: empty.span)
             let genesisHash = Hash256(hashing: genesis.span)
             let block1Hash = Hash256(hashing: block1.span)
@@ -109,7 +120,8 @@ struct Hash256Tests {
 
     @Suite struct HexFormats {
         @Test func zeroAndMax() {
-            let zero = hash([UInt8](repeating: 0, count: 32)), max = hash([UInt8](repeating: 0xFF, count: 32))
+            let zero = hash([UInt8](repeating: 0, count: 32))
+            let max = hash([UInt8](repeating: 0xFF, count: 32))
             #expect(zero.hexString == String(repeating: "0", count: 64))
             #expect(zero.displayHex == String(repeating: "0", count: 64))
             #expect(max.hexString == String(repeating: "f", count: 64))
@@ -230,7 +242,8 @@ struct Hash256Tests {
     @Suite struct Hashing {
         @Test(arguments: BytePattern.all)
         func equalValuesHashEqually(_ pattern: BytePattern) {
-            let a = hash(pattern.bytes), b = Hash256(displayHex: a.displayHex)!
+            let a = hash(pattern.bytes)
+            let b = Hash256(displayHex: a.displayHex)!
             #expect(a.hashValue == b.hashValue)
         }
 
@@ -328,7 +341,9 @@ struct Hash256Tests {
         @Test func encodesConsecutively() {
             let hashes = randomHashes(2, seed: 7)
             let wire = encoded(byteCount: 64) { output in
-                hashes.forEach { $0.encode(into: &output) }
+                for hash in hashes {
+                    hash.encode(into: &output)
+                }
                 #expect(output.freeCapacity == 0)
             }
             #expect(wire == hashes.flatMap(bytes(of:)))

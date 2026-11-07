@@ -1,13 +1,11 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 extension SignatureMessage {
-
     /// BIP341: SegWit v1 (Schnorr / TapRoot) signature message (sigMsg). More at https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#common-signature-message .
     /// https://github.com/bitcoin/bitcoin/blob/58da1619be7ac13e686cb8bbfc2ab0f836eb3fa5/src/script/interpreter.cpp#L1477
     /// https://bitcoin.stackexchange.com/questions/115328/how-do-you-calculate-a-taproot-sighash
     struct Taproot: Equatable, Sendable {
-
         private init() { fatalError() }
 
         let data: Data
@@ -15,8 +13,10 @@ extension SignatureMessage {
 }
 
 extension SignatureMessage.Taproot {
-    init(tx: Transaction, input inputIndex: Int, sighashType: SighashType?, prevouts: [TransactionOutput], tapscriptExtension: TapscriptExtension? = nil, sighashCache: inout Cache) {
-
+    init(
+        tx: Transaction, input inputIndex: Int, sighashType: SighashType?, prevouts: [TransactionOutput],
+        tapscriptExtension: TapscriptExtension? = nil, sighashCache: inout Cache
+    ) {
         let extFlag = UInt8(tapscriptExtension == nil ? 0 : 1)
 
         // For testing purposes we reset the hit count on each precomputed hash
@@ -35,7 +35,9 @@ extension SignatureMessage.Taproot {
 
         let sighashType = sighashType ?? .all
 
-        precondition(!sighashType.isSingle || inputIndex < tx.outs.count, "For single hash type, the selected input needs to have a matching out.")
+        precondition(
+            !sighashType.isSingle || inputIndex < tx.outs.count,
+            "For single hash type, the selected input needs to have a matching out.")
 
         // Transaction data:
         // nVersion (4): the nVersion of the tx.

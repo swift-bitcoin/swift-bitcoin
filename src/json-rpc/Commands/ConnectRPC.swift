@@ -3,7 +3,6 @@
 import Foundation
 
 public struct ConnectRPC: RPCCommand, Sendable {
-
     public struct Params: Codable, Sendable {
         public init(host: String, port: Int?) {
             self.host = host

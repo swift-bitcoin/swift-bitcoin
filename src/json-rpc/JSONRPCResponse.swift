@@ -1,9 +1,7 @@
 import Foundation
 
 public struct JSONRPCResponse: Codable, Sendable {
-
     public struct Error: Swift.Error, Codable, Equatable, Sendable {
-
         public enum ErrorCode: Int, Codable, Sendable {
             case parseError = -32700
             case invalidRequest = -32600
@@ -59,7 +57,13 @@ public struct JSONRPCResponse: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let jsonrpc = try container.decode(String.self, forKey: .jsonrpc)
         guard jsonrpc == JSONRPCRequest.jsonRPCVersion else {
-            throw DecodingError.typeMismatch(Self.self, .init(codingPath: decoder.codingPath, debugDescription: "Unsupported JSON-RPC version '\(jsonrpc)'. Only version \(JSONRPCRequest.jsonRPCVersion) is supported."))
+            throw DecodingError.typeMismatch(
+                Self.self,
+                .init(
+                    codingPath: decoder.codingPath,
+                    debugDescription:
+                        "Unsupported JSON-RPC version '\(jsonrpc)'. Only version \(JSONRPCRequest.jsonRPCVersion) is supported."
+                ))
         }
         id = try container.decode(UUID.self, forKey: .id)
         result = try container.decodeIfPresent(Result.self, forKey: .result)

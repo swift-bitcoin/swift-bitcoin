@@ -1,8 +1,8 @@
 import Foundation
-import NIOCore
-import NIOPosix
 import JSONRPC
+import NIOCore
 import NIOJSONRPC
+import NIOPosix
 
 public func sendRPC(host: String, port: Int, request: JSONRPCRequest) async throws {
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
@@ -36,8 +36,9 @@ public func sendRPC(host: String, port: Int, request: JSONRPCRequest) async thro
     }
 }
 
-private func handleRPC(_ inbound: NIOAsyncChannelInboundStream<JSONRPCResponse>, _ outbound: NIOAsyncChannelOutboundWriter<JSONRPCRequest>) async throws -> () {
-
+private func handleRPC(
+    _ inbound: NIOAsyncChannelInboundStream<JSONRPCResponse>, _ outbound: NIOAsyncChannelOutboundWriter<JSONRPCRequest>
+) async throws {
     for try await response in inbound {
         if let result = response.result {
             let encoder = JSONEncoder()

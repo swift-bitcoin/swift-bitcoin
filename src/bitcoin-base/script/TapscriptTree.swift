@@ -1,5 +1,5 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 public indirect enum TapscriptTree: Equatable, Sendable {
     // Int is the leaf_version. Its value should be 0xc0 (or 0xc1) for BIP342.
@@ -10,82 +10,83 @@ public indirect enum TapscriptTree: Equatable, Sendable {
     public init(_ scripts: [Data], leafVersion v: Int) {
         // TODO: Implement tapscript for any number of script leafs
         precondition(!scripts.isEmpty && scripts.count <= 8)
-        self = switch scripts.count {
-        case 1:
-            TapscriptTree.leaf(v, scripts[0])
-        case 2:
-            TapscriptTree.branch(
-                .leaf(v, scripts[0]),
-                .leaf(v, scripts[1]))
-        case 3:
-            TapscriptTree.branch(
-                .branch(
+        self =
+            switch scripts.count {
+            case 1:
+                TapscriptTree.leaf(v, scripts[0])
+            case 2:
+                TapscriptTree.branch(
                     .leaf(v, scripts[0]),
-                    .leaf(v, scripts[1])),
-                .leaf(v, scripts[2]))
-        case 4:
-            TapscriptTree.branch(
-                .branch(
-                    .leaf(v, scripts[0]),
-                    .leaf(v, scripts[1])),
-                .branch(
-                    .leaf(v, scripts[2]),
-                    .leaf(v, scripts[3])))
-        case 5:
-            TapscriptTree.branch(
-                .branch(
+                    .leaf(v, scripts[1]))
+            case 3:
+                TapscriptTree.branch(
+                    .branch(
+                        .leaf(v, scripts[0]),
+                        .leaf(v, scripts[1])),
+                    .leaf(v, scripts[2]))
+            case 4:
+                TapscriptTree.branch(
                     .branch(
                         .leaf(v, scripts[0]),
                         .leaf(v, scripts[1])),
                     .branch(
                         .leaf(v, scripts[2]),
-                        .leaf(v, scripts[3]))),
-                .leaf(v, scripts[4]))
-        case 6:
-            TapscriptTree.branch(
-                .branch(
+                        .leaf(v, scripts[3])))
+            case 5:
+                TapscriptTree.branch(
                     .branch(
-                        .leaf(v, scripts[0]),
-                        .leaf(v, scripts[1])),
+                        .branch(
+                            .leaf(v, scripts[0]),
+                            .leaf(v, scripts[1])),
+                        .branch(
+                            .leaf(v, scripts[2]),
+                            .leaf(v, scripts[3]))),
+                    .leaf(v, scripts[4]))
+            case 6:
+                TapscriptTree.branch(
                     .branch(
-                        .leaf(v, scripts[2]),
-                        .leaf(v, scripts[3]))),
-                .branch(
-                    .leaf(v, scripts[4]),
-                    .leaf(v, scripts[5])))
-        case 7:
-            TapscriptTree.branch(
-                .branch(
-                    .branch(
-                        .leaf(v, scripts[0]),
-                        .leaf(v, scripts[1])),
-                    .branch(
-                        .leaf(v, scripts[2]),
-                        .leaf(v, scripts[3]))),
-                .branch(
+                        .branch(
+                            .leaf(v, scripts[0]),
+                            .leaf(v, scripts[1])),
+                        .branch(
+                            .leaf(v, scripts[2]),
+                            .leaf(v, scripts[3]))),
                     .branch(
                         .leaf(v, scripts[4]),
-                        .leaf(v, scripts[5])),
-                    .leaf(v, scripts[6])))
-        case 8:
-            TapscriptTree.branch(
-                .branch(
+                        .leaf(v, scripts[5])))
+            case 7:
+                TapscriptTree.branch(
                     .branch(
-                        .leaf(v, scripts[0]),
-                        .leaf(v, scripts[1])),
+                        .branch(
+                            .leaf(v, scripts[0]),
+                            .leaf(v, scripts[1])),
+                        .branch(
+                            .leaf(v, scripts[2]),
+                            .leaf(v, scripts[3]))),
                     .branch(
-                        .leaf(v, scripts[2]),
-                        .leaf(v, scripts[3]))),
-                .branch(
+                        .branch(
+                            .leaf(v, scripts[4]),
+                            .leaf(v, scripts[5])),
+                        .leaf(v, scripts[6])))
+            case 8:
+                TapscriptTree.branch(
                     .branch(
-                        .leaf(v, scripts[4]),
-                        .leaf(v, scripts[5])),
+                        .branch(
+                            .leaf(v, scripts[0]),
+                            .leaf(v, scripts[1])),
+                        .branch(
+                            .leaf(v, scripts[2]),
+                            .leaf(v, scripts[3]))),
                     .branch(
-                        .leaf(v, scripts[6]),
-                        .leaf(v, scripts[7]))))
-        default:
-            preconditionFailure()
-        }
+                        .branch(
+                            .leaf(v, scripts[4]),
+                            .leaf(v, scripts[5])),
+                        .branch(
+                            .leaf(v, scripts[6]),
+                            .leaf(v, scripts[7]))))
+            default:
+                preconditionFailure()
+            }
     }
 
     /// Calculates the merkle root as well as some additional tree info for generating control blocks.

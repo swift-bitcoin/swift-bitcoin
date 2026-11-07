@@ -1,14 +1,16 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// A block of transactions.
 public struct BlockRef: Equatable, Hashable, Sendable {
-
     // MARK: - Initializers
 
-    init(_ block: Block, height: Int, chainwork: Chainwork, chainTxCount: Int, status: ValidationStatus = .header, locator: BlockStorageLocator? = nil) {
+    init(
+        _ block: Block, height: Int, chainwork: Chainwork, chainTxCount: Int, status: ValidationStatus = .header,
+        locator: BlockStorageLocator? = nil
+    ) {
         self.header = block.header
         self.height = height
         self.chainwork = chainwork
@@ -46,17 +48,12 @@ public struct BlockRef: Equatable, Hashable, Sendable {
     // MARK: - Type Methods
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.header == rhs.header &&
-        lhs.height == rhs.height &&
-        lhs.chainwork == rhs.chainwork &&
-        lhs.chainTxCount == rhs.chainTxCount &&
-        lhs.status == rhs.status &&
-        lhs.locator == rhs.locator
+        lhs.header == rhs.header && lhs.height == rhs.height && lhs.chainwork == rhs.chainwork
+            && lhs.chainTxCount == rhs.chainTxCount && lhs.status == rhs.status && lhs.locator == rhs.locator
     }
 }
 
 extension BlockRef: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         header = try Block(parsing: &input)
         guard header.txs.isEmpty else {
@@ -122,7 +119,6 @@ public enum ValidationStatus: UInt8, CustomStringConvertible, Equatable, Hashabl
 }
 
 extension ValidationStatus: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         guard let maybeSelf = Self(rawValue: try .init(parsing: &input)) else {
             throw BinaryDecodingError.invalidEnumCase

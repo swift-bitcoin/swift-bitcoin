@@ -70,7 +70,7 @@ extension Target {
     /// Decoding is safe without a limit; `powLimit` adds the consensus rule. Pass it for an
     /// `nBits` from a peer that hasn't been checked against the expected value. Leave it out for
     /// your own `getNextWorkRequired` output and for already-accepted headers, as when computing
-    /// their work or difficulty. 
+    /// their work or difficulty.
     public init?(compact bits: Int, powLimit: Target? = nil) {
         guard let bits = UInt32(exactly: bits) else { return nil }
         let exponent = Int(bits >> 24)
@@ -85,7 +85,8 @@ extension Target {
         }
 
         let isNegative = mantissa != 0 && bits & 0x0080_0000 != 0
-        let overflows = mantissa != 0
+        let overflows =
+            mantissa != 0
             && (exponent > 34 || (mantissa > 0xFF && exponent > 33) || (mantissa > 0xFFFF && exponent > 32))
         guard mantissa != 0, !isNegative, !overflows else { return nil }
 
@@ -93,7 +94,7 @@ extension Target {
         for k in 0..<3 where offset + k < 32 {
             bytes[offset + k] = UInt8(truncatingIfNeeded: mantissa >> (8 * k))
         }
-        self.init(nonZero: Hash256(bytes))  // the guard above ruled out a zero mantissa
+        self.init(nonZero: Hash256(bytes)) // the guard above ruled out a zero mantissa
 
         if let powLimit, powLimit < self { return nil }
     }
@@ -157,8 +158,14 @@ extension Target {
         guard let bits = UInt32(exactly: bits), bits & 0x00ff_ffff != 0 else { return nil }
         var shift = Int(bits >> 24)
         var difficulty = Double(0x0000_ffff) / Double(bits & 0x00ff_ffff)
-        while shift < 29 { difficulty *= 256; shift += 1 }
-        while shift > 29 { difficulty /= 256; shift -= 1 }
+        while shift < 29 {
+            difficulty *= 256
+            shift += 1
+        }
+        while shift > 29 {
+            difficulty /= 256
+            shift -= 1
+        }
         return difficulty
     }
 
@@ -275,7 +282,7 @@ extension Target {
             let (high, low) = limbs[i].multipliedFullWidth(by: timespan)
             let (sum, overflow) = low.addingReportingOverflow(carry)
             limbs[i] = sum
-            carry = high &+ (overflow ? 1 : 0)  // high ≤ 2⁶⁴ − 2, so this can't wrap
+            carry = high &+ (overflow ? 1 : 0) // high ≤ 2⁶⁴ − 2, so this can't wrap
         }
 
         // ÷ targetTimespan, by short division from the most significant limb.

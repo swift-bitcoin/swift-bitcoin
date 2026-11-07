@@ -1,7 +1,6 @@
 import BitcoinBase
 
 public struct Miniscript {
-
     public init(_ source: String) throws(ParseError) {
         guard let root = try ASTNode(source) else {
             throw .emptyExpression

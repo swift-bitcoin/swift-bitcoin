@@ -2,7 +2,6 @@ import ArgumentParser
 import Bitcoin
 
 struct SignMessageHash: ParsableCommand {
-
     @Option var secretKey: String
     @Argument var hash: String
 

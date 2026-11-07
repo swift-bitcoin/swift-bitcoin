@@ -1,5 +1,5 @@
-import PackagePlugin
 import Foundation
+import PackagePlugin
 
 /// Copies the contents of `NodeConfig.swift` into a `NodeConfig.swift.txt` file in the plugin's output directory. The copied source code will be included in the resources bundle and prepended to configuration scripts.
 ///
@@ -11,13 +11,15 @@ import Foundation
 @main
 struct CopyConfigSources: BuildToolPlugin {
     func createBuildCommands(context: PluginContext, target: Target) throws(PluginError) -> [Command] {
-
         guard let sourceModule = target.sourceModule else {
             throw .missingSourceModule
         }
 
         // We are acting whenever there's a NodeConfig.swift available.
-        guard let sourceFile = sourceModule.sourceFiles.first(where: { $0.url.lastPathComponent == "NodeConfig.swift" })?.url else {
+        guard
+            let sourceFile = sourceModule.sourceFiles.first(where: { $0.url.lastPathComponent == "NodeConfig.swift" })?
+                .url
+        else {
             return []
         }
 

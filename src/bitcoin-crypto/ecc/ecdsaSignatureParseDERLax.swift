@@ -1,16 +1,15 @@
-import Foundation
 import CSECP256K1
+import Foundation
 
-/** This function is taken from the libsecp256k1 distribution and implements
- *  DER parsing for ECDSA signatures, while supporting an arbitrary subset of
- *  format violations.
- *
- *  Supported violations include negative integers, excessive padding, garbage
- *  at the end, and overly long length descriptors. This is safe to use in
- *  Bitcoin because since the activation of BIP66, signatures are verified to be
- *  strict DER before being passed to this module, and we know it supports all
- *  violations present in the blockchain before that point.
- */
+/// This function is taken from the libsecp256k1 distribution and implements
+/// *  DER parsing for ECDSA signatures, while supporting an arbitrary subset of
+/// *  format violations.
+/// *
+/// *  Supported violations include negative integers, excessive padding, garbage
+/// *  at the end, and overly long length descriptors. This is safe to use in
+/// *  Bitcoin because since the activation of BIP66, signatures are verified to be
+/// *  strict DER before being passed to this module, and we know it supports all
+/// *  violations present in the blockchain before that point.
 func ecdsaSignatureParseDERLax(_ input: Data) -> CSECP256K1::ECDSASignature? {
     let inputlen = input.count
 
@@ -25,8 +24,11 @@ func ecdsaSignatureParseDERLax(_ input: Data) -> CSECP256K1::ECDSASignature? {
     var overflow = false
 
     /* Hack to initialize sig with a correctly-parsed but invalid signature. */
-    var sig = CollectionOfOne(CSECP256K1::ECDSASignature()); var sigSpan = sig.mutableSpan
-    _ = SECP256K1Context.shared.ecdsaSignatureParseCompact(&sigSpan, compact: tmpsig.span) // secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, sig, tmpsig);
+    var sig = CollectionOfOne(CSECP256K1::ECDSASignature())
+    var sigSpan = sig.mutableSpan
+
+    // secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, sig, tmpsig);
+    _ = SECP256K1Context.shared.ecdsaSignatureParseCompact(&sigSpan, compact: tmpsig.span)
 
     /* Sequence tag byte */
     if pos == inputlen || input[pos] != 0x30 {
@@ -38,7 +40,8 @@ func ecdsaSignatureParseDERLax(_ input: Data) -> CSECP256K1::ECDSASignature? {
     if pos == inputlen {
         return nil
     }
-    lenbyte = input[pos]; pos += 1
+    lenbyte = input[pos]
+    pos += 1
 
     if lenbyte & 0x80 != 0 {
         lenbyte -= 0x80
@@ -55,10 +58,11 @@ func ecdsaSignatureParseDERLax(_ input: Data) -> CSECP256K1::ECDSASignature? {
     pos += 1
 
     /* Integer length for R */
-    if (pos == inputlen) {
+    if pos == inputlen {
         return nil
     }
-    lenbyte = input[pos]; pos += 1
+    lenbyte = input[pos]
+    pos += 1
     if lenbyte & 0x80 != 0 {
         lenbyte -= 0x80
         if lenbyte > inputlen - pos {
@@ -72,7 +76,7 @@ func ecdsaSignatureParseDERLax(_ input: Data) -> CSECP256K1::ECDSASignature? {
         if lenbyte >= 4 {
             return nil
         }
-        rlen = 0;
+        rlen = 0
         while lenbyte > 0 {
             rlen = (rlen << 8) + Int(input[pos])
             pos += 1
@@ -97,7 +101,8 @@ func ecdsaSignatureParseDERLax(_ input: Data) -> CSECP256K1::ECDSASignature? {
     if pos == inputlen {
         return nil
     }
-    lenbyte = input[pos]; pos += 1
+    lenbyte = input[pos]
+    pos += 1
     if lenbyte & 0x80 != 0 {
         lenbyte -= 0x80
         if lenbyte > inputlen - pos {
@@ -158,15 +163,18 @@ func ecdsaSignatureParseDERLax(_ input: Data) -> CSECP256K1::ECDSASignature? {
     }
 
     if !overflow {
-        overflow = SECP256K1Context.shared.ecdsaSignatureParseCompact(&sigSpan, compact: tmpsig.span) == 0 // overflow = !secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, sig, tmpsig);
+        // overflow = !secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, sig, tmpsig);
+        overflow = SECP256K1Context.shared.ecdsaSignatureParseCompact(&sigSpan, compact: tmpsig.span) == 0
     }
     if overflow {
         /* Overwrite the result again with a correctly-parsed but invalid
          signature if parsing failed. */
 
-        var tmpsigSpan = tmpsig.mutableSpan; tmpsigSpan.update(repeating: 0) // memset(tmpsig, 0, 64);
+        var tmpsigSpan = tmpsig.mutableSpan
+        tmpsigSpan.update(repeating: 0) // memset(tmpsig, 0, 64);
 
-        _ = SECP256K1Context.shared.ecdsaSignatureParseCompact(&sigSpan, compact: tmpsig.span) // secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, sig, tmpsig);
+        // secp256k1_ecdsa_signature_parse_compact(secp256k1_context_static, sig, tmpsig);
+        _ = SECP256K1Context.shared.ecdsaSignatureParseCompact(&sigSpan, compact: tmpsig.span)
     }
     return sig[0]
 }

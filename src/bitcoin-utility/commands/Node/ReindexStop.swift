@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct ReindexStop: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: ReindexStopRPC.description
     )

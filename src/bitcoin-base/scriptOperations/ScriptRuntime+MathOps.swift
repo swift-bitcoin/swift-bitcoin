@@ -1,7 +1,6 @@
 import Foundation
 
 extension ScriptRuntime {
-
     /// The number -1 is pushed onto the stack.
     mutating func op1Negate() {
         stack.append(ScriptNumber.negativeOne.data)

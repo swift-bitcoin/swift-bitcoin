@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct GetChainTips: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: GetChainTipsRPC.description
     )

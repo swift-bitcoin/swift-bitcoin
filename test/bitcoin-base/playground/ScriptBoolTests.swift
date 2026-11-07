@@ -1,15 +1,14 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import BitcoinBase
 
 struct ScriptBoolTests {
-
     let zeroData = Data()
     let oneData = Data([1])
 
     @Test("Boolean false")
     func booleanFalse() {
-
         let negativeZero = Data([0x80])
         let falseValue = Data([0])
         let falseValue1 = Data([0, 0])

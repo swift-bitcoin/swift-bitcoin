@@ -4,7 +4,6 @@ import Foundation
 
 /// Derives a child HD (BIP32) public key from another HD public key.
 struct HDPublic: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Derives a child HD (BIP32) public key from another HD public key."
     )

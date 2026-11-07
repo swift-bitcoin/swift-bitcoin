@@ -2,7 +2,6 @@ import ArgumentParser
 import Bitcoin
 
 struct DerivePublicKey: ParsableCommand {
-
     @Argument var secretKey: String
 
     func run() throws(ValidationError) {

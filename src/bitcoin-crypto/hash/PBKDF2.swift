@@ -1,5 +1,5 @@
-import Foundation
 import Crypto
+import Foundation
 
 public enum PBKDF2Error: Error {
     case invalidInput
@@ -11,7 +11,6 @@ public enum PBKDF2Error: Error {
 /// See [RFC2898](https://www.ietf.org/rfc/rfc2898.txt) for more information.
 ///
 public struct PBKDF2<H: HashFunction> {
-
     /// S
     private let salt: Data
 
@@ -53,10 +52,10 @@ public struct PBKDF2<H: HashFunction> {
         numBlocks = Int(ceil(Double(keyLengthFinal) / hLen))
     }
 
-    public func calculate() -> Array<UInt8> {
-        var ret = Array<UInt8>()
+    public func calculate() -> [UInt8] {
+        var ret = [UInt8]()
         ret.reserveCapacity(numBlocks * H.Digest.byteCount)
-        for i in 1 ... numBlocks {
+        for i in 1...numBlocks {
             // for each block T_i = U_1 ^ U_2 ^ ... ^ U_iter
             if let value = calculateBlock(salt, blockNum: i) {
                 ret.append(contentsOf: value)
@@ -69,9 +68,9 @@ public struct PBKDF2<H: HashFunction> {
         // F (P, S, c, i) = U_1 \xor U_2 \xor ... \xor U_c
         // U_1 = PRF (P, S || INT (i))
 
-        func ARR(_ i: Int) -> Array<UInt8> {
+        func ARR(_ i: Int) -> [UInt8] {
             // `i.bytes()` is slower
-            var inti = Array<UInt8>(repeating: 0, count: 4)
+            var inti = [UInt8](repeating: 0, count: 4)
             inti[0] = UInt8((i >> 24) & 0xff)
             inti[1] = UInt8((i >> 16) & 0xff)
             inti[2] = UInt8((i >> 8) & 0xff)
@@ -89,11 +88,11 @@ public struct PBKDF2<H: HashFunction> {
         if iterations > 1 {
             // U_2 = PRF (P, U_1)
             // U_c = PRF (P, U_{c-1})
-            for _ in 2 ... iterations {
+            for _ in 2...iterations {
                 var hmac = hmacPassword
                 hmac.update(data: u)
                 u = Data(hmac.finalize())
-                for x in 0 ..< ret.count {
+                for x in 0..<ret.count {
                     ret[x] = ret[x] ^ u[x]
                 }
             }

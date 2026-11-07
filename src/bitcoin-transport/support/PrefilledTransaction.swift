@@ -1,11 +1,10 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// BIP152: A `PrefilledTransaction` structure is used in `HeaderAndShortIDs` to provide a list of a few transactions explicitly.
 public struct PrefilledTransaction: Equatable {
-
     public init(index: Int, tx: Transaction) {
         self.index = index
         self.tx = tx
@@ -25,7 +24,6 @@ public struct PrefilledTransaction: Equatable {
 }
 
 extension PrefilledTransaction: BinaryCodable {
-
     public struct BinaryFormat {
         let previousIndex: Int
     }
@@ -37,21 +35,23 @@ extension PrefilledTransaction: BinaryCodable {
     }
 
     public func countBytes(into counter: inout BinarySizeCounter, format: BinaryFormat?) {
-        let indexDiff = if let previousIndex = format?.previousIndex {
-            index - previousIndex - 1
-        } else {
-            index
-        }
+        let indexDiff =
+            if let previousIndex = format?.previousIndex {
+                index - previousIndex - 1
+            } else {
+                index
+            }
         counter.count(VarInt(indexDiff))
         counter.count(tx)
     }
 
     public func encode(into out: inout OutputRawSpan, format: BinaryFormat?) throws {
-        let indexDiff = if let previousIndex = format?.previousIndex {
-            index - previousIndex - 1
-        } else {
-            index
-        }
+        let indexDiff =
+            if let previousIndex = format?.previousIndex {
+                index - previousIndex - 1
+            } else {
+                index
+            }
         try VarInt(indexDiff).encode(into: &out)
         try tx.encode(into: &out)
     }

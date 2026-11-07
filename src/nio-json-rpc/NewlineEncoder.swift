@@ -4,13 +4,12 @@ private let maxPayload = 1_000_000 // 1MB
 
 // aggregate bytes till delimiter and add delimiter at end
 public struct NewlineEncoder: ByteToMessageDecoder, MessageToByteEncoder, Sendable {
-
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
     public typealias OutboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
 
-    public init() { }
+    public init() {}
 
     private let delimiter1 = UInt8(ascii: "\r")
     private let delimiter2 = UInt8(ascii: "\n")
@@ -44,7 +43,9 @@ public struct NewlineEncoder: ByteToMessageDecoder, MessageToByteEncoder, Sendab
         return .continue
     }
 
-    public mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+    public mutating func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws
+        -> DecodingState
+    {
         while try self.decode(context: context, buffer: &buffer) == .continue {}
         if buffer.readableBytes > buffer.readerIndex {
             throw CodecError.badFraming

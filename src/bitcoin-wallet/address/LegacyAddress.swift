@@ -1,10 +1,9 @@
-import Foundation
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// Legacy – i.e. base signature version – Bitcoin address.
 public struct LegacyAddress: AddressProtocol {
-
     public let isMainnet: Bool
     public let isScript: Bool
     public let hash: Data
@@ -28,8 +27,9 @@ public struct LegacyAddress: AddressProtocol {
     public init?(_ address: String) {
         // Decode P2PKH address
         guard let data = Base58Decoder().decode(address),
-              let versionByte = data.first,
-              versionByte == base58VersionMain || versionByte == base58VersionTest || versionByte == base58VersionScriptMain || versionByte == base58VersionScriptTest
+            let versionByte = data.first,
+            versionByte == base58VersionMain || versionByte == base58VersionTest
+                || versionByte == base58VersionScriptMain || versionByte == base58VersionScriptTest
         else { return nil }
         isMainnet = versionByte == base58VersionMain || versionByte == base58VersionScriptMain
         isScript = versionByte == base58VersionScriptMain || versionByte == base58VersionScriptTest

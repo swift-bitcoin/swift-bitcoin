@@ -1,4 +1,4 @@
 import ArgumentParser
 import BitcoinWallet
 
-extension WalletNetwork: Decodable, ExpressibleByArgument { }
+extension WalletNetwork: Decodable, ExpressibleByArgument {}

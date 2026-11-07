@@ -1,9 +1,9 @@
 import BitcoinBase
+
 import struct _NIOFileSystem.FilePath
 
 /// Block index service protocol.
 protocol BlockIndex: Sendable {
-
     var path: FilePath? { get async }
 
     /// Locators in reverse height order.
@@ -24,11 +24,14 @@ protocol BlockIndex: Sendable {
 
     func missingBlocks(tip: BlockRef, stop: BlockRef, max: Int, exclude: Set<BlockHash>) async -> [BlockHash]
 
-    mutating func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) async throws(BlockIndexError) -> BlockRef
+    mutating func addGenesisBlock(_ genesisBlock: Block, locator: BlockStorageLocator) async throws(BlockIndexError)
+        -> BlockRef
 
     mutating func addHeader(_ header: Block) async throws(BlockIndexError) -> BlockRef
 
-    mutating func updateBlock(_ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int) async -> BlockRef
+    mutating func updateBlock(
+        _ ref: BlockRef, locator: BlockStorageLocator, status: ValidationStatus, chainTxCount: Int
+    ) async -> BlockRef
 
     mutating func updateHeader(_ ref: BlockRef, locator: BlockStorageLocator) async -> BlockRef
 

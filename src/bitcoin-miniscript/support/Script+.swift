@@ -1,12 +1,11 @@
 import BitcoinBase
 
-public extension Script {
-
-    init(_ expression: MiniscriptExp) {
+extension Script {
+    public init(_ expression: MiniscriptExp) {
         self.init(expression.compiled)
     }
 
-    init(_ expression: Miniscript) {
+    public init(_ expression: Miniscript) {
         self.init(expression.evaluated)
     }
 }

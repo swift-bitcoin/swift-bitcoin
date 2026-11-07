@@ -1,11 +1,13 @@
 /// Summary of current blockchain information such as total number of headers, blocks and a list of block IDs (hashes).
 public struct GetBlockchainInfoRPC: RPCCommand, Sendable {
-
     public typealias Params = Never
 
     public struct Result: Codable, Sendable {
-
-        public init(chain: String, blocks: Int, headers: Int, bestBlockHash: String, difficulty: String, time: Int, medianTime: Int, verificationProgress: Double, initialBlockDownload: Bool, chainwork: String, sizeOnDisk: Int/*, hashes: [String]*/) {
+        public init(
+            chain: String, blocks: Int, headers: Int, bestBlockHash: String, difficulty: String, time: Int,
+            medianTime: Int, verificationProgress: Double, initialBlockDownload: Bool, chainwork: String,
+            sizeOnDisk: Int /*, hashes: [String]*/
+        ) {
             self.chain = chain
             self.blocks = blocks
             self.headers = headers
@@ -33,7 +35,9 @@ public struct GetBlockchainInfoRPC: RPCCommand, Sendable {
         public let bestBlockHash: String
 
         /// The current difficulty. Contains a double formatted as a scientific notation string.
-        public let difficulty: String // Should be a double but the Swift JSON encoder formats scientific notation a little different than Bitcoin Core's (one less digit)
+
+        // Should be a double but the Swift JSON encoder formats scientific notation a little different than Bitcoin Core's (one less digit)
+        public let difficulty: String
 
         /// The block time expressed in UNIX epoch time
         public let time: Int
@@ -60,5 +64,6 @@ public struct GetBlockchainInfoRPC: RPCCommand, Sendable {
 
     public static let method = "get-blockchain-info"
     public static let params = ""
-    public static let description: String = "Returns an object containing various state info regarding blockchain processing."
+    public static let description: String =
+        "Returns an object containing various state info regarding blockchain processing."
 }

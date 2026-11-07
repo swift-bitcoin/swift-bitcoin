@@ -2,7 +2,6 @@ import ArgumentParser
 import Bitcoin
 
 struct VerifySchnorrSignature: ParsableCommand {
-
     @Option var publicKey: String
     @Argument var signature: String
     @Argument var message: String

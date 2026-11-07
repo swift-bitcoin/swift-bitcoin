@@ -1,9 +1,8 @@
 import Foundation
-import NIOCore
 import JSONRPC
+import NIOCore
 
 struct ResponseEncoder: MessageToByteEncoder, Sendable {
-
     typealias OutboundIn = JSONRPCResponse
     typealias OutboundOut = ByteBuffer
 

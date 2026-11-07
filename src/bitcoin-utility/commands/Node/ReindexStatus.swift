@@ -2,7 +2,6 @@ import ArgumentParser
 import JSONRPC
 
 struct ReindexStatus: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: ReindexStatusRPC.description
     )

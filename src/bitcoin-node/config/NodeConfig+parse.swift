@@ -3,15 +3,13 @@ import NIOCore
 import _NIOFileSystem
 
 #if canImport(Foundation.NSTask)
-import class Foundation.NSTask.Process
+    import class Foundation.NSTask.Process
 #endif
 
 extension NodeConfig {
-
     static let defaultLocation = FilePath(URL.homeDirectory.relativePath).appending(".swift-bitcoin").string
 
     static func parse(_ location: String, strict: Bool = false) async throws(ParseError) -> Self {
-
         // Check whether we are accessing the default location
         let isDefault = location == Self.defaultLocation
         if isDefault {
@@ -70,7 +68,7 @@ extension NodeConfig {
             }
         } else if directoryOrFileInfo.type == .regular {
             // We were given a path to a configuration file, let's check its extension to see if it's one of the 2 valid ones: .swift or .json
-            guard let type = directoryOrFilePath.extension, (type == "swift" || type == "json") else {
+            guard let type = directoryOrFilePath.extension, type == "swift" || type == "json" else {
                 throw .invalidExtension
             }
             // We have a valid path and file information object
@@ -91,7 +89,7 @@ extension NodeConfig {
         // Read the contents of the file regardless of the format
         let contents: ByteBuffer
         do {
-            contents =  try await ByteBuffer(
+            contents = try await ByteBuffer(
                 contentsOf: filePath,
                 maximumSizeAllowed: .bytes(Int64(maxSize))
             )
@@ -111,73 +109,74 @@ extension NodeConfig {
                 throw .decodingError
             }
         } else {
-        #if canImport(Foundation.NSTask)
-            // For Swift we need to put together a Swift source to pass via stdin to the interpreter…
+            #if canImport(Foundation.NSTask)
+                // For Swift we need to put together a Swift source to pass via stdin to the interpreter…
 
-            // First we need the unmodified contents of the actual configuration file
-            guard let contentsAsString = String(data: Data(contents.readableBytesView), encoding: .utf8) else {
-                throw .swiftConfigError
-            }
+                // First we need the unmodified contents of the actual configuration file
+                guard let contentsAsString = String(data: Data(contents.readableBytesView), encoding: .utf8) else {
+                    throw .swiftConfigError
+                }
 
-            // We'll also need a copy of the NodeConfig struct and dependencies. This resource is produced by the CopyConfigSources package plugin
-            guard let resource = Bundle.module.path(forResource: "NodeConfig", ofType: "swift.txt") else {
-                throw .missingInternalResource
-            }
-            let resourceContents: Data
-            do {
-                resourceContents =  Data(try await ByteBuffer(
-                    contentsOf: FilePath(resource),
-                    maximumSizeAllowed: .bytes(Int64(maxSize))
-                ).readableBytesView)
-            } catch {
-                throw .internalResourceUnavailable
-            }
-            let resourceText = String(data: resourceContents, encoding: .utf8)!
+                // We'll also need a copy of the NodeConfig struct and dependencies. This resource is produced by the CopyConfigSources package plugin
+                guard let resource = Bundle.module.path(forResource: "NodeConfig", ofType: "swift.txt") else {
+                    throw .missingInternalResource
+                }
+                let resourceContents: Data
+                do {
+                    resourceContents = Data(
+                        try await ByteBuffer(
+                            contentsOf: FilePath(resource),
+                            maximumSizeAllowed: .bytes(Int64(maxSize))
+                        ).readableBytesView)
+                } catch {
+                    throw .internalResourceUnavailable
+                }
+                let resourceText = String(data: resourceContents, encoding: .utf8)!
 
-            // We will now build the Swift source code to pass to the Swift interpreter
-            let configGenerationScript = """
-            import Foundation
-            \(resourceText)
-            let encoder = JSONEncoder()
-            \(contentsAsString)
-            let data = try encoder.encode(config)
-            print(String(data: data, encoding: .utf8)!)
-            """
+                // We will now build the Swift source code to pass to the Swift interpreter
+                let configGenerationScript = """
+                    import Foundation
+                    \(resourceText)
+                    let encoder = JSONEncoder()
+                    \(contentsAsString)
+                    let data = try encoder.encode(config)
+                    print(String(data: data, encoding: .utf8)!)
+                    """
 
-            // Create a process and pipes to pass the script to the interpreter
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["swift", "-"]
-            let pipeIn = Pipe()
-            process.standardInput = pipeIn
-            let pipeOut = Pipe()
-            process.standardOutput = pipeOut
-            process.standardError = pipeOut
+                // Create a process and pipes to pass the script to the interpreter
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+                process.arguments = ["swift", "-"]
+                let pipeIn = Pipe()
+                process.standardInput = pipeIn
+                let pipeOut = Pipe()
+                process.standardOutput = pipeOut
+                process.standardError = pipeOut
 
-            // Set up the input pipe (stdin) to write the script
-            let fileHandle = pipeIn.fileHandleForWriting
-            fileHandle.write(configGenerationScript.data(using: .utf8)!)
-            fileHandle.closeFile()
+                // Set up the input pipe (stdin) to write the script
+                let fileHandle = pipeIn.fileHandleForWriting
+                fileHandle.write(configGenerationScript.data(using: .utf8)!)
+                fileHandle.closeFile()
 
-            // Run the process to obtain the configuration in JSON format
-            let output: Data
-            do {
-                try process.run()
-                // Read raw JSON data from the output pipe (stdout)
-                output = pipeOut.fileHandleForReading.readDataToEndOfFile()
-            } catch {
-                throw .swiftScriptFailure
-            }
+                // Run the process to obtain the configuration in JSON format
+                let output: Data
+                do {
+                    try process.run()
+                    // Read raw JSON data from the output pipe (stdout)
+                    output = pipeOut.fileHandleForReading.readDataToEndOfFile()
+                } catch {
+                    throw .swiftScriptFailure
+                }
 
-            // Parse the JSON output, no JSON5 allowed here
-            let decoder = JSONDecoder()
-            do {
-                config = try decoder.decode(NodeConfig.self, from: output)
-            } catch {
-                throw .decodingError
-            }
+                // Parse the JSON output, no JSON5 allowed here
+                let decoder = JSONDecoder()
+                do {
+                    config = try decoder.decode(NodeConfig.self, from: output)
+                } catch {
+                    throw .decodingError
+                }
             #else
-            fatalError("Foundation.NSTask.Process class not available")
+                fatalError("Foundation.NSTask.Process class not available")
             #endif
         }
         return config

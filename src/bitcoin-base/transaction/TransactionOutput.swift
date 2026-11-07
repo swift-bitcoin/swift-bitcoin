@@ -1,10 +1,9 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// The output of a ``Transaction``. While unspent also referred to as a _coin_.
 public struct TransactionOutput: Equatable, Sendable {
-
     /// Creates an output out of an amount (value) and a locking script.
     /// - Parameters:
     ///   - value: A Satoshi amount represented by this output.
@@ -23,7 +22,6 @@ public struct TransactionOutput: Equatable, Sendable {
 
 /// Data extensions.
 extension TransactionOutput: BinaryCodable {
-
     public enum BinaryFormat {
         case valueOnly
     }

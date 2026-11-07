@@ -1,7 +1,6 @@
 import Foundation
 
 extension ScriptRuntime {
-
     /// [BIP65](https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki)
     mutating func opCheckLocktimeVerify() throws {
         let first = try getUnaryParam(keep: true)

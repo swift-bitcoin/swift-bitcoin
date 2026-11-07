@@ -1,8 +1,7 @@
-import Foundation
 import ArgumentParser
+import Foundation
 
 struct CheckConfig: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Verifies the configuration file."
     )

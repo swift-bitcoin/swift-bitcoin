@@ -1,8 +1,6 @@
 /// Lists available RPC commands or shows the help menu for a specific command.
 public struct HelpRPC: RPCCommand, Sendable {
-
     public struct Params: Codable, Sendable {
-
         public init(command: String?) {
             self.command = command
         }
@@ -10,7 +8,7 @@ public struct HelpRPC: RPCCommand, Sendable {
         public let command: String?
     }
 
-    public typealias Result = [String : String]
+    public typealias Result = [String: String]
 
     public init(_ params: Params) {
         self.params = params

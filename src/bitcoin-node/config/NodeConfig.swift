@@ -1,7 +1,6 @@
 // Note: This file is required by the plugin `CopyConfigSources`.
 
 struct NodeConfig: Encodable {
-
     init(
         network: Network = .mainnet,
         signetChallenge: String? = nil,
@@ -95,11 +94,6 @@ extension NodeConfig {
 
 extension NodeConfig {
     struct RPCSettings: Codable {
-        init(host: String, port: Int) {
-            self.host = host
-            self.port = port
-        }
-
         let host: String
         let port: Int
     }
@@ -107,7 +101,8 @@ extension NodeConfig {
 
 extension NodeConfig {
     enum DataLocation: Encodable {
-        case inMemory, defaultPath, custom(path: String)
+        case inMemory, defaultPath
+        case custom(path: String)
 
         func encode(to encoder: any Encoder) throws {
             var container = encoder.singleValueContainer()
@@ -116,7 +111,7 @@ extension NodeConfig {
                 try container.encode("in-memory")
             case .defaultPath:
                 try container.encode("default-path")
-            case let .custom(path: path):
+            case .custom(let path):
                 try container.encode("custom(\(path))")
             }
         }
@@ -124,7 +119,6 @@ extension NodeConfig {
 }
 
 extension NodeConfig {
-
     struct BindSettings: Codable {
         init(host: String? = nil, port: Int? = nil) {
             self.host = host
@@ -140,9 +134,7 @@ extension NodeConfig {
 }
 
 extension NodeConfig {
-
     struct RemotePeer: Codable, CustomStringConvertible {
-
         init(host: String, port: Int?) {
             self.host = host
             self.port = port
@@ -167,7 +159,6 @@ extension NodeConfig {
 }
 
 extension NodeConfig {
-
     /// OpenTelemetry metrics settings.
     struct OTelMetrics: Codable {
         init(endpoint: String = "http://localhost:4317") {

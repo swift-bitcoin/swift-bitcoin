@@ -1,5 +1,5 @@
-import Foundation
 import Crypto
+import Foundation
 
 /// Insecure hash function still available as a SCRIPT operation code in Bitcoin.
 public typealias SHA1 = Insecure.SHA1

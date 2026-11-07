@@ -1,5 +1,5 @@
-import Foundation
 import BitcoinBase
+import Foundation
 import Testing
 
 private func zeros(_ count: Int) -> String { String(repeating: "0", count: count) }
@@ -56,8 +56,10 @@ struct TargetTests {
         }
 
         @Test func extremesAndWordBoundary() {
-            let one = Target(hex: "1")!, max = Target(hex: maxHex)!
-            let below = Target(hex: String(repeating: "f", count: 32))!, boundary = Target(hex: "1" + zeros(32))!
+            let one = Target(hex: "1")!
+            let max = Target(hex: maxHex)!
+            let below = Target(hex: String(repeating: "f", count: 32))!
+            let boundary = Target(hex: "1" + zeros(32))!
             #expect(one < below && below < boundary && boundary < max)
             for t in randomTargets(200, seed: 33) {
                 #expect(one <= t && t <= max)
@@ -88,36 +90,37 @@ struct TargetTests {
 
     @Suite struct CompactDecoding {
         /// Bitcoin Core's `arith_uint256_tests` (SetCompact) plus exponent and overflow boundaries.
-        @Test(arguments: [
-            (Int(0x0112_3456), "12"),
-            (0x0212_3456, "1234"),
-            (0x0312_3456, "123456"),
-            (0x0412_3456, "12345600"),
-            (0x0200_8000, "80"),
-            (0x0500_9234, "92340000"),
-            (0x2012_3456, "123456" + String(repeating: "0", count: 58)),
-            (0x1D00_FFFF, "ffff" + String(repeating: "0", count: 52)),
-            (0x207F_FFFF, "7fffff" + String(repeating: "0", count: 58)),
-            (0x2100_FFFF, "ffff" + String(repeating: "0", count: 60)),   // 2 bytes at exponent 33
-            (0x2200_00FF, "ff" + String(repeating: "0", count: 62)),     // 1 byte at exponent 34
-            (0x0101_0000, "1"),                                          // the smallest target
-        ] as [(Int, String)])
+        @Test(
+            arguments: [
+                (Int(0x0112_3456), "12"),
+                (0x0212_3456, "1234"),
+                (0x0312_3456, "123456"),
+                (0x0412_3456, "12345600"),
+                (0x0200_8000, "80"),
+                (0x0500_9234, "92340000"),
+                (0x2012_3456, "123456" + String(repeating: "0", count: 58)),
+                (0x1D00_FFFF, "ffff" + String(repeating: "0", count: 52)),
+                (0x207F_FFFF, "7fffff" + String(repeating: "0", count: 58)),
+                (0x2100_FFFF, "ffff" + String(repeating: "0", count: 60)), // 2 bytes at exponent 33
+                (0x2200_00FF, "ff" + String(repeating: "0", count: 62)), // 1 byte at exponent 34
+                (0x0101_0000, "1"), // the smallest target
+            ] as [(Int, String)])
         func decodes(bits: Int, expectedHex: String) throws {
             let target = try #require(Target(compact: bits))
             #expect(target == Target(hex: expectedHex))
         }
 
         @Test(arguments: [
-            Int(0x0000_0000),  // zero
-            0x0012_3456,  // exponent 0 shifts everything away
-            0x0100_3456,  // exponent 1 shifts the low bytes away
-            0x0180_0000,  // negative zero
-            0x0492_3456,  // negative
-            0x20FF_FFFF,  // negative
-            0x2201_0000,  // 2 bytes at exponent 34
-            0x2101_0000,  // 3 bytes at exponent 33
-            0x2300_00FF,  // exponent 35
-            0xFF12_3456,  // overflow
+            Int(0x0000_0000), // zero
+            0x0012_3456, // exponent 0 shifts everything away
+            0x0100_3456, // exponent 1 shifts the low bytes away
+            0x0180_0000, // negative zero
+            0x0492_3456, // negative
+            0x20FF_FFFF, // negative
+            0x2201_0000, // 2 bytes at exponent 34
+            0x2101_0000, // 3 bytes at exponent 33
+            0x2300_00FF, // exponent 35
+            0xFF12_3456, // overflow
         ])
         func rejects(bits: Int) {
             #expect(Target(compact: bits) == nil)
@@ -162,7 +165,7 @@ struct TargetTests {
         @Test func bitsStringStaysEightDigits() {
             #expect(Target.difficultyOne.bits == "1d00ffff")
             #expect(Target(compact: 0x1B04_04CB)?.bits == "1b0404cb")
-            #expect(Target(compact: 0x0101_0000)?.bits == "01010000")  // leading zero digit kept
+            #expect(Target(compact: 0x0101_0000)?.bits == "01010000") // leading zero digit kept
         }
     }
 
@@ -349,9 +352,10 @@ struct TargetTests {
                 #expect(Target(bigEndianBytes: InlineArray<32, UInt8> { bigEndian[$0] }) == t)
             }
             var single = [UInt8](repeating: 0, count: 32)
-            for i in 0..<32 {  // a single set bit at every byte position
+            for i in 0..<32 { // a single set bit at every byte position
                 single[i] = 0x01
-                #expect(Target(bigEndianBytes: InlineArray<32, UInt8> { single[$0] })
+                #expect(
+                    Target(bigEndianBytes: InlineArray<32, UInt8> { single[$0] })
                         == Target(bigEndianBytes: single))
                 single[i] = 0
             }
@@ -408,11 +412,11 @@ struct TargetTests {
         /// The same arguments as core and the same absolute tolerance.
         /// `isApproximatelyEqual(_:to:absoluteTolerance:)` is `abs(a - b) <= tolerance` there.
         @Test(arguments: [
-            ("very_low_target", 0x1f111111, 0.000001),
-            ("low_target", 0x1ef88f6f, 0.000016),
-            ("mid_target", 0x1df88f6f, 0.004023),
-            ("high_target", 0x1cf88f6f, 1.029916),
-            ("very_high_target", 0x12345678, 5913134931067755359633408.0),
+            ("very_low_target", 0x1f11_1111, 0.000001),
+            ("low_target", 0x1ef8_8f6f, 0.000016),
+            ("mid_target", 0x1df8_8f6f, 0.004023),
+            ("high_target", 0x1cf8_8f6f, 1.029916),
+            ("very_high_target", 0x1234_5678, 5913134931067755359633408.0),
         ])
         func swiftBitcoinDifficulty(name: String, compact: Int, expected: Double) throws {
             let difficulty = try #require(Target.difficulty(compact: compact))
@@ -456,7 +460,7 @@ struct TargetTests {
 
         /// The range of valid difficulties: from a target just under 2²⁵⁶ down to a target of 1.
         @Test func limits() {
-            #expect(Target(difficulty: 0x1p-31) == Target(hex: "7fff80" + zeros(58)))  // 0xffff << 239
+            #expect(Target(difficulty: 0x1p-31) == Target(hex: "7fff80" + zeros(58))) // 0xffff << 239
             #expect(Target(difficulty: 0x1p-33) == nil)
             #expect(Target(difficulty: 0xFFFF * 0x1p208) == Target(hex: "1"))
             #expect(Target(difficulty: 0xFFFF * 0x1p209) == nil)
@@ -480,8 +484,10 @@ struct TargetTests {
 
         /// Real mainnet compacts through difficulty and back: the target is within a Double's
         /// precision, and the compact is unchanged or one mantissa step lower.
-        @Test(arguments: [Int(0x1D00_FFFF), 0x1D00_D86A, 0x1C00_FFFF, 0x1B04_04CB, 0x1A05_DB8B,
-                          0x1903_A30C, 0x1806_B99F, 0x1703_4219, 0x207F_FFFF])
+        @Test(arguments: [
+            Int(0x1D00_FFFF), 0x1D00_D86A, 0x1C00_FFFF, 0x1B04_04CB, 0x1A05_DB8B,
+            0x1903_A30C, 0x1806_B99F, 0x1703_4219, 0x207F_FFFF,
+        ])
         func compactThroughDifficulty(bits: Int) throws {
             let target = try #require(Target(compact: bits))
             let back = try #require(Target(difficulty: target.difficulty))
@@ -501,12 +507,13 @@ struct TargetTests {
 
         /// Bitcoin Core's `pow_tests.cpp`: last block's bits, the period's first and last block
         /// times, and the expected next bits. Rechecked with Python's exact integers.
-        @Test(arguments: [
-            (Int(0x1D00_FFFF), 1_261_130_161, 1_262_152_739, Int(0x1D00_D86A)),  // get_next_work
-            (0x1D00_FFFF, 1_231_006_505, 1_233_061_996, 0x1D00_FFFF),  // capped at powLimit
-            (0x1C05_A3F4, 1_279_008_237, 1_279_297_671, 0x1C01_68FD),  // timespan clamped up to ¼
-            (0x1C38_7F6F, 1_263_163_443, 1_269_211_443, 0x1D00_E1FD),  // timespan clamped down to 4×
-        ] as [(Int, Int, Int, Int)])
+        @Test(
+            arguments: [
+                (Int(0x1D00_FFFF), 1_261_130_161, 1_262_152_739, Int(0x1D00_D86A)), // get_next_work
+                (0x1D00_FFFF, 1_231_006_505, 1_233_061_996, 0x1D00_FFFF), // capped at powLimit
+                (0x1C05_A3F4, 1_279_008_237, 1_279_297_671, 0x1C01_68FD), // timespan clamped up to ¼
+                (0x1C38_7F6F, 1_263_163_443, 1_269_211_443, 0x1D00_E1FD), // timespan clamped down to 4×
+            ] as [(Int, Int, Int, Int)])
         func matchesBitcoinCore(bits: Int, firstTime: Int, lastTime: Int, expected: Int) throws {
             let target = try #require(Target(compact: bits))
             let next = target.retargeted(
@@ -524,21 +531,27 @@ struct TargetTests {
         /// Holds while `target × timespan` fits in 256 bits, as it always does under mainnet's limit.
         @Test func targetTimespanLeavesTheTargetUnchanged() {
             for t in randomTargets(200, seed: 140) where t <= Fixtures.mainnetPowLimit {
-                #expect(t.retargeted(actualTimespan: Self.twoWeeks, targetTimespan: Self.twoWeeks,
-                                     powLimit: Fixtures.mainnetPowLimit) == t)
+                #expect(
+                    t.retargeted(
+                        actualTimespan: Self.twoWeeks, targetTimespan: Self.twoWeeks,
+                        powLimit: Fixtures.mainnetPowLimit) == t)
             }
         }
 
         /// Past that, Core's product wraps, so even an on-schedule period changes the target.
         @Test func targetTimespanChangesAWrappingTarget() {
             let limit = Fixtures.regtestPowLimit
-            #expect(limit.retargeted(actualTimespan: Self.twoWeeks, targetTimespan: Self.twoWeeks, powLimit: limit) != limit)
+            #expect(
+                limit.retargeted(actualTimespan: Self.twoWeeks, targetTimespan: Self.twoWeeks, powLimit: limit) != limit
+            )
         }
 
         /// Outside ¼ ... 4× of the target timespan, the timespan is clamped first, even when negative
         /// (block times may go backwards).
         @Test func clampsTheTimespan() {
-            let t = Target(compact: 0x1B04_04CB)!, limit = Fixtures.mainnetPowLimit, span = Self.twoWeeks
+            let t = Target(compact: 0x1B04_04CB)!
+            let limit = Fixtures.mainnetPowLimit
+            let span = Self.twoWeeks
             let quarter = t.retargeted(actualTimespan: span / 4, targetTimespan: span, powLimit: limit)
             let fourTimes = t.retargeted(actualTimespan: span * 4, targetTimespan: span, powLimit: limit)
             for shorter in [span / 4 - 1, 1, 0, -span] {
@@ -554,10 +567,12 @@ struct TargetTests {
         /// against the expected value, checking it against `powLimit` again is redundant.
         @Test func expectedBitsAlwaysDecodeUnderThePowLimit() {
             for limit in [Fixtures.mainnetPowLimit, Fixtures.regtestPowLimit] {
-                #expect(Target(compact: limit.compact, powLimit: limit) != nil)  // min-difficulty blocks
+                #expect(Target(compact: limit.compact, powLimit: limit) != nil) // min-difficulty blocks
                 for t in randomTargets(500, seed: 142) where t <= limit {
                     for span in [Self.twoWeeks / 4, Self.twoWeeks, Self.twoWeeks * 4] {
-                        guard let next = t.retargeted(actualTimespan: span, targetTimespan: Self.twoWeeks, powLimit: limit)
+                        guard
+                            let next = t.retargeted(
+                                actualTimespan: span, targetTimespan: Self.twoWeeks, powLimit: limit)
                         else { continue }
                         #expect(Target(compact: next.compact, powLimit: limit) != nil)
                     }
@@ -568,7 +583,8 @@ struct TargetTests {
         @Test func neverExceedsThePowLimit() {
             let limit = Fixtures.mainnetPowLimit
             for t in randomTargets(300, seed: 141) where t <= limit {
-                let next = t.retargeted(actualTimespan: Self.twoWeeks * 4, targetTimespan: Self.twoWeeks, powLimit: limit)
+                let next = t.retargeted(
+                    actualTimespan: Self.twoWeeks * 4, targetTimespan: Self.twoWeeks, powLimit: limit)
                 #expect(next.map { $0 <= limit } ?? true)
             }
         }
@@ -578,10 +594,12 @@ struct TargetTests {
         @Test func productWrapsLikeCore() {
             let limit = Fixtures.regtestPowLimit
             // Regtest's limit × 4 days wraps; the quotient is far below the limit, not capped to it.
-            #expect(limit.retargeted(actualTimespan: 4 * 86_400, targetTimespan: 86_400, powLimit: limit)
+            #expect(
+                limit.retargeted(actualTimespan: 4 * 86_400, targetTimespan: 86_400, powLimit: limit)
                     == Target(hex: "0000c22e450672894ab6cd8efb11d33f5617839a5bc7dea00c22e450672894a7"))
             // 0x207fffff × 960 s ÷ 600 s.
-            #expect(Target(compact: 0x207F_FFFF)!.retargeted(actualTimespan: 960, targetTimespan: 600, powLimit: limit)
+            #expect(
+                Target(compact: 0x207F_FFFF)!.retargeted(actualTimespan: 960, targetTimespan: 600, powLimit: limit)
                     == Target(hex: "006d386d3a06d3a06d3a06d3a06d3a06d3a06d3a06d3a06d3a06d3a06d3a06d3"))
         }
 
@@ -589,17 +607,22 @@ struct TargetTests {
         @Test func productWrappingToZeroIsNil() {
             let maximum = Target(hex: String(repeating: "f", count: 64))!
             // 2²⁵⁰ × 2²² = 2²⁷² and 2²⁵⁴ × 2²² = 2²⁷⁶ are both 0 mod 2²⁵⁶.
-            #expect(Target(hex: "4" + zeros(62))!.retargeted(actualTimespan: 4 * 1_048_576, targetTimespan: 1_048_576,
-                                                            powLimit: Fixtures.regtestPowLimit) == nil)
-            #expect(Target(hex: "4" + zeros(63))!.retargeted(actualTimespan: 4 * 1_048_576, targetTimespan: 1_048_576,
-                                                            powLimit: maximum) == nil)
+            #expect(
+                Target(hex: "4" + zeros(62))!.retargeted(
+                    actualTimespan: 4 * 1_048_576, targetTimespan: 1_048_576,
+                    powLimit: Fixtures.regtestPowLimit) == nil)
+            #expect(
+                Target(hex: "4" + zeros(63))!.retargeted(
+                    actualTimespan: 4 * 1_048_576, targetTimespan: 1_048_576,
+                    powLimit: maximum) == nil)
         }
 
         /// swift-bitcoin's `BlockchainServiceTests.difficultyAdjustment`: regtest's limit, a
         /// 10-minute timespan and 2-minute spacing (so a retarget every 5 blocks), 15 blocks at
         /// 4, then 2, then 4 minutes apart. Its expected bits are Bitcoin Core's wrapped results.
         @Test func swiftBitcoinDifficultyAdjustment() {
-            let limit = Fixtures.regtestPowLimit, span = 600
+            let limit = Fixtures.regtestPowLimit
+            let span = 600
             let first = Target(compact: 0x207F_FFFF)!
             let second = first.retargeted(actualTimespan: 4 * 240, targetTimespan: span, powLimit: limit)
             #expect(second?.compact == 0x1F6D_386D)
@@ -611,9 +634,13 @@ struct TargetTests {
 
         /// Only targets below 4 can round down to zero; Core would encode that as compact 0.
         @Test func zeroResultIsNil() {
-            let limit = Fixtures.mainnetPowLimit, span = Self.twoWeeks
-            #expect(Target(hex: "3")!.retargeted(actualTimespan: span / 4, targetTimespan: span, powLimit: limit) == nil)
-            #expect(Target(hex: "4")!.retargeted(actualTimespan: span / 4, targetTimespan: span, powLimit: limit) == Target(hex: "1"))
+            let limit = Fixtures.mainnetPowLimit
+            let span = Self.twoWeeks
+            #expect(
+                Target(hex: "3")!.retargeted(actualTimespan: span / 4, targetTimespan: span, powLimit: limit) == nil)
+            #expect(
+                Target(hex: "4")!.retargeted(actualTimespan: span / 4, targetTimespan: span, powLimit: limit)
+                    == Target(hex: "1"))
         }
 
         /// Against a reference built from the test suite's own 64-bit limb arithmetic. Random
@@ -645,14 +672,14 @@ struct TargetTests {
     @Suite struct AllFormats {
         static let samples: [String] = {
             var samples = ["1", "ff", "100", "ffffff", "1000000", "ffffffffffffffff"]
-            samples.append(String(repeating: "f", count: 32))  // 2¹²⁸ − 1
-            samples.append("1" + zeros(32))  // 2¹²⁸
-            samples.append("8" + zeros(63))  // 2²⁵⁵
-            samples.append(String(repeating: "f", count: 64))  // the maximum
-            samples.append("ffff" + zeros(52))  // difficulty one
-            samples.append("7fffff" + zeros(58))  // regtest limit
-            samples.append(String(repeating: "f", count: 56))  // mainnet limit
-            samples.append("34219" + zeros(40))  // a 2011-era target
+            samples.append(String(repeating: "f", count: 32)) // 2¹²⁸ − 1
+            samples.append("1" + zeros(32)) // 2¹²⁸
+            samples.append("8" + zeros(63)) // 2²⁵⁵
+            samples.append(String(repeating: "f", count: 64)) // the maximum
+            samples.append("ffff" + zeros(52)) // difficulty one
+            samples.append("7fffff" + zeros(58)) // regtest limit
+            samples.append(String(repeating: "f", count: 56)) // mainnet limit
+            samples.append("34219" + zeros(40)) // a 2011-era target
             return samples
         }()
 

@@ -1,9 +1,10 @@
 import Foundation
 
-fileprivate let length = 16
+private let length = 16
 
-public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, ExpressibleByStringLiteral {
-
+public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible,
+    ExpressibleByStringLiteral
+{
     public var description: String {
         var words = words
         var longestChainIndex = -1
@@ -29,7 +30,8 @@ public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomD
             }
         }
         if longestChainIndex != -1 {
-            words = .init(words.prefix(upTo: longestChainIndex) + words.suffix(from: longestChainIndex + longestChainLength))
+            words = .init(
+                words.prefix(upTo: longestChainIndex) + words.suffix(from: longestChainIndex + longestChainLength))
         }
         var description = ""
         for i in words.indices {
@@ -57,11 +59,12 @@ public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomD
 
     public init(_ rawValue: Data) {
         let rawValue1 = rawValue.prefix(length)
-        let rawValue2 = if rawValue1.count < length {
-            Data(repeating: 0, count: length - rawValue1.count) + rawValue1
-        } else {
-            rawValue1
-        }
+        let rawValue2 =
+            if rawValue1.count < length {
+                Data(repeating: 0, count: length - rawValue1.count) + rawValue1
+            } else {
+                rawValue1
+            }
         self.rawValue = rawValue2
     }
 
@@ -88,13 +91,14 @@ public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomD
         let partsA = halfs.count < 1 ? [UInt16]() : halfs[0].split(separator: ":").map { UInt16($0, radix: 16) ?? 0 }
         let partsB = halfs.count < 2 ? [UInt16]() : halfs[1].split(separator: ":").map { UInt16($0, radix: 16) ?? 0 }
         let zeros = [UInt16](repeating: 0, count: max(0, 8 - (partsA.count + partsB.count)))
-        let parts = if stringLiteral.hasPrefix("::") {
-            zeros + partsA
-        } else if stringLiteral.hasSuffix("::") {
-            partsA + zeros
-        } else {
-            partsA + zeros + partsB
-        }
+        let parts =
+            if stringLiteral.hasPrefix("::") {
+                zeros + partsA
+            } else if stringLiteral.hasSuffix("::") {
+                partsA + zeros
+            } else {
+                partsA + zeros + partsB
+            }
         self.init(parts)
     }
 
@@ -132,7 +136,7 @@ public struct IPv6Address: Equatable, Sendable, CustomStringConvertible, CustomD
 extension IPv6Address {
     public static func parse(_ address: String) -> (host: String, port: Int?)? {
         let regex = /(\[[\d\:A-Fa-f]+\])(\:(\d{1,5}))?/
-        guard let _ = address.wholeMatch(of: regex) else {
+        guard address.wholeMatch(of: regex) != nil else {
             return nil
         }
         let matches = address.matches(of: regex)

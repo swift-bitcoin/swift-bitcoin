@@ -1,18 +1,16 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 public struct PingMessage: Equatable, Sendable {
-
     init() {
-        self.nonce = .random(in: UInt64.min ... UInt64.max)
+        self.nonce = .random(in: UInt64.min...UInt64.max)
     }
 
     public let nonce: UInt64
 }
 
 extension PingMessage: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         nonce = try .init(parsingLittleEndian: &input)
     }

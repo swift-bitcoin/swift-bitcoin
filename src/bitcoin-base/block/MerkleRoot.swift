@@ -1,5 +1,5 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 // Merkle roots, following Bitcoin Core's `consensus/merkle.cpp`:
 //
@@ -117,7 +117,6 @@ func computeMerkleRoot(_ hashes: inout [Hash256], detectMutation: Bool) -> (root
     return (nodes[0], isMutated)
 }
 
-
 public func calculateMerkleRoot(_ txs: [Transaction]) -> MerkleRoot {
     // calculateMerkleRoot(txs.map(\.id))
     MerkleRoot(transactionIdentifiers: txs.map(\.id))
@@ -128,11 +127,12 @@ public func calculateMerkleRoot(_ hashes: [Data]) -> Data {
     if hashes.count == 1 {
         return hashes[0]
     }
-    let hashes = if hashes.count % 2 == 1 {
-        hashes + [hashes[hashes.endIndex - 1]]
-    } else {
-        hashes
-    }
+    let hashes =
+        if hashes.count % 2 == 1 {
+            hashes + [hashes[hashes.endIndex - 1]]
+        } else {
+            hashes
+        }
     var nextHashes = [Data]()
     for i in stride(from: hashes.startIndex, to: hashes.endIndex, by: 2) {
         nextHashes.append(Data(SHA256d.hash(data: hashes[i] + hashes[i + 1])))
@@ -142,5 +142,6 @@ public func calculateMerkleRoot(_ hashes: [Data]) -> Data {
 
 public func calculateWitnessMerkleRoot(_ txs: [Transaction], addCoinbaseID: Bool = false) -> WitnessMerkleRoot {
     // calculateMerkleRoot((addCoinbaseID ? [Transaction.coinbaseWitnessID] : []) + txs.map(\.witnessID))
-    WitnessMerkleRoot(witnessTransactionIdentifiers: (addCoinbaseID ? [Transaction.coinbaseWitnessID] : []) + txs.map(\.witnessID))
+    WitnessMerkleRoot(
+        witnessTransactionIdentifiers: (addCoinbaseID ? [Transaction.coinbaseWitnessID] : []) + txs.map(\.witnessID))
 }

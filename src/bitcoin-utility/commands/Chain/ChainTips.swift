@@ -1,11 +1,11 @@
 import ArgumentParser
-import JSONRPC
 import BitcoinBlockchain
-import struct _NIOFileSystem.FilePath
 import Foundation
+import JSONRPC
+
+import struct _NIOFileSystem.FilePath
 
 struct ChainTips: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         commandName: "tips",
         abstract: ""
@@ -15,18 +15,21 @@ struct ChainTips: AsyncParsableCommand {
 
     mutating func run() async throws {
         let network = try parent.resolvedNetwork
-        let blockchain = try await BlockchainService(params: network.params, config: .init(dataLocation: .defaultPath), logger: .init(label: "tips"))
+        let blockchain = try await BlockchainService(
+            params: network.params, config: .init(dataLocation: .defaultPath), logger: .init(label: "tips"))
         let tips = await blockchain.chainTips
 
         let printableTips = tips.map {
-            let status: GetChainTipsRPC.Tip.Status = switch $0.status {
-            case .active: .active
-            case .stale: .validFork
-            case .merkle: .validHeaders
-            case .header: .headersOnly
-            case .invalid: .invalid
-            }
-            return GetChainTipsRPC.Tip(height: $0.height, hash: $0.tip.displayHex, branchlen: $0.branchLength, status: status)
+            let status: GetChainTipsRPC.Tip.Status =
+                switch $0.status {
+                case .active: .active
+                case .stale: .validFork
+                case .merkle: .validHeaders
+                case .header: .headersOnly
+                case .invalid: .invalid
+                }
+            return GetChainTipsRPC.Tip(
+                height: $0.height, hash: $0.tip.displayHex, branchlen: $0.branchLength, status: status)
         }
 
         let encoder = JSONEncoder()

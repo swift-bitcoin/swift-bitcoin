@@ -4,7 +4,6 @@ import BinaryParsing
 ///
 /// The default behavior when working with `Array<BinaryCodable>` is to prefix all arrays with their count encoded a `VarInt`.
 public struct VarInt: Equatable, Sendable {
-
     public init(_ value: Int) {
         rawValue = .init(value)
     }
@@ -23,9 +22,7 @@ public struct VarInt: Equatable, Sendable {
 }
 
 extension VarInt: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
-
         let firstByte = try UInt8(parsing: &input)
         if firstByte < 0xfd {
             rawValue = UInt64(firstByte)
@@ -43,11 +40,11 @@ extension VarInt: BinaryCodable {
     public func countBytes(into counter: inout BinarySizeCounter, format: Never?) {
         counter.count(UInt8.self)
         switch rawValue {
-        case 0xfd ... UInt64(UInt16.max):
+        case 0xfd...UInt64(UInt16.max):
             counter.count(UInt16.self)
-        case UInt64(UInt16.max) + 1 ... UInt64(UInt32.max):
+        case UInt64(UInt16.max) + 1...UInt64(UInt32.max):
             counter.count(UInt32.self)
-        case UInt64(UInt32.max) + 1 ... UInt64.max:
+        case UInt64(UInt32.max) + 1...UInt64.max:
             counter.count(UInt64.self)
         default: break
         }

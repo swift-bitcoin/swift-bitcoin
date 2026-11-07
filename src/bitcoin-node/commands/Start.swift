@@ -1,7 +1,6 @@
 import ArgumentParser
 
 struct Start: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Launch a Bitcoin node instance."
     )
@@ -17,4 +16,3 @@ struct Start: AsyncParsableCommand {
         }
     }
 }
-

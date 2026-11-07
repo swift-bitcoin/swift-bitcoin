@@ -1,10 +1,9 @@
-import Foundation
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 /// Transaction checking.
 extension Transaction {
-
     /// Runs basic checks that don't depend on any context.
     ///
     /// This function is called when checking a block and it's consensus critical. Also called when performing mempool pre-checks.
@@ -79,7 +78,9 @@ extension Transaction {
     /// This does not modify the UTXO set. This does not check scripts and sigs.
     ///
     /// Precondition: must not be called on a coinbase transaction.
-    func checkInputs(spendHeight: Int, coinbaseMaturity: Int, coins: [UnspentOutput]) async throws(ValidationError) -> Amount {
+    func checkInputs(spendHeight: Int, coinbaseMaturity: Int, coins: [UnspentOutput]) async throws(ValidationError)
+        -> Amount
+    {
         // bool Consensus::CheckTxInputs(const CTransaction& tx, TxValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight, CAmount& txfee)
 
         precondition(!isCoinbase)
@@ -119,7 +120,9 @@ extension Transaction {
     ///
     ///
     /// Analog to Bitcoin Core's `IsStandardTx()`.
-    func isStandard(maxDatacarrierBytes: Int, permitBareMultisig: Bool, dustRelayFeerate: Amount) throws(PolicyViolation) {
+    func isStandard(maxDatacarrierBytes: Int, permitBareMultisig: Bool, dustRelayFeerate: Amount)
+        throws(PolicyViolation)
+    {
         // TODO: Implement analog to Bitcoin Core's `isStandardTx()`
         // bool IsStandardTx(const CTransaction& tx, const std::optional<unsigned>& max_datacarrier_bytes, bool permit_bare_multisig, const CFeeRate& dust_relay_fee, std::string& reason)
         guard version >= Transaction.Version.minStandard && version <= Transaction.Version.maxStandard else {
@@ -189,10 +192,10 @@ extension Transaction {
                 continue
             }
             // get the scriptPubKey corresponding to this input:
-            var prevScript = prev.script;
+            var prevScript = prev.script
 
             // witness stuffing detected
-            if (prevScript.isPayToAnchor) {
+            if prevScript.isPayToAnchor {
                 throw .witnessStuffing
             }
 
@@ -261,7 +264,8 @@ extension Transaction {
                     _ = stack.removeLast() // ignore script
                     if controlBlock.isEmpty { throw .emptyTaprootControlBlock } // Empty control block is invalid
 
-                    if let first = controlBlock.first, (first & Witness.taprootLeafMask) == Witness.taprootLeafTapscript {
+                    if let first = controlBlock.first, (first & Witness.taprootLeafMask) == Witness.taprootLeafTapscript
+                    {
                         // Leaf version 0xc0 (aka Tapscript, see BIP 342)
                         for item in stack {
                             if item.count > Witness.maxTapscriptStackItemSize {
@@ -334,7 +338,7 @@ extension Transaction {
                     throw .prevoutInvalidRedeemScript
                 }
                 let sigops = subsSript.sigopCount(accurate: true)
-                if (sigops > Script.maxP2SHSigops) {
+                if sigops > Script.maxP2SHSigops {
                     // "bad-txns-nonstandard-inputs", strprintf("p2sh redeemscript sigops exceed limit (input %u: %u > %u)", i, sigop_count, MAX_P2SH_SIGOPS)
                     throw .prevoutRedeemScriptSigopsExceeded
                 }
@@ -415,7 +419,7 @@ extension Transaction {
     }
 
     private func getFee(_ feeRate: Amount, virtualBytes: Int) -> Amount {
-    // CAmount CFeeRate::GetFee(int32_t virtual_bytes) const
+        // CAmount CFeeRate::GetFee(int32_t virtual_bytes) const
         precondition(virtualBytes >= 0)
         if feeRate == 0 { return 0 }
         let fee = evaluateFeeUp(feeRate, virtualBytes: virtualBytes)
@@ -454,7 +458,6 @@ extension Transaction {
         return getFee(dustRelayFeeIn, virtualBytes: size)
     }
 
-
     private func isDust(out: TransactionOutput, dustRelayFeeIn: Amount) -> Bool {
         // bool IsDust(const CTxOut& txout, const CFeeRate& dustRelayFeeIn)
         out.value < getDustThreshold(out: out, dustRelayFeeIn: dustRelayFeeIn)
@@ -473,8 +476,6 @@ extension Transaction {
 
     /// Check the total number of non-witness sigops across the whole transaction, as per BIP54.
     private func checkSigopsBIP54(prevouts: [TransactionOutput]) -> Bool {
-
-
         assert(!isCoinbase)
 
         var sigops = 0
@@ -525,7 +526,7 @@ extension Transaction {
     }
 
     func sigopCost(prevouts: [TransactionOutput], options: ScriptConfig) -> Int {
-    // int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& inputs, script_verify_flags flags)
+        // int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& inputs, script_verify_flags flags)
         var sigops = legacySigopCount() * Self.witnessScaleFactor
 
         guard !isCoinbase else {
@@ -539,14 +540,15 @@ extension Transaction {
         for (i, txIn) in ins.enumerated() {
             // assert(!coin.IsSpent());
             let prevout = prevouts[i]
-            sigops += countWitnessSigops(inputScript: txIn.script, outputScript: prevout.script, witnessStack: txIn.witness.stack /*tx.vin[i].scriptWitness*/, options: options)
+            sigops += countWitnessSigops(
+                inputScript: txIn.script, outputScript: prevout.script,
+                witnessStack: txIn.witness.stack /*tx.vin[i].scriptWitness*/, options: options)
         }
         return sigops
     }
 }
 
 public enum PolicyViolation: Swift.Error {
-
     // Transaction.isStandard
 
     case transactionVersion
@@ -583,14 +585,15 @@ public enum PolicyViolation: Swift.Error {
     case prevoutRedeemScriptSigopsExceeded
 }
 
-
 private func witnessSigops(witnessVersion: Int, witnessProgram: Data, witnessStack: [Data]) -> Int {
     // size_t static WitnessSigOps(int witversion, const std::vector<unsigned char>& witprogram, const CScriptWitness& witness)
     if witnessVersion == 0 {
         if witnessProgram.count == SHA256.Digest.byteCount /* WITNESS_V0_KEYHASH_SIZE */ {
             return 1
         }
-        if witnessProgram.count == Hash160.Digest.byteCount /* WITNESS_V0_SCRIPTHASH_SIZE */, let lastStackElement = witnessStack.last, let subScript = try? Script(lastStackElement) {
+        if witnessProgram.count == Hash160.Digest.byteCount /* WITNESS_V0_SCRIPTHASH_SIZE */,
+            let lastStackElement = witnessStack.last, let subScript = try? Script(lastStackElement)
+        {
             return subScript.sigopCount(accurate: true)
         }
         return 0
@@ -600,7 +603,9 @@ private func witnessSigops(witnessVersion: Int, witnessProgram: Data, witnessSta
     return 0
 }
 
-private func countWitnessSigops(inputScript: Script, outputScript: Script, witnessStack: [Data], options: ScriptConfig) -> Int {
+private func countWitnessSigops(inputScript: Script, outputScript: Script, witnessStack: [Data], options: ScriptConfig)
+    -> Int
+{
     // size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness& witness, script_verify_flags flags)
     guard options.contains(.witness) else {
         return 0
@@ -611,11 +616,12 @@ private func countWitnessSigops(inputScript: Script, outputScript: Script, witne
     }
 
     if outputScript.isPayToScriptHash,
-       inputScript.isPushOnly,
-       let lastOp = inputScript.ops.last,
-       let lastPush = lastOp.pushedData,
-       let subScript = try? Script(lastPush),
-       let (witnessVersion, witnessProgram) = subScript.witnessVersionProgram {
+        inputScript.isPushOnly,
+        let lastOp = inputScript.ops.last,
+        let lastPush = lastOp.pushedData,
+        let subScript = try? Script(lastPush),
+        let (witnessVersion, witnessProgram) = subScript.witnessVersionProgram
+    {
         return witnessSigops(witnessVersion: witnessVersion, witnessProgram: witnessProgram, witnessStack: witnessStack)
     }
     return 0

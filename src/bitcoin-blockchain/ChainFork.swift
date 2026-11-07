@@ -1,7 +1,6 @@
 import Foundation
 
 struct ChainFork: Equatable, Comparable {
-
     let tip: BlockRef
     var start: BlockRef
 
@@ -11,7 +10,8 @@ struct ChainFork: Equatable, Comparable {
     }
 
     static func < (lhs: ChainFork, rhs: ChainFork) -> Bool {
-        lhs.tip.chainwork < rhs.tip.chainwork || (lhs.tip.chainwork == rhs.tip.chainwork && lhs.tip.status.score < rhs.tip.status.score)
+        lhs.tip.chainwork < rhs.tip.chainwork
+            || (lhs.tip.chainwork == rhs.tip.chainwork && lhs.tip.status.score < rhs.tip.status.score)
     }
 }
 

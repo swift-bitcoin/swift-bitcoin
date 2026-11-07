@@ -1,7 +1,5 @@
 extension Transaction {
-
     public struct GenesisParams: Sendable {
-
         public init(timestampMessage: String, reward: Amount, outputScript: Script) {
             self.timestampMessage = timestampMessage
             self.reward = reward

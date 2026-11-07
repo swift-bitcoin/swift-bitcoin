@@ -5,7 +5,6 @@ import Foundation
 
 /// Decodes a Bitcoin address into its basic components.
 struct AddressDecode: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Decodes a Bitcoin address into its basic components."
     )
@@ -26,7 +25,6 @@ struct AddressDecode: ParsableCommand {
 }
 
 private struct AddressInfo: Codable, CustomStringConvertible {
-
     init(_ address: LegacyAddress) {
         self.address = address.description
         mainnet = address.isMainnet

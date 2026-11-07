@@ -3,23 +3,36 @@ import Foundation
 extension JSONRPCRequest {
     public enum Params: Codable, Sendable {
         case
-            help(HelpRPC.Params),
+            help(HelpRPC.Params)
+        case
             status,
-            stop,
-            startP2P(StartP2PRPC.Params),
-            stopP2P,
-            connect(ConnectRPC.Params),
-            disconnectPeer(DisconnectPeerRPC.Params),
-            getBlockHash(GetBlockHashRPC.Params),
-            getBlock(GetBlockRPC.Params),
-            getHeader(GetHeaderRPC.Params),
-            generateToAddress(GenerateToAddressRPC.Params),
+            stop
+        case
+            startP2P(StartP2PRPC.Params)
+        case
+            stopP2P
+        case
+            connect(ConnectRPC.Params)
+        case
+            disconnectPeer(DisconnectPeerRPC.Params)
+        case
+            getBlockHash(GetBlockHashRPC.Params)
+        case
+            getBlock(GetBlockRPC.Params)
+        case
+            getHeader(GetHeaderRPC.Params)
+        case
+            generateToAddress(GenerateToAddressRPC.Params)
+        case
             getBlockchainInfo,
             getChainTips,
             getMempool,
-            getPeerInfo,
-            getTransaction(GetTransactionRPC.Params),
-            sendTransaction(SendTransactionRPC.Params),
+            getPeerInfo
+        case
+            getTransaction(GetTransactionRPC.Params)
+        case
+            sendTransaction(SendTransactionRPC.Params)
+        case
             reindex,
             reindexStatus,
             reindexStop
@@ -27,7 +40,6 @@ extension JSONRPCRequest {
 }
 
 extension JSONRPCRequest.Params {
-
     public init(from decoder: any Decoder) throws {
         guard let method = decoder.userInfo[.method] as? String else {
             throw DecodingError.typeMismatch(Self.self, .init(codingPath: decoder.codingPath, debugDescription: ""))
@@ -36,29 +48,31 @@ extension JSONRPCRequest.Params {
     }
 
     public init(from decoder: any Decoder, method: String) throws {
-        self = switch method {
-        case HelpRPC.method: .help(try .init(from: decoder))
-        case StatusRPC.method: .status
-        case StopRPC.method: .stop
-        case StartP2PRPC.method: .startP2P(try .init(from: decoder))
-        case StopP2PRPC.method: .stopP2P
-        case ConnectRPC.method: .connect(try .init(from: decoder))
-        case DisconnectPeerRPC.method: .disconnectPeer(try .init(from: decoder))
-        case GetBlockHashRPC.method: .getBlockHash(try .init(from: decoder))
-        case GetBlockRPC.method: .getBlock(try .init(from: decoder))
-        case GetHeaderRPC.method: .getHeader(try .init(from: decoder))
-        case GenerateToAddressRPC.method: .generateToAddress(try .init(from: decoder))
-        case GetBlockchainInfoRPC.method: .getBlockchainInfo
-        case GetChainTipsRPC.method: .getChainTips
-        case GetMempoolRPC.method: .getMempool
-        case GetPeerInfoRPC.method: .getPeerInfo
-        case GetTransactionRPC.method: .getTransaction(try .init(from: decoder))
-        case SendTransactionRPC.method: .sendTransaction(try .init(from: decoder))
-        case ReindexRPC.method: .reindex
-        case ReindexStatusRPC.method: .reindexStatus
-        case ReindexStopRPC.method: .reindexStop
-        default: throw DecodingError.typeMismatch(Self.self, .init(codingPath: decoder.codingPath, debugDescription: ""))
-        }
+        self =
+            switch method {
+            case HelpRPC.method: .help(try .init(from: decoder))
+            case StatusRPC.method: .status
+            case StopRPC.method: .stop
+            case StartP2PRPC.method: .startP2P(try .init(from: decoder))
+            case StopP2PRPC.method: .stopP2P
+            case ConnectRPC.method: .connect(try .init(from: decoder))
+            case DisconnectPeerRPC.method: .disconnectPeer(try .init(from: decoder))
+            case GetBlockHashRPC.method: .getBlockHash(try .init(from: decoder))
+            case GetBlockRPC.method: .getBlock(try .init(from: decoder))
+            case GetHeaderRPC.method: .getHeader(try .init(from: decoder))
+            case GenerateToAddressRPC.method: .generateToAddress(try .init(from: decoder))
+            case GetBlockchainInfoRPC.method: .getBlockchainInfo
+            case GetChainTipsRPC.method: .getChainTips
+            case GetMempoolRPC.method: .getMempool
+            case GetPeerInfoRPC.method: .getPeerInfo
+            case GetTransactionRPC.method: .getTransaction(try .init(from: decoder))
+            case SendTransactionRPC.method: .sendTransaction(try .init(from: decoder))
+            case ReindexRPC.method: .reindex
+            case ReindexStatusRPC.method: .reindexStatus
+            case ReindexStopRPC.method: .reindexStop
+            default:
+                throw DecodingError.typeMismatch(Self.self, .init(codingPath: decoder.codingPath, debugDescription: ""))
+            }
     }
 
     public func encode(to encoder: Encoder) throws {

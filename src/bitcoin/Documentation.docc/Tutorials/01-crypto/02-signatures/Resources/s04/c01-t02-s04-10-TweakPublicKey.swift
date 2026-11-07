@@ -2,7 +2,6 @@ import ArgumentParser
 import Bitcoin
 
 struct TweakPublicKey: ParsableCommand {
-
     @Option var tweak: String
     @Argument var publicKey: String
 

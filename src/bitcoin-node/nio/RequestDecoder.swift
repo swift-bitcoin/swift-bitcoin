@@ -1,10 +1,9 @@
 import Foundation
-import NIOCore
 import JSONRPC
+import NIOCore
 
 /// Server side response/request coder.
 struct RequestDecoder: ByteToMessageDecoder, Sendable {
-
     typealias InboundIn = ByteBuffer
     typealias InboundOut = JSONRPCRequest
 
@@ -16,7 +15,7 @@ struct RequestDecoder: ByteToMessageDecoder, Sendable {
 
         let data = buffer.readData(length: buffer.readableBytes)!
         let decodable = try JSONDecoder().decode(InboundOut.self, from: data)
-            context.fireChannelRead(wrapInboundOut(decodable))
+        context.fireChannelRead(wrapInboundOut(decodable))
         return .continue
     }
 }

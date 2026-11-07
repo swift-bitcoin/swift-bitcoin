@@ -1,12 +1,9 @@
 extension BlockchainService {
-
     public struct Config: Sendable {
-
         /// Where to read and store data from.
         ///
         /// Data includes databases containing indices as well as block files which include undo information.
         public enum DataLocation: Sendable {
-
             /// In-memory only storage. No persistence.
             case inMemory
 

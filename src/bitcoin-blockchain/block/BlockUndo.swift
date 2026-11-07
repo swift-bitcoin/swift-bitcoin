@@ -1,19 +1,13 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
 struct BlockUndo: Equatable, Sendable {
-
-    init(spentCoins: [UnspentOutput?]) {
-        self.spentCoins = spentCoins
-    }
-
     let spentCoins: [UnspentOutput?]
 }
 
 extension BlockUndo: BinaryCodable {
-
     init(parsing input: inout ParserSpan, format: Never?) throws {
         // TODO: - Block undo probably need the netowrk magic bytes (passed in custom binary format) to match block storage.
         // let magic = Int(try UInt32(parsingLittleEndian: &input))

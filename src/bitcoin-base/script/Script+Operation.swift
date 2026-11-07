@@ -1,22 +1,38 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension Script {
     /// A script operation.
     public enum Operation: Equatable, Sendable {
-        case zero, pushBytes(Data), pushData1(Data), pushData2(Data), pushData4(Data), oneNegate, /* reserved(UInt8), */ success(UInt8), constant(UInt8), noOp, /* ver, */ `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack, twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot, swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub, twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr, numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max, within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultisig, checkMultisigVerify, noOp1, checkLocktimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8, noOp9, noOp10, checkSigAdd, unknown(UInt8), pubKeyHash, pubKey, invalidOpCode
+        case zero
+        case pushBytes(Data)
+        case pushData1(Data)
+        case pushData2(Data)
+        case pushData4(Data)
+        case oneNegate
+        case success(UInt8)
+        case constant(UInt8)
+        case noOp, /* ver, */ `if`, notIf, verIf, verNotIf, `else`, endIf, verify, `return`, toAltStack, fromAltStack,
+            twoDrop, twoDup, threeDup, twoOver, twoRot, twoSwap, ifDup, depth, drop, dup, nip, over, pick, roll, rot,
+            swap, tuck, cat, subStr, left, right, size, invert, and, or, xor, equal, equalVerify, oneAdd, oneSub,
+            twoMul, twoDiv, negate, abs, not, zeroNotEqual, add, sub, mul, div, mod, lShift, rShift, boolAnd, boolOr,
+            numEqual, numEqualVerify, numNotEqual, lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, min, max,
+            within, ripemd160, sha1, sha256, hash160, hash256, codeSeparator, checkSig, checkSigVerify, checkMultisig,
+            checkMultisigVerify, noOp1, checkLocktimeVerify, checkSequenceVerify, noOp4, noOp5, noOp6, noOp7, noOp8,
+            noOp9, noOp10, checkSigAdd
+        case unknown(UInt8)
+        case pubKeyHash, pubKey, invalidOpCode
     }
 }
 
 extension Script.Operation {
-
     public var pushedData: Data? {
         switch self {
         case .zero: Data()
         case .oneNegate: try! ScriptNumber(-1).data
-        case let .constant(k): ScriptNumber(k).data
-        case let .pushBytes(d), let .pushData1(d), let .pushData2(d), let .pushData4(d): d
+        case .constant(let k): ScriptNumber(k).data
+        case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): d
         default: nil
         }
     }
@@ -290,7 +306,9 @@ extension Script.Operation {
             precondition(d.count >= 0 && d.count <= UInt32.max)
             break
         case .success(let k):
-            precondition(k == 80 || k == 98 || (k >= 126 && k <= 129) || (k >= 131 && k <= 134) || (k >= 137 && k <= 138) || (k >= 141 && k <= 142) || (k >= 149 && k <= 153) || (k >= 187 && k <= 254))
+            precondition(
+                k == 80 || k == 98 || (k >= 126 && k <= 129) || (k >= 131 && k <= 134) || (k >= 137 && k <= 138)
+                    || (k >= 141 && k <= 142) || (k >= 149 && k <= 153) || (k >= 187 && k <= 254))
         case .constant(let k):
             precondition(k > 0 && k < 17)
         case .unknown(let k):
@@ -350,19 +368,17 @@ extension Script.Operation {
 }
 
 extension Script.Operation: BinaryCodable, ExpressibleByParsing {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         // decoder.setCheckpoint()
         let range = input.parserRange
 
         let opCode = try UInt8(parsing: &input)
         switch opCode {
-
         // OP_ZERO
         case Self.zero.opCode: self = .zero
 
         // OP_PUSHBYTES, OP_PUSHDATA1, OP_PUSHDATA2, OP_PUSHDATA4
-        case 0x01 ... 0x4b:
+        case 0x01...0x4b:
             do {
                 let payload = try Data([UInt8](parsing: &input, byteCount: Int(opCode)))
                 self = .pushBytes(payload)
@@ -405,18 +421,18 @@ extension Script.Operation: BinaryCodable, ExpressibleByParsing {
         // If any opcode numbered 80, 98, 126-129, 131-134, 137-138, 141-142, 149-153, 187-254 is encountered, validation succeeds
         case Self.success(80).opCode,
             Self.success(98 /*0x62*/).opCode,
-            Self.success(137).opCode ... Self.success(138).opCode,
-            Self.success(126).opCode ... Self.success(129).opCode,
-            Self.success(131).opCode ... Self.success(134).opCode,
-            Self.success(141).opCode ... Self.success(142).opCode,
-            Self.success(149).opCode ... Self.success(153).opCode,
-            Self.success(187).opCode ... Self.success(254).opCode:
+            Self.success(137).opCode...Self.success(138).opCode,
+            Self.success(126).opCode...Self.success(129).opCode,
+            Self.success(131).opCode...Self.success(134).opCode,
+            Self.success(141).opCode...Self.success(142).opCode,
+            Self.success(149).opCode...Self.success(153).opCode,
+            Self.success(187).opCode...Self.success(254).opCode:
             self = .success(opCode)
 
         case Self.oneNegate.opCode: self = .oneNegate
 
-            // Constants
-        case Self.constant(1).opCode ... Self.constant(16).opCode:
+        // Constants
+        case Self.constant(1).opCode...Self.constant(16).opCode:
             self = .constant(opCode - 0x50)
 
         case Self.noOp.opCode: self = .noOp
@@ -507,7 +523,7 @@ extension Script.Operation: BinaryCodable, ExpressibleByParsing {
         case Self.noOp9.opCode: self = .noOp9
         case Self.noOp10.opCode: self = .noOp10
         case Self.checkSigAdd.opCode: self = .checkSigAdd
-        case Self.unknown(0xbb).opCode ... Self.unknown(0xfc).opCode: self = .unknown(opCode)
+        case Self.unknown(0xbb).opCode...Self.unknown(0xfc).opCode: self = .unknown(opCode)
         case Self.pubKeyHash.opCode: self = .pubKeyHash
         case Self.pubKey.opCode: self = .pubKey
         case Self.invalidOpCode.opCode: self = .invalidOpCode

@@ -1,9 +1,8 @@
-import Foundation
 import CSECP256K1
+import Foundation
 
 /// Elliptic curve SECP256K1 signature supporting Schnorr algorithm.
 public struct SchnorrSignature: Equatable, Sendable, CustomStringConvertible {
-
     public init?(message: String, secretKey: SecretKey) {
         guard let messageData = message.data(using: .utf8) else {
             return nil
@@ -12,7 +11,8 @@ public struct SchnorrSignature: Equatable, Sendable, CustomStringConvertible {
     }
 
     public init(messageData: Data, secretKey: SecretKey, additionalEntropy: Data? = nil) {
-        self.init(hash: getMessageHash(messageData: messageData), secretKey: secretKey, additionalEntropy: additionalEntropy)
+        self.init(
+            hash: getMessageHash(messageData: messageData), secretKey: secretKey, additionalEntropy: additionalEntropy)
     }
 
     public init(hash: Data, secretKey: SecretKey, additionalEntropy: Data? = nil) {
@@ -86,7 +86,10 @@ private func signSchnorr(hash: Data, secretKey: SecretKey, additionalEntropy: Da
     var sigOut = [UInt8](repeating: 0, count: 64)
     var sigOutSpan = sigOut.mutableSpan
     let rand = if let additionalEntropy { [UInt8](additionalEntropy) } else { [UInt8]?.none }
-    guard eccSigningContext.schnorrsigSign32(sig64: &sigOutSpan, msg32: hash.span, keypair: keypair.span, auxRand32: rand?.span) != 0 else {
+    guard
+        eccSigningContext.schnorrsigSign32(
+            sig64: &sigOutSpan, msg32: hash.span, keypair: keypair.span, auxRand32: rand?.span) != 0
+    else {
         preconditionFailure()
     }
 
@@ -95,11 +98,15 @@ private func signSchnorr(hash: Data, secretKey: SecretKey, additionalEntropy: Da
     var xonlyPubkey = CollectionOfOne(XOnlyPubkey())
     var xonlyPubkeySpan = xonlyPubkey.mutableSpan
     var paritySpan = MutableSpan<Int32>?.none
-    guard SECP256K1Context.shared.keypairXOnlyPub(pubkey: &xonlyPubkeySpan, pkParity: &paritySpan, keypair: keypair.span) != 0 else {
+    guard
+        SECP256K1Context.shared.keypairXOnlyPub(pubkey: &xonlyPubkeySpan, pkParity: &paritySpan, keypair: keypair.span)
+            != 0
+    else {
         preconditionFailure()
     }
 
-    guard SECP256K1Context.shared.schnorrsigVerify(sig64: sigOut.span, msg: hash.span, pubkey: xonlyPubkey.span) != 0 else {
+    guard SECP256K1Context.shared.schnorrsigVerify(sig64: sigOut.span, msg: hash.span, pubkey: xonlyPubkey.span) != 0
+    else {
         preconditionFailure()
     }
 

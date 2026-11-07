@@ -1,10 +1,9 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// The object type is currently defined as one of the following possibilities: `ERROR`, `MSG_TX`, `MSG_BLOCK`, `MSG_FILTERED_BLOCK`, `MSG_CMPCT_BLOCK`, `MSG_WITNESS_TX`, `MSG_WITNESS_BLOCK`, `MSG_FILTERED_WITNESS_BLOCK`.
 public enum InventoryType: Int {
-
     /// `ERROR`: Any data of with this number may be ignored.
     case error = 0
 
@@ -24,17 +23,16 @@ public enum InventoryType: Int {
     case witnessTx = 5
 
     /// `MSG_WITNESS_TX`: Hash of a transaction with witness data. See BIP144 for more info.
-    case legacyWitnessTx = 0x40000001
+    case legacyWitnessTx = 0x4000_0001
 
     /// `MSG_WITNESS_BLOCK`: Hash of a block with witness data. See BIP144 for more info.
-    case witnessBlock = 0x40000002
+    case witnessBlock = 0x4000_0002
 
     /// `MSG_FILTERED_WITNESS_BLOCK`: Hash of a block with witness data. Only to be used in `getdata` message. Indicates the reply should be a `merkleblock` message rather than a `block` message; this only works if a bloom filter has been set. See BIP144 for more info.
-    case filteredWitnessBlock = 0x40000003
+    case filteredWitnessBlock = 0x4000_0003
 }
 
 extension InventoryType: BinaryCodable {
-
     public enum ParseError: Error {
         /// Invalid inventory type.
         case invalidInventoryType(Int)

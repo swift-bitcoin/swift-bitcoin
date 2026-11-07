@@ -4,7 +4,6 @@ import Foundation
 ///
 /// Use a single `ScriptRuntime` instance to run multiple scripts sequentially.
 public struct ScriptRuntime {
-
     init?(_ config: ScriptConfig = .standard, tx: Transaction, input: Int = 0, prevout: TransactionOutput) {
         guard tx.ins.count > 0, input < tx.ins.count else {
             return nil
@@ -12,7 +11,9 @@ public struct ScriptRuntime {
         self.init(config, tx: tx, input: input, prevouts: [prevout])
     }
 
-    public init(_ config: ScriptConfig = .standard, tx: Transaction = .dummy, input: Int = 0, prevouts: [TransactionOutput] = []) {
+    public init(
+        _ config: ScriptConfig = .standard, tx: Transaction = .dummy, input: Int = 0, prevouts: [TransactionOutput] = []
+    ) {
         self.config = config
         self.tx = tx
         self.input = input
@@ -32,7 +33,7 @@ public struct ScriptRuntime {
         }
     }
 
-     /// BIP341
+    /// BIP341
     private(set) var tapLeafHash = Data?.none
     private(set) var leafVersion = UInt8?.none
     let keyVersion: UInt8? = 0
@@ -95,12 +96,14 @@ public struct ScriptRuntime {
     /// BIP342
     var codeSeparatorPosition: UInt32 {
         // https://bitcoin.stackexchange.com/questions/115695/what-are-the-last-bytes-for-in-a-taproot-script-path-sighash
-        if let index = lastCodeSeparatorIndex { UInt32(index) } else { UInt32(0xffffffff) }
+        if let index = lastCodeSeparatorIndex { UInt32(index) } else { UInt32(0xffff_ffff) }
     }
 
     /// Evaluates the script with a new stack. All previous mutable state is reset.
-    public mutating func run(_ newScript: Script, stack newStack: [Data] = [], sigVersion newSigVersion: SigVersion? = nil, leafVersion: UInt8? = nil, tapLeafHash: Data? = nil) throws {
-
+    public mutating func run(
+        _ newScript: Script, stack newStack: [Data] = [], sigVersion newSigVersion: SigVersion? = nil,
+        leafVersion: UInt8? = nil, tapLeafHash: Data? = nil
+    ) throws {
         reset()
         script = newScript
         stack = newStack
@@ -132,8 +135,9 @@ public struct ScriptRuntime {
         }
 
         // BIP342: `OP_SUCCESS`
-        if sigVersion != .base && sigVersion != .witnessV0 &&
-            script.ops.contains(where: { if case .success(_) = $0 { true } else { false }}) {
+        if sigVersion != .base && sigVersion != .witnessV0
+            && script.ops.contains(where: { if case .success(_) = $0 { true } else { false } })
+        {
             if config.contains(.discourageOpSuccess) {
                 throw ScriptError.disallowedOpSuccess
             }
@@ -141,7 +145,8 @@ public struct ScriptRuntime {
         }
 
         for op in script.ops {
-            if (sigVersion == .base || sigVersion == .witnessV0) && !op.isPush && op != .success(80) { // .success(80) == .reserved for base and witnessV0
+            // .success(80) == .reserved for base and witnessV0
+            if (sigVersion == .base || sigVersion == .witnessV0) && !op.isPush && op != .success(80) {
                 nonPushOps += 1
                 guard nonPushOps <= Script.maxOps else {
                     throw ScriptError.operationsLimitExceeded
@@ -205,8 +210,7 @@ public struct ScriptRuntime {
                 }
             }
 
-            if
-                op != .codeSeparator && !operationContainsSignature // Equivalent to FindAndDelete
+            if op != .codeSeparator && !operationContainsSignature // Equivalent to FindAndDelete
             {
                 scriptCode.append(op.data)
             }
@@ -238,13 +242,16 @@ public struct ScriptRuntime {
         case .zero: opConstant(0)
         case .pushBytes(let d), .pushData1(let d), .pushData2(let d), .pushData4(let d): try opPushBytes(data: d)
         case .oneNegate: op1Negate()
-        case .success(_): if sigVersion == .base || sigVersion == .witnessV0 {
-            if op.opCode == 80 || op.opCode == 98 || op.opCode == 137 || op.opCode == 138 {
-                throw ScriptError.disabledOperation
+        case .success(_):
+            if sigVersion == .base || sigVersion == .witnessV0 {
+                if op.opCode == 80 || op.opCode == 98 || op.opCode == 137 || op.opCode == 138 {
+                    throw ScriptError.disabledOperation
+                } else {
+                    throw ScriptError.unknownOperation
+                }
             } else {
-                throw ScriptError.unknownOperation
+                preconditionFailure()
             }
-        } else { preconditionFailure() }
         case .constant(let k): opConstant(k)
         case .noOp: break
         case .if: try opIf()
@@ -285,7 +292,7 @@ public struct ScriptRuntime {
         case .equal: try opEqual()
         case .equalVerify: try opEqualVerify()
         case .oneAdd: try op1Add()
-        case .oneSub:  try op1Sub()
+        case .oneSub: try op1Sub()
         case .twoMul: throw ScriptError.disabledOperation
         case .twoDiv: throw ScriptError.disabledOperation
         case .negate: try opNegate()
@@ -320,10 +327,14 @@ public struct ScriptRuntime {
         case .checkSig: try opCheckSig()
         case .checkSigVerify: try opCheckSigVerify()
         case .checkMultisig:
-            guard sigVersion == .base || sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultisigDisabled }
+            guard sigVersion == .base || sigVersion == .witnessV0 else {
+                throw ScriptError.tapscriptCheckMultisigDisabled
+            }
             try opCheckMultisig()
         case .checkMultisigVerify:
-            guard sigVersion == .base || sigVersion == .witnessV0 else { throw ScriptError.tapscriptCheckMultisigDisabled }
+            guard sigVersion == .base || sigVersion == .witnessV0 else {
+                throw ScriptError.tapscriptCheckMultisigDisabled
+            }
             try opCheckMultisigVerify()
         case .noOp1: if config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
         case .checkLocktimeVerify:
@@ -332,13 +343,14 @@ public struct ScriptRuntime {
         case .checkSequenceVerify:
             guard config.contains(.checkSequenceVerify) else { break }
             try opCheckSequenceVerify()
-        case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10: if config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
+        case .noOp4, .noOp5, .noOp6, .noOp7, .noOp8, .noOp9, .noOp10:
+            if config.contains(.discourageUpgradableNoOps) { throw ScriptError.disallowedNoOp }
         case .checkSigAdd:
             guard sigVersion == .witnessV1 else { throw ScriptError.unknownOperation }
             try opCheckSigAdd()
         case .unknown(_): throw ScriptError.unknownOperation
         case .pubKeyHash: throw ScriptError.disabledOperation
-        case .pubKey:  throw ScriptError.disabledOperation
+        case .pubKey: throw ScriptError.disabledOperation
         case .invalidOpCode: throw ScriptError.disabledOperation
         }
     }

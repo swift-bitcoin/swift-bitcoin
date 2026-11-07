@@ -1,7 +1,6 @@
 import Foundation
 
 extension ScriptRuntime {
-
     /// Removes the top stack item.
     mutating func opDrop() throws {
         _ = try getUnaryParam()
@@ -103,7 +102,6 @@ extension ScriptRuntime {
         stack.append(x1)
         stack.append(x2)
     }
-
 
     /// Removes the second-to-top stack item.
     mutating func opNip() throws {

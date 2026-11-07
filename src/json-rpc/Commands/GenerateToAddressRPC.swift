@@ -1,6 +1,5 @@
 /// Mine to a specified address and return the block hashes.
 public struct GenerateToAddressRPC: RPCCommand, Sendable {
-
     public struct Params: Codable, Sendable {
         public init(blocks: Int, address: String, maxTries: Int? = nil) {
             self.blocks = blocks

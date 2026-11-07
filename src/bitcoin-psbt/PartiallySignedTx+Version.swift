@@ -1,11 +1,9 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
-public extension PartiallySignedTx {
-
-    enum Version: Int, Equatable, Sendable, BinaryCodable {
-
+extension PartiallySignedTx {
+    public enum Version: Int, Equatable, Sendable, BinaryCodable {
         public init(parsing input: inout ParserSpan, format: Never?) throws(PartiallySignedTxError) {
             let value: UInt32
             do {

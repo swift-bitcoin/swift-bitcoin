@@ -1,12 +1,11 @@
 import ArgumentParser
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
 import BitcoinWallet
 import Foundation
 
 /// Signs a transaction input using a private key.
 struct SignTransaction: ParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: "Signs a transaction input using a private key."
     )

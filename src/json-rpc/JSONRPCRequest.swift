@@ -1,7 +1,6 @@
 import Foundation
 
 public struct JSONRPCRequest: Codable, Sendable {
-
     enum CodingKeys: CodingKey {
         case jsonrpc, id, method, params
     }
@@ -15,7 +14,12 @@ public struct JSONRPCRequest: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let jsonrpc = try container.decode(String.self, forKey: .jsonrpc)
         guard jsonrpc == Self.jsonRPCVersion else {
-            throw DecodingError.typeMismatch(Self.self, .init(codingPath: decoder.codingPath, debugDescription: "Unsupported JSON-RPC version '\(jsonrpc)'. Only version \(Self.jsonRPCVersion) is supported."))
+            throw DecodingError.typeMismatch(
+                Self.self,
+                .init(
+                    codingPath: decoder.codingPath,
+                    debugDescription:
+                        "Unsupported JSON-RPC version '\(jsonrpc)'. Only version \(Self.jsonRPCVersion) is supported."))
         }
         id = try container.decode(UUID.self, forKey: .id)
         let method = try container.decode(String.self, forKey: .method)

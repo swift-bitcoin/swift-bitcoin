@@ -1,12 +1,14 @@
-import Foundation
-import NIOCore
 import BitcoinTransport
+import Foundation
 import Logging
+import NIOCore
 import ServiceLifecycle
 
 actor AutoConnectService: Service {
-
-    init(addresses: [(String, Int)], services: ServiceGroup, eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger) {
+    init(
+        addresses: [(String, Int)], services: ServiceGroup, eventLoopGroup: EventLoopGroup, node: NodeService,
+        logger: Logger
+    ) {
         self.addresses = addresses
         self.services = services
         self.eventLoopGroup = eventLoopGroup
@@ -50,7 +52,6 @@ actor AutoConnectService: Service {
 
     private func connectNext() async {
         guard connections < Self.maxConnections else {
-
             return
         }
         guard let (host, port) = addresses.popLast() else {
@@ -58,7 +59,8 @@ actor AutoConnectService: Service {
         }
         connections += 1
 
-        let service = await P2PClient(eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: host, port: port)
+        let service = await P2PClient(
+            eventLoopGroup: eventLoopGroup, node: node, logger: logger, host: host, port: port)
         let config = ServiceGroupConfiguration.ServiceConfiguration(
             service: service,
             successTerminationBehavior: .ignore,

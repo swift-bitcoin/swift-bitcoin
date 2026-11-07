@@ -1,5 +1,5 @@
-import Foundation
 import CSECP256K1
+import Foundation
 
 let eccSigningContext: SECP256K1Context = {
     guard let ctx = SECP256K1Context(flags: UInt32(SECP256K1_CONTEXT_NONE)) else {

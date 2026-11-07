@@ -1,13 +1,13 @@
-import Testing
-import BitcoinCrypto
-import Foundation
 import AsyncAlgorithms
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
+import Foundation
+import Testing
+
 @testable import BitcoinTransport
 
 struct NodeServiceTests: ~Copyable {
-
     var satoshiChain = BlockchainService?.none
     var satoshi = NodeService?.none
     var halPeer = PeerID?.none
@@ -20,7 +20,11 @@ struct NodeServiceTests: ~Copyable {
 
     init() async throws {
         let satoshiChain = try await BlockchainService()
-        let pubkey = try #require(PublicKey(compressed: [0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e, 0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
+        let pubkey = try #require(
+            PublicKey(compressed: [
+                0x03, 0x5a, 0xc9, 0xd1, 0x48, 0x78, 0x68, 0xec, 0xa6, 0x4e, 0x93, 0x2a, 0x06, 0xee, 0x8d, 0x6d, 0x2e,
+                0x89, 0xd9, 0x86, 0x59, 0xdb, 0x7f, 0x24, 0x74, 0x10, 0xd3, 0xe7, 0x9f, 0x88, 0xf8, 0xd0, 0x05,
+            ])) // Testnet p2pkh address  miueyHbQ33FDcjCYZpVJdC7VBbaVQzAUg5
         await satoshiChain.generateTo(pubkey)
 
         self.satoshiChain = satoshiChain
@@ -109,8 +113,9 @@ struct NodeServiceTests: ~Copyable {
     ///     <- pong
     ///
     func performExtendedHandshake() async throws {
-
-        guard let satoshi, let halPeer, let hal, let satoshiPeer, let satoshiChain, let halChain else { preconditionFailure() }
+        guard let satoshi, let halPeer, let hal, let satoshiPeer, let satoshiChain, let halChain else {
+            preconditionFailure()
+        }
 
         await hal.connect(satoshiPeer)
 
@@ -371,7 +376,9 @@ struct NodeServiceTests: ~Copyable {
         #expect(halBlocksAfter == 2)
 
         // No Response
-        #expect(await hal.popMessage(satoshiPeer) == nil) // Oftern failing by hal sending a getData message to satoshi.. for a block it already has. This is after recent changes that started using BlockchainService.findNextBlocksToDownload() from the NodeService when receiving blocks
+
+        // Oftern failing by hal sending a getData message to satoshi.. for a block it already has. This is after recent changes that started using BlockchainService.findNextBlocksToDownload() from the NodeService when receiving blocks
+        #expect(await hal.popMessage(satoshiPeer) == nil)
     }
 
     /// Extended handshake.

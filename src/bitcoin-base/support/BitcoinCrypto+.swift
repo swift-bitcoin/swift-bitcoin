@@ -1,9 +1,8 @@
-import Foundation
 import BitcoinCrypto
+import Foundation
 
 /// Extensions for BIP341 taproot.
 extension SecretKey {
-
     public var taprootInternalKey: PublicKey {
         PublicKey(self, requireEvenY: true)
     }
@@ -17,7 +16,6 @@ extension SecretKey {
 
 /// Extensions for BIP341 taproot.
 extension PublicKey {
-
     /// Self is an x-only internal public key.
     func tapTweak(merkleRoot: Data) -> Data {
         precondition(hasEvenY)
@@ -37,7 +35,9 @@ extension PublicKey {
 
     /// Used exclusively  in `BIP341Tests`.
     /// Self is an x-only public key.
-    public func computeControlBlocks(_ givenScriptTree: TapscriptTree?) -> (merkleRoot: Data, leafHashes: [Data], controlBlocks: [Data]) {
+    public func computeControlBlocks(_ givenScriptTree: TapscriptTree?) -> (
+        merkleRoot: Data, leafHashes: [Data], controlBlocks: [Data]
+    ) {
         precondition(hasEvenY)
         guard let givenScriptTree else {
             return (.init(), [], [])

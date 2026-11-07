@@ -1,14 +1,12 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 extension Transaction.Input {
-
     /// The sequence value of a ``Transaction/Input``.
     ///
     /// On version 2 transactions this field is used to indicate a lock time relative to the output being spent. Until the coin is as old as the indicated number of blocks or time interval the transaction will not be validated or mined.
     public struct Sequence: Equatable, Sendable {
-
         /// Creates a sequence with a specific value. Use only in verion 1 transactions.
         /// - Parameter sequenceValue: The number value of this sequence field.
         public init(_ sequenceValue: Int) {
@@ -64,27 +62,26 @@ extension Transaction.Input.Sequence {
     var rawValue: UInt32 { UInt32(sequenceValue) }
 
     public static let initial = Self(0)
-    public static let secondFinal = Self(0xfffffffe)
-    public static let final = Self(0xffffffff)
-    public static let locktimeDisabled  = Self(locktimeDisableFlag)
+    public static let secondFinal = Self(0xffff_fffe)
+    public static let final = Self(0xffff_ffff)
+    public static let locktimeDisabled = Self(locktimeDisableFlag)
     public static let zeroLocktimeBlocks = initial
     public static let maxLocktimeBlocks = Self(locktimeMask)
     public static let zeroLocktimeSeconds = Self(locktimeClockFlag)
     public static let maxLocktimeSeconds = Self(locktimeClockFlag | locktimeMask)
 
     /// BIP112
-    static let maxCSVArgument = 0x0180000000 // 3 << 31
+    static let maxCSVArgument = 0x01_8000_0000 // 3 << 31
 
     private static let locktimeMask = 0xffff
     private static let locktimeClockFlag = 0x400000 // 1 << 22
-    private static let locktimeDisableFlag = 0x80000000 // 1 << 31
+    private static let locktimeDisableFlag = 0x8000_0000 // 1 << 31
     private static let granularity = 9 // Base 2 exponent: pow(2, 9) = 512 seconds
     private static let maxSeconds = locktimeMask << granularity
 }
 
 /// Data extensions.
 extension Transaction.Input.Sequence: BinaryCodable {
-
     public init(parsing input: inout ParserSpan, format: Never?) throws {
         let rawValue = try UInt32(parsingLittleEndian: &input)
         self.init(Int(rawValue))

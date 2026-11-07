@@ -1,9 +1,8 @@
-import Foundation
 import ArgumentParser
+import Foundation
 import JSONRPC
 
 struct DisconnectPeer: AsyncParsableCommand {
-
     static let configuration = CommandConfiguration(
         abstract: DisconnectPeerRPC.description
     )

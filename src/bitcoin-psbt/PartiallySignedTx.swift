@@ -1,14 +1,14 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
 import BitcoinWallet
+import Foundation
 
 public enum PartiallySignedTxState: Equatable, Sendable {
     case created, complete
 }
 
-typealias KeyedValues = [PSBTMap.Key : Data]
+typealias KeyedValues = [PSBTMap.Key: Data]
 
 /// A Partially Signed Bitcoin Transaction (PSBT).
 ///
@@ -31,17 +31,15 @@ typealias KeyedValues = [PSBTMap.Key : Data]
 /// `<magic>` - Magic bytes which are ASCII for psbt [2] followed by a separator of `0xff`. This integer must be serialized in most significant byte order.
 ///
 public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
-
     public struct In: Equatable, Sendable, BinaryCodable {
-
         public init(
             prevoutTx: Transaction? = nil,
             witnessPrevout: TransactionOutput? = nil,
-            partialSigs: [PublicKey : ECDSASignature.Extended] = [:],
+            partialSigs: [PublicKey: ECDSASignature.Extended] = [:],
             sighashType: SighashType? = nil,
             redeemScript: Script? = nil,
             witnessScript: Script? = nil,
-            derivationPaths: [PublicKey : DerivationPath] = [:],
+            derivationPaths: [PublicKey: DerivationPath] = [:],
             finalScriptSig: Script? = nil,
             finalScriptWitness: Transaction.Witness? = nil,
             ripemd160Preimages: Set<Data> = [],
@@ -83,7 +81,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
             var prevoutTx = Transaction?.none
             var witnessPrevout = TransactionOutput?.none
 
-            var partialSigs = [PublicKey : ECDSASignature.Extended]()
+            var partialSigs = [PublicKey: ECDSASignature.Extended]()
             var sighashType = SighashType?.none
 
             var redeemScript = Script?.none
@@ -232,7 +230,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
 
         public internal(set) var prevoutTx: Transaction?
         public internal(set) var witnessPrevout: TransactionOutput?
-        public internal(set) var partialSigs: [PublicKey : ECDSASignature.Extended]
+        public internal(set) var partialSigs: [PublicKey: ECDSASignature.Extended]
         public internal(set) var sighashType: SighashType?
         public internal(set) var redeemScript: Script?
         public internal(set) var witnessScript: Script?
@@ -322,7 +320,8 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                 entries[.init(PSBTInputKeyType.finalScriptWitness)] = finalScriptWitness.data
             }
             for preimage in ripemd160Preimages {
-                entries[.init(PSBTInputKeyType.ripemd160Preimage, data: Data(RIPEMD160.hash(data: preimage)))] = preimage
+                entries[.init(PSBTInputKeyType.ripemd160Preimage, data: Data(RIPEMD160.hash(data: preimage)))] =
+                    preimage
             }
             for preimage in sha256Preimages {
                 entries[.init(PSBTInputKeyType.sha256Preimage, data: Data(SHA256.hash(data: preimage)))] = preimage
@@ -347,11 +346,10 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
     }
 
     public struct Out: Equatable, Sendable, BinaryCodable {
-
         public init(
             redeemScript: Script? = nil,
             witnessScript: Script? = nil,
-            derivationPaths: [PublicKey : DerivationPath] = [:],
+            derivationPaths: [PublicKey: DerivationPath] = [:],
             proprietaryInfo: ProprietaryInfo = [:]
         ) {
             self.redeemScript = redeemScript
@@ -371,14 +369,13 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                 throw .missingOutputMaps
             }
             try self.init(from: map)
-
         }
 
         init(from map: PSBTMap) throws(PartiallySignedTxError) {
             var redeemScript = Script?.none
             var witnessScript = Script?.none
 
-            var derivationPaths = [PublicKey : DerivationPath]()
+            var derivationPaths = [PublicKey: DerivationPath]()
 
             var proprietaryInfo: ProprietaryInfo = [:]
             var additionalTypes: KeyedValues = [:]
@@ -425,13 +422,14 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
 
         public internal(set) var redeemScript: Script?
         public internal(set) var witnessScript: Script?
-        public internal(set) var derivationPaths: [PublicKey : DerivationPath]
+        public internal(set) var derivationPaths: [PublicKey: DerivationPath]
         public internal(set) var proprietaryInfo: ProprietaryInfo
 
         private var additionalTypes: KeyedValues
 
         public var isEmpty: Bool {
-            redeemScript == nil && witnessScript == nil && derivationPaths.isEmpty && proprietaryInfo.isEmpty && additionalTypes.isEmpty
+            redeemScript == nil && witnessScript == nil && derivationPaths.isEmpty && proprietaryInfo.isEmpty
+                && additionalTypes.isEmpty
         }
 
         var map: PSBTMap {
@@ -478,11 +476,19 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
         }
     }
 
-    public init(_ tx: Transaction, xpubDerivations: [ExtendedKey : DerivationPath] = [:], proprietaryInfo: ProprietaryInfo = [:], ins: [In]? = nil, outs: [Out]? = nil) throws(PartiallySignedTxError) {
-        try self.init(tx, xpubDerivations: xpubDerivations, proprietaryInfo: proprietaryInfo, ins: ins, outs: outs, additionalTypes: [:])
+    public init(
+        _ tx: Transaction, xpubDerivations: [ExtendedKey: DerivationPath] = [:], proprietaryInfo: ProprietaryInfo = [:],
+        ins: [In]? = nil, outs: [Out]? = nil
+    ) throws(PartiallySignedTxError) {
+        try self.init(
+            tx, xpubDerivations: xpubDerivations, proprietaryInfo: proprietaryInfo, ins: ins, outs: outs,
+            additionalTypes: [:])
     }
 
-    private init(_ tx: Transaction, xpubDerivations: [ExtendedKey : DerivationPath], proprietaryInfo: ProprietaryInfo, ins: [In]? = nil, outs: [Out]? = nil, additionalTypes: KeyedValues) throws(PartiallySignedTxError) {
+    private init(
+        _ tx: Transaction, xpubDerivations: [ExtendedKey: DerivationPath], proprietaryInfo: ProprietaryInfo,
+        ins: [In]? = nil, outs: [Out]? = nil, additionalTypes: KeyedValues
+    ) throws(PartiallySignedTxError) {
         let ins = if let ins { ins } else { [In](repeating: In(), count: tx.ins.count) }
         let outs = if let outs { outs } else { [Out](repeating: Out(), count: tx.outs.count) }
         // TODO: Maybe extract signatures from signed transaction?
@@ -529,7 +535,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
 
         var tx = Transaction?.none
         var version = Version?.none
-        var xpubDerivations = [ExtendedKey : DerivationPath]()
+        var xpubDerivations = [ExtendedKey: DerivationPath]()
         var proprietaryInfo: ProprietaryInfo = [:]
         var additionalTypes: KeyedValues = [:]
         for (k, v) in globalMap.entries {
@@ -597,12 +603,14 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
         for _ in tx.outs {
             outs.append(try Out(parsing: &input, format: nil))
         }
-        try self.init(tx, xpubDerivations: xpubDerivations, proprietaryInfo: proprietaryInfo, ins: ins, outs: outs, additionalTypes: additionalTypes)
+        try self.init(
+            tx, xpubDerivations: xpubDerivations, proprietaryInfo: proprietaryInfo, ins: ins, outs: outs,
+            additionalTypes: additionalTypes)
     }
 
     public let version = Version.v0
     public let unsignedTx: Transaction
-    public internal(set) var xpubDerivations: [ExtendedKey : DerivationPath]
+    public internal(set) var xpubDerivations: [ExtendedKey: DerivationPath]
     public internal(set) var proprietaryInfo: ProprietaryInfo
     public internal(set) var ins: [In]
     public internal(set) var outs: [Out]
@@ -671,7 +679,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                     witnessProgram = redeemScript
                     isPayToWitnessScriptHash = redeemScript.isPayToWitnessScriptHash
                     // Check the redeem script is not the correct one for P2SH
-                    guard case let .pushBytes(hash) = witnessPrevout.script.ops[1] else {
+                    guard case .pushBytes(let hash) = witnessPrevout.script.ops[1] else {
                         preconditionFailure()
                     }
                     let hash2 = Data(Hash160.hash(data: redeemScript.data))
@@ -689,7 +697,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                     guard let witnessScript = psbtIn.witnessScript else {
                         throw .missingWitnessRedeemScript
                     }
-                    guard case let .pushBytes(hashWitness) = witnessProgram.ops[1] else {
+                    guard case .pushBytes(let hashWitness) = witnessProgram.ops[1] else {
                         preconditionFailure()
                     }
                     let hashWitness2 = Data(SHA256.hash(data: witnessScript.data))
@@ -721,7 +729,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                         throw .missingWitnessPreviousOutput
                     }
                     // Check the redeem script is not the correct one for P2SH
-                    guard case let .pushBytes(hash) = prevout.script.ops[1] else {
+                    guard case .pushBytes(let hash) = prevout.script.ops[1] else {
                         preconditionFailure()
                     }
                     let hash2 = Data(Hash160.hash(data: redeemScript.data))
@@ -734,7 +742,6 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
     }
 
     public mutating func sign(input i: Int, using secretKey: SecretKey) throws(PartiallySignedTxError) {
-
         // Signer checks for all inputs
         try checkForSigning()
 
@@ -812,19 +819,21 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                     }
                 } */
             } else if prevout.script.isPayToMultisig {
-                guard case let .constant(threshold) = prevout.script.ops[0] else {
+                guard case .constant(let threshold) = prevout.script.ops[0] else {
                     preconditionFailure()
                 }
                 guard ins[i].partialSigs.count == threshold else {
                     return
                 }
                 let sigs = ins[i].partialSigs.values
-                ins[i].finalScriptSig = Script(sigs.map {
-                    Script.Operation.pushBytes($0.data)
-                })
-            } else if prevout.script.isPayToScriptHash, let redeemScript = psbtIn.redeemScript, redeemScript.isPayToMultisig {
-
-                guard case let .constant(threshold) = redeemScript.ops[0] else {
+                ins[i].finalScriptSig = Script(
+                    sigs.map {
+                        Script.Operation.pushBytes($0.data)
+                    })
+            } else if prevout.script.isPayToScriptHash, let redeemScript = psbtIn.redeemScript,
+                redeemScript.isPayToMultisig
+            {
+                guard case .constant(let threshold) = redeemScript.ops[0] else {
                     preconditionFailure()
                 }
                 guard ins[i].partialSigs.count == threshold else {
@@ -837,13 +846,12 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
                 })
 
                 ins[i].finalScriptSig = .init(
-                    [.zero] +
-                    sigs.map { Script.Operation.pushBytes($0) } +
-                    [.pushBytes(redeemScript.data)]
+                    [.zero] + sigs.map { Script.Operation.pushBytes($0) } + [.pushBytes(redeemScript.data)]
                 )
-            } else if prevout.script.isPayToScriptHash, let redeemScript = psbtIn.redeemScript, redeemScript.isSegwit, redeemScript.isPayToWitnessScriptHash, let witness = psbtIn.witnessScript, witness.isPayToMultisig {
-
-                guard case let .constant(threshold) = witness.ops[0] else {
+            } else if prevout.script.isPayToScriptHash, let redeemScript = psbtIn.redeemScript, redeemScript.isSegwit,
+                redeemScript.isPayToWitnessScriptHash, let witness = psbtIn.witnessScript, witness.isPayToMultisig
+            {
+                guard case .constant(let threshold) = witness.ops[0] else {
                     preconditionFailure()
                 }
                 guard ins[i].partialSigs.count == threshold else {
@@ -856,9 +864,7 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
 
                 ins[i].finalScriptSig = .init([.pushBytes(redeemScript.data)])
                 ins[i].finalScriptWitness = .init(
-                    [ScriptBool.false.data] +
-                    sigs +
-                    [witness.data]
+                    [ScriptBool.false.data] + sigs + [witness.data]
                 )
             }
 
@@ -914,7 +920,6 @@ public struct PartiallySignedTx: Equatable, Sendable, BinaryCodable {
 }
 
 private struct ProprietarySuperKey: Hashable, BinaryCodable {
-
     init(id: Data, subkey: PSBTMap.Key) {
         self.id = id
         self.subkey = subkey

@@ -1,13 +1,12 @@
-import Foundation
 import BinaryParsing
-import BitcoinCrypto
 import BitcoinBase
+import BitcoinCrypto
+import Foundation
 
-fileprivate let hashLength = SHA256.Digest.byteCount // 32 bytes
+private let hashLength = SHA256.Digest.byteCount // 32 bytes
 
 /// Return a `headers` packet containing the headers of blocks starting right after the last known hash in the block locator object, up to `hash_stop` or 2000 blocks, whichever comes first. To receive the next block headers, one needs to issue `getheaders` again with a new block locator object. Keep in mind that some clients may provide headers of blocks which are invalid if the block locator object contains a hash on the invalid branch.
 public struct GetHeadersMessage: Equatable {
-
     public init(protocolVersion: ProtocolVersion, locatorHashes: [BlockHash], stopHash: BlockHash? = nil) {
         self.protocolVersion = protocolVersion
         self.locatorHashes = locatorHashes
@@ -25,7 +24,6 @@ public struct GetHeadersMessage: Equatable {
 }
 
 extension GetHeadersMessage: BinaryCodable {
-
     public enum ParseError: Error {
         /// Maximum hashes is 2000.
         case tooManyHashes
@@ -41,7 +39,7 @@ extension GetHeadersMessage: BinaryCodable {
         }
 
         var locatorHashes = [BlockHash]()
-        for _ in 0 ..< hashCount {
+        for _ in 0..<hashCount {
             let hash = try BlockHash(parsing: &input)
             // let hash = try Data([UInt8](parsing: &input, byteCount: hashLength))
             locatorHashes.append(hash)

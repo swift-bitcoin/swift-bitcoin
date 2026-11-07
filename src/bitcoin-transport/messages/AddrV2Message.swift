@@ -1,10 +1,9 @@
-import Foundation
 import BinaryParsing
 import BitcoinCrypto
+import Foundation
 
 /// BIP155
 public struct AddrV2Message: Equatable {
-
     public init(addresses: [NetworkAddress]) {
         self.addresses = addresses
     }
@@ -13,7 +12,6 @@ public struct AddrV2Message: Equatable {
 }
 
 extension AddrV2Message: BinaryCodable {
-
     public enum ParseError: Error {
         /// Maximum address count is 1000.
         case tooManyAddresses
@@ -26,7 +24,7 @@ extension AddrV2Message: BinaryCodable {
             throw ParsingError(userError: ParseError.tooManyAddresses)
         }
         var addresses = [NetworkAddress]()
-        for _ in 0 ..< addressesCount {
+        for _ in 0..<addressesCount {
             let address = try NetworkAddress(parsing: &input)
             addresses.append(address)
         }
