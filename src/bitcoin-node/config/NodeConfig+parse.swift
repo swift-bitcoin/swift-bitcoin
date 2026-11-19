@@ -1,10 +1,14 @@
-import Foundation
 import NIOCore
 import _NIOFileSystem
+import NIOFoundationEssentialsCompat
+import struct Foundation.URL
+import class Foundation.JSONDecoder
 
-#if canImport(Foundation.NSTask)
-    import class Foundation.NSTask.Process
-    import NIOFoundationEssentialsCompat
+#if os(macOS) || os(Linux)
+import struct Foundation.Data
+    import class Foundation.Process
+    import class Foundation.Bundle
+    import class Foundation.Pipe
 #endif
 
 extension NodeConfig {
@@ -110,7 +114,7 @@ extension NodeConfig {
                 throw .decodingError
             }
         } else {
-            #if canImport(Foundation.NSTask)
+            #if os(macOS) || os(Linux)
                 // For Swift we need to put together a Swift source to pass via stdin to the interpreter…
 
                 // First we need the unmodified contents of the actual configuration file
@@ -177,7 +181,7 @@ extension NodeConfig {
                     throw .decodingError
                 }
             #else
-                fatalError("Foundation.NSTask.Process class not available")
+                fatalError("Swift script-based configuration is only available on macOS and Linux.")
             #endif
         }
         return config

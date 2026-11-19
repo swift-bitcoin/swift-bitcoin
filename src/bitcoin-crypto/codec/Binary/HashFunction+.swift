@@ -1,5 +1,5 @@
 #if !canImport(CryptoKit) // Targets non-Apple platforms using swift-crypto
-    import Crypto
+    public import protocol Crypto.HashFunction
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension HashFunction {

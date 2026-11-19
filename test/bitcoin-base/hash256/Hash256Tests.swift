@@ -350,10 +350,12 @@ struct Hash256Tests {
         }
 
         @Test func encodingTrapsWithoutRoom() async {
-            await #expect(processExitsWith: .failure) {
-                let hash = Hash256.zero
-                withTemporaryAllocation(byteCount: 31, alignment: 1) { hash.encode(into: &$0) }
-            }
+            #if os(macOS) || os(Linux)
+                await #expect(processExitsWith: .failure) {
+                    let hash = Hash256.zero
+                    withTemporaryAllocation(byteCount: 31, alignment: 1) { hash.encode(into: &$0) }
+                }
+            #endif
         }
     }
 }
