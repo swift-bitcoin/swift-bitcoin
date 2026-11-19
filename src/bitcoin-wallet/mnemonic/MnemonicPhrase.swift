@@ -1,6 +1,8 @@
 import BinaryParsing
 import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct Foundation.Data
 
 private let bitsPerByte = UInt8.bitWidth
 private let bitsPerMnemonicWord = 11

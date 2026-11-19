@@ -1,6 +1,10 @@
-import BinaryParsing
-import BitcoinCrypto
-import Foundation
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.VarInt // Internal
+public import struct Foundation.Data
+public import struct Foundation.Date
+public import typealias Foundation.TimeInterval
 
 public struct NetworkAddress: Equatable {
     public init(time: Date, services: ProtocolServices, networkID: TransportNetwork, addressData: Data, port: Int) {

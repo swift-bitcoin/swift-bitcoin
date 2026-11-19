@@ -1,8 +1,25 @@
-import BinaryParsing
-import BitcoinBase
-import BitcoinCrypto
-import BitcoinWallet
-import Foundation
+import Crypto
+
+public import struct BinaryParsing.ParserSpan
+public import struct BitcoinBase.Script
+public import struct BitcoinBase.ScriptBool // Internal
+public import struct BitcoinBase.SighashType
+public import struct BitcoinBase.Transaction
+public import struct BitcoinBase.TransactionOutput
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.ECDSASignature
+public import typealias BitcoinCrypto.Hash160 // Internal
+public import struct BitcoinCrypto.PublicKey
+public import typealias BitcoinCrypto.RIPEMD160 // Internal
+public import typealias BitcoinCrypto.SHA256 // Internal
+public import struct BitcoinCrypto.SHA256d // Internal
+public import struct BitcoinCrypto.SecretKey
+public import struct BitcoinCrypto.VarInt // Internal
+public import struct BitcoinWallet.DerivationPath
+public import struct BitcoinWallet.ExtendedKey
+public import struct BitcoinWallet.TransactionSigner // Internal
+public import struct Foundation.Data
 
 public enum PartiallySignedTxState: Equatable, Sendable {
     case created, complete

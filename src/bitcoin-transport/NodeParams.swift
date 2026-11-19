@@ -1,5 +1,4 @@
-import BitcoinBase
-import Foundation
+public import typealias BitcoinBase.Amount
 
 public struct NodeParams: Sendable {
     public init(

@@ -1,20 +1,19 @@
-import Crypto
-import Foundation
+package import protocol Crypto.HashFunction
 
 /// Hashes first using ``SHA256`` and applies `SHA256` again on finalize.
-public struct SHA256d: HashFunction {
-    public typealias Digest = SHA256.Digest
-    public static let blockByteCount = SHA256.blockByteCount
+package struct SHA256d: HashFunction {
+    package typealias Digest = SHA256.Digest
+    package static let blockByteCount = SHA256.blockByteCount
 
     private var sha256 = SHA256()
 
-    public init() {}
+    package init() {}
 
-    public mutating func update(bufferPointer: UnsafeRawBufferPointer) {
+    package mutating func update(bufferPointer: UnsafeRawBufferPointer) {
         sha256.update(bufferPointer: bufferPointer)
     }
 
-    public func finalize() -> Digest {
+    package func finalize() -> Digest {
         var hash256 = SHA256()
         sha256.finalize().withUnsafeBytes {
             hash256.update(bufferPointer: $0)

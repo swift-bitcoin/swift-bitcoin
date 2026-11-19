@@ -1,4 +1,4 @@
-import BitcoinBase
+public import struct BitcoinBase.Transaction
 
 /// Issue checking transaction in the context of the blockchain or verifying its scripts.
 public enum TransactionValidationError: Error {

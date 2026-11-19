@@ -1,6 +1,7 @@
 import BitcoinBase
 import BitcoinCrypto
 import BitcoinPSBT
+import Crypto
 import Foundation
 import Testing
 

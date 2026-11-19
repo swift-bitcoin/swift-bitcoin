@@ -1,5 +1,7 @@
 import CSECP256K1
-import Foundation
+import Crypto
+
+public import struct Foundation.Data
 
 extension ECDSASignature {
     /// Supported ECDSA serialization formats.

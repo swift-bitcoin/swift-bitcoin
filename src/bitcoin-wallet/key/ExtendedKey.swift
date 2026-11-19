@@ -1,6 +1,15 @@
-import BinaryParsing
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct BinaryParsing.ParserSpan
+public import struct BitcoinCrypto.Base58Decoder // Internal
+public import struct BitcoinCrypto.Base58Encoder // Internal
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.HMAC // Internal
+public import struct BitcoinCrypto.PublicKey
+public import struct BitcoinCrypto.SHA512 // Internal
+public import struct BitcoinCrypto.SecretKey
+public import struct Foundation.Data
 
 /// A BIP32 extended key whether it be a private master key, extended private key or an extended public key.
 public struct ExtendedKey: Equatable, Hashable, Sendable {

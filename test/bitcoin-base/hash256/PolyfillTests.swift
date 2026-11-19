@@ -1,7 +1,7 @@
+import BitcoinBase
+import BitcoinCrypto
 import Foundation
 import Testing
-
-@testable import BitcoinCrypto
 
 @Suite("Polyfills")
 struct PolyfillTests {
@@ -43,13 +43,15 @@ struct PolyfillTests {
             #expect(encoded(byteCount: 32) { $0.append(contentsOf: payload) } == payload)
         }
 
-        @Test func trapsWithoutRoom() async {
-            await #expect(processExitsWith: .failure) {
-                withTemporaryAllocation(byteCount: 3, alignment: 1) { output in
-                    output.append(contentsOf: [UInt8]([1, 2, 3, 4]))
+        #if os(macOS) || os(Linux)
+            @Test func trapsWithoutRoom() async {
+                await #expect(processExitsWith: .failure) {
+                    withTemporaryAllocation(byteCount: 3, alignment: 1) { output in
+                        output.append(contentsOf: [UInt8]([1, 2, 3, 4]))
+                    }
                 }
             }
-        }
+        #endif
     }
 
     @Suite("MutableRawSpan.updateSubrange(_:copying:)")
@@ -92,25 +94,27 @@ struct PolyfillTests {
             #expect(buffer.isEmpty)
         }
 
-        @Test func trapsOnLengthMismatch() async {
-            await #expect(processExitsWith: .failure) {
-                var buffer = [UInt8](repeating: 0, count: 8)
-                var span = buffer.mutableSpan
-                var raw = span.mutableBytes
-                let source: [UInt8] = [1, 2]
-                raw.updateSubrange(0..<3, copying: source.span.bytes)
+        #if os(macOS) || os(Linux)
+            @Test func trapsOnLengthMismatch() async {
+                await #expect(processExitsWith: .failure) {
+                    var buffer = [UInt8](repeating: 0, count: 8)
+                    var span = buffer.mutableSpan
+                    var raw = span.mutableBytes
+                    let source: [UInt8] = [1, 2]
+                    raw.updateSubrange(0..<3, copying: source.span.bytes)
+                }
             }
-        }
 
-        @Test func trapsOutOfBounds() async {
-            await #expect(processExitsWith: .failure) {
-                var buffer = [UInt8](repeating: 0, count: 8)
-                var span = buffer.mutableSpan
-                var raw = span.mutableBytes
-                let source: [UInt8] = [1, 2]
-                raw.updateSubrange(7..<9, copying: source.span.bytes)
+            @Test func trapsOutOfBounds() async {
+                await #expect(processExitsWith: .failure) {
+                    var buffer = [UInt8](repeating: 0, count: 8)
+                    var span = buffer.mutableSpan
+                    var raw = span.mutableBytes
+                    let source: [UInt8] = [1, 2]
+                    raw.updateSubrange(7..<9, copying: source.span.bytes)
+                }
             }
-        }
+        #endif
     }
 
     @Suite("Data(capacity:initializingWith:)")
@@ -138,23 +142,25 @@ struct PolyfillTests {
             }
         }
 
-        @Test func trapsWhenUnderWritten() async {
-            await #expect(processExitsWith: .failure) {
-                _ = Data(capacity: 4) { $0.append(contentsOf: [UInt8]([1, 2])) }
+        #if os(macOS) || os(Linux)
+            @Test func trapsWhenUnderWritten() async {
+                await #expect(processExitsWith: .failure) {
+                    _ = Data(capacity: 4) { $0.append(contentsOf: [UInt8]([1, 2])) }
+                }
             }
-        }
 
-        @Test func trapsWhenOverWritten() async {
-            await #expect(processExitsWith: .failure) {
-                _ = Data(capacity: 2) { $0.append(contentsOf: [UInt8]([1, 2, 3])) }
+            @Test func trapsWhenOverWritten() async {
+                await #expect(processExitsWith: .failure) {
+                    _ = Data(capacity: 2) { $0.append(contentsOf: [UInt8]([1, 2, 3])) }
+                }
             }
-        }
 
-        @Test func trapsOnNegativeCapacity() async {
-            await #expect(processExitsWith: .failure) {
-                _ = Data(capacity: -1) { _ in }
+            @Test func trapsOnNegativeCapacity() async {
+                await #expect(processExitsWith: .failure) {
+                    _ = Data(capacity: -1) { _ in }
+                }
             }
-        }
+        #endif
     }
 
     @Suite("Data and [UInt8] from spans")

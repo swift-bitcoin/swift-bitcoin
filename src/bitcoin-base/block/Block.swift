@@ -1,11 +1,16 @@
-import BinaryParsing
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import enum BitcoinCrypto.BinaryDecodingError
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.SHA256d
+public import struct Foundation.Calendar // Internal
+public import struct Foundation.Date
+public import typealias Foundation.TimeInterval // Internal
 
 /// A block of transactions. It may be interpreted as a just a block header when body of transactions is empty. It may also include additional contextual information such as the block's height within the blockchain.
 public struct Block: Equatable, Sendable {
-    public typealias ID = Data
-
     // MARK: - Initializers
 
     public init(

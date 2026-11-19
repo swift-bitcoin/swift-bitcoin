@@ -1,6 +1,13 @@
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+import struct BitcoinBase.Script
+import struct BitcoinBase.Transaction
+import struct BitcoinCrypto.Hash160
+import struct BitcoinCrypto.PublicKey
+import typealias BitcoinCrypto.RIPEMD160
+import typealias BitcoinCrypto.SHA256
+import struct BitcoinCrypto.SHA256d
+import struct Foundation.Data
 
 indirect enum ASTNode {
     case wrapper(String, ASTNode)
@@ -443,7 +450,7 @@ indirect enum ASTNode {
                     }
 
                     // TODO: For tapscript should be key.xOnlyData
-                    let hash = Data(BitcoinCrypto.Hash160.hash(data: key.compressedData!))
+                    let hash = Data(BitcoinCrypto::Hash160.hash(data: key.compressedData!))
                     return [.dup, .hash160, .pushBytes(hash), .equalVerify]
                 case "older":
                     guard case .arg(let val) = args[0], let n = Int(val) else {
@@ -458,28 +465,28 @@ indirect enum ASTNode {
                     return [.encodeMinimally(n), .checkLocktimeVerify]
                 case "sha256":
                     guard case .arg(let v) = args[0], let h = Data(hex: v),
-                        h.count == BitcoinCrypto.SHA256.Digest.byteCount
+                        h.count == BitcoinCrypto::SHA256.Digest.byteCount
                     else {
                         throw .invalidArgumentValue
                     }
                     return [.size, .encodeMinimally(0x20), .equalVerify, .sha256, .pushBytes(h), .equal]
                 case "ripemd160":
                     guard case .arg(let v) = args[0], let h = Data(hex: v),
-                        h.count == BitcoinCrypto.RIPEMD160.Digest.byteCount
+                        h.count == BitcoinCrypto::RIPEMD160.Digest.byteCount
                     else {
                         throw .invalidArgumentValue
                     }
                     return [.size, .encodeMinimally(0x20), .equalVerify, .ripemd160, .pushBytes(h), .equal]
                 case "hash256":
                     guard case .arg(let v) = args[0], let h = Data(hex: v),
-                        h.count == BitcoinCrypto.SHA256d.Digest.byteCount
+                        h.count == BitcoinCrypto::SHA256d.Digest.byteCount
                     else {
                         throw .invalidArgumentValue
                     }
                     return [.size, .encodeMinimally(0x20), .equalVerify, .hash256, .pushBytes(h), .equal]
                 case "hash160":
                     guard case .arg(let v) = args[0], let h = Data(hex: v),
-                        h.count == BitcoinCrypto.Hash160.Digest.byteCount
+                        h.count == BitcoinCrypto::Hash160.Digest.byteCount
                     else {
                         throw .invalidArgumentValue
                     }

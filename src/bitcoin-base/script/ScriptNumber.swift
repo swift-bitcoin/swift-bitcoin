@@ -1,6 +1,9 @@
 import BinaryParsing
-import BitcoinCrypto
-import Foundation
+
+public import protocol BitcoinCrypto.BinaryEncodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct Foundation.Data
+public import func Foundation.pow // Internal
 
 /// A numerical value in the context of a script execution.
 ///

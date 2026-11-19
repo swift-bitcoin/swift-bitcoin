@@ -1,6 +1,8 @@
 import AsyncAlgorithms
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
+import BitcoinRPC
 import BitcoinTransport
 import Foundation
 import Instrumentation
@@ -233,7 +235,7 @@ actor ServerApp {
     private let rpcService: RPCService
     private var p2pService: P2PService? = nil
 
-    private let eventLoopGroup: EventLoopGroup
+    private let eventLoopGroup: any EventLoopGroup
     private let serviceGroup: ServiceGroup
 
     /// Aggregates a snapshot of the node’s status across services.
@@ -404,6 +406,6 @@ func makeTelemetryService(logger: Logger, serviceName: String, endpoint: String)
 enum ServerError: Error {
     case configurationError(String)
     case blockchainInitError(BlockchainService.InitError)
-    case telemetryInitError(Error)
-    case serviceGroupRunError(Error)
+    case telemetryInitError(any Error)
+    case serviceGroupRunError(any Error)
 }

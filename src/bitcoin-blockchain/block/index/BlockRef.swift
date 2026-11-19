@@ -1,7 +1,12 @@
-import BinaryParsing
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+public import struct BinaryParsing.ParserSpan
+public import struct BitcoinBase.Block
+public import struct BitcoinBase.BlockHash
+public import struct BitcoinBase.Chainwork
+public import struct BitcoinBase.Hash256
+public import struct BitcoinBase.Target
+public import typealias BitcoinCrypto.BinaryCodable
+public import enum BitcoinCrypto.BinaryDecodingError
+public import struct BitcoinCrypto.BinarySizeCounter
 
 /// A block of transactions.
 public struct BlockRef: Equatable, Hashable, Sendable {

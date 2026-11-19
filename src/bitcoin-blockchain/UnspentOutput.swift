@@ -1,7 +1,8 @@
-import BinaryParsing
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+public import struct BinaryParsing.ParserSpan
+public import struct BitcoinBase.TransactionOutput
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+import struct Foundation.Data
 
 /// A reference to an unspent transaction output (aka _UTXO_).
 public struct UnspentOutput: Equatable, Sendable {

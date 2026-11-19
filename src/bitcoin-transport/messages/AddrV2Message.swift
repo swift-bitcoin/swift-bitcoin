@@ -1,6 +1,10 @@
-import BinaryParsing
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import struct BinaryParsing.ParsingError // Internal
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.VarInt // Internal
 
 /// BIP155
 public struct AddrV2Message: Equatable {

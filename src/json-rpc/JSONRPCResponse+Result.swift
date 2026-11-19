@@ -77,7 +77,7 @@ extension JSONRPCResponse.Result {
             }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case .help(let result): try result.encode(to: encoder)

@@ -1,6 +1,8 @@
-import BinaryParsing
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
 
 /// The output of a ``Transaction``. While unspent also referred to as a _coin_.
 public struct TransactionOutput: Equatable, Sendable {

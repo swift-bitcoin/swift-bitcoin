@@ -1,5 +1,4 @@
-import Foundation
-import JSONRPC
+public import struct JSONRPC.StatusRPC
 
 extension StatusRPC {
     public func run(rpcStatus: Result.RPCService, p2pStatus: Result.P2PService, p2pClientStatus: [Result.P2PClient])

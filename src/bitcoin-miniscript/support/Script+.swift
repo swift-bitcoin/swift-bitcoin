@@ -1,7 +1,7 @@
-import BitcoinBase
+public import struct BitcoinBase.Script
 
 extension Script {
-    public init(_ expression: MiniscriptExp) {
+    public init(_ expression: any MiniscriptExp) {
         self.init(expression.compiled)
     }
 

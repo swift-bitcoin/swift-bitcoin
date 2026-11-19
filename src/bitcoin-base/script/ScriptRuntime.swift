@@ -1,4 +1,7 @@
-import Foundation
+import BitcoinCrypto
+import Crypto
+
+public import struct Foundation.Data
 
 /// Bitcoin SCRIPT execution runtime.
 ///

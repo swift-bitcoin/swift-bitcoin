@@ -1,5 +1,6 @@
 import BinaryParsing
 import BitcoinCrypto
+import Crypto
 import Foundation
 
 extension PublicKey {

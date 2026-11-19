@@ -1,6 +1,10 @@
-import BinaryParsing
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import struct BinaryParsing.ParsingError // Internal
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.VarInt
 
 /// Allows a node to advertise its knowledge of one or more objects. It can be received unsolicited, or in reply to `getblocks`. Payload (maximum 50,000 entries, which is just over 1.8 megabytes).
 public struct InventoryMessage: Equatable {

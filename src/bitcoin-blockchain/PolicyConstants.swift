@@ -1,4 +1,5 @@
-import BitcoinBase
+public import struct BitcoinBase.Script
+public import struct BitcoinBase.Transaction
 
 enum PolicyConstants {
     /// See ``BitcoinBase/Script/defaultPermitBareMultisig``.

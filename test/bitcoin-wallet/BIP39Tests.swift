@@ -1,3 +1,4 @@
+import BitcoinCrypto
 import BitcoinWallet
 import Foundation
 import Testing

@@ -1,4 +1,4 @@
-import BinaryParsing
+public import struct BinaryParsing.ParserSpan
 
 /// A Bitcoin protocol variable integer – sometimes referred to as compact integer.
 ///

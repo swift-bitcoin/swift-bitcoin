@@ -1,4 +1,4 @@
-import Foundation
+public import struct Foundation.Data
 
 public typealias ProprietaryInfo = [ProprietaryID: [ProprietaryKey: ProprietaryValue]]
 public typealias ProprietaryID = Data

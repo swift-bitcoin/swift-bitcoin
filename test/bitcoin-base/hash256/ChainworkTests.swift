@@ -111,17 +111,19 @@ struct ChainworkTests {
             }
         }
 
-        @Test func overflowTraps() async {
-            await #expect(processExitsWith: .failure) {
-                _ = Chainwork(low: .max, high: .max) + Chainwork(low: 1)
+        #if os(macOS) || os(Linux)
+            @Test func overflowTraps() async {
+                await #expect(processExitsWith: .failure) {
+                    _ = Chainwork(low: .max, high: .max) + Chainwork(low: 1)
+                }
             }
-        }
 
-        @Test func underflowTraps() async {
-            await #expect(processExitsWith: .failure) {
-                _ = Chainwork.zero - Chainwork(low: 1)
+            @Test func underflowTraps() async {
+                await #expect(processExitsWith: .failure) {
+                    _ = Chainwork.zero - Chainwork(low: 1)
+                }
             }
-        }
+        #endif
 
         /// Chainwork through mainnet block 32,255: 32,256 blocks at minimum difficulty.
         @Test func accumulatesAlongAChain() {
@@ -202,9 +204,11 @@ struct ChainworkTests {
         }
 
         @Test func encodingTrapsWithoutRoom() async {
-            await #expect(processExitsWith: .failure) {
-                withTemporaryAllocation(byteCount: 31, alignment: 1) { Chainwork.zero.encode(into: &$0) }
-            }
+            #if os(macOS) || os(Linux)
+                await #expect(processExitsWith: .failure) {
+                    withTemporaryAllocation(byteCount: 31, alignment: 1) { Chainwork.zero.encode(into: &$0) }
+                }
+            #endif
         }
     }
 

@@ -1,6 +1,8 @@
 import ArgumentParser
+import BitcoinCrypto
 import BitcoinWallet
-import Foundation
+
+import struct Foundation.Data
 
 /// Generates a new HD wallet master key from seed.
 struct HDNew: ParsableCommand {

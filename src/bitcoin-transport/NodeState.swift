@@ -1,5 +1,4 @@
-import BitcoinBase
-import Foundation
+public import typealias BitcoinBase.Amount
 
 public struct NodeState: Sendable {
     public init(feeFilterRate: Amount = 1, peers: [PeerID: PeerState] = [:]) {

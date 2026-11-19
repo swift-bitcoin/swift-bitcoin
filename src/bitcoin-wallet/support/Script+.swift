@@ -1,5 +1,6 @@
 import BitcoinBase
 import BitcoinCrypto
+import Crypto
 
 extension Script {
     var isPayToPubkey: Bool {

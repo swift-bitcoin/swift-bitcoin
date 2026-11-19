@@ -1,6 +1,5 @@
-import BitcoinTransport
-import Foundation
-import JSONRPC
+public import class BitcoinTransport.NodeService
+public import struct JSONRPC.GetPeerInfoRPC
 
 extension GetPeerInfoRPC {
     public func run(node: NodeService) async -> Result {

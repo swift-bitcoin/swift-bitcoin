@@ -75,7 +75,7 @@ extension JSONRPCRequest.Params {
             }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case .help(let params): try params.encode(to: encoder)

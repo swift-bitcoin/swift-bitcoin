@@ -1,5 +1,7 @@
-import Crypto
 import Foundation
+
+public import protocol Crypto.Digest
+public import protocol Crypto.HashFunction
 
 /// RACE Integrity Primitives Evaluation (RIPE) 160-bit Message Digest (MD) implementation.
 ///

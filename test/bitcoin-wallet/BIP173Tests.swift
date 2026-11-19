@@ -122,10 +122,10 @@ struct BIP173Tests {
             "bc1gmk9yu",
         ])
     func invalidAddress(invalid: String) {
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             _ = try SegwitAddressDecoder(hrp: "bc").decode(invalid)
         }
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             _ = try SegwitAddressDecoder(hrp: "tb").decode(invalid)
         }
     }
@@ -141,7 +141,7 @@ struct BIP173Tests {
         ])
     func invalidAddressEncoding(invalid: InvalidAddressData) {
         let zeroData = Data(repeating: 0x00, count: invalid.programLen)
-        #expect(throws: Error.self) {
+        #expect(throws: (any Error).self) {
             let _ = try SegwitAddressEncoder(hrp: invalid.hrp, version: invalid.version).encode(zeroData)
         }
     }

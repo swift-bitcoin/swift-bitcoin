@@ -1,3 +1,4 @@
+import BinaryParsing
 import BitcoinBase
 import BitcoinCrypto
 import Foundation

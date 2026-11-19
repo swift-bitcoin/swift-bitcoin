@@ -1,4 +1,6 @@
-import BinaryParsing
+public import protocol BinaryParsing.ExpressibleByParsing
+public import struct BinaryParsing.ParserSpan
+public import struct BinaryParsing.ParsingError
 
 /// A type whose identity is a `Hash256`: same 32 bytes, same layout, its own type so a
 /// transaction identifier can't be passed where a block hash is expected.

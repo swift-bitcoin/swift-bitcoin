@@ -1,4 +1,4 @@
-import Foundation
+public import struct Foundation.UUID
 
 public struct JSONRPCResponse: Codable, Sendable {
     public struct Error: Swift.Error, Codable, Equatable, Sendable {
@@ -20,7 +20,7 @@ public struct JSONRPCResponse: Codable, Sendable {
             self.message = message
         }
 
-        public init(from decoder: Decoder) throws {
+        public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             code = try container.decode(ErrorCode.self, forKey: .code)
             message = try container.decode(String.self, forKey: .message)
@@ -53,7 +53,7 @@ public struct JSONRPCResponse: Codable, Sendable {
         self.error = error
     }
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let jsonrpc = try container.decode(String.self, forKey: .jsonrpc)
         guard jsonrpc == JSONRPCRequest.jsonRPCVersion else {

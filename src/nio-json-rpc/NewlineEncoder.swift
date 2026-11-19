@@ -1,4 +1,8 @@
-import NIOCore
+public import struct NIOCore.ByteBuffer
+public import protocol NIOCore.ByteToMessageDecoder
+public import class NIOCore.ChannelHandlerContext
+public import enum NIOCore.DecodingState
+public import protocol NIOCore.MessageToByteEncoder
 
 private let maxPayload = 1_000_000 // 1MB
 

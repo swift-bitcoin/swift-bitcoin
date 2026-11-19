@@ -1,3 +1,5 @@
+import BinaryParsing
+import BitcoinCrypto
 import BitcoinTransport
 import NIOCore
 import NIOFoundationCompat

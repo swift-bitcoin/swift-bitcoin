@@ -1,6 +1,8 @@
-import BinaryParsing
-import BitcoinCrypto
-import Foundation
+public import protocol BinaryParsing.ExpressibleByParsing
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct Foundation.Data
 
 extension Script {
     /// A script operation.

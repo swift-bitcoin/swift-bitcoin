@@ -1,6 +1,11 @@
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct BitcoinBase.Script
+public import struct BitcoinCrypto.Hash160 // Internal
+public import struct BitcoinCrypto.PublicKey
+public import struct BitcoinCrypto.RIPEMD160 // Internal
+public import struct BitcoinCrypto.SecretKey
+public import struct Foundation.Data
 
 /// Witness version 0 Bitcoin address.
 public struct SegwitAddress: AddressProtocol {

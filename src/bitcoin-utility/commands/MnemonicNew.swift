@@ -1,4 +1,5 @@
 import ArgumentParser
+import BitcoinCrypto
 import BitcoinWallet
 import Foundation
 

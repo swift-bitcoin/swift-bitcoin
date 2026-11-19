@@ -1,6 +1,9 @@
-import BitcoinBase
-import BitcoinCrypto
 import Foundation
+
+public import struct BitcoinBase.Script
+public import enum BitcoinBase.TapscriptTree // Internal
+public import struct BitcoinCrypto.PublicKey
+public import struct BitcoinCrypto.SecretKey
 
 /// Witness version 1 or higher Bitcoin address.
 public struct TaprootAddress: AddressProtocol {

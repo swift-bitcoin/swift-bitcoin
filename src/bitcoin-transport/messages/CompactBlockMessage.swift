@@ -1,8 +1,11 @@
-import BinaryParsing
-import BitcoinBase
 import BitcoinBlockchain
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import struct BitcoinBase.Block
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.VarInt // Internal
 
 /// A `HeaderAndShortIDs` (i.e. ``CompactBlockMessage``)  structure is used to relay a block header, the short transactions IDs used for matching already-available transactions, and a select few transactions which we expect a peer may be missing.
 ///

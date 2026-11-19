@@ -661,11 +661,13 @@ struct TargetTests {
             }
         }
 
-        @Test func trapsOnNonPositiveTargetTimespan() async {
-            await #expect(processExitsWith: .failure) {
-                _ = Target.difficultyOne.retargeted(actualTimespan: 1, targetTimespan: 0, powLimit: .difficultyOne)
+        #if os(macOS) || os(Linux)
+            @Test func trapsOnNonPositiveTargetTimespan() async {
+                await #expect(processExitsWith: .failure) {
+                    _ = Target.difficultyOne.retargeted(actualTimespan: 1, targetTimespan: 0, powLimit: .difficultyOne)
+                }
             }
-        }
+        #endif
     }
 
     /// Every format, back and forth, for limits and real values.

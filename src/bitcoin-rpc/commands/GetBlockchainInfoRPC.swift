@@ -1,6 +1,8 @@
-import BitcoinBlockchain
-import Foundation
-import JSONRPC
+import BitcoinBase
+
+public import class BitcoinBlockchain.BlockchainService
+import struct Foundation.FloatingPointFormatStyle
+public import struct JSONRPC.GetBlockchainInfoRPC
 
 extension GetBlockchainInfoRPC {
     public func run(blockchain: BlockchainService) async -> Result {

@@ -1,5 +1,7 @@
-import Crypto
-import Foundation
+public import protocol Crypto.HashFunction
+public import struct Foundation.Data
+public import func Foundation.ceil // Internal
+public import func Foundation.pow // Internal
 
 public enum PBKDF2Error: Error {
     case invalidInput

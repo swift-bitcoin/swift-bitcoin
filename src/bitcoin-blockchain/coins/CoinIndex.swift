@@ -30,5 +30,5 @@ enum CoinsError: Error {
 
     case corruptedCoinData
 
-    case databaseError(Error)
+    case databaseError(any Error)
 }

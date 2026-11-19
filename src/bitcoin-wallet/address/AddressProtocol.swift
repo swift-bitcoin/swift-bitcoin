@@ -1,5 +1,8 @@
-import BitcoinBase
 import Foundation
+
+public import typealias BitcoinBase.Amount
+public import struct BitcoinBase.Script
+public import struct BitcoinBase.TransactionOutput
 
 /// A common interface for all types of Bitcoin addresses: legacy, segwit and taproot. An address can be decoded from a string and must be able to produce a transaction output for a given satoshi amount.
 public protocol AddressProtocol: CustomStringConvertible, Equatable, Sendable {

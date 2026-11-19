@@ -1,5 +1,7 @@
 import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct Foundation.Data
 
 // Merkle roots, following Bitcoin Core's `consensus/merkle.cpp`:
 //

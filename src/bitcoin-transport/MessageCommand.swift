@@ -1,6 +1,7 @@
-import BinaryParsing
-import BitcoinCrypto
-import Foundation
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+import struct Foundation.Data
 
 /// The message command represents the different kinds of message on the peer-to-peer network.
 public enum MessageCommand: String, RawRepresentable, Sendable {

@@ -1,6 +1,8 @@
-import BinaryParsing
-import BitcoinCrypto
-import Foundation
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.VarInt // Internal
+public import struct Foundation.Data
 
 extension Transaction {
     /// Witness data associated with a particular ``Transaction/Input``.

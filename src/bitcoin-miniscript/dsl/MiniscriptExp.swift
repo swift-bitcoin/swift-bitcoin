@@ -1,4 +1,4 @@
-import BitcoinBase
+public import struct BitcoinBase.Script
 
 /// Generic miniscript expression.
 ///

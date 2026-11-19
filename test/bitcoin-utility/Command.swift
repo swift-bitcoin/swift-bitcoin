@@ -4,7 +4,7 @@ import Testing
 @testable import BitcoinUtility
 
 @Test func defaultCommand() throws {
-    var maybeCommand = ParsableCommand?.none
+    var maybeCommand = (any ParsableCommand)?.none
     #expect(throws: Never.self) {
         maybeCommand = try BitcoinUtility.parseAsRoot([""])
     }

@@ -1,6 +1,10 @@
-import BinaryParsing
-import BitcoinCrypto
+import Crypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.SHA256d // Internal
 
 /// A Bitcoin transaction.
 ///

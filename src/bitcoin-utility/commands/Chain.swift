@@ -1,8 +1,9 @@
 import ArgumentParser
 import BitcoinBase
-import Foundation
+import BitcoinCrypto
 
 import enum BitcoinTransport.NodeNetwork
+import struct Foundation.Data
 
 struct Chain: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

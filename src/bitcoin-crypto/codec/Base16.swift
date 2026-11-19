@@ -1,4 +1,5 @@
-import Foundation
+public import struct Foundation.Data
+public import protocol Foundation.DataProtocol
 
 // Proposed replacement for swift-bitcoin's src/bitcoin-crypto/codec/Base16.swift.
 //

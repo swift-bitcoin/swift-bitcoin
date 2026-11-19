@@ -1,7 +1,9 @@
 import ArgumentParser
 import BitcoinBase
+import BitcoinCrypto
 import BitcoinWallet
-import Foundation
+
+import struct Foundation.Data
 
 /// Decodes a script into its assembly textual representation.
 struct ScriptDecode: ParsableCommand {

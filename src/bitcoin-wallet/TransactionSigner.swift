@@ -1,6 +1,15 @@
-import BitcoinBase
-import BitcoinCrypto
+import Crypto
 import Foundation
+
+public import struct BitcoinBase.Script
+public import struct BitcoinBase.SighashType
+public import struct BitcoinBase.SignatureHash
+public import struct BitcoinBase.Transaction
+public import struct BitcoinBase.TransactionOutput
+public import struct BitcoinCrypto.ECDSASignature
+public import struct BitcoinCrypto.Hash160 // Internal
+public import struct BitcoinCrypto.SchnorrSignature // Internal
+public import struct BitcoinCrypto.SecretKey
 
 /// An affordance to sign multiple inputs of a bitcoin tx.
 public struct TransactionSigner {

@@ -1,7 +1,9 @@
-import BinaryParsing
-import BitcoinBase
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import struct BitcoinBase.Hash256
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
 
 /// Inventory vectors are used for notifying other nodes about objects they have or data which is being requested.
 public struct InventoryItem: Equatable {

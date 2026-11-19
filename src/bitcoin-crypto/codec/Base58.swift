@@ -1,4 +1,6 @@
-import Foundation
+import Crypto
+
+public import struct Foundation.Data
 
 /// Length of checksum appended to Base58Check encoded strings.
 private let checksumLength = 4

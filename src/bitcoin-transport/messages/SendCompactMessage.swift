@@ -1,6 +1,8 @@
-import BinaryParsing
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
 
 /// BIP152
 public struct SendCompactMessage: Equatable {

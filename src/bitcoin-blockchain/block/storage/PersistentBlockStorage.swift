@@ -1,8 +1,12 @@
-import BitcoinBase
+import BinaryParsing
+import BitcoinCrypto
 import Collections
 import Foundation
 import Logging
+import NIOCore
 import _NIOFileSystem
+
+import struct BitcoinBase.Block
 
 /// Block storage service.
 actor PersistentBlockStorage: BlockStorage {

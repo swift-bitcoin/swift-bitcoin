@@ -1,7 +1,12 @@
-import BinaryParsing
-import BitcoinBase
-import BitcoinCrypto
+import Crypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import struct BinaryParsing.ParsingError // Internal
+public import struct BitcoinBase.BlockHash
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.VarInt // Internal
 
 private let hashLength = SHA256.Digest.byteCount // 32 bytes
 

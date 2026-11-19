@@ -1,5 +1,8 @@
-import BinaryParsing
 import BitcoinCrypto
+
+public import protocol BinaryParsing.ExpressibleByParsing
+public import struct BinaryParsing.ParserSpan
+public import struct BinaryParsing.ParsingError
 
 /// An unsigned 256-bit amount of proof-of-work: a single block's work, or a chain's cumulative work.
 ///

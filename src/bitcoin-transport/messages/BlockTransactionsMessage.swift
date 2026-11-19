@@ -1,7 +1,12 @@
-import BinaryParsing
-import BitcoinBase
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import struct BitcoinBase.BlockHash
+public import struct BitcoinBase.Hash256 // Internal
+public import struct BitcoinBase.Transaction
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.VarInt // Internal
 
 /// BIP152: A `BlockTransactions` structure is used to provide some of the transactions in a block, as requested.
 ///

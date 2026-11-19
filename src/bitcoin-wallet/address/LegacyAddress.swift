@@ -1,6 +1,12 @@
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct BitcoinBase.Script
+public import struct BitcoinCrypto.Base58Decoder // Internal
+public import struct BitcoinCrypto.Base58Encoder // Internal
+public import struct BitcoinCrypto.Hash160 // Internal
+public import struct BitcoinCrypto.PublicKey
+public import struct BitcoinCrypto.SecretKey
+public import struct Foundation.Data
 
 /// Legacy – i.e. base signature version – Bitcoin address.
 public struct LegacyAddress: AddressProtocol {

@@ -13,7 +13,7 @@ import ServiceLifecycle
 
 actor RPCService: Service {
     init(
-        host: String, port: Int, eventLoopGroup: EventLoopGroup, node: NodeService, blockchain: BlockchainService,
+        host: String, port: Int, eventLoopGroup: any EventLoopGroup, node: NodeService, blockchain: BlockchainService,
         logger: Logger
     ) {
         self.host = host
@@ -26,7 +26,7 @@ actor RPCService: Service {
 
     let host: String
     let port: Int
-    let eventLoopGroup: EventLoopGroup
+    let eventLoopGroup: any EventLoopGroup
     let node: NodeService
     let blockchain: BlockchainService
     let logger: Logger

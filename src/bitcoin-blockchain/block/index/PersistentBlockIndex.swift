@@ -1,11 +1,20 @@
-import BinaryParsing
-import BitcoinBase
 import BitcoinCrypto
-import Collections
-import Foundation
-import LMDB
-import Logging
-import _NIOFileSystem
+
+import struct BinaryParsing.ParserSpan
+public import struct BitcoinBase.Block // Internal
+public import struct BitcoinBase.BlockHash
+public import struct BitcoinBase.Hash256 // Internal
+public import struct BitcoinBase.Target // Internal
+import struct Collections.Deque
+import func Foundation.getpagesize
+public import struct LMDB.Cursor // Internal
+public import struct LMDB.Database // Internal
+public import struct LMDB.Environment // Internal
+public import typealias LMDB.LMDBCodable
+public import struct LMDB.LMDBDecodingError
+public import struct LMDB.ReadTransaction // Internal
+import struct Logging.Logger
+package import struct _NIOFileSystem.FilePath
 
 /// Hybrid in-memory / database block index service implementation.
 actor PersistentBlockIndex: BlockIndex {

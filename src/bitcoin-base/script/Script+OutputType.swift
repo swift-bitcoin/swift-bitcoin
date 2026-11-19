@@ -1,5 +1,7 @@
 import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct Foundation.Data
 
 /// The public keys or hashes in an output script (scriptPubkey) to match by the input script (scriptSig).
 public typealias OutputScriptSolutions = [Data]

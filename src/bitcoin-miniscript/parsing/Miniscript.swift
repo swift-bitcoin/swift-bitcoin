@@ -1,4 +1,4 @@
-import BitcoinBase
+public import struct BitcoinBase.Script
 
 public struct Miniscript {
     public init(_ source: String) throws(ParseError) {

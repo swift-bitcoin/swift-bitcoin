@@ -1,5 +1,6 @@
-import BitcoinCrypto
-import Foundation
+public import struct BitcoinCrypto.ECDSASignature // Internal
+public import struct BitcoinCrypto.SchnorrSignature
+public import struct Foundation.Data
 
 extension SchnorrSignature {
     /// A signature with sighash type extension.

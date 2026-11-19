@@ -1,5 +1,7 @@
-import BitcoinCrypto
 import Foundation
+
+public import protocol BitcoinCrypto.BinaryEncodable
+public import struct BitcoinCrypto.BinarySizeCounter
 
 /// A boolean value in the context of SCRIPT execution.
 public struct ScriptBool: Equatable, Sendable {

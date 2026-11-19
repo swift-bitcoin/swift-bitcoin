@@ -1,5 +1,5 @@
-import BinaryParsing
-import Foundation
+public import struct BinaryParsing.ParserSpan
+public import struct Foundation.Data
 
 /// Encode and decode binary data with custom binary format.
 ///

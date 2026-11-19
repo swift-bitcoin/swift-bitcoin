@@ -1,9 +1,19 @@
-import AsyncAlgorithms
-import BitcoinBase
-import BitcoinBlockchain
+import BitcoinCrypto
 import Foundation
-import Logging
 import Metrics
+
+public import class AsyncAlgorithms.AsyncChannel
+public import struct BitcoinBase.Block
+public import struct BitcoinBase.BlockHash // Internal
+public import struct BitcoinBase.Transaction // Internal
+public import struct BitcoinBase.TransactionIdentifier // Internal
+public import struct BitcoinBlockchain.BlockRef // Internal
+public import typealias BitcoinBlockchain.BlockUpdate // Internal
+public import class BitcoinBlockchain.BlockchainService
+public import struct BitcoinBlockchain.MultipleHeadersProcessingResult // Internal
+public import struct BitcoinBlockchain.SingleHeaderProcessingResult // Internal
+public import enum BitcoinBlockchain.ValidationStatus // Internal
+public import struct Logging.Logger
 
 /// A peer's unique identifier.
 public typealias PeerID = Int
