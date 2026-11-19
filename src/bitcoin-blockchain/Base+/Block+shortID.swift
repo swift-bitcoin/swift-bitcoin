@@ -1,7 +1,14 @@
 import BinaryParsing
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct BitcoinBase.Block
+public import struct BitcoinBase.BlockHash // Internal
+public import struct BitcoinBase.Transaction // Internal
+public import func BitcoinBase.calculateMerkleRoot // Internal
+import typealias BitcoinCrypto.SHA256
+import struct Foundation.Data
+import struct Foundation.Date
+import typealias Foundation.TimeInterval
 
 extension Block {
     public static func genesis(_ params: ConsensusParams) -> Self {

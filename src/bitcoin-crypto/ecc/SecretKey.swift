@@ -1,5 +1,6 @@
 import CSECP256K1
-import Foundation
+
+public import struct Foundation.Data
 
 /// Elliptic curve SECP256K1 secret key.
 public struct SecretKey: Equatable, Hashable, Sendable, CustomStringConvertible {

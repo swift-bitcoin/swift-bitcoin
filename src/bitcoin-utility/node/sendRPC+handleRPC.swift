@@ -1,8 +1,10 @@
 import Foundation
-import JSONRPC
 import NIOCore
 import NIOJSONRPC
 import NIOPosix
+
+public import struct JSONRPC.JSONRPCRequest
+public import struct JSONRPC.JSONRPCResponse // Internal
 
 public func sendRPC(host: String, port: Int, request: JSONRPCRequest) async throws {
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)

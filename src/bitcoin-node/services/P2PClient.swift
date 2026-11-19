@@ -9,7 +9,7 @@ import NIOPosix
 import ServiceLifecycle
 
 actor P2PClient: Service {
-    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) async {
+    init(eventLoopGroup: any EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) async {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.logger = logger
@@ -18,7 +18,7 @@ actor P2PClient: Service {
         peerID = await node.addPeer(host: remoteHost, port: remotePort, incoming: false)
     }
 
-    private let eventLoopGroup: EventLoopGroup
+    private let eventLoopGroup: any EventLoopGroup
     private let node: NodeService
     private let logger: Logger
     let remoteHost: String

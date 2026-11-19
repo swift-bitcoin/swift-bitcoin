@@ -1,4 +1,4 @@
-import Foundation
+package import protocol Foundation.ContiguousBytes
 
 // From swift-bitcoin, src/bitcoin-crypto/codec/Binary/OutputRawSpan+.swift (develop branch).
 //

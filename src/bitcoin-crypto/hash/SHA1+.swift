@@ -1,5 +1,7 @@
-import Crypto
-import Foundation
+public import struct Crypto.HMAC
+public import enum Crypto.Insecure
+public import struct Crypto.SHA256
+public import struct Crypto.SHA512
 
 /// Insecure hash function still available as a SCRIPT operation code in Bitcoin.
 public typealias SHA1 = Insecure.SHA1

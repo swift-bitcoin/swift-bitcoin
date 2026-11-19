@@ -1,4 +1,7 @@
-import Foundation
+public import struct Foundation.Data
+public import protocol Foundation.LocalizedError // Internal
+
+//import Crypto
 
 private let gen: [UInt32] = [0x3b6a_57b2, 0x2650_8e6d, 0x1ea1_19fa, 0x3d42_33dd, 0x2a14_62b3]
 

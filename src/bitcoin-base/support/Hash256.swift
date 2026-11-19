@@ -1,7 +1,9 @@
-import BinaryParsing
-import BitcoinCrypto
-import Crypto
-import Foundation
+public import protocol BinaryParsing.ExpressibleByParsing
+public import struct BinaryParsing.ParserSpan
+public import struct BinaryParsing.ParsingError
+public import typealias BitcoinCrypto.SHA256
+public import struct Crypto.SHA256
+public import struct Foundation.Data
 
 /// A 32-byte hash (Bitcoin's double SHA-256, `HASH256`), stored as `InlineArray<32, UInt8>`:
 /// bytes in wire order, alignment 1, no conversion.

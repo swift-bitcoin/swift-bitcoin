@@ -1,4 +1,4 @@
-import Foundation
+public import struct Foundation.Data
 
 /// Pre-calculates a binary size by accumulating the byte count of values.
 public struct BinarySizeCounter {

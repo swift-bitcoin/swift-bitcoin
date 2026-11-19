@@ -1,5 +1,9 @@
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct BitcoinCrypto.PublicKey // Internal
+public import struct BitcoinCrypto.SecretKey
+public import struct BitcoinCrypto.VarInt // Internal
+public import struct Foundation.Data
 
 public indirect enum TapscriptTree: Equatable, Sendable {
     // Int is the leaf_version. Its value should be 0xc0 (or 0xc1) for BIP342.

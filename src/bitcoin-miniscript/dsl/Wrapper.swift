@@ -1,6 +1,4 @@
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+public import struct BitcoinBase.Script
 
 infix operator ¦ : AssignmentPrecedence
 

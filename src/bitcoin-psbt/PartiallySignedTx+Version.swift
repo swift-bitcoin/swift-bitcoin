@@ -1,6 +1,6 @@
-import BinaryParsing
-import BitcoinCrypto
-import Foundation
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
 
 extension PartiallySignedTx {
     public enum Version: Int, Equatable, Sendable, BinaryCodable {

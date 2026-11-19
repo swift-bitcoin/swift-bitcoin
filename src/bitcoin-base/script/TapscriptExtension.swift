@@ -1,5 +1,6 @@
-import BitcoinCrypto
-import Foundation
+public import protocol BitcoinCrypto.BinaryEncodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct Foundation.Data
 
 /// BIP342: The TapRoot Script (Tapscript) Common Message Extension as defined in BIP342
 public struct TapscriptExtension: Equatable, Sendable {

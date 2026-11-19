@@ -1,4 +1,5 @@
-import Crypto
+public import protocol Crypto.Digest
+public import protocol Crypto.HashFunction
 
 /// Implementation of the SipHash 2-4 hashing algorithm used by BIP152 short transaction identifiers.
 ///

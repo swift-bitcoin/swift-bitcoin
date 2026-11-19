@@ -1,5 +1,6 @@
 import ArgumentParser
 import BitcoinBlockchain
+import BitcoinTransport
 import Foundation
 import Logging
 

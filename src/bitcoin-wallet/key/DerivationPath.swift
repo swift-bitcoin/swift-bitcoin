@@ -1,6 +1,8 @@
-import BinaryParsing
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
 
 public struct DerivationPath: Equatable, Sendable {
     package init(fingerprint: Int, indices: [Int], harden: [Bool]? = nil) {

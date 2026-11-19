@@ -1,4 +1,5 @@
 import BitcoinBase
+import BitcoinCrypto
 import BitcoinPSBT
 import BitcoinWallet
 import Foundation

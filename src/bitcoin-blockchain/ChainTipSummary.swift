@@ -1,5 +1,4 @@
-import BitcoinBase
-import Foundation
+public import struct BitcoinBase.BlockHash
 
 /// A summary of a chain tip – i.e. fork
 public struct ChainTipSummary: Equatable, Sendable {

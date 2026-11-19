@@ -4,6 +4,7 @@ import _NIOFileSystem
 
 #if canImport(Foundation.NSTask)
     import class Foundation.NSTask.Process
+    import NIOFoundationEssentialsCompat
 #endif
 
 extension NodeConfig {

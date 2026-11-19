@@ -1,4 +1,4 @@
-import Foundation
+public import struct Foundation.Data
 
 private let length = 16
 

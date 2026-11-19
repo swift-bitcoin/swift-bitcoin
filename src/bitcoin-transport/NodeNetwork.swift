@@ -1,6 +1,5 @@
-import BitcoinBase
-import BitcoinBlockchain
-import Foundation
+public import struct BitcoinBase.Script
+public import struct BitcoinBlockchain.ConsensusParams
 
 public enum NodeNetwork: Sendable {
     case mainnet, testnet, regtest

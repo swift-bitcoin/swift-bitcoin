@@ -9,7 +9,7 @@ import NIOPosix
 import ServiceLifecycle
 
 actor P2PService: Service {
-    init(eventLoopGroup: EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) {
+    init(eventLoopGroup: any EventLoopGroup, node: NodeService, logger: Logger, host: String, port: Int) {
         self.eventLoopGroup = eventLoopGroup
         self.node = node
         self.logger = logger
@@ -17,7 +17,7 @@ actor P2PService: Service {
         self.port = port
     }
 
-    let eventLoopGroup: EventLoopGroup
+    let eventLoopGroup: any EventLoopGroup
     let node: NodeService
     let logger: Logger
     let host: String

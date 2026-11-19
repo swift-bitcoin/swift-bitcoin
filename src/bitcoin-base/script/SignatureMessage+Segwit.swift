@@ -1,5 +1,7 @@
 import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct Foundation.Data
 
 extension SignatureMessage {
     /// BIP143: SegWit v0 signature message (sigMsg).

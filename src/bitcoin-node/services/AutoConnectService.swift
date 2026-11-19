@@ -6,7 +6,7 @@ import ServiceLifecycle
 
 actor AutoConnectService: Service {
     init(
-        addresses: [(String, Int)], services: ServiceGroup, eventLoopGroup: EventLoopGroup, node: NodeService,
+        addresses: [(String, Int)], services: ServiceGroup, eventLoopGroup: any EventLoopGroup, node: NodeService,
         logger: Logger
     ) {
         self.addresses = addresses
@@ -17,7 +17,7 @@ actor AutoConnectService: Service {
     }
 
     let services: ServiceGroup
-    let eventLoopGroup: EventLoopGroup
+    let eventLoopGroup: any EventLoopGroup
     let node: NodeService
     let logger: Logger
 

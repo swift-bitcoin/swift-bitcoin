@@ -1,5 +1,8 @@
-import BitcoinCrypto
-import Foundation
+public import struct BitcoinCrypto.ECDSASignature
+public import struct BitcoinCrypto.PublicKey
+public import typealias BitcoinCrypto.SHA256 // Internal
+public import struct BitcoinCrypto.SecretKey
+public import struct Foundation.Data
 
 /// Extensions for BIP341 taproot.
 extension SecretKey {

@@ -1,5 +1,5 @@
-import BitcoinBase
-import Foundation
+public import struct BitcoinBase.BlockHash
+public import struct Foundation.Date
 
 /// Additional information about a block in the blockchain.
 public struct BlockInfo: Sendable {

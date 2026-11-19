@@ -1,5 +1,6 @@
 import ArgumentParser
 import BitcoinBase
+import BitcoinCrypto
 import Foundation
 
 import enum BitcoinTransport.NodeNetwork

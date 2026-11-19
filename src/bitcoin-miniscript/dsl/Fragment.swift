@@ -1,6 +1,12 @@
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct BitcoinBase.Script
+public import struct BitcoinCrypto.Hash160 // internal
+public import struct BitcoinCrypto.PublicKey
+public import typealias BitcoinCrypto.RIPEMD160 // internal
+public import typealias BitcoinCrypto.SHA256 // internal
+public import struct BitcoinCrypto.SHA256d // internal
+public import struct Foundation.Data
 
 /// Semantics: `false`; Miniscript: `0`;  BitcoinScript: `0`
 public struct Zero: ExpB, ModZ, ModU, ModD {
@@ -48,7 +54,7 @@ public struct PK_H: ExpK, ModN, ModD, ModU {
         guard let keyData = key.compressedData else { // For tapscript should be key.xOnlyData
             preconditionFailure()
         }
-        let hash = Data(BitcoinCrypto.Hash160.hash(data: keyData))
+        let hash = Data(BitcoinCrypto::Hash160.hash(data: keyData))
         return [.dup, .hash160, .pushBytes(hash), .equalVerify]
     }
 
@@ -110,7 +116,7 @@ public struct After: ExpB, ModZ {
 /// Semantics: `len(x) = 32 and SHA256(x) = h`; Miniscript: `sha256(h)`; BitcoinScript: `SIZE <20> EQUALVERIFY SHA256 <h> EQUAL`.
 public struct SHA256: ExpB, ModO, ModN, ModD, ModU {
     public init(_ h: Data) {
-        precondition(h.count == BitcoinCrypto.SHA256.Digest.byteCount)
+        precondition(h.count == BitcoinCrypto::SHA256.Digest.byteCount)
         self.h = h
     }
     let h: Data
@@ -127,7 +133,7 @@ public struct SHA256: ExpB, ModO, ModN, ModD, ModU {
 /// Semantics: `len(x) = 32 and HASH256(x) = h`; Miniscript: `hash256(h)`; BitcoinScript: `SIZE <20> EQUALVERIFY HASH256 <h> EQUAL`.
 public struct Hash256: ExpB, ModO, ModN, ModD, ModU {
     public init(_ h: Data) {
-        precondition(h.count == BitcoinCrypto.SHA256d.Digest.byteCount)
+        precondition(h.count == BitcoinCrypto::SHA256d.Digest.byteCount)
         self.h = h
     }
 
@@ -145,7 +151,7 @@ public struct Hash256: ExpB, ModO, ModN, ModD, ModU {
 /// Semantics: `len(x) = 32 and RIPEMD160(x) = h`; Miniscript: `ripemd160(h)`; BitcoinScript: `SIZE <20> EQUALVERIFY RIPEMD160 <h> EQUAL`.
 public struct RIPEMD160: ExpB, ModO, ModN, ModD, ModU {
     public init(_ h: Data) {
-        precondition(h.count == BitcoinCrypto.RIPEMD160.Digest.byteCount)
+        precondition(h.count == BitcoinCrypto::RIPEMD160.Digest.byteCount)
         self.h = h
     }
 
@@ -163,7 +169,7 @@ public struct RIPEMD160: ExpB, ModO, ModN, ModD, ModU {
 /// Semantics: `len(x) = 32 and HASH160(x) = h`; Miniscript: `hash160(h)`; BitcoinScript: `SIZE <20> EQUALVERIFY HASH160 <h> EQUAL`.
 public struct Hash160: ExpB, ModO, ModN, ModD, ModU {
     public init(_ h: Data) {
-        precondition(h.count == BitcoinCrypto.Hash160.Digest.byteCount)
+        precondition(h.count == BitcoinCrypto::Hash160.Digest.byteCount)
         self.h = h
     }
 
@@ -323,8 +329,8 @@ public struct OrB<X: ExpB & ModD, X_: ExpB & ModD_, Z: ExpW & ModD, Z_: ExpW & M
     private var _z: Z? = nil
     private var __z: Z_? = nil
 
-    var x: ExpB { _x ?? __x! }
-    var z: ExpW { _z ?? __z! }
+    var x: any ExpB { _x ?? __x! }
+    var z: any ExpW { _z ?? __z! }
 
     public var compiled: [Script.Operation] {
         x.compiled + z.compiled + [.boolOr]

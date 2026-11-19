@@ -1,6 +1,7 @@
-import BitcoinBase
-import BitcoinBlockchain
-import Foundation
+public import typealias BitcoinBase.Amount
+public import struct BitcoinBase.BlockHash
+public import struct BitcoinBase.TransactionIdentifier
+public import struct BitcoinBlockchain.BlockRef
 
 /// Information about a node's remote peer.
 public struct PeerState: Sendable {

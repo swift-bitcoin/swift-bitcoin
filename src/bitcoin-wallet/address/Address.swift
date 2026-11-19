@@ -1,4 +1,4 @@
-import BitcoinBase
+public import struct BitcoinBase.Script
 
 /// Type-erased bitcoin address. Use when needing to decode and generate outputs but the type of address being decoded is not known beforehand
 public enum Address: AddressProtocol {

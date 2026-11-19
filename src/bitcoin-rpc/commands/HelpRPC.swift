@@ -1,5 +1,4 @@
-import Foundation
-import JSONRPC
+public import JSONRPC
 
 extension HelpRPC {
     public func run() async throws(JSONRPCResponse.Error) -> [String: String] {

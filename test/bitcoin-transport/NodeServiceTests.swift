@@ -525,13 +525,15 @@ struct NodeServiceTests: ~Copyable {
     func pingPong() async throws {
         try await performExtendedHandshake()
 
-        guard let satoshi, let halPeer, let hal, let satoshiPeer, var halOut else { preconditionFailure() }
+        guard let satoshi, let halPeer, let hal, let satoshiPeer /*, var halOut */ else { preconditionFailure() }
 
         Task {
             await hal.sendPingTo(satoshiPeer)
         }
+        var halOut = await hal.channel(for: satoshiPeer).makeAsyncIterator()
         // Hal --(ping)->> …
-        let messageHS0_ping = try #require(await halOut.next())
+        let maybeMessageHS0_ping = await halOut.next()
+        let messageHS0_ping = try #require(maybeMessageHS0_ping)
         await Task.yield()
         #expect(messageHS0_ping.command == .ping)
 

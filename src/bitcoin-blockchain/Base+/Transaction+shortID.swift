@@ -1,6 +1,7 @@
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+import struct BitcoinBase.Transaction
+import struct BitcoinCrypto.SipHash
 
 /// BIP152: Short transaction identifier implementation. See [https://github.com/bitcoin/bips/blob/master/bip-0152.mediawiki#short-transaction-ids].
 extension Transaction {

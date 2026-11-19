@@ -1,7 +1,9 @@
 import ArgumentParser
 import BitcoinBlockchain
+import BitcoinTransport
 import Foundation
 
+import struct Logging.Logger
 import struct _NIOFileSystem.FilePath
 
 struct ChainInfo: AsyncParsableCommand {

@@ -1,4 +1,4 @@
-import Foundation
+public import struct Foundation.UUID
 
 public struct JSONRPCRequest: Codable, Sendable {
     enum CodingKeys: CodingKey {
@@ -10,7 +10,7 @@ public struct JSONRPCRequest: Codable, Sendable {
         self.params = params
     }
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let jsonrpc = try container.decode(String.self, forKey: .jsonrpc)
         guard jsonrpc == Self.jsonRPCVersion else {

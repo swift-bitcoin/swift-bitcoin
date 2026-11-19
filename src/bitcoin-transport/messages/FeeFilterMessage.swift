@@ -1,7 +1,9 @@
-import BinaryParsing
-import BitcoinBase
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinBase.Amount
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
 
 /// BIP133 - https://github.com/bitcoin/bips/blob/master/bip-0133.mediawiki
 public struct FeeFilterMessage: Equatable {

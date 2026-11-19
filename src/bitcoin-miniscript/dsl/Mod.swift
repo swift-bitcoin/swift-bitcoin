@@ -1,4 +1,4 @@
-import BitcoinBase
+public import struct BitcoinBase.Script
 
 /// "z" Zero-arg: this expression always consumes exactly 0 stack elements.
 public protocol ModZ: MiniscriptExp {}

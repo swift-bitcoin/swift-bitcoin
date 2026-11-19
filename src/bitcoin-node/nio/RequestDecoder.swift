@@ -1,6 +1,7 @@
 import Foundation
 import JSONRPC
 import NIOCore
+import NIOFoundationEssentialsCompat
 
 /// Server side response/request coder.
 struct RequestDecoder: ByteToMessageDecoder, Sendable {

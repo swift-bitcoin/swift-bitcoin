@@ -1,9 +1,15 @@
-import BinaryParsing
-import BitcoinBase
-import Foundation
-import LMDB
-import Logging
-import _NIOFileSystem
+import BitcoinCrypto
+
+import struct BinaryParsing.ParserSpan
+public import struct BitcoinBase.Outpoint
+import func Foundation.getpagesize
+public import struct LMDB.Cursor // Internal
+public import struct LMDB.Database // Internal
+public import struct LMDB.Environment // Internal
+public import typealias LMDB.LMDBCodable
+public import struct LMDB.LMDBDecodingError
+import struct Logging.Logger
+package import struct _NIOFileSystem.FilePath
 
 /// An index plus in-memory storage for coins.
 actor PersistentCoinIndex: CoinIndex {

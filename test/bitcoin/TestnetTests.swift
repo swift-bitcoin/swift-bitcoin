@@ -1,5 +1,6 @@
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
 import BitcoinWallet
 import Foundation
 import Testing

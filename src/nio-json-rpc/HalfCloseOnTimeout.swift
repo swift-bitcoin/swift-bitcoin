@@ -1,4 +1,7 @@
-import NIOCore
+public import enum NIOCore.ChannelEvent // Internal
+public import class NIOCore.ChannelHandlerContext
+public import protocol NIOCore.ChannelInboundHandler
+public import class NIOCore.IdleStateHandler // Internal
 
 public final class HalfCloseOnTimeout: ChannelInboundHandler, Sendable {
     public typealias InboundIn = Any

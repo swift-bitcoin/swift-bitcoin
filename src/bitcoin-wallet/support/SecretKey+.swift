@@ -1,5 +1,9 @@
-import BitcoinCrypto
 import Foundation
+
+public import struct BitcoinCrypto.Base58Decoder // Internal
+public import struct BitcoinCrypto.Base58Encoder // Internal
+public import struct BitcoinCrypto.PublicKey // Internal
+public import struct BitcoinCrypto.SecretKey
 
 extension SecretKey {
     public struct WIFMetadata {

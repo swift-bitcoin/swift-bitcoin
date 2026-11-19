@@ -1,8 +1,10 @@
-import BitcoinBlockchain
+import BitcoinBase
 import BitcoinCrypto
 import BitcoinWallet
-import Foundation
-import JSONRPC
+
+public import class BitcoinBlockchain.BlockchainService
+public import struct JSONRPC.GenerateToAddressRPC
+public import struct JSONRPC.JSONRPCResponse
 
 extension GenerateToAddressRPC {
     /// Request must contain single public key ( hex string) parameter.

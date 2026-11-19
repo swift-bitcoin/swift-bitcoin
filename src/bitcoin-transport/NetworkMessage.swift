@@ -1,7 +1,11 @@
-import BinaryParsing
 import BitcoinBlockchain
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.SHA256d // Internal
+public import struct Foundation.Data
 
 /// Any message sent or received by nodes on the peer-to-peer network.
 public struct NetworkMessage: Equatable, Sendable {

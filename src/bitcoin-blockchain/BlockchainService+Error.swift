@@ -1,4 +1,4 @@
-import BitcoinBase
+public import struct BitcoinBase.Transaction
 
 /// Error types extension.
 extension BlockchainService {

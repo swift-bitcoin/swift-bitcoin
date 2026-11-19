@@ -1,8 +1,11 @@
 import ArgumentParser
+import BitcoinBase
 import BitcoinBlockchain
+import BitcoinTransport
 import Foundation
 import JSONRPC
 
+import struct Logging.Logger
 import struct _NIOFileSystem.FilePath
 
 struct ChainTips: AsyncParsableCommand {

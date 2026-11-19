@@ -1,5 +1,4 @@
-import BinaryParsing
-import Foundation
+public import struct BinaryParsing.ParserSpan
 
 extension Array: BinaryCodable where Element: BinaryCodable {
     public enum ArrayBinaryFormat {

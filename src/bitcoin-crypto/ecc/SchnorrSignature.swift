@@ -1,5 +1,7 @@
 import CSECP256K1
-import Foundation
+import Crypto
+
+public import struct Foundation.Data
 
 /// Elliptic curve SECP256K1 signature supporting Schnorr algorithm.
 public struct SchnorrSignature: Equatable, Sendable, CustomStringConvertible {

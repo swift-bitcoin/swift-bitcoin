@@ -1,6 +1,7 @@
 import BinaryParsing
 import BitcoinBase
 import BitcoinBlockchain
+import BitcoinCrypto
 import Foundation
 import Testing
 

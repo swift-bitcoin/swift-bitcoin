@@ -1,5 +1,6 @@
-import BitcoinBase
-import Foundation
+public import struct BitcoinBase.Block
+public import struct BitcoinBase.Transaction
+public import typealias Foundation.TimeInterval
 
 // MARK: - Flags from `consensus.h` in Bitcoin Core.
 enum ConsensusConstants {

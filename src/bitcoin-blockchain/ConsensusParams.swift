@@ -1,6 +1,17 @@
-import BitcoinBase
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import typealias BitcoinBase.Amount
+public import struct BitcoinBase.Block
+public import struct BitcoinBase.BlockHash
+public import struct BitcoinBase.Chainwork
+public import struct BitcoinBase.Hash256
+public import struct BitcoinBase.Script
+public import struct BitcoinBase.ScriptConfig
+public import struct BitcoinBase.Target
+public import struct BitcoinBase.Transaction
+public import struct BitcoinCrypto.PublicKey
+public import struct BitcoinCrypto.SHA256d // Internal
+import struct Foundation.Data
 
 public struct ConsensusParams: Sendable {
     public struct ChainData: Sendable {

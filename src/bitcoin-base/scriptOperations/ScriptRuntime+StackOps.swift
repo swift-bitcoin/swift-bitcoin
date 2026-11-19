@@ -1,3 +1,4 @@
+import BitcoinCrypto
 import Foundation
 
 extension ScriptRuntime {

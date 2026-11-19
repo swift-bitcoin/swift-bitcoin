@@ -1,4 +1,7 @@
-import Foundation
+import BitcoinCrypto
+import Crypto
+
+import struct Foundation.Data
 
 /// Aka `sigMsg`. See https://en.bitcoin.it/wiki/OP_CHECKSIG
 struct SignatureMessage: Equatable, Sendable {

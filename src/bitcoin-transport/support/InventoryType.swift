@@ -1,6 +1,8 @@
-import BinaryParsing
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
 
 /// The object type is currently defined as one of the following possibilities: `ERROR`, `MSG_TX`, `MSG_BLOCK`, `MSG_FILTERED_BLOCK`, `MSG_CMPCT_BLOCK`, `MSG_WITNESS_TX`, `MSG_WITNESS_BLOCK`, `MSG_FILTERED_WITNESS_BLOCK`.
 public enum InventoryType: Int {

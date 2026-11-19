@@ -1,6 +1,16 @@
-import BinaryParsing
-import BitcoinCrypto
-import Foundation
+import Crypto
+
+public import protocol BinaryParsing.ExpressibleByParsing
+public import struct BinaryParsing.ParserSpan
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.Hash160 // Internal
+public import struct BitcoinCrypto.PublicKey
+public import struct BitcoinCrypto.RIPEMD160 // Internal
+public import typealias BitcoinCrypto.SHA256 // Internal
+public import struct BitcoinCrypto.SHA256d // Internal
+public import struct BitcoinCrypto.VarInt // Internal
+public import struct Foundation.Data
 
 /// A fully decoded Bitcoin script and its associated signature version.
 ///

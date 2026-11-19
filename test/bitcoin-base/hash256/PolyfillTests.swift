@@ -1,7 +1,7 @@
+import BitcoinBase
+import BitcoinCrypto
 import Foundation
 import Testing
-
-@testable import BitcoinCrypto
 
 @Suite("Polyfills")
 struct PolyfillTests {

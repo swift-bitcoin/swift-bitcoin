@@ -1,7 +1,9 @@
 import ArgumentParser
 import BitcoinCrypto
 import BitcoinWallet
-import Foundation
+import Crypto
+
+import struct Foundation.Data
 
 /// Verifies a message signatue using the specified Bitcoin address.
 struct MessageVerify: ParsableCommand {

@@ -1,8 +1,10 @@
 import BitcoinBase
-import BitcoinBlockchain
 import BitcoinCrypto
-import Foundation
-import JSONRPC
+
+public import class BitcoinBlockchain.BlockchainService
+import struct Foundation.Data
+public import struct JSONRPC.GetHeaderRPC
+public import struct JSONRPC.JSONRPCResponse
 
 extension GetHeaderRPC {
     public func run(blockchain: BlockchainService) async throws(JSONRPCResponse.Error) -> Result {

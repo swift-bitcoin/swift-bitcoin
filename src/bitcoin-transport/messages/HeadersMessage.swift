@@ -1,8 +1,12 @@
-import BinaryParsing
-import BitcoinBase
 import BitcoinBlockchain
-import BitcoinCrypto
 import Foundation
+
+public import struct BinaryParsing.ParserSpan
+public import struct BinaryParsing.ParsingError // Internal
+public import struct BitcoinBase.Block
+public import typealias BitcoinCrypto.BinaryCodable
+public import struct BitcoinCrypto.BinarySizeCounter
+public import struct BitcoinCrypto.VarInt // Internal
 
 /// The `headers` message sends block headers to a node which previously requested certain headers with a `getheaders` message. A headers message can be empty.
 ///
