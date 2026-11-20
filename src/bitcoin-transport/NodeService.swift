@@ -1075,6 +1075,12 @@ public actor NodeService: Sendable {
         }
 
         guard var pendingBlockTxs = pendingBlockTxs[blockTxsMessage.blockHash] else { return }
+
+        // The peer must provide exactly one transaction per missing slot we requested.
+        let missingCount = pendingBlockTxs.count(where: { $0 == nil })
+        guard blockTxsMessage.txs.count == missingCount else {
+            throw .invalidPayload
+        }
         self.pendingBlockTxs[blockTxsMessage.blockHash] = nil
 
         var j = 0

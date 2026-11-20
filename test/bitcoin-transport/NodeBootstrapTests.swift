@@ -536,6 +536,12 @@ struct NodeBootstrapTests {
         let blocktxn = try #require(BlockTransactionsMessage(messageBC1_blocktxn.payload))
         #expect(blocktxn.txs == [tx])
 
+        // Regression: a malformed blocktxn with fewer transactions than requested must be rejected, not crash.
+        let malformedBlocktxn = NetworkMessage(.blocktxn, payload: BlockTransactionsMessage(blockHash: aliceBlock2.id, txs: []).data)
+        await #expect(throws: NodeService.Error.self) {
+            try await carol.processMessage(malformedBlocktxn, from: carolPeerB)
+        }
+
         // … --(blocktxn)->> Carol
         try await carol.processMessage(messageBC1_blocktxn, from: carolPeerB)
 
