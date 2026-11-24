@@ -12,6 +12,8 @@ struct NodeConfig: Encodable {
         logLevel: LogLevel = .info,
         metrics: OTelMetrics? = nil,
         enableProfiling: Bool = false,
+        tracing: OTelMetrics? = nil,
+        logging: OTelMetrics? = nil,
         feeRate: Int = 100
     ) {
         self.network = network
@@ -24,6 +26,8 @@ struct NodeConfig: Encodable {
         self.logLevel = logLevel
         self.metrics = metrics
         self.enableProfiling = enableProfiling
+        self.tracing = tracing
+        self.logging = logging
         self.feeRate = feeRate
     }
 
@@ -42,6 +46,8 @@ struct NodeConfig: Encodable {
     /// Whether to report OpenTelemetry metrics, including system metrics.
     let metrics: OTelMetrics?
     let enableProfiling: Bool
+    let tracing: OTelMetrics?
+    let logging: OTelMetrics?
     let feeRate: Int
 
     static let `default` = Self()
@@ -57,6 +63,8 @@ struct NodeConfig: Encodable {
         case logLevel
         case metrics
         case enableProfiling
+        case tracing
+        case logging
         case feeRate
     }
 
@@ -72,6 +80,8 @@ struct NodeConfig: Encodable {
         try container.encode(self.logLevel, forKey: .logLevel)
         try container.encodeIfPresent(self.metrics, forKey: .metrics)
         try container.encode(self.enableProfiling, forKey: .enableProfiling)
+        try container.encode(self.tracing, forKey: .tracing)
+        try container.encode(self.logging, forKey: .logging)
         try container.encode(self.feeRate, forKey: .feeRate)
     }
 }

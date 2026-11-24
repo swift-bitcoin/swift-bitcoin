@@ -62,11 +62,17 @@ struct ConfigOptions: ParsableArguments {
     @Option(defaultAsFlag: true, help: "Enable metrics with default settings")
     var metrics: Bool?
 
-    @Option(help: "Metrics conenction endpoint")
+    @Option(help: "Metrics Open Telemetry (OTel) conenction endpoint")
     var metricsEndpoint: String?
 
     @Option(defaultAsFlag: true, help: "Enable remote profiling")
     var enableProfiling: Bool?
+
+    @Option(help: "Distributed tracing Open Telemetry (OTel) conenction endpoint")
+    var tracingEndpoint: String?
+
+    @Option(help: "Logging Open Telemetry (OTel) conenction endpoint")
+    var loggingEndpoint: String?
 
     @Option(help: "Minimum fee rate to accept transactions")
     var feeRate: Int?

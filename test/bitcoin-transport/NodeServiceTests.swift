@@ -363,8 +363,8 @@ struct NodeServiceTests: ~Copyable {
         // No Response
         #expect(await hal.popMessage(satoshiPeer) == nil)
 
-        // … --(block)->> Hal
-        let blockUpdates = await hal.subscribeToBlocks()
+        // Satoshi --(block)->> Hal
+        let blockUpdates = await hal.subscribeToBlocks() // Async channel!
         let task = Task {
             var i = blockUpdates.makeAsyncIterator()
             return await i.next()

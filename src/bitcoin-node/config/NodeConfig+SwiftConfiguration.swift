@@ -100,12 +100,31 @@ extension NodeConfig {
 
         let enableProfiling = config.bool(forKey: "enableProfiling", default: NodeConfig.default.enableProfiling)
 
+        let tracing =
+            if let tracingEndpoint = config.string(forKey: "tracing.endpoint") {
+                OTelMetrics(endpoint: tracingEndpoint)
+            } else if config.bool(forKey: "tracing", default: false) {
+                OTelMetrics()
+            } else {
+                NodeConfig.default.tracing
+            }
+
+        let logging =
+            if let loggingEndpoint = config.string(forKey: "logging.endpoint") {
+                OTelMetrics(endpoint: loggingEndpoint)
+            } else if config.bool(forKey: "logging", default: false) {
+                OTelMetrics()
+            } else {
+                NodeConfig.default.logging
+            }
+
         let feeRate = config.int(forKey: "feeRate") ?? NodeConfig.default.feeRate
 
         self.init(
             network: network, signetChallenge: signetChallenge, rpc: rpc, dataLocation: dataLocation, bind: bind,
             connect: connect, autoConnect: autoConnect, logLevel: logLevel, metrics: metrics,
-            enableProfiling: enableProfiling, feeRate: feeRate)
+            enableProfiling: enableProfiling,
+            tracing: tracing, logging: logging, feeRate: feeRate)
     }
 }
 

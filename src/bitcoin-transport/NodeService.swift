@@ -1,6 +1,7 @@
 import BitcoinCrypto
 import Foundation
 import Metrics
+import Tracing
 
 public import class AsyncAlgorithms.AsyncChannel
 public import struct BitcoinBase.Block
@@ -374,6 +375,20 @@ public actor NodeService: Sendable {
 
     /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
     public func processMessage(_ message: NetworkMessage, from id: PeerID) async throws {
+        // Explicitly start a new root trace per network message
+        try await withSpan(
+            "p2p.\(message.command)",
+            context: .topLevel,
+            ofKind: .server
+        ) { span in
+            span.attributes["p2p.peer.id"] = id
+            span.attributes["p2p.command"] = message.command.rawValue
+            try await processMessagePrivate(message, from: id)
+        }
+    }
+
+    /// Process an incoming message from a peer. This will sometimes result in sending out one or more messages back to the peer. The function will ultimately create a child task per message sent.
+    private func processMessagePrivate(_ message: NetworkMessage, from id: PeerID) async throws {
         logger.info("Received \(message.command) (\(message.binarySize)) from \(id)")
         metrics.messagesReceived.increment()
         // Postpone the next ping

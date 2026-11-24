@@ -1,6 +1,6 @@
 import Atomics
 import Metrics
-
+import Tracing
 public import class AsyncAlgorithms.AsyncChannel
 public import typealias BitcoinBase.Amount // Internal
 public import struct BitcoinBase.Block
@@ -1675,7 +1675,16 @@ extension BlockchainService {
     @discardableResult public func processBlock(_ block: Block, isRequested: Bool = true, immediate: Bool = true)
         async throws(Error) -> SingleHeaderProcessingResult
     {
-        try await processBlock(block, isRequested: isRequested, immediate: immediate, locator: nil)
+        do {
+            return try await withSpan("blockchain.processBlock", ofKind: .internal) { span in
+                span.attributes["btc.block.hash"] = block.id.displayHex
+                span.attributes["btc.tx.count"] = block.txs.count
+
+                return try await processBlock(block, isRequested: isRequested, immediate: immediate, locator: nil)
+            }
+        } catch {
+            throw error as! Error
+        }
     }
 
     /// The locator parameter is used in calls from the re-indexing process.
