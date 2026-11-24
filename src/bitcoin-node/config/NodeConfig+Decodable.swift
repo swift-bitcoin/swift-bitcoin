@@ -40,6 +40,8 @@ extension NodeConfig: Decodable {
         self.metrics = try container.decodeIfPresent(NodeConfig.OTelMetrics.self, forKey: .metrics) ?? defaults.metrics
         self.enableProfiling =
             try container.decodeIfPresent(Bool.self, forKey: .enableProfiling) ?? defaults.enableProfiling
+        self.tracing = try container.decodeIfPresent(NodeConfig.OTelMetrics.self, forKey: .tracing) ?? defaults.tracing
+        self.logging = try container.decodeIfPresent(NodeConfig.OTelMetrics.self, forKey: .logging) ?? defaults.logging
         self.feeRate = try container.decodeIfPresent(Int.self, forKey: .feeRate) ?? defaults.feeRate
     }
 }

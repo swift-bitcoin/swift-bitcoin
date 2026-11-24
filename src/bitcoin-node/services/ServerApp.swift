@@ -16,6 +16,7 @@ import ProfileRecorderServer
 import ServiceLifecycle
 import SystemMetrics
 import UnixSignals
+import Tracing
 
 /// A top-level actor that composes and orchestrates the node’s services.
 ///
@@ -49,6 +50,8 @@ import UnixSignals
 ///   - P2P: defaults to the network’s default P2P port unless overridden via NodeConfig.BindSettings.
 /// - Metrics (StatsD) are enabled when NodeConfig.metrics is present.
 /// - Profiling is optionally enabled when NodeConfig.enableProfiling is true.
+/// - Tracing is optionally enabled when NodeConfig.tracing is present.
+/// - Logging is optionally enabled when NodeConfig.logging is present.
 /// - Auto-connect peers can be randomly selected from public peers or manually provided via NodeConfig.connect; ServerApp will chain
 ///   through these addresses, advancing on successful connection or failure.
 ///
@@ -69,6 +72,129 @@ import UnixSignals
 ///   - StatusRPC, ConnectRPC, StartP2PRPC for RPC command interfaces
 actor ServerApp {
     init(_ config: NodeConfig) async throws(ServerError) {
+        var otelConfig = OTel.Configuration.default
+        otelConfig.serviceName = "swift-bitcoin"
+        if let loggingConfig = config.logging {
+            otelConfig.logs.enabled = true
+            otelConfig.logs.otlpExporter.protocol = .grpc
+            otelConfig.logs.otlpExporter.endpoint = loggingConfig.endpoint
+        }
+        if let metricsConfig = config.metrics {
+            otelConfig.metrics.enabled = true
+            otelConfig.metrics.otlpExporter.protocol = .grpc
+            otelConfig.metrics.otlpExporter.endpoint = metricsConfig.endpoint
+        }
+        if let tracingConfig = config.tracing {
+            otelConfig.traces.enabled = true
+            otelConfig.traces.otlpExporter.protocol = .grpc
+            otelConfig.traces.otlpExporter.endpoint = tracingConfig.endpoint
+        }
+
+        var telemetryServices: [ServiceGroupConfiguration.ServiceConfiguration] = []
+
+        // Resolve Logger (OTel, Stdout, Multiplexed, or NoOp)
+
+        // TODO: Add an option for stdout logging explicitly (defaults to true)
+        let logToStdout = config.logging != nil || config.logging == nil
+
+        let otelLogFactory: (@Sendable (String) -> any LogHandler)?
+        if config.logging != nil {
+            let otelLoggingBackend: (factory: @Sendable (String) -> any LogHandler, service: any Service)
+            do {
+                otelLoggingBackend = try OTel.makeLoggingBackend(configuration: otelConfig)
+            } catch {
+                //logger.error("Telemetry initialization error: \(error)")
+                throw .telemetryInitError(error)
+            }
+            otelLogFactory = otelLoggingBackend.factory
+            telemetryServices.append(.init(service: otelLoggingBackend.service, successTerminationBehavior: .ignore, failureTerminationBehavior: .ignore))
+        } else {
+            otelLogFactory = nil
+        }
+
+        let loggerFactory: @Sendable (String) -> any LogHandler = switch (otelLogFactory, logToStdout) {
+        case let (otelLogFactory?, true):
+            { [metadataProvider = OTel.makeLoggingMetadataProvider()] label in
+                MultiplexLogHandler([
+                    StreamLogHandler.standardOutput(label: label, metadataProvider: metadataProvider),
+                    otelLogFactory(label)
+                ])
+            }
+        case let (otelLogFactory?, false):
+            otelLogFactory
+        case (nil, true):
+            StreamLogHandler.standardOutput(label:)
+        case (nil, false):
+            { _ in SwiftLogNoOpLogHandler() }
+        }
+
+        LoggingSystem.bootstrap(loggerFactory)
+
+        var logger = Logger(label: otelConfig.serviceName)
+        logger.logLevel = .init(config.logLevel)
+        self.logger = logger
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        guard let configStringData = try? encoder.encode(config),
+            let configString = String(data: configStringData, encoding: .utf8)
+        else {
+            fatalError("Could not encode configuration")
+        }
+        logger.info("\(configString)")
+
+        if config.enableProfiling {
+            logger.info("Profiling capability enabled as per configuration")
+            async let _ = ProfileRecorderServer(configuration: .parseFromEnvironment()).runIgnoringFailures(
+                logger: logger)
+        }
+
+        let metricsFactory: any MetricsFactory
+        if let metricsConfig = config.metrics {
+            logger.info(
+                "Metrics enabled as per OpenTelemetry (OTLP) configuration with gRPC endpoint \(metricsConfig.endpoint)"
+            )
+            let otelMetricsBackend: (factory: any MetricsFactory, service: any Service)
+            do {
+                otelMetricsBackend = try OTel.makeMetricsBackend(configuration: otelConfig)
+            } catch {
+                logger.error("Telemetry initialization error: \(error)")
+                throw .telemetryInitError(error)
+            }
+
+            metricsFactory = otelMetricsBackend.factory
+            MetricsSystem.bootstrap(metricsFactory)
+            // Configure SystemMetrics monitoring with an explicit metrics factory
+            let systemMetricsMonitor = SystemMetricsMonitor(
+                configuration: .init(pollInterval: .seconds(30)),
+                metricsFactory: otelMetricsBackend.factory,
+                logger: logger
+            )
+            telemetryServices.append(.init(service: otelMetricsBackend.service, successTerminationBehavior: .ignore, failureTerminationBehavior: .ignore))
+            telemetryServices.append(.init(service: systemMetricsMonitor, successTerminationBehavior: .ignore, failureTerminationBehavior: .ignore))
+        } else {
+            metricsFactory = NOOPMetricsHandler.instance
+        }
+
+        let tracer: any Tracer
+        if let tracingConfig = config.tracing {
+            logger.info(
+                "Distributed tracing enabled as per OpenTelemetry (OTLP) configuration with gRPC endpoint \(tracingConfig.endpoint)"
+            )
+            let otelTracingBackend: (factory: any Tracer, service: any Service)
+            do {
+                otelTracingBackend = try OTel.makeTracingBackend(configuration: otelConfig)
+            } catch {
+                logger.error("Telemetry initialization error: \(error)")
+                throw .telemetryInitError(error)
+            }
+            tracer = otelTracingBackend.factory
+            InstrumentationSystem.bootstrap(otelTracingBackend.factory)
+            telemetryServices.append(.init(service: otelTracingBackend.service, successTerminationBehavior: .ignore, failureTerminationBehavior: .ignore))
+        } else {
+            tracer = NoOpTracer()
+        }
+
         let challenge: Script?
         if let signetChallenge = config.signetChallenge {
             guard let parsedChallenge = Data(hex: signetChallenge) else {
@@ -91,47 +217,6 @@ actor ServerApp {
             }
         let dataLocation = BlockchainService.Config.DataLocation(config.dataLocation)
         let port = config.rpc.port // ?? network.defaultRPCPort
-
-        var logger = Logger(label: "bcnode")
-        logger.logLevel = .init(config.logLevel)
-        self.logger = logger
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        guard let configStringData = try? encoder.encode(config),
-            let configString = String(data: configStringData, encoding: .utf8)
-        else {
-            fatalError("Could not encode configuration")
-        }
-        logger.info("\(configString)")
-
-        if config.enableProfiling {
-            logger.info("Profiling capability enabled as per configuration")
-            async let _ = ProfileRecorderServer(configuration: .parseFromEnvironment()).runIgnoringFailures(
-                logger: logger)
-        }
-
-        let telemetryService: ServiceGroup?
-        let metricsFactory: (any MetricsFactory)?
-        if let metricsConfig = config.metrics {
-            logger.info(
-                "Metrics enabled as per OpenTelemetry (OTLP) configuration with gRPC endpoint \(metricsConfig.endpoint)"
-            )
-            // Initialize all telemetry services
-            do {
-                (telemetryService, metricsFactory) = try makeTelemetryService(
-                    logger: logger,
-                    serviceName: "swift-bitcoin",
-                    endpoint: metricsConfig.endpoint
-                )
-            } catch {
-                logger.error("Telemetry initialization error: \(error)")
-                throw .telemetryInitError(error)
-            }
-        } else {
-            telemetryService = nil
-            metricsFactory = nil
-        }
 
         let blockchain: BlockchainService
         do {
@@ -156,8 +241,11 @@ actor ServerApp {
 
         var services: [ServiceGroupConfiguration.ServiceConfiguration] = []
 
-        if let telemetryService {
-            services.append(.init(service: telemetryService))
+        if !telemetryServices.isEmpty {
+            let telemetryGroup = ServiceGroup(
+                configuration: .init(services: telemetryServices, logger: logger)
+            )
+            services.append(.init(service: telemetryGroup, serviceName: "Telemetry"))
         }
 
         // services.append(.init(service: node, successTerminationBehavior: .gracefullyShutdownGroup, failureTerminationBehavior: .cancelGroup))
@@ -207,15 +295,12 @@ actor ServerApp {
         await rpcService.setServerApp(self)
 
         do {
-            if let metricsFactory {
-                // Use withMetricsFactory to make the OTel factory available as a task-local
-                // for any Metric objects created during the service group's run
-                try await withMetricsFactory(metricsFactory) {
+            // Use withMetricsFactory to make the OTel factory available as a task-local
+            // for any Metric objects created during the service group's run
+            try await withMetricsFactory(metricsFactory) {
+                try await withTracer(tracer) {
                     try await serviceGroup.run()
                 }
-            } else {
-                // After the following line the app will suspend indefinitely
-                try await serviceGroup.run()
             }
         } catch {
             logger.error("Error running the service group: \(error)")
@@ -363,44 +448,6 @@ extension BlockchainService.Config.DataLocation {
             case .custom(let path): .custom(path: path)
             }
     }
-}
-
-func makeTelemetryService(logger: Logger, serviceName: String, endpoint: String) throws -> (
-    service: ServiceGroup, metricsFactory: any MetricsFactory
-) {
-    var otelConfig = OTel.Configuration.default
-    otelConfig.metrics.otlpExporter.protocol = .grpc
-    otelConfig.metrics.otlpExporter.endpoint = endpoint
-    otelConfig.logs.enabled = false
-    otelConfig.metrics.enabled = true
-    otelConfig.traces.enabled = false
-    otelConfig.serviceName = serviceName
-    let otelMetricsBackend = try OTel.makeMetricsBackend(configuration: otelConfig)
-
-    // Configure SystemMetrics monitoring with an explicit metrics factory
-    let systemMetricsMonitor = SystemMetricsMonitor(
-        configuration: .init(pollInterval: .seconds(30)),
-        metricsFactory: otelMetricsBackend.factory,
-        logger: logger
-    )
-
-    // Create a named service group
-    let serviceGroup = ServiceGroup(
-        services: [
-            otelMetricsBackend.service,
-            systemMetricsMonitor,
-        ],
-        logger: logger,
-    )
-    let namedServiceConfiguration = ServiceGroupConfiguration.ServiceConfiguration(
-        service: serviceGroup,
-        serviceName: "Telemetry"
-    )
-    let serviceGroupConfiguration = ServiceGroupConfiguration(
-        services: [namedServiceConfiguration],
-        logger: logger
-    )
-    return (ServiceGroup(configuration: serviceGroupConfiguration), otelMetricsBackend.factory)
 }
 
 enum ServerError: Error {

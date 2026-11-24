@@ -115,6 +115,8 @@ struct LegacyStart: AsyncParsableCommand {
             logLevel: logLevel ?? config.logLevel,
             metrics: config.metrics,
             enableProfiling: config.enableProfiling,
+            tracing: config.tracing,
+            logging: config.logging,
             feeRate: config.feeRate
         )
 

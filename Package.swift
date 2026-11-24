@@ -38,6 +38,7 @@ let package = Package(
         .executable(name: "bcutil", targets: ["BitcoinUtility"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.6.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-metrics.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-system-metrics", from: "1.0.0"),
@@ -81,6 +82,9 @@ let package = Package(
             name: "BitcoinTransport",
             dependencies: [
                 "BitcoinBlockchain", "BitcoinBase", "BitcoinCrypto",
+                .product(name: "Tracing", package: "swift-distributed-tracing"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "Metrics", package: "swift-metrics"),
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             ],
             path: "src/bitcoin-transport", swiftSettings: swiftSettings),
@@ -89,6 +93,7 @@ let package = Package(
             dependencies: [
                 "BitcoinBase", "BitcoinCrypto",
                 .product(name: "LMDB", package: "swift-lmdb"),
+                .product(name: "Tracing", package: "swift-distributed-tracing"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Metrics", package: "swift-metrics"),
                 .product(name: "Atomics", package: "swift-atomics"),
@@ -210,6 +215,8 @@ let package = Package(
             dependencies: [
                 "BitcoinRPC", "BitcoinTransport", "BitcoinBlockchain", "BitcoinBase", "BitcoinCrypto", "NIOJSONRPC",
                 "JSONRPC",
+                .product(name: "Instrumentation", package: "swift-distributed-tracing"),
+                .product(name: "Tracing", package: "swift-distributed-tracing"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Metrics", package: "swift-metrics"),
                 .product(name: "SystemMetrics", package: "swift-system-metrics"),
