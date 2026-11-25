@@ -1,184 +1,185 @@
-public import protocol Crypto.Digest
+// A pure Swift, memory-safe implementation of SipHash-2-4.
+//
+// Reference: J.-P. Aumasson and D. J. Bernstein, "SipHash: a fast short-input PRF" (2012),
+// https://cr.yp.to/siphash/siphash-20120918.pdf
+//
+// No unsafe pointers are used by the algorithm itself: input flows through `Span<UInt8>`, the
+// state is four plain `UInt64` stored properties, and nothing is allocated while hashing. The
+// only `unsafe` code is at the swift-crypto protocol boundary, whose requirements are spelled
+// with `UnsafeRawBufferPointer` (`update(bufferPointer:)` here and `Digest.withUnsafeBytes`).
+// The `RawSpan` entry points (`update(bytes:)`, `hash(bytes:)`) come from Crypto itself.
+
 public import protocol Crypto.HashFunction
 
-/// Implementation of the SipHash 2-4 hashing algorithm used by BIP152 short transaction identifiers.
+/// SipHash-2-4: a keyed 64-bit pseudorandom function for short inputs (2 compression rounds,
+/// 4 finalization rounds, 128-bit key).
 ///
-/// More information on this [article](https://en.wikipedia.org/wiki/SipHash).
+/// ```swift
+/// // From the 16 key bytes
+/// var hasher = SipHash(key: keyBytes.span)!
+/// hasher.update(bytes: message.span)
+/// let tag = hasher.finalize().value        // UInt64
 ///
-public struct SipHash: HashFunction {
-    public struct Digest: Crypto.Digest {
-        typealias Buffer = (UInt64, UInt64, UInt64, UInt64)
+/// // One shot, with the key as two little-endian words
+/// let digest = SipHash.hash(bytes: message.span, k0: k0, k1: k1)
+/// ```
+///
+/// - Important: SipHash is a MAC/PRF for hash tables and short-input authentication (and BIP152
+///   short transaction IDs). It is not a collision-resistant hash like SHA-256.
+public struct SipHash: HashFunction, Sendable {
 
-        init(_ v: Buffer) {
-            value = v.0 ^ v.1 ^ v.2 ^ v.3
-        }
+    /// Size of a message word in bytes.
+    public static let blockByteCount = 8
 
-        public let value: UInt64
-
-        public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            try Swift.withUnsafeBytes(of: value, body)
-        }
-
-        public static let byteCount = 8
-    }
-
-    public init() {
-        self.init(k0: UInt64.random(in: 0...UInt64.max), k1: UInt64.random(in: 0...UInt64.max))
-    }
-
-    public init(k0: UInt64, k1: UInt64) {
-        v.0 ^= k0
-        v.1 ^= k1
-        v.2 ^= k0
-        v.3 ^= k1
-    }
-
-    /// Message digest buffer.
-    /// Initialized with the bytes of  "somepseudorandomlygeneratedbytes".
-    private var v = Digest.Buffer(
-        0x736f_6d65_7073_6575, 0x646f_7261_6e64_6f6d, 0x6c79_6765_6e65_7261, 0x7465_6462_7974_6573)
-
-    private var pendingBytes = UInt64(0)
-    private var pendingByteCount = 0
-    private var byteCount = 0
-
-    public mutating func update(bufferPointer buffer: UnsafeRawBufferPointer) {
-        precondition(byteCount >= 0)
-
-        // Use the first couple of bytes to complete the pending word.
-        var i = 0
-        if pendingByteCount > 0 {
-            let readCount = min(buffer.count, 8 - pendingByteCount)
-            var m: UInt64 = 0
-            switch readCount {
-            case 7:
-                m |= UInt64(buffer[6]) << 48
-                fallthrough
-            case 6:
-                m |= UInt64(buffer[5]) << 40
-                fallthrough
-            case 5:
-                m |= UInt64(buffer[4]) << 32
-                fallthrough
-            case 4:
-                m |= UInt64(buffer[3]) << 24
-                fallthrough
-            case 3:
-                m |= UInt64(buffer[2]) << 16
-                fallthrough
-            case 2:
-                m |= UInt64(buffer[1]) << 8
-                fallthrough
-            case 1:
-                m |= UInt64(buffer[0])
-            default:
-                precondition(readCount == 0)
-            }
-            pendingBytes |= m << UInt64(pendingByteCount << 3)
-            pendingByteCount += readCount
-            i += readCount
-
-            if pendingByteCount == 8 {
-                v = compressWord(pendingBytes, v)
-                pendingBytes = 0
-                pendingByteCount = 0
-            }
-        }
-
-        let left = (buffer.count - i) & 7
-        let end = (buffer.count - i) - left
-        while i < end {
-            var m: UInt64 = 0
-            withUnsafeMutableBytes(of: &m) { p in
-                p.copyMemory(from: .init(rebasing: buffer[i..<i + 8]))
-            }
-            v = compressWord(UInt64(littleEndian: m), v)
-            i += 8
-        }
-
-        switch left {
-        case 7:
-            pendingBytes |= UInt64(buffer[i + 6]) << 48
-            fallthrough
-        case 6:
-            pendingBytes |= UInt64(buffer[i + 5]) << 40
-            fallthrough
-        case 5:
-            pendingBytes |= UInt64(buffer[i + 4]) << 32
-            fallthrough
-        case 4:
-            pendingBytes |= UInt64(buffer[i + 3]) << 24
-            fallthrough
-        case 3:
-            pendingBytes |= UInt64(buffer[i + 2]) << 16
-            fallthrough
-        case 2:
-            pendingBytes |= UInt64(buffer[i + 1]) << 8
-            fallthrough
-        case 1:
-            pendingBytes |= UInt64(buffer[i])
-        default:
-            precondition(left == 0)
-        }
-        pendingByteCount = left
-
-        byteCount += buffer.count
-    }
-
-    public func finalize() -> Digest {
-        precondition(byteCount >= 0)
-        var pendingBytes = pendingBytes
-        pendingBytes |= UInt64(byteCount) << 56
-        // byteCount = -1
-
-        var v = compressWord(pendingBytes, v)
-
-        v.2 ^= 0xff
-        for _ in 0..<SipHash.d {
-            v = sipRound(v)
-        }
-
-        return Digest(v)
-    }
-
-    public static let blockByteCount = 8 // 64 / 8
-
-    /// SipHash 2-4 means c == 2 and d == 4.
+    /// Number of compression rounds per message word (the `c` in SipHash-c-d).
     public static let c = 2
 
-    /// SipHash 2-4 means c == 2 and d == 4.
+    /// Number of finalization rounds (the `d` in SipHash-c-d).
     public static let d = 4
-}
 
-private func sipRound(_ v: SipHash.Digest.Buffer) -> SipHash.Digest.Buffer {
-    var v = v
-    v.0 = v.0 &+ v.1
-    v.1 = rotateLeft(v.1, by: 13)
-    v.1 ^= v.0
-    v.0 = rotateLeft(v.0, by: 32)
-    v.2 = v.2 &+ v.3
-    v.3 = rotateLeft(v.3, by: 16)
-    v.3 ^= v.2
-    v.0 = v.0 &+ v.3
-    v.3 = rotateLeft(v.3, by: 21)
-    v.3 ^= v.0
-    v.2 = v.2 &+ v.1
-    v.1 = rotateLeft(v.1, by: 17)
-    v.1 ^= v.2
-    v.2 = rotateLeft(v.2, by: 32)
-    return v
-}
+    // Internal state, initialised from the key and the constant "somepseudorandomlygeneratedbytes".
+    private var v0: UInt64
+    private var v1: UInt64
+    private var v2: UInt64
+    private var v3: UInt64
 
-private func compressWord(_ m: UInt64, _ v: SipHash.Digest.Buffer) -> SipHash.Digest.Buffer {
-    var v = v
-    v.3 ^= m
-    for _ in 0..<SipHash.c {
-        v = sipRound(v)
+    /// Trailing bytes (fewer than 8) not yet compressed, little-endian packed.
+    private var pending: UInt64 = 0
+
+    /// Number of valid bytes in `pending` (`0 ..< 8`).
+    private var pendingByteCount = 0
+
+    /// Message length modulo 256. SipHash only mixes in the low byte of the length.
+    private var length: UInt8 = 0
+
+    /// Creates a hasher with a random key.
+    ///
+    /// Required by `HashFunction`. Use `init(k0:k1:)` or `init(key:)` for reproducible output.
+    public init() {
+        self.init(k0: .random(in: .min ... .max), k1: .random(in: .min ... .max))
     }
-    v.0 ^= m
-    return v
-}
 
-private func rotateLeft(_ value: UInt64, by amount: UInt64) -> UInt64 {
-    (value << amount) | (value >> (64 - amount))
+    /// Creates a hasher from the key as two 64-bit words.
+    ///
+    /// `k0` is the little-endian interpretation of key bytes 0–7 and `k1` of bytes 8–15, as in the
+    /// reference implementation.
+    public init(k0: UInt64, k1: UInt64) {
+        v0 = k0 ^ 0x736f_6d65_7073_6575
+        v1 = k1 ^ 0x646f_7261_6e64_6f6d
+        v2 = k0 ^ 0x6c79_6765_6e65_7261
+        v3 = k1 ^ 0x7465_6462_7974_6573
+    }
+
+    /// Creates a hasher from a 16-byte key, or returns `nil` if `key` is not exactly 16 bytes.
+    public init?(key: Span<UInt8>) {
+        guard key.count == 16 else { return nil }
+        self.init(k0: Self.word(key, 0), k1: Self.word(key, 8))
+    }
+
+    // MARK: - Span API
+
+    /// Absorbs `bytes` into the hash computation.
+    ///
+    /// Obtain a `Span<UInt8>` from any contiguous storage via `.span`
+    /// (`Array`, `ContiguousArray`, `ArraySlice`, `Data`, …).
+    public mutating func update(bytes: Span<UInt8>) {
+        let count = bytes.count
+        length &+= UInt8(truncatingIfNeeded: count)
+        var offset = 0
+
+        // Complete a previously buffered partial word.
+        if pendingByteCount > 0 {
+            while pendingByteCount < 8 && offset < count {
+                pending |= UInt64(bytes[offset]) &<< UInt64(pendingByteCount &<< 3)
+                pendingByteCount &+= 1
+                offset &+= 1
+            }
+            guard pendingByteCount == 8 else { return }
+            compress(pending)
+            pending = 0
+            pendingByteCount = 0
+        }
+
+        // Whole words straight from the input.
+        while count &- offset >= 8 {
+            compress(Self.word(bytes, offset))
+            offset &+= 8
+        }
+
+        // Stash the tail.
+        while offset < count {
+            pending |= UInt64(bytes[offset]) &<< UInt64(pendingByteCount &<< 3)
+            pendingByteCount &+= 1
+            offset &+= 1
+        }
+    }
+
+    /// Returns the digest of everything absorbed so far. The hasher is not modified and may
+    /// continue to be updated.
+    public func finalize() -> Digest {
+        var copy = self
+        let last = pending | UInt64(length) &<< 56
+        copy.compress(last)
+        copy.v2 ^= 0xff
+        copy.round()
+        copy.round()
+        copy.round()
+        copy.round()
+        return Digest(value: copy.v0 ^ copy.v1 ^ copy.v2 ^ copy.v3)
+    }
+
+    /// Hashes `bytes` under the key `(k0, k1)` in one call.
+    public static func hash(bytes: Span<UInt8>, k0: UInt64, k1: UInt64) -> Digest {
+        var hasher = SipHash(k0: k0, k1: k1)
+        hasher.update(bytes: bytes)
+        return hasher.finalize()
+    }
+
+    // MARK: - HashFunction conformance (the only unsafe boundary)
+
+    /// `HashFunction` requirement. Immediately wrapped into a `Span`.
+    @unsafe
+    public mutating func update(bufferPointer: UnsafeRawBufferPointer) {
+        // `bufferPointer` is valid for the duration of this call and the span does not escape it.
+        let span = unsafe Span<UInt8>(_unsafeElements: bufferPointer.bindMemory(to: UInt8.self))
+        update(bytes: span)
+    }
+
+    // MARK: - Internals
+
+    /// Reads eight bytes at `offset` as a little-endian word. Bounds-checked.
+    @inline(__always)
+    private static func word(_ bytes: Span<UInt8>, _ offset: Int) -> UInt64 {
+        let b = bytes.extracting(offset..<(offset &+ 8))
+        return UInt64(b[0]) | UInt64(b[1]) &<< 8 | UInt64(b[2]) &<< 16 | UInt64(b[3]) &<< 24
+            | UInt64(b[4]) &<< 32 | UInt64(b[5]) &<< 40 | UInt64(b[6]) &<< 48 | UInt64(b[7]) &<< 56
+    }
+
+    /// One word of input: `v3 ^= m; c rounds; v0 ^= m`.
+    @inline(__always)
+    private mutating func compress(_ m: UInt64) {
+        v3 ^= m
+        round()
+        round()
+        v0 ^= m
+    }
+
+    /// One SipRound.
+    @inline(__always)
+    private mutating func round() {
+        v0 &+= v1
+        v1 = (v1 &<< 13) | (v1 &>> 51)
+        v1 ^= v0
+        v0 = (v0 &<< 32) | (v0 &>> 32)
+        v2 &+= v3
+        v3 = (v3 &<< 16) | (v3 &>> 48)
+        v3 ^= v2
+        v0 &+= v3
+        v3 = (v3 &<< 21) | (v3 &>> 43)
+        v3 ^= v0
+        v2 &+= v1
+        v1 = (v1 &<< 17) | (v1 &>> 47)
+        v1 ^= v2
+        v2 = (v2 &<< 32) | (v2 &>> 32)
+    }
 }

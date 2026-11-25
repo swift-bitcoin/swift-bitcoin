@@ -1,6 +1,7 @@
 import ArgumentParser
 import BitcoinWallet
 import Foundation
+import BitcoinCrypto
 
 /// Create a mnemonic seed (BIP39) from entropy.
 ///
@@ -35,7 +36,7 @@ struct MnemonicToSeed: ParsableCommand {
         }
         let result: String
         do {
-            result = try mnemonicPhrase.toSeed(passphrase: passphrase)
+            result = try mnemonicPhrase.toSeed(passphrase: passphrase).hex
         } catch {
             throw ValidationError("Invalid UTF-8 passphrase encoding: passphrase")
         }

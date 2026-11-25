@@ -16,7 +16,10 @@ struct BIP39Tests {
 
             let mnemonicPhrase = try MnemonicPhrase(entropy: entropy, language: language)
             #expect(mnemonicPhrase.mnemonic == expectedMnemonic)
-            let seed = try mnemonicPhrase.toSeed(passphrase: passphrase)
+
+            // TODO: Replace test vectors with [UInt8] seeds to make checking faster
+            let seed = try mnemonicPhrase.toSeed(passphrase: passphrase).hex
+
             #expect(seed == expectedSeed)
             let seedData = try #require(Data(hex: seed))
             let xpriv = try ExtendedKey(seed: seedData)

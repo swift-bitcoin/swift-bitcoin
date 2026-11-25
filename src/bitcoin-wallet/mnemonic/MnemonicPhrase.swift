@@ -1,6 +1,7 @@
 import BinaryParsing
 import BitcoinCrypto
 import Crypto
+import CryptoExtras
 
 public import struct Foundation.Data
 
@@ -74,7 +75,7 @@ public struct MnemonicPhrase {
         mnemonic = wordIndices.map { wordlist[$0] }.joined(separator: mnemonicSeparators[language] ?? " ")
     }
 
-    public func toSeed(passphrase: String = "") throws -> String {
+    public func toSeed(passphrase: String = "") throws -> [UInt8] {
         guard
             let password = mnemonic.decomposedStringWithCompatibilityMapping.data(using: .utf8),
             let salt = ("mnemonic" + passphrase).decomposedStringWithCompatibilityMapping.data(using: .utf8)
@@ -82,8 +83,8 @@ public struct MnemonicPhrase {
             throw Error.invalidMnemonicOrPassphraseEncoding
         }
         do {
-            let keyDerivation = try PBKDF2<SHA512>(password: password, salt: salt, iterations: 2048, keyLength: 64)
-            return Data(keyDerivation.calculate()).hex
+            let key = try KDF.Insecure.PBKDF2.deriveKey(from: password, salt: salt, using: .sha512, outputByteCount: 64, unsafeUncheckedRounds: 2048)
+            return key.withBytes { Array($0) }
         } catch {
             throw Error.invalidMnemonicOrPassphraseEncoding
         }
