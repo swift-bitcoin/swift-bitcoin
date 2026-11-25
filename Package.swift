@@ -104,7 +104,12 @@ let package = Package(
             dependencies: ["BitcoinWallet", "BitcoinBase", "BitcoinCrypto"],
             path: "src/bitcoin-psbt", swiftSettings: swiftSettings),
         .target(
-            name: "BitcoinWallet", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-wallet",
+            name: "BitcoinWallet", dependencies: [
+                "BitcoinBase",
+                "BitcoinCrypto",
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "CryptoExtras", package: "swift-crypto")
+            ], path: "src/bitcoin-wallet",
             swiftSettings: swiftSettings),
         .target(
             name: "BitcoinMiniscript", dependencies: ["BitcoinBase", "BitcoinCrypto"], path: "src/bitcoin-miniscript",

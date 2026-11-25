@@ -1,383 +1,255 @@
-import Foundation
+// A pure Swift, memory-safe implementation of RIPEMD-160.
+//
+// Reference: H. Dobbertin, A. Bosselaers, B. Preneel,
+// "RIPEMD-160: A Strengthened Version of RIPEMD" (1996),
+// https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
+//
+// No unsafe pointers are used by the algorithm itself: all data flows through
+// `Span` / `InlineArray`, every access is bounds-checked, and there is
+// no heap allocation while hashing. The only `unsafe` code is at the swift-crypto
+// protocol boundary, whose requirements are spelled with `UnsafeRawBufferPointer`
+// (`update(bufferPointer:)` here and `Digest.withUnsafeBytes`). The `RawSpan`
+// entry points (`update(bytes:)`, `hash(bytes:)`) come from Crypto itself.
 
-public import protocol Crypto.Digest
 public import protocol Crypto.HashFunction
 
-/// RACE Integrity Primitives Evaluation (RIPE) 160-bit Message Digest (MD) implementation.
+/// RACE Integrity Primitives Evaluation Message Digest, 160-bit variant.
 ///
-/// More information on this [article](https://en.wikipedia.org/wiki/RIPEMD).
+/// ```swift
+/// // One shot
+/// let digest = RIPEMD160.hash(bytes: array.span)
 ///
-public struct RIPEMD160: HashFunction {
-    public struct Digest: Crypto.Digest {
-        typealias Buffer = (UInt32, UInt32, UInt32, UInt32, UInt32)
+/// // Incremental
+/// var hasher = RIPEMD160()
+/// hasher.update(bytes: chunk1.span)
+/// hasher.update(bytes: chunk2.span)
+/// let digest = hasher.finalize()
+/// ```
+///
+/// - Important: RIPEMD-160 is not a general-purpose modern hash. Use it where a
+///   protocol requires it (e.g. Bitcoin's `HASH160 = RIPEMD160(SHA256(x))`).
+public struct RIPEMD160: HashFunction, Sendable {
 
-        init(_ digestBuffer: Buffer) {
-            let result = [digestBuffer.0, digestBuffer.1, digestBuffer.2, digestBuffer.3, digestBuffer.4]
-            data = result.withUnsafeBytes { Data($0) }
-        }
+    /// Size of a message block in bytes.
+    public static let blockByteCount = 64
 
-        let data: Data
+    /// Chaining value `h0...h4`.
+    private var state: InlineArray<5, UInt32> = [0x6745_2301, 0xefcd_ab89, 0x98ba_dcfe, 0x1032_5476, 0xc3d2_e1f0]
 
-        public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            try data.withUnsafeBytes(body)
-        }
+    /// The partially filled block as little-endian words. Bytes at or beyond
+    /// `bufferedCount` are always zero.
+    private var buffer: InlineArray<16, UInt32> = .init(repeating: 0)
 
-        public static let byteCount = 20
-    }
+    /// Number of valid bytes in `buffer` (`0 ..< 64`).
+    private var bufferedCount = 0
 
+    /// Total message length in bytes, modulo 2⁶⁴.
+    private var totalByteCount: UInt64 = 0
+
+    /// Creates a new hasher.
     public init() {}
 
-    /// Message digest buffer.
-    private var digestBuffer = Digest.Buffer(0x6745_2301, 0xefcd_ab89, 0x98ba_dcfe, 0x1032_5476, 0xc3d2_e1f0)
+    // MARK: - Span API
 
-    /// Remaining data buffer.
-    private var buffer = [UInt8]()
+    /// Absorbs `bytes` into the hash computation.
+    ///
+    /// Obtain a `Span<UInt8>` from any contiguous storage via `.span`
+    /// (`Array`, `ContiguousArray`, `ArraySlice`, `Data`, `String.utf8Span`, …).
+    public mutating func update(bytes: Span<UInt8>) {
+        let count = bytes.count
+        totalByteCount &+= UInt64(truncatingIfNeeded: count)
+        var offset = 0
 
-    /// Total amount of bytes processed.
-    private var count = Int64(0)
-
-    public mutating func update(bufferPointer: UnsafeRawBufferPointer) {
-        var bigX = [UInt32](repeating: 0, count: 16)
-        var pos = bufferPointer.startIndex
-        var length = bufferPointer.count
-
-        // Process remaining bytes from last call:
-        if buffer.count > 0 && buffer.count + length >= 64 {
-            let amount = 64 - buffer.count
-            buffer.append(contentsOf: bufferPointer[..<pos.advanced(by: amount)])
-            bigX.withUnsafeMutableBytes {
-                _ = buffer.copyBytes(to: $0)
+        // Top up a previously buffered partial block.
+        if bufferedCount > 0 {
+            let take = min(Self.blockByteCount - bufferedCount, count)
+            for _ in 0..<take {
+                append(bytes[offset])
+                offset &+= 1
             }
-            digestBuffer = compress(bigX, digestBuffer: digestBuffer)
-            pos += amount
-            length -= amount
+            guard bufferedCount == Self.blockByteCount else { return }
+            compressBuffer()
         }
 
-        // Process 64 byte chunks:
-        while length >= 64 {
-            bigX.withUnsafeMutableBytes {
-                _ = bufferPointer[pos..<(pos + 64)].copyBytes(to: $0)
+        // Whole blocks straight from the input.
+        while count &- offset >= Self.blockByteCount {
+            let block = bytes.extracting(offset..<(offset &+ Self.blockByteCount))
+            var words = InlineArray<16, UInt32>(repeating: 0)
+            for i in 0..<16 {
+                let j = i &* 4
+                words[i] =
+                    UInt32(block[j]) | UInt32(block[j &+ 1]) &<< 8
+                    | UInt32(block[j &+ 2]) &<< 16 | UInt32(block[j &+ 3]) &<< 24
             }
-            digestBuffer = compress(bigX, digestBuffer: digestBuffer)
-            pos += 64
-            length -= 64
+            compress(words)
+            offset &+= Self.blockByteCount
         }
 
-        // Save remaining unprocessed bytes:
-        buffer = .init(bufferPointer[pos...])
-        count += Int64(bufferPointer.count)
+        // Stash the tail.
+        while offset < count {
+            append(bytes[offset])
+            offset &+= 1
+        }
     }
 
+    /// Returns the digest of everything absorbed so far. The hasher is not
+    /// modified and may continue to be updated.
     public func finalize() -> Digest {
-        var bigX = [UInt32](repeating: 0, count: 16)
-        // append the bit `m_n == 1`
-        var buffer = self.buffer
-        var digestBuffer = digestBuffer // This function cannot be mutating
-        buffer.append(0x80)
-        bigX.withUnsafeMutableBytes {
-            _ = buffer.copyBytes(to: $0)
-        }
+        var copy = self
+        let bitCount = totalByteCount &<< 3  // length in bits, mod 2⁶⁴
 
-        if (count & 63) > 55 {
-            // Length goes to next block
-            digestBuffer = compress(bigX, digestBuffer: digestBuffer)
-            bigX = [UInt32](repeating: 0, count: 16)
+        copy.append(0x80)
+        if copy.bufferedCount > 56 {  // no room for the 8-byte length
+            copy.compressBuffer()
         }
-
-        // Append length in bits
-        let lswlen = UInt32(truncatingIfNeeded: count)
-        let mswlen = UInt32(UInt64(count) >> 32)
-        bigX[14] = lswlen << 3
-        bigX[15] = (lswlen >> 29) | (mswlen << 3)
-        digestBuffer = compress(bigX, digestBuffer: digestBuffer)
-        buffer = .init()
-        return Digest(digestBuffer)
+        copy.buffer[14] = UInt32(truncatingIfNeeded: bitCount)
+        copy.buffer[15] = UInt32(truncatingIfNeeded: bitCount >> 32)
+        copy.compressBuffer()
+        return Digest(words: copy.state)
     }
 
-    public static let blockByteCount = 8
+    /// Hashes `bytes` in one call.
+    public static func hash(bytes: Span<UInt8>) -> Digest {
+        var hasher = RIPEMD160()
+        hasher.update(bytes: bytes)
+        return hasher.finalize()
+    }
+
+    /// Digest of exactly 32 bytes. The message plus padding always fits in a
+    /// single block, so this skips the streaming buffer entirely.
+    static func hash32(_ bytes: Span<UInt8>) -> Digest {
+        precondition(bytes.count == 32, "hash32 requires exactly 32 bytes")
+        var words = InlineArray<16, UInt32>(repeating: 0)
+        for i in 0..<8 {
+            let j = i &* 4
+            words[i] =
+                UInt32(bytes[j]) | UInt32(bytes[j &+ 1]) &<< 8
+                | UInt32(bytes[j &+ 2]) &<< 16 | UInt32(bytes[j &+ 3]) &<< 24
+        }
+        words[8] = 0x80
+        words[14] = 32 &* 8  // length in bits
+        var hasher = RIPEMD160()
+        hasher.compress(words)
+        return Digest(words: hasher.state)
+    }
+
+    // MARK: - HashFunction conformance (the only unsafe boundary)
+
+    /// `HashFunction` requirement. Immediately wrapped into a `RawSpan`.
+    @unsafe
+    public mutating func update(bufferPointer: UnsafeRawBufferPointer) {
+        // `bufferPointer` is valid for the duration of this call and the span
+        // does not escape it.
+        let span = unsafe Span<UInt8>(_unsafeElements: bufferPointer.bindMemory(to: UInt8.self))
+        update(bytes: span)
+    }
+
+    // MARK: - Internals
+
+    @inline(__always)
+    private mutating func append(_ byte: UInt8) {
+        buffer[bufferedCount &>> 2] |= UInt32(byte) &<< UInt32((bufferedCount & 3) &<< 3)
+        bufferedCount &+= 1
+    }
+
+    /// Compresses the buffered block (padding with zeros) and resets the buffer.
+    private mutating func compressBuffer() {
+        compress(buffer)
+        buffer = .init(repeating: 0)
+        bufferedCount = 0
+    }
+
+    @inline(__always) private static func rol(_ x: UInt32, _ n: UInt8) -> UInt32 {
+        (x &<< UInt32(n)) | (x &>> (32 &- UInt32(n)))
+    }
+
+    /// The compression function. The left and right lines are independent, so
+    /// they are interleaved step by step to give the CPU two dependency chains
+    /// to overlap. Each round is instantiated with its own (inlined) boolean
+    /// functions, so there is no per-step dispatch.
+    private mutating func compress(_ x: InlineArray<16, UInt32>) {
+        var al = state[0], bl = state[1], cl = state[2], dl = state[3], el = state[4]
+        var ar = al, br = bl, cr = cl, dr = dl, er = el
+
+        @inline(__always)
+        func round(
+            _ index: Int,
+            _ fl: (UInt32, UInt32, UInt32) -> UInt32,
+            _ fr: (UInt32, UInt32, UInt32) -> UInt32
+        ) {
+            let kl = Tables.constantsLeft[index], kr = Tables.constantsRight[index]
+            let base = index &* 16
+            for i in 0..<16 {
+                let j = base &+ i
+                let tl = Self.rol(al &+ fl(bl, cl, dl) &+ x[Int(Tables.wordsLeft[j])] &+ kl, Tables.shiftsLeft[j]) &+ el
+                al = el; el = dl; dl = Self.rol(cl, 10); cl = bl; bl = tl
+
+                let tr = Self.rol(ar &+ fr(br, cr, dr) &+ x[Int(Tables.wordsRight[j])] &+ kr, Tables.shiftsRight[j]) &+ er
+                ar = er; er = dr; dr = Self.rol(cr, 10); cr = br; br = tr
+            }
+        }
+
+        // Boolean functions f₀…f₄; the right line uses them in reverse order.
+        @inline(__always) func f0(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 { x ^ y ^ z }
+        @inline(__always) func f1(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 { (x & y) | (~x & z) }
+        @inline(__always) func f2(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 { (x | ~y) ^ z }
+        @inline(__always) func f3(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 { (x & z) | (y & ~z) }
+        @inline(__always) func f4(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 { x ^ (y | ~z) }
+
+        round(0, f0, f4)
+        round(1, f1, f3)
+        round(2, f2, f2)
+        round(3, f3, f1)
+        round(4, f4, f0)
+
+        let t = state[1] &+ cl &+ dr
+        state[1] = state[2] &+ dl &+ er
+        state[2] = state[3] &+ el &+ ar
+        state[3] = state[4] &+ al &+ br
+        state[4] = state[0] &+ bl &+ cr
+        state[0] = t
+    }
 }
 
-/// Helper functions (originally macros in rmd160.h)
-/// - Parameter bigX: `UnsafePointer<UInt32>`
-private func compress(_ bigX: UnsafePointer<UInt32>, digestBuffer: RIPEMD160.Digest.Buffer) -> RIPEMD160.Digest.Buffer {
-    /// ROL(x, n) cyclically rotates x over n bits to the left.
-    /// x must be of an unsigned 32 bits type and `0 <= n < 32`.
-    func ROL(_ x: UInt32, _ n: UInt32) -> UInt32 {
-        (x << n) | (x >> (32 - n))
-    }
+// MARK: - Constants
 
-    // he five basic functions F(), G() and H()
-    func F(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 {
-        x ^ y ^ z
-    }
+private enum Tables {
+    static let constantsLeft: InlineArray<5, UInt32> = [0x0000_0000, 0x5a82_7999, 0x6ed9_eba1, 0x8f1b_bcdc, 0xa953_fd4e]
+    static let constantsRight: InlineArray<5, UInt32> = [0x50a2_8be6, 0x5c4d_d124, 0x6d70_3ef3, 0x7a6d_76e9, 0x0000_0000]
 
-    func G(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 {
-        (x & y) | (~x & z)
-    }
+    /// Message word selection, left line (`r`).
+    static let wordsLeft: InlineArray<80, UInt8> = [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8,
+        3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12,
+        1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6, 2,
+        4, 0, 5, 9, 7, 12, 2, 10, 14, 1, 3, 8, 11, 6, 15, 13,
+    ]
 
-    func H(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 {
-        (x | ~y) ^ z
-    }
+    /// Message word selection, right line (`r'`).
+    static let wordsRight: InlineArray<80, UInt8> = [
+        5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12,
+        6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2,
+        15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13,
+        8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10, 14,
+        12, 15, 10, 4, 1, 5, 8, 7, 6, 2, 13, 14, 0, 3, 9, 11,
+    ]
 
-    func I(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 {
-        (x & z) | (y & ~z)
-    }
+    /// Rotation amounts, left line (`s`).
+    static let shiftsLeft: InlineArray<80, UInt8> = [
+        11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8,
+        7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12,
+        11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5,
+        11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8, 6, 5, 12,
+        9, 15, 5, 11, 6, 8, 13, 12, 5, 12, 13, 14, 11, 8, 5, 6,
+    ]
 
-    func J(_ x: UInt32, _ y: UInt32, _ z: UInt32) -> UInt32 {
-        x ^ (y | ~z)
-    }
-
-    // The ten basic operations FF() through III()
-    func FF(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ F(b, c, d) &+ x
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func GG(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ G(b, c, d) &+ x &+ 0x5a82_7999
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func HH(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ H(b, c, d) &+ x &+ 0x6ed9_eba1
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func II(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ I(b, c, d) &+ x &+ 0x8f1b_bcdc
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func JJ(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ J(b, c, d) &+ x &+ 0xa953_fd4e
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func FFF(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ F(b, c, d) &+ x
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func GGG(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ G(b, c, d) &+ x &+ 0x7a6d_76e9
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func HHH(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ H(b, c, d) &+ x &+ 0x6d70_3ef3
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func III(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ I(b, c, d) &+ x &+ 0x5c4d_d124
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    func JJJ(_ a: inout UInt32, _ b: UInt32, _ c: inout UInt32, _ d: UInt32, _ e: UInt32, _ x: UInt32, _ s: UInt32) {
-        a = a &+ J(b, c, d) &+ x &+ 0x50a2_8be6
-        a = ROL(a, s) &+ e
-        c = ROL(c, 10)
-    }
-
-    // The hashing function starts here
-    var (aa, bb, cc, dd, ee) = digestBuffer
-    var (aaa, bbb, ccc, ddd, eee) = digestBuffer
-
-    // Round 1
-    FF(&aa, bb, &cc, dd, ee, bigX[0], 11)
-    FF(&ee, aa, &bb, cc, dd, bigX[1], 14)
-    FF(&dd, ee, &aa, bb, cc, bigX[2], 15)
-    FF(&cc, dd, &ee, aa, bb, bigX[3], 12)
-    FF(&bb, cc, &dd, ee, aa, bigX[4], 5)
-    FF(&aa, bb, &cc, dd, ee, bigX[5], 8)
-    FF(&ee, aa, &bb, cc, dd, bigX[6], 7)
-    FF(&dd, ee, &aa, bb, cc, bigX[7], 9)
-    FF(&cc, dd, &ee, aa, bb, bigX[8], 11)
-    FF(&bb, cc, &dd, ee, aa, bigX[9], 13)
-    FF(&aa, bb, &cc, dd, ee, bigX[10], 14)
-    FF(&ee, aa, &bb, cc, dd, bigX[11], 15)
-    FF(&dd, ee, &aa, bb, cc, bigX[12], 6)
-    FF(&cc, dd, &ee, aa, bb, bigX[13], 7)
-    FF(&bb, cc, &dd, ee, aa, bigX[14], 9)
-    FF(&aa, bb, &cc, dd, ee, bigX[15], 8)
-
-    // Round 2
-    GG(&ee, aa, &bb, cc, dd, bigX[7], 7)
-    GG(&dd, ee, &aa, bb, cc, bigX[4], 6)
-    GG(&cc, dd, &ee, aa, bb, bigX[13], 8)
-    GG(&bb, cc, &dd, ee, aa, bigX[1], 13)
-    GG(&aa, bb, &cc, dd, ee, bigX[10], 11)
-    GG(&ee, aa, &bb, cc, dd, bigX[6], 9)
-    GG(&dd, ee, &aa, bb, cc, bigX[15], 7)
-    GG(&cc, dd, &ee, aa, bb, bigX[3], 15)
-    GG(&bb, cc, &dd, ee, aa, bigX[12], 7)
-    GG(&aa, bb, &cc, dd, ee, bigX[0], 12)
-    GG(&ee, aa, &bb, cc, dd, bigX[9], 15)
-    GG(&dd, ee, &aa, bb, cc, bigX[5], 9)
-    GG(&cc, dd, &ee, aa, bb, bigX[2], 11)
-    GG(&bb, cc, &dd, ee, aa, bigX[14], 7)
-    GG(&aa, bb, &cc, dd, ee, bigX[11], 13)
-    GG(&ee, aa, &bb, cc, dd, bigX[8], 12)
-
-    // Round 3
-    HH(&dd, ee, &aa, bb, cc, bigX[3], 11)
-    HH(&cc, dd, &ee, aa, bb, bigX[10], 13)
-    HH(&bb, cc, &dd, ee, aa, bigX[14], 6)
-    HH(&aa, bb, &cc, dd, ee, bigX[4], 7)
-    HH(&ee, aa, &bb, cc, dd, bigX[9], 14)
-    HH(&dd, ee, &aa, bb, cc, bigX[15], 9)
-    HH(&cc, dd, &ee, aa, bb, bigX[8], 13)
-    HH(&bb, cc, &dd, ee, aa, bigX[1], 15)
-    HH(&aa, bb, &cc, dd, ee, bigX[2], 14)
-    HH(&ee, aa, &bb, cc, dd, bigX[7], 8)
-    HH(&dd, ee, &aa, bb, cc, bigX[0], 13)
-    HH(&cc, dd, &ee, aa, bb, bigX[6], 6)
-    HH(&bb, cc, &dd, ee, aa, bigX[13], 5)
-    HH(&aa, bb, &cc, dd, ee, bigX[11], 12)
-    HH(&ee, aa, &bb, cc, dd, bigX[5], 7)
-    HH(&dd, ee, &aa, bb, cc, bigX[12], 5)
-
-    // Round 4
-    II(&cc, dd, &ee, aa, bb, bigX[1], 11)
-    II(&bb, cc, &dd, ee, aa, bigX[9], 12)
-    II(&aa, bb, &cc, dd, ee, bigX[11], 14)
-    II(&ee, aa, &bb, cc, dd, bigX[10], 15)
-    II(&dd, ee, &aa, bb, cc, bigX[0], 14)
-    II(&cc, dd, &ee, aa, bb, bigX[8], 15)
-    II(&bb, cc, &dd, ee, aa, bigX[12], 9)
-    II(&aa, bb, &cc, dd, ee, bigX[4], 8)
-    II(&ee, aa, &bb, cc, dd, bigX[13], 9)
-    II(&dd, ee, &aa, bb, cc, bigX[3], 14)
-    II(&cc, dd, &ee, aa, bb, bigX[7], 5)
-    II(&bb, cc, &dd, ee, aa, bigX[15], 6)
-    II(&aa, bb, &cc, dd, ee, bigX[14], 8)
-    II(&ee, aa, &bb, cc, dd, bigX[5], 6)
-    II(&dd, ee, &aa, bb, cc, bigX[6], 5)
-    II(&cc, dd, &ee, aa, bb, bigX[2], 12)
-
-    // Round 5
-    JJ(&bb, cc, &dd, ee, aa, bigX[4], 9)
-    JJ(&aa, bb, &cc, dd, ee, bigX[0], 15)
-    JJ(&ee, aa, &bb, cc, dd, bigX[5], 5)
-    JJ(&dd, ee, &aa, bb, cc, bigX[9], 11)
-    JJ(&cc, dd, &ee, aa, bb, bigX[7], 6)
-    JJ(&bb, cc, &dd, ee, aa, bigX[12], 8)
-    JJ(&aa, bb, &cc, dd, ee, bigX[2], 13)
-    JJ(&ee, aa, &bb, cc, dd, bigX[10], 12)
-    JJ(&dd, ee, &aa, bb, cc, bigX[14], 5)
-    JJ(&cc, dd, &ee, aa, bb, bigX[1], 12)
-    JJ(&bb, cc, &dd, ee, aa, bigX[3], 13)
-    JJ(&aa, bb, &cc, dd, ee, bigX[8], 14)
-    JJ(&ee, aa, &bb, cc, dd, bigX[11], 11)
-    JJ(&dd, ee, &aa, bb, cc, bigX[6], 8)
-    JJ(&cc, dd, &ee, aa, bb, bigX[15], 5)
-    JJ(&bb, cc, &dd, ee, aa, bigX[13], 6)
-
-    // Parallel round 1
-    JJJ(&aaa, bbb, &ccc, ddd, eee, bigX[5], 8)
-    JJJ(&eee, aaa, &bbb, ccc, ddd, bigX[14], 9)
-    JJJ(&ddd, eee, &aaa, bbb, ccc, bigX[7], 9)
-    JJJ(&ccc, ddd, &eee, aaa, bbb, bigX[0], 11)
-    JJJ(&bbb, ccc, &ddd, eee, aaa, bigX[9], 13)
-    JJJ(&aaa, bbb, &ccc, ddd, eee, bigX[2], 15)
-    JJJ(&eee, aaa, &bbb, ccc, ddd, bigX[11], 15)
-    JJJ(&ddd, eee, &aaa, bbb, ccc, bigX[4], 5)
-    JJJ(&ccc, ddd, &eee, aaa, bbb, bigX[13], 7)
-    JJJ(&bbb, ccc, &ddd, eee, aaa, bigX[6], 7)
-    JJJ(&aaa, bbb, &ccc, ddd, eee, bigX[15], 8)
-    JJJ(&eee, aaa, &bbb, ccc, ddd, bigX[8], 11)
-    JJJ(&ddd, eee, &aaa, bbb, ccc, bigX[1], 14)
-    JJJ(&ccc, ddd, &eee, aaa, bbb, bigX[10], 14)
-    JJJ(&bbb, ccc, &ddd, eee, aaa, bigX[3], 12)
-    JJJ(&aaa, bbb, &ccc, ddd, eee, bigX[12], 6)
-
-    // Parallel round 2
-    III(&eee, aaa, &bbb, ccc, ddd, bigX[6], 9)
-    III(&ddd, eee, &aaa, bbb, ccc, bigX[11], 13)
-    III(&ccc, ddd, &eee, aaa, bbb, bigX[3], 15)
-    III(&bbb, ccc, &ddd, eee, aaa, bigX[7], 7)
-    III(&aaa, bbb, &ccc, ddd, eee, bigX[0], 12)
-    III(&eee, aaa, &bbb, ccc, ddd, bigX[13], 8)
-    III(&ddd, eee, &aaa, bbb, ccc, bigX[5], 9)
-    III(&ccc, ddd, &eee, aaa, bbb, bigX[10], 11)
-    III(&bbb, ccc, &ddd, eee, aaa, bigX[14], 7)
-    III(&aaa, bbb, &ccc, ddd, eee, bigX[15], 7)
-    III(&eee, aaa, &bbb, ccc, ddd, bigX[8], 12)
-    III(&ddd, eee, &aaa, bbb, ccc, bigX[12], 7)
-    III(&ccc, ddd, &eee, aaa, bbb, bigX[4], 6)
-    III(&bbb, ccc, &ddd, eee, aaa, bigX[9], 15)
-    III(&aaa, bbb, &ccc, ddd, eee, bigX[1], 13)
-    III(&eee, aaa, &bbb, ccc, ddd, bigX[2], 11)
-
-    // Parallel round 3
-    HHH(&ddd, eee, &aaa, bbb, ccc, bigX[15], 9)
-    HHH(&ccc, ddd, &eee, aaa, bbb, bigX[5], 7)
-    HHH(&bbb, ccc, &ddd, eee, aaa, bigX[1], 15)
-    HHH(&aaa, bbb, &ccc, ddd, eee, bigX[3], 11)
-    HHH(&eee, aaa, &bbb, ccc, ddd, bigX[7], 8)
-    HHH(&ddd, eee, &aaa, bbb, ccc, bigX[14], 6)
-    HHH(&ccc, ddd, &eee, aaa, bbb, bigX[6], 6)
-    HHH(&bbb, ccc, &ddd, eee, aaa, bigX[9], 14)
-    HHH(&aaa, bbb, &ccc, ddd, eee, bigX[11], 12)
-    HHH(&eee, aaa, &bbb, ccc, ddd, bigX[8], 13)
-    HHH(&ddd, eee, &aaa, bbb, ccc, bigX[12], 5)
-    HHH(&ccc, ddd, &eee, aaa, bbb, bigX[2], 14)
-    HHH(&bbb, ccc, &ddd, eee, aaa, bigX[10], 13)
-    HHH(&aaa, bbb, &ccc, ddd, eee, bigX[0], 13)
-    HHH(&eee, aaa, &bbb, ccc, ddd, bigX[4], 7)
-    HHH(&ddd, eee, &aaa, bbb, ccc, bigX[13], 5)
-
-    // Parallel round 4
-    GGG(&ccc, ddd, &eee, aaa, bbb, bigX[8], 15)
-    GGG(&bbb, ccc, &ddd, eee, aaa, bigX[6], 5)
-    GGG(&aaa, bbb, &ccc, ddd, eee, bigX[4], 8)
-    GGG(&eee, aaa, &bbb, ccc, ddd, bigX[1], 11)
-    GGG(&ddd, eee, &aaa, bbb, ccc, bigX[3], 14)
-    GGG(&ccc, ddd, &eee, aaa, bbb, bigX[11], 14)
-    GGG(&bbb, ccc, &ddd, eee, aaa, bigX[15], 6)
-    GGG(&aaa, bbb, &ccc, ddd, eee, bigX[0], 14)
-    GGG(&eee, aaa, &bbb, ccc, ddd, bigX[5], 6)
-    GGG(&ddd, eee, &aaa, bbb, ccc, bigX[12], 9)
-    GGG(&ccc, ddd, &eee, aaa, bbb, bigX[2], 12)
-    GGG(&bbb, ccc, &ddd, eee, aaa, bigX[13], 9)
-    GGG(&aaa, bbb, &ccc, ddd, eee, bigX[9], 12)
-    GGG(&eee, aaa, &bbb, ccc, ddd, bigX[7], 5)
-    GGG(&ddd, eee, &aaa, bbb, ccc, bigX[10], 15)
-    GGG(&ccc, ddd, &eee, aaa, bbb, bigX[14], 8)
-
-    // Parallel round 5
-    FFF(&bbb, ccc, &ddd, eee, aaa, bigX[12], 8)
-    FFF(&aaa, bbb, &ccc, ddd, eee, bigX[15], 5)
-    FFF(&eee, aaa, &bbb, ccc, ddd, bigX[10], 12)
-    FFF(&ddd, eee, &aaa, bbb, ccc, bigX[4], 9)
-    FFF(&ccc, ddd, &eee, aaa, bbb, bigX[1], 12)
-    FFF(&bbb, ccc, &ddd, eee, aaa, bigX[5], 5)
-    FFF(&aaa, bbb, &ccc, ddd, eee, bigX[8], 14)
-    FFF(&eee, aaa, &bbb, ccc, ddd, bigX[7], 6)
-    FFF(&ddd, eee, &aaa, bbb, ccc, bigX[6], 8)
-    FFF(&ccc, ddd, &eee, aaa, bbb, bigX[2], 13)
-    FFF(&bbb, ccc, &ddd, eee, aaa, bigX[13], 6)
-    FFF(&aaa, bbb, &ccc, ddd, eee, bigX[14], 5)
-    FFF(&eee, aaa, &bbb, ccc, ddd, bigX[0], 15)
-    FFF(&ddd, eee, &aaa, bbb, ccc, bigX[3], 13)
-    FFF(&ccc, ddd, &eee, aaa, bbb, bigX[9], 11)
-    FFF(&bbb, ccc, &ddd, eee, aaa, bigX[11], 11)
-
-    // Combine results
-    return (
-        digestBuffer.1 &+ cc &+ ddd,
-        digestBuffer.2 &+ dd &+ eee,
-        digestBuffer.3 &+ ee &+ aaa,
-        digestBuffer.4 &+ aa &+ bbb,
-        digestBuffer.0 &+ bb &+ ccc
-    )
+    /// Rotation amounts, right line (`s'`).
+    static let shiftsRight: InlineArray<80, UInt8> = [
+        8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6,
+        9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11,
+        9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5,
+        15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12, 5, 15, 8,
+        8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11,
+    ]
 }
