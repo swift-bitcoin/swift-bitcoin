@@ -22,7 +22,7 @@ extension PublicKey {
     /// Self is an x-only internal public key.
     func tapTweak(merkleRoot: Data) -> Data {
         precondition(hasEvenY)
-        return Data(SHA256.hash(data: xOnlyData + merkleRoot, tag: "TapTweak"))
+        return Data(SHA256.Tag.tapTweak.hash(data: xOnlyData + merkleRoot))
     }
 
     /// Used in BitcoinWallet/TaprootAddress.

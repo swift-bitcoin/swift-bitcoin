@@ -1,17 +1,16 @@
 // swift-tools-version: 6.4.2
 import PackageDescription
 
-let swiftUpcomingSettings: [SwiftSetting] = [
+let swiftSettings: [SwiftSetting] = [
+    .strictMemorySafety(),
     .treatWarning("StrictLanguageFeatures", as: .error),
     .enableUpcomingFeature("ExistentialAny"),
     .enableUpcomingFeature("ImmutableWeakCaptures"),
     .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
     .enableUpcomingFeature("InferIsolatedConformances"),
     .enableUpcomingFeature("MemberImportVisibility"),
-    .enableUpcomingFeature("InternalImportsByDefault"),
+    .enableUpcomingFeature("InternalImportsByDefault")
 ]
-
-let swiftSettings = swiftUpcomingSettings + [.strictMemorySafety()]
 
 let package = Package(
     name: "swift-bitcoin",
@@ -129,7 +128,7 @@ let package = Package(
             ], path: "src/bitcoin-crypto",
 
             // TODO: Enable Strict Memory Safety once all crypto functions and wrappers have been migrated to spans
-            swiftSettings: swiftUpcomingSettings + [.enableExperimentalFeature("SafeInteropWrappers")]),
+            swiftSettings: swiftSettings + [.enableExperimentalFeature("SafeInteropWrappers")]),
         // Internal libraries
         .target(
             name: "NIOJSONRPC",

@@ -54,6 +54,9 @@ public struct Hash160: HashFunction, Sendable {
             bytes[i] = byte
             i &+= 1
         }
+
+        // Optimization of `return RIPEMD160.hash(bytes: bytes.span.bytes)`
         return RIPEMD160.hash32(bytes.span)
+
     }
 }

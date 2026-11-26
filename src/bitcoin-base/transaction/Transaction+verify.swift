@@ -241,7 +241,7 @@ extension Transaction {
 
         // Let k0 = hashTapLeaf(v || compact_size(size of s) || s); also call it the tapleaf hash.
         let tapLeafHash = Data(
-            SHA256.hash(data: [leafVersion] + VarInt(tapscriptData.count).data + tapscriptData, tag: "TapLeaf"))
+            SHA256.Tag.tapLeaf.hash(data: [leafVersion] + VarInt(tapscriptData.count).data + tapscriptData))
 
         // Compute the Merkle root from the leaf and the provided path.
         let merkleRoot = computeMerkleRoot(controlBlock: control, tapLeafHash: tapLeafHash)
@@ -289,7 +289,7 @@ private func computeMerkleRoot(controlBlock: Data, tapLeafHash: Data) -> Data {
         let endIndex = startIndex.advanced(by: taprootControlNodeSize)
         let node = controlBlock[startIndex..<endIndex]
         let payload = k.lexicographicallyPrecedes(node) ? k + node : node + k
-        k = Data(SHA256.hash(data: payload, tag: "TapBranch"))
+        k = Data(SHA256.Tag.tapBranch.hash(data: payload))
     }
     return k
 }
