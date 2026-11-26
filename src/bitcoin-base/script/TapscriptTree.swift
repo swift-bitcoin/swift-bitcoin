@@ -105,7 +105,7 @@ public indirect enum TapscriptTree: Equatable, Sendable {
             let invertHashes = rightHash.hex < leftHash.hex
             let newLeftHash = invertHashes ? rightHash : leftHash
             let newRightHash = invertHashes ? leftHash : rightHash
-            let branchHash = Data(SHA256.hash(data: newLeftHash + newRightHash, tag: "TapBranch"))
+            let branchHash = Data(SHA256.Tag.tapBranch.hash(data: newLeftHash + newRightHash))
             return (ret, branchHash)
         }
     }
@@ -129,7 +129,7 @@ public indirect enum TapscriptTree: Equatable, Sendable {
             out.append(UInt8(version))
         }
 
-        return Data(SHA256.hash(data: leafVersionData + VarInt(scriptData.count).data + scriptData, tag: "TapLeaf"))
+        return Data(SHA256.Tag.tapLeaf.hash(data: leafVersionData + VarInt(scriptData.count).data + scriptData))
     }
 
     public func getOutputKey(secretKey: SecretKey) -> Data {
